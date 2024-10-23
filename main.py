@@ -16,7 +16,7 @@ async def read_root():
     return FileResponse("static/index.html")
 
 # Read config.json
-with open('config.json', 'r') as f:
+with open('game_config.json', 'r') as f:
     config = json.load(f)
 
 class Enemy(BaseModel):
