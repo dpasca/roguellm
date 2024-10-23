@@ -7,7 +7,7 @@
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app">
-        <div class="container" style="margin: 20px;">
+        <div class="container">
             <h1>Roguelike Game</h1>
 
             <!-- Game Over Overlay -->
@@ -66,10 +66,10 @@
                                  :style="{ width: getPlayerHealthPercentage + '%' }">
                             </div>
                         </div>
-                        <p>HP: {{ gameState.player_hp }}/{{ gameState.player_max_hp }}</p>
-                        <p>Attack: {{ gameState.player_attack }}</p>
-                        <p>Position: ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</p>
-                        <p>Inventory: {{ displayInventory }}</p>
+                        <p>❤️ HP: {{ gameState.player_hp }}/{{ gameState.player_max_hp }}</p>
+                        <p>⚔️ Attack: {{ gameState.player_attack }}</p>
+                        <p>📍 Position: ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</p>
+                        <p>🧳 Inventory: {{ displayInventory }}</p>
                     </div>
 
                     <!-- Inventory UI -->
