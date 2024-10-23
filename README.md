@@ -3,6 +3,8 @@
 RogueLLM is an experimental roguelike game that combines traditional dungeon-crawling
 mechanics with LLM (Large Language Model) integration for dynamic gameplay experiences.
 
+![Screenshot](docs/roguellm_sshot_01.png)
+
 ## Overview
 
 The game features:
