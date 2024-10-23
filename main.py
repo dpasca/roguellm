@@ -50,7 +50,6 @@ class Game:
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.initialize_item_templates()
-        self.initialize_game()
         self.connected_clients = set()
         self.event_history = []
 
@@ -65,7 +64,7 @@ class Game:
             self.log_error("Invalid JSON in game_items.json file.")
             self.item_templates = {}
 
-    def initialize_game(self):
+    async def initialize_game(self):
         self.state = GameState.from_config(config) # Initialize GameState with "config"
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
@@ -76,7 +75,9 @@ class Game:
         return {
             'type': 'update',
             'state': self.state.dict(),
-            'description': "You find yourself at the entrance of a mysterious dungeon..."
+            'description': await self.gen_adapt_sentence(
+                "You find yourself at the entrance of a mysterious dungeon..."
+            )
         }
 
     #==================================================================
@@ -106,7 +107,7 @@ class Game:
 
         if action == 'restart':
             self.events_reset()
-            return self.initialize_game()
+            return await self.initialize_game()
 
         if self.state.game_over:
             result = {
@@ -133,7 +134,7 @@ class Game:
         elif action == 'equip_item':
             result = await self.handle_equip_item(message.get('item_id'))
         elif action == 'initialize':
-            result = self.initialize_game()
+            result = await self.initialize_game()
 
         self.events_add(action, result) # Record the event
         return result
@@ -477,6 +478,13 @@ class Game:
                         'description': f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!"
                     }
 
+    async def gen_adapt_sentence(self, original_sentence: str) -> str:
+        try:
+            return _gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
+        except Exception as e:
+            logging.exception("Exception in gen_adapt_sentence")
+            return original_sentence
+
     async def get_room_description(self) -> str:
         try:
             return _gen_ai.gen_room_description(self.state, self.event_history)
@@ -498,8 +506,17 @@ async def websocket_endpoint(websocket: WebSocket):
     logging.info("New WebSocket connection attempt")
     await websocket.accept()
     logging.info("WebSocket connection accepted")
-    game_instance.connected_clients.add(websocket)
+
+    # Create a new game instance for each connection
+    rand_seed = int(time.time())
+    game_instance = Game(seed=rand_seed)
+    
     try:
+        # Initialize the game
+        await game_instance.initialize_game()
+        
+        game_instance.connected_clients.add(websocket)
+
         if game_instance.error_message:
             logging.info(f"Sending error message: {game_instance.error_message}")
             await websocket.send_json({
@@ -537,5 +554,3 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.exception("Exception in WebSocket endpoint")
     finally:
         game_instance.connected_clients.remove(websocket)
-
-

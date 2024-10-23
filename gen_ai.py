@@ -13,6 +13,9 @@ def is_openai_model(model: str):
 import logging
 logger = logging.getLogger()
 
+MAX_TOKENS_FOR_ROOM_DESC = 80
+MAX_TOKENS_FOR_GENERIC_SENTENCE = 20
+
 #==================================================================
 # GenAI
 #==================================================================
@@ -78,6 +81,44 @@ class GenAI:
 
         return "\n".join(context)
 
+    # Generator for generic sentences
+    def gen_adapt_sentence(
+            self,
+            game_state: GameState,
+            event_history: List[dict],
+            original_sentence: str
+    ) -> str:
+        if self.client is None:
+            return original_sentence
+
+        system_msg = """
+You are a fantasy dungeon description generator.
+Your job is to take an original sentence and improve it to fit the context.
+- Reply only with the improved sentence, nothing else
+- Use emojis to enhance the description
+"""
+
+        context = self._create_context(game_state, event_history or [])
+        user_msg = f"Adapt the following sentence to fit the context:\n"
+        user_msg += f"Original sentence: {original_sentence}\n\n"
+        user_msg += f"Context:\n{context}"
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg}
+                ],
+                temperature=0.7,  # Add some variability but keep it coherent
+                max_tokens=max(MAX_TOKENS_FOR_GENERIC_SENTENCE, len(original_sentence)//4)
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating room description: {e}")
+            return original_sentence
+
+    # Generator for room descriptions
     def gen_room_description(self, game_state: GameState, event_history: List[dict]) -> str:
         """Generate a room description based on game state and history."""
         if self.client is None:
@@ -91,12 +132,13 @@ class GenAI:
             ])
 
         system_msg = """
-You are a fantasy dungeon description generator. Create vivid, concise room descriptions (2-3 sentences) that:
+You are a fantasy dungeon description generator. Create vivid, concise room descriptions (1-2 sentences) that:
 - Vary based on the player's position in the dungeon
 - Reference recent events when relevant
 - Maintain a consistent tone
 - Don't reveal game mechanics or future events
 - Focus on atmosphere and environmental details
+- Spread emojis throughout the description
 """
 
         context = self._create_context(game_state, event_history or [])
@@ -112,7 +154,7 @@ You are a fantasy dungeon description generator. Create vivid, concise room desc
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
-                max_tokens=100    # Keep descriptions concise
+                max_tokens=MAX_TOKENS_FOR_ROOM_DESC
             )
             return response.choices[0].message.content
         except Exception as e:
