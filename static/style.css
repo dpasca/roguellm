@@ -12,18 +12,27 @@
 .player { background-color: #4CAF50; }
 .explored { background-color: #424242; }
 .unexplored { background-color: #212121; }
+
 .game-log {
     overflow-y: auto;
+    font-size: 18px !important;
+    line-height: 1.4;
     padding: 10px;
     background-color: #1a1a1a;
     border: 1px solid #333;
     margin-top: 20px;
+    min-height: 300px;
+    max-height: 500px;
 }
 .game-log div {
+    font-size: 18px !important;
+    text-size-adjust: none; /* Prevent mobile browsers from auto-adjusting text */
+    -webkit-text-size-adjust: none; /* For Safari */
     margin: 5px 0;
     padding: 5px;
     border-bottom: 1px solid #333;
 }
+
 button {
     background-color: #4CAF50;
     border: none;
@@ -98,6 +107,12 @@ button:disabled {
 }
 .restart-button:hover {
     background-color: #45a049;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
 }
 
 .game-container {
