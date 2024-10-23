@@ -72,13 +72,9 @@ class Game:
         self.state.inventory = []
         self.state.equipment = Equipment()
         self.state.game_over = False
-        return {
-            'type': 'update',
-            'state': self.state.dict(),
-            'description': await self.gen_adapt_sentence(
-                "You find yourself at the entrance of a mysterious dungeon..."
-            )
-        }
+        return await self.create_update(
+            "You find yourself at the entrance of a mysterious dungeon..."
+        )
 
     #==================================================================
     # Events
@@ -91,6 +87,20 @@ class Game:
             'action': action,
             'event': event_dict
         })
+
+    async def create_update(self, original_sentence: str):
+        return {
+            'type': 'update',
+            'state': self.state.dict(),
+            'description': await self.gen_adapt_sentence(original_sentence)
+        }
+
+    async def create_update_room(self):
+        return {
+            'type': 'update',
+            'state': self.state.dict(),
+            'description': await self.get_room_description()
+        }
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
@@ -110,19 +120,11 @@ class Game:
             return await self.initialize_game()
 
         if self.state.game_over:
-            result = {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "Game Over! Press Restart to play again."
-            }
+            result = await self.create_update("Game Over! Press Restart to play again.")
             self.events_add('game_over', result) # Record the event
             return result
 
-        result = {
-            'type': 'update',
-            'state': self.state.dict(),
-            'description': "Unknown action!"
-        }
+        result = None
         if action == 'move' and not self.state.in_combat:
             result = await self.handle_move(message.get('direction'))
         elif action == 'attack' and self.state.in_combat:
@@ -135,6 +137,13 @@ class Game:
             result = await self.handle_equip_item(message.get('item_id'))
         elif action == 'initialize':
             result = await self.initialize_game()
+
+        if result is None:
+            result = {
+                'type': 'update',
+                'state': self.state.dict(),
+                'description': "Unknown action!"
+            }
 
         self.events_add(action, result) # Record the event
         return result
@@ -324,11 +333,7 @@ class Game:
             enemy = self.generate_enemy()
             self.state.current_enemy = enemy
             self.state.in_combat = True
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
-            }
+            return await self.create_update(f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})")
         elif roll < roll_thresh_item:  # 20% chance for item
             item = self.generate_random_item()
 
@@ -337,33 +342,17 @@ class Game:
                 existing_item = next((i for i in self.state.inventory
                                     if i.name == item.name), None)
                 if existing_item:
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': f"You found another {item.name}, but you already have one."
-                    }
+                    return await self.create_update(f"You found another {item.name}, but you already have one.")
 
             self.state.inventory.append(item)
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': f"You found a {item.name}! {item.description}"
-            }
+            return await self.create_update(f"You found a {item.name}! {item.description}")
         else:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': await self.get_room_description()
-            }
+            return await self.create_update_room()
 
 
     async def handle_combat_action(self, action: str) -> dict:
         if not self.state.in_combat or not self.state.current_enemy:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "No enemy to fight!"
-            }
+            return await self.create_update("No enemy to fight!")
 
         if action == 'attack':
             # Player attacks
@@ -386,11 +375,7 @@ class Game:
                 else:
                     combat_log = f"{combat_log}\nYou have defeated the enemy!"
 
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': combat_log
-                }
+                return await self.create_update(combat_log)
 
             # Enemy attacks back
             base_damage = self.random.randint(
@@ -407,22 +392,14 @@ class Game:
                 self.state.player_hp = 0
                 self.state.game_over = True
                 self.state.in_combat = False
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': f"{combat_log}\nYou have been defeated! Game Over!"
-                }
+                return await self.create_update(f"{combat_log}\nYou have been defeated! Game Over!")
 
             # Process temporary effects
             effects_log = await self.process_temporary_effects()
             if effects_log:
                 combat_log += f"\n{effects_log}"
 
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': combat_log
-            }
+            return await self.create_update(combat_log)
 
         elif action == 'run':
             if self.random.random() < 0.6:  # 60% chance to escape
@@ -432,17 +409,9 @@ class Game:
                 # Process temporary effects when running
                 effects_log = await self.process_temporary_effects()
                 if effects_log:
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': f"You successfully flee from battle!\n{effects_log}"
-                    }
+                    return await self.create_update(f"You successfully flee from battle!\n{effects_log}")
                 else:
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': "You successfully flee from battle!"
-                    }
+                    return await self.create_update("You successfully flee from battle!")
             else:
                 # Failed to escape, enemy gets a free attack
                 damage = self.random.randint(
@@ -457,26 +426,17 @@ class Game:
                     self.state.player_hp = 0
                     self.state.game_over = True
                     self.state.in_combat = False
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\nYou have been defeated! Game Over!"
-                    }
+                    return await self.create_update(
+                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\nYou have been defeated! Game Over!")
 
                 # Process temporary effects after failed escape
                 effects_log = await self.process_temporary_effects()
                 if effects_log:
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\n{effects_log}"
-                    }
+                    return await self.create_update(
+                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\n{effects_log}")
                 else:
-                    return {
-                        'type': 'update',
-                        'state': self.state.dict(),
-                        'description': f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!"
-                    }
+                    return await self.create_update(
+                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!")
 
     async def gen_adapt_sentence(self, original_sentence: str) -> str:
         try:
