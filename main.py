@@ -512,17 +512,25 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.info(f"Initial state: {initial_state}")
         await websocket.send_json(initial_state)
 
+        LOG_IN_LOOP = False
+
         while True:
-            logging.info("Waiting for message...")
+            if LOG_IN_LOOP:
+                logging.info("Waiting for message...")
+
             message = await websocket.receive_json()
-            logging.info(f"Received message: {message}")
+
+            if LOG_IN_LOOP:
+                logging.info(f"Received message: {message}")
+
             response = await game_instance.handle_message(message)
 
-            response_str = str(response)
-            if len(response_str) > 40:
-                logging.info(f"Response: {response_str[:40]} [...]")
-            else:
-                logging.info(f"Response: {response_str}")
+            if LOG_IN_LOOP:
+                response_str = str(response)
+                if len(response_str) > 40:
+                    logging.info(f"Response: {response_str[:40]} [...]")
+                else:
+                    logging.info(f"Response: {response_str}")
 
             await websocket.send_json(response)
     except Exception as e:
