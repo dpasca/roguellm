@@ -13,7 +13,6 @@
 .explored { background-color: #424242; }
 .unexplored { background-color: #212121; }
 .game-log {
-    max-height: 200px;
     overflow-y: auto;
     padding: 10px;
     background-color: #1a1a1a;
