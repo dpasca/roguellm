@@ -8,6 +8,26 @@ import random
 import time
 import asyncio
 
+#==================================================================
+# Logging
+#==================================================================
+import logging
+import sys
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s',
+    stream=sys.stdout
+)
+
+#==================================================================
+# GenAI
+#==================================================================
+from gen_ai import GenAI
+_gen_ai = GenAI(model="gpt-4o")
+
+#==================================================================
+# FastAPI
+#==================================================================
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -15,52 +35,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def read_root():
     return FileResponse("static/index.html")
 
+#==================================================================
+# Game
+#==================================================================
 # Read config.json
 with open('game_config.json', 'r') as f:
     config = json.load(f)
 
-class Enemy(BaseModel):
-    name: str
-    hp: int
-    max_hp: int
-    attack: int
-
-class Item(BaseModel):
-    id: str
-    name: str
-    type: str  # 'weapon', 'armor', 'potion'
-    effect: Dict[str, int]
-    is_equipped: bool = False
-    description: str
-
-class Equipment(BaseModel):
-    weapon: Optional[Item] = None
-    armor: Optional[Item] = None
-
-class GameState(BaseModel):
-    map_width: int = config['map_size']['width']
-    map_height: int = config['map_size']['height']
-    player_pos: tuple = (0, 0)
-    player_hp: int = config['player']['base_hp']
-    player_max_hp: int = config['player']['max_hp']
-    player_attack: int = config['player']['base_attack']
-    player_defense: int = config['player']['base_defense']
-    inventory: List[Item] = []
-    equipment: Equipment = Equipment()
-    explored: list = []
-    in_combat: bool = False
-    current_enemy: Optional[Enemy] = None
-    game_over: bool = False
-    temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}  # For temporary potion
+# Models
+from models import GameState, Enemy, Item, Equipment
 
 class Game:
     def __init__(self, seed=None):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
-        self.error_message = None  # Add this line
+        self.error_message = None
         self.initialize_item_templates()
-        self.state = GameState()
         self.initialize_game()
         self.connected_clients = set()
+        self.event_history = []
 
     def initialize_item_templates(self):
         try:
@@ -74,7 +66,7 @@ class Game:
             self.item_templates = {}
 
     def initialize_game(self):
-        self.state = GameState()
+        self.state = GameState.from_config(config) # Initialize GameState with "config"
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
         self.state.explored[0][0] = True
@@ -87,6 +79,19 @@ class Game:
             'description': "You find yourself at the entrance of a mysterious dungeon..."
         }
 
+    #==================================================================
+    # Events
+    #==================================================================
+    def events_reset(self):
+        self.event_history = []
+
+    def events_add(self, action: str, event_dict: dict):
+        self.event_history.append({
+            'action': action,
+            'event': event_dict
+        })
+
+    # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
         template_id = self.random.choice(list(self.item_templates.keys()))
         template = self.item_templates[template_id]
@@ -100,27 +105,38 @@ class Game:
         action = message.get('action')
 
         if action == 'restart':
+            self.events_reset()
             return self.initialize_game()
 
         if self.state.game_over:
-            return {
+            result = {
                 'type': 'update',
                 'state': self.state.dict(),
                 'description': "Game Over! Press Restart to play again."
             }
+            self.events_add('game_over', result) # Record the event
+            return result
 
+        result = {
+            'type': 'update',
+            'state': self.state.dict(),
+            'description': "Unknown action!"
+        }
         if action == 'move' and not self.state.in_combat:
-            return await self.handle_move(message.get('direction'))
+            result = await self.handle_move(message.get('direction'))
         elif action == 'attack' and self.state.in_combat:
-            return await self.handle_combat_action('attack')
+            result = await self.handle_combat_action('attack')
         elif action == 'run' and self.state.in_combat:
-            return await self.handle_combat_action('run')
+            result = await self.handle_combat_action('run')
         elif action == 'use_item':
-            return await self.handle_use_item(message.get('item_id'))
+            result = await self.handle_use_item(message.get('item_id'))
         elif action == 'equip_item':
-            return await self.handle_equip_item(message.get('item_id'))
+            result = await self.handle_equip_item(message.get('item_id'))
         elif action == 'initialize':
-            return self.initialize_game()
+            result = self.initialize_game()
+
+        self.events_add(action, result) # Record the event
+        return result
 
     async def handle_use_item(self, item_id: str) -> dict:
         if not item_id:
@@ -462,14 +478,11 @@ class Game:
                     }
 
     async def get_room_description(self) -> str:
-        return self.random.choice([
-            "A dark, musty room with ancient writings on the wall.",
-            "A chamber filled with mysterious artifacts and glowing crystals.",
-            "A damp cave with strange mushrooms growing on the ceiling.",
-            "An eerie room with flickering torches on the walls.",
-            "A grand hall with crumbling pillars.",
-            "A small room with mysterious runes etched into the floor."
-        ])
+        try:
+            return _gen_ai.gen_room_description(self.state, self.event_history)
+        except Exception as e:
+            logging.exception("Exception in get_room_description")
+            return "Error generating room description!"
 
     def log_error(self, error_message):
         print(f"Error: {error_message}")
@@ -482,25 +495,39 @@ game_instance = Game(seed=rand_seed)
 
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
+    logging.info("New WebSocket connection attempt")
     await websocket.accept()
+    logging.info("WebSocket connection accepted")
     game_instance.connected_clients.add(websocket)
     try:
-        # Send error message if it exists
         if game_instance.error_message:
+            logging.info(f"Sending error message: {game_instance.error_message}")
             await websocket.send_json({
                 'type': 'error',
                 'message': game_instance.error_message
             })
 
+        logging.info("Sending initial state")
         initial_state = await game_instance.handle_message({'action': 'initialize'})
+        logging.info(f"Initial state: {initial_state}")
         await websocket.send_json(initial_state)
 
         while True:
+            logging.info("Waiting for message...")
             message = await websocket.receive_json()
+            logging.info(f"Received message: {message}")
             response = await game_instance.handle_message(message)
+
+            response_str = str(response)
+            if len(response_str) > 40:
+                logging.info(f"Response: {response_str[:40]} [...]")
+            else:
+                logging.info(f"Response: {response_str}")
+
             await websocket.send_json(response)
     except Exception as e:
-        print(f"Error: {e}")
+        logging.exception("Exception in WebSocket endpoint")
     finally:
         game_instance.connected_clients.remove(websocket)
-        await websocket.close()
+
+

@@ -45,23 +45,34 @@ createApp({
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);
 
+            // Handle incoming messages
             this.ws.onmessage = (event) => {
-                const response = JSON.parse(event.data);
-                if (response.type === 'update') {
-                    this.gameState = response.state;
-                    if (response.description) {
-                        this.gameLogs.unshift(response.description);
+                if (!event.data) {
+                    console.warn("Received empty message, ignoring");
+                    return;
+                }
+                try {
+                    const response = JSON.parse(event.data);
+                    if (response && response.type) {
+                        if (response.type === 'update') {
+                            this.gameState = response.state;
+                            if (response.description) {
+                                this.gameLogs.unshift(response.description);
+                            }
+                        } else if (response.type === 'error') {
+                            this.errorMessage = response.message;
+                            setTimeout(() => {
+                                this.errorMessage = null;
+                            }, 5000);
+                        }
                     }
-                } else if (response.type === 'error') {
-                    this.errorMessage = response.message;
-                    setTimeout(() => {
-                        this.errorMessage = null;
-                    }, 5000);  // Clear error message after 5 seconds
+                } catch (error) {
+                    console.log('WebSocket message parsing error:', error);
                 }
             };
 
-            this.ws.onclose = () => {
-                console.log('WebSocket connection closed');
+            this.ws.onclose = (event) => {
+                console.log('WebSocket connection closed', event.code, event.reason);
                 setTimeout(() => this.initWebSocket(), 5000);
             };
 
