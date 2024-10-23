@@ -91,16 +91,23 @@ class GenAI:
         if self.client is None:
             return original_sentence
 
-        system_msg = """You are an expert narrative adapter for a fantasy dungeon game. Your task is to enhance given sentences while:
-- Maintaining the core meaning of the original text
-- Incorporating relevant context from recent events and player status
-- Using atmospheric language that fits the dungeon setting
-- Adding strategic emoji placement to enhance key moments
-- Keeping the same approximate length as the original
-- Avoiding meta-references to game mechanics
-- Preserving any critical gameplay information from the original
+        system_msg = """
+You are a skilled narrative adapter for a fantasy dungeon game. Your task is to describe events in a natural, engaging way that varies based on context and significance. Core guidelines:
 
-Respond ONLY with the adapted sentence, no explanations or additional text."""
+- Maintain the original meaning while varying the descriptive intensity
+- Use simpler language for routine actions (basic attacks, movement, common events)
+- Reserve elaborate descriptions for truly significant moments:
+  * Critical hits
+  * Defeating powerful enemies
+  * Finding rare items
+  * Major health changes
+  * Story-significant events
+- Place emojis strategically to highlight key features
+- Consider pacing: after several elaborate descriptions, use simpler ones to create rhythm
+- Let context guide description style - not every hit needs to be epic
+- Keep similar length to original text
+
+Respond ONLY with the adapted sentence."""
 
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Original: {original_sentence}
@@ -108,10 +115,12 @@ Respond ONLY with the adapted sentence, no explanations or additional text."""
 Current Game Context:
 {context}
 
-Requirements:
-- Adapt the sentence while preserving its core meaning
-- Reference the context only if it's directly relevant
-- Keep a similar length to the original"""
+Guidelines:
+- Adapt naturally - simple for routine actions, elaborate for significant moments
+- Reference context only when it adds meaningful impact
+- Keep similar length to original"""
+
+        logger.info(f"gen_adapt_sentence: User message: {user_msg}")
 
         try:
             response = self.client.chat.completions.create(
@@ -144,19 +153,19 @@ Requirements:
         system_msg = """You are an expert dungeon narrator specialized in atmospheric room descriptions. Follow these guidelines:
 
 Core Requirements:
-- Create vivid, immersive descriptions in 1-2 sentences
+- Create vivid but brief descriptions in 1 sentence
+- Alternate vivid and short, mundane descriptions
 - Focus on sensory details (sight, sound, smell, temperature)
-- Vary descriptions based on room position (edges feel different from center rooms)
+- Be consisten with previous descriptions of the same room
 - Include subtle hints about room importance without revealing mechanics
 
 Style Guidelines:
 - Use gothic and dark fantasy vocabulary
 - Place emojis strategically to highlight key features
-- Maintain consistent tone matching recent events
+- Maintain consistent tone, sometimes recalling recent events
 - Blend environmental storytelling with atmosphere
 
 Avoid:
-- Revealing game mechanics or future events
 - Generic descriptions that could fit any room
 - Breaking immersion with meta-references
 - Contradicting recent event history
@@ -176,7 +185,7 @@ Requirements:
 - Adapt description to current equipment
 - Match intensity to dungeon position (deeper = more ominous)"""
 
-        logger.info(f"User message: {user_msg}")
+        logger.info(f"gen_room_description: User message: {user_msg}")
 
         try:
             response = self.client.chat.completions.create(
