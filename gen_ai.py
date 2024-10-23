@@ -13,8 +13,8 @@ def is_openai_model(model: str):
 import logging
 logger = logging.getLogger()
 
-MAX_TOKENS_FOR_ROOM_DESC = 80
-MAX_TOKENS_FOR_GENERIC_SENTENCE = 20
+MAX_TOKENS_FOR_ROOM_DESC = 100
+MAX_TOKENS_FOR_GENERIC_SENTENCE = 80
 
 #==================================================================
 # GenAI
@@ -91,17 +91,27 @@ class GenAI:
         if self.client is None:
             return original_sentence
 
-        system_msg = """
-You are a fantasy dungeon description generator.
-Your job is to take an original sentence and improve it to fit the context.
-- Reply only with the improved sentence, nothing else
-- Use emojis to enhance the description
-"""
+        system_msg = """You are an expert narrative adapter for a fantasy dungeon game. Your task is to enhance given sentences while:
+- Maintaining the core meaning of the original text
+- Incorporating relevant context from recent events and player status
+- Using atmospheric language that fits the dungeon setting
+- Adding strategic emoji placement to enhance key moments
+- Keeping the same approximate length as the original
+- Avoiding meta-references to game mechanics
+- Preserving any critical gameplay information from the original
+
+Respond ONLY with the adapted sentence, no explanations or additional text."""
 
         context = self._create_context(game_state, event_history or [])
-        user_msg = f"Adapt the following sentence to fit the context:\n"
-        user_msg += f"Original sentence: {original_sentence}\n\n"
-        user_msg += f"Context:\n{context}"
+        user_msg = f"""Original: {original_sentence}
+
+Current Game Context:
+{context}
+
+Requirements:
+- Adapt the sentence while preserving its core meaning
+- Reference the context only if it's directly relevant
+- Keep a similar length to the original"""
 
         try:
             response = self.client.chat.completions.create(
@@ -131,18 +141,40 @@ Your job is to take an original sentence and improve it to fit the context.
                 "A small room with mysterious runes etched into the floor."
             ])
 
-        system_msg = """
-You are a fantasy dungeon description generator. Create vivid, concise room descriptions (1-2 sentences) that:
-- Vary based on the player's position in the dungeon
-- Reference recent events when relevant
-- Maintain a consistent tone
-- Don't reveal game mechanics or future events
-- Focus on atmosphere and environmental details
-- Spread emojis throughout the description
-"""
+        system_msg = """You are an expert dungeon narrator specialized in atmospheric room descriptions. Follow these guidelines:
+
+Core Requirements:
+- Create vivid, immersive descriptions in 1-2 sentences
+- Focus on sensory details (sight, sound, smell, temperature)
+- Vary descriptions based on room position (edges feel different from center rooms)
+- Include subtle hints about room importance without revealing mechanics
+
+Style Guidelines:
+- Use gothic and dark fantasy vocabulary
+- Place emojis strategically to highlight key features
+- Maintain consistent tone matching recent events
+- Blend environmental storytelling with atmosphere
+
+Avoid:
+- Revealing game mechanics or future events
+- Generic descriptions that could fit any room
+- Breaking immersion with meta-references
+- Contradicting recent event history
+
+Response Format:
+Return ONLY the room description, no additional text or explanations."""
 
         context = self._create_context(game_state, event_history or [])
-        user_msg = f"Describe the current room based on this context:\n{context}"
+        user_msg = f"""Create a room description using this context:
+
+Game State:
+{context}
+
+Requirements:
+- Consider player's current HP when setting mood
+- Reference relevant recent events naturally
+- Adapt description to current equipment
+- Match intensity to dungeon position (deeper = more ominous)"""
 
         logger.info(f"User message: {user_msg}")
 
