@@ -1,0 +1,38 @@
+{
+    "rusty_sword": {
+        "name": "Rusty Sword",
+        "type": "weapon",
+        "effect": {"attack": 3},
+        "description": "A basic sword with some rust spots."
+    },
+    "steel_sword": {
+        "name": "Steel Sword",
+        "type": "weapon",
+        "effect": {"attack": 5},
+        "description": "A well-crafted steel sword."
+    },
+    "leather_armor": {
+        "name": "Leather Armor",
+        "type": "armor",
+        "effect": {"defense": 2},
+        "description": "Basic leather armor."
+    },
+    "chain_mail": {
+        "name": "Chain Mail",
+        "type": "armor",
+        "effect": {"defense": 4},
+        "description": "Protective chain mail armor."
+    },
+    "health_potion": {
+        "name": "Health Potion",
+        "type": "potion",
+        "effect": {"health": 30},
+        "description": "Restores 30 HP when used."
+    },
+    "strength_potion": {
+        "name": "Strength Potion",
+        "type": "potion",
+        "effect": {"attack": 5, "duration": 3},
+        "description": "Temporarily increases attack by 5."
+    }
+}

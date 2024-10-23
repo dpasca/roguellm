@@ -1,0 +1,26 @@
+{
+    "map_size": {
+        "width": 10,
+        "height": 8
+    },
+    "player": {
+        "base_hp": 100,
+        "max_hp": 100,
+        "base_attack": 15,
+        "base_defense": 0
+    },
+    "encounter_chances": {
+        "enemy": 0.3,
+        "item": 0.2,
+        "story": 0.5
+    },
+    "prompt_templates": {
+        "enemy_encounter": "Create a brief, engaging combat encounter description for a {enemy_type} in a dungeon. Describe its appearance and initial hostile action. Keep it under 50 words.",
+        "item_discovery": "Create a brief, atmospheric description for discovering a {item_type} called {item_name} in a dungeon. Include a hint about its effectiveness. Keep it under 40 words.",
+        "room_events": [
+            "Describe a mysterious ritual circle found in the dungeon room and its immediate effect on the player.",
+            "Create a brief encounter with a friendly ghostly merchant offering a trade.",
+            "Describe a magical fountain and its temporary effect on the player."
+        ]
+    }
+}

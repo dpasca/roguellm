@@ -1,0 +1,205 @@
+/*==== Game map stuff ====*/
+.cell {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+.row { display: flex; }
+.player { background-color: #4CAF50; }
+.explored { background-color: #424242; }
+.unexplored { background-color: #212121; }
+.game-log {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    margin-top: 20px;
+}
+.game-log div {
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #333;
+}
+button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+button:hover { background-color: #45a049; }
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+.combat-ui {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 0;
+}
+.health-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #666;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 5px 0;
+}
+.health-bar-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease;
+}
+.combat-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+.attack-button { background-color: #f44336; }
+.run-button { background-color: #2196F3; }
+.game-over {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.game-over h2 {
+    color: #f44336;
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+.restart-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px 30px;
+    font-size: 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.restart-button:hover {
+    background-color: #45a049;
+}
+
+.game-container {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.game-left-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.game-map {
+    flex: 0 0 auto;
+}
+
+.combat-ui {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 0;
+}
+
+.game-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.player-status, .inventory-ui, .controls {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.player-status h3 {
+    margin-top: 0;
+}
+
+/*==== Inventory stuff ====*/
+.inventory-ui {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+.item-card {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #444;
+}
+.item-card.equipped {
+    border-color: #4CAF50;
+}
+.item-card h4 {
+    margin: 0 0 5px 0;
+    color: #fff;
+}
+.item-card p {
+    margin: 5px 0;
+    font-size: 0.9em;
+    color: #aaa;
+}
+.item-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+.item-actions button {
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+.equipment-slots {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+}
+.equipment-slot {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 5px;
+    min-width: 150px;
+}
+
+/*==== Service messages ====*/
+.error-message {
+    background-color: #ff6b6b;
+    color: white;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
