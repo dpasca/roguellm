@@ -307,21 +307,24 @@ class Game:
 
     def generate_enemy(self) -> Enemy:
         enemy_types = [
-            ("Goblin", (30, 50), (8, 12)),
-            ("Skeleton", (40, 60), (10, 15)),
-            ("Orc", (50, 70), (12, 18)),
-            ("Dark Elf", (45, 65), (15, 20)),
-            ("Troll", (70, 90), (15, 25))
+            ("Goblin", (30, 50), (8, 12), 10),  # Added XP reward as last tuple element
+            ("Skeleton", (40, 60), (10, 15), 15),
+            ("Orc", (50, 70), (12, 18), 20),
+            ("Dark Elf", (45, 65), (15, 20), 25),
+            ("Troll", (70, 90), (15, 25), 35)
         ]
 
-        name, (min_hp, max_hp), (min_atk, max_atk) = self.random.choice(enemy_types)
+        name, (min_hp, max_hp), (min_atk, max_atk), xp = self.random.choice(enemy_types)
         hp = self.random.randint(min_hp, max_hp)
-        return Enemy(
+        enemy = Enemy(
             name=name,
             hp=hp,
             max_hp=hp,
             attack=self.random.randint(min_atk, max_atk)
         )
+        # Store XP value as a private attribute
+        enemy._xp_reward = xp
+        return enemy
 
     async def check_encounters(self) -> dict:
         roll = self.random.random()
@@ -349,7 +352,6 @@ class Game:
         else:
             return await self.create_update_room()
 
-
     async def handle_combat_action(self, action: str) -> dict:
         if not self.state.in_combat or not self.state.current_enemy:
             return await self.create_update("No enemy to fight!")
@@ -365,15 +367,18 @@ class Game:
 
             # Check if enemy is defeated
             if self.state.current_enemy.hp <= 0:
+                # Award XP for defeating the enemy
+                xp_gained = getattr(self.state.current_enemy, '_xp_reward', 20)  # Default 20 XP if not set
+                self.state.player_xp += xp_gained
                 self.state.in_combat = False
                 self.state.current_enemy = None
 
                 # Process temporary effects
                 effects_log = await self.process_temporary_effects()
                 if effects_log:
-                    combat_log = f"{combat_log}\nYou have defeated the enemy!\n{effects_log}"
+                    combat_log = f"{combat_log}\nYou have defeated the enemy and gained {xp_gained} XP!\n{effects_log}"
                 else:
-                    combat_log = f"{combat_log}\nYou have defeated the enemy!"
+                    combat_log = f"{combat_log}\nYou have defeated the enemy and gained {xp_gained} XP!"
 
                 return await self.create_update(combat_log)
 

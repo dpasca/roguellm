@@ -27,6 +27,7 @@ class GameState(BaseModel):
     player_max_hp: int
     player_attack: int
     player_defense: int
+    player_xp: int = 0
     inventory: List[Item] = []
     equipment: Equipment = Field(default_factory=Equipment)
     explored: list = []
@@ -43,5 +44,6 @@ class GameState(BaseModel):
             player_hp=config['player']['base_hp'],
             player_max_hp=config['player']['max_hp'],
             player_attack=config['player']['base_attack'],
-            player_defense=config['player']['base_defense']
+            player_defense=config['player']['base_defense'],
+            player_xp=0,
         )
