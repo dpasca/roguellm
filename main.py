@@ -23,7 +23,7 @@ logging.basicConfig(
 # GenAI
 #==================================================================
 from gen_ai import GenAI
-_gen_ai = GenAI(model="gpt-4o")
+_gen_ai = GenAI(model="gpt-4o-mini")
 
 #==================================================================
 # FastAPI

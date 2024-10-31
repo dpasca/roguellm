@@ -13,8 +13,8 @@ def is_openai_model(model: str):
 import logging
 logger = logging.getLogger()
 
-MAX_TOKENS_FOR_ROOM_DESC = 100
-MAX_TOKENS_FOR_GENERIC_SENTENCE = 80
+MAX_TOKENS_FOR_ROOM_DESC = 200
+MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 
 #==================================================================
 # GenAI
@@ -153,10 +153,9 @@ Guidelines:
         system_msg = """You are an expert dungeon narrator specialized in atmospheric room descriptions. Follow these guidelines:
 
 Core Requirements:
-- Create vivid but brief descriptions in 1 sentence
-- Alternate vivid and short, mundane descriptions
+- Create vivid but brief descriptions (max 100 tokens)
+- Alternate between brief and very brief descriptions
 - Focus on sensory details (sight, sound, smell, temperature)
-- Be consisten with previous descriptions of the same room
 - Include subtle hints about room importance without revealing mechanics
 
 Style Guidelines:
