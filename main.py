@@ -50,8 +50,53 @@ class Game:
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.initialize_item_templates()
+        self.initialize_enemy_types()
         self.connected_clients = set()
         self.event_history = []
+
+    ENEMY_TYPES_JSON = '''
+    {
+      "enemy_types": [
+        {
+          "name": "Goblin",
+          "hp": {"min": 30, "max": 50},
+          "attack": {"min": 8, "max": 12},
+          "xp": 10
+        },
+        {
+          "name": "Skeleton",
+          "hp": {"min": 40, "max": 60},
+          "attack": {"min": 10, "max": 15},
+          "xp": 15
+        },
+        {
+          "name": "Orc",
+          "hp": {"min": 50, "max": 70},
+          "attack": {"min": 12, "max": 18},
+          "xp": 20
+        },
+        {
+          "name": "Dark Elf",
+          "hp": {"min": 45, "max": 65},
+          "attack": {"min": 15, "max": 20},
+          "xp": 25
+        },
+        {
+          "name": "Troll",
+          "hp": {"min": 70, "max": 90},
+          "attack": {"min": 15, "max": 25},
+          "xp": 35
+        }
+      ]
+    }
+    '''
+
+    def initialize_enemy_types(self):
+        try:
+            self.enemy_types = json.loads(self.ENEMY_TYPES_JSON)['enemy_types']
+        except json.JSONDecodeError:
+            self.log_error("Invalid JSON in enemy types string.")
+            self.enemy_types = []
 
     def initialize_item_templates(self):
         try:
@@ -309,24 +354,21 @@ class Game:
             }
 
     def generate_enemy(self) -> Enemy:
-        enemy_types = [
-            ("Goblin", (30, 50), (8, 12), 10),  # Added XP reward as last tuple element
-            ("Skeleton", (40, 60), (10, 15), 15),
-            ("Orc", (50, 70), (12, 18), 20),
-            ("Dark Elf", (45, 65), (15, 20), 25),
-            ("Troll", (70, 90), (15, 25), 35)
-        ]
+        if not self.enemy_types:
+            # Fallback to a basic enemy if no types are loaded
+            return Enemy(name="Basic Enemy", hp=50, max_hp=50, attack=10)
 
-        name, (min_hp, max_hp), (min_atk, max_atk), xp = self.random.choice(enemy_types)
-        hp = self.random.randint(min_hp, max_hp)
+        enemy_type = self.random.choice(self.enemy_types)
+        hp = self.random.randint(enemy_type['hp']['min'], enemy_type['hp']['max'])
+
         enemy = Enemy(
-            name=name,
+            name=enemy_type['name'],
             hp=hp,
             max_hp=hp,
-            attack=self.random.randint(min_atk, max_atk)
+            attack=self.random.randint(enemy_type['attack']['min'], enemy_type['attack']['max'])
         )
         # Store XP value as a private attribute
-        enemy._xp_reward = xp
+        enemy._xp_reward = enemy_type['xp']
         return enemy
 
     async def check_encounters(self) -> dict:
