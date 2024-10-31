@@ -4,19 +4,17 @@ createApp({
     data() {
         return {
             gameState: {
-                map_width: 10,
-                map_height: 8,
                 player_pos: [0, 0],
                 player_hp: 100,
                 player_max_hp: 100,
                 player_attack: 15,
                 player_defense: 0,
                 inventory: [],
-                equipment: {  // Add this equipment object
+                equipment: {
                     weapon: null,
                     armor: null
                 },
-                explored: Array(8).fill().map(() => Array(10).fill(false)),
+                explored: [],
                 in_combat: false,
                 current_enemy: null,
                 game_over: false
