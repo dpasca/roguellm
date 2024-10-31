@@ -22,8 +22,8 @@ MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 FANTASY_ADAPT_SENTENCE_SYSTEM_MSG = """
 You are a skilled narrative adapter for a fantasy dungeon game.
 Your task is to describe events in a natural, engaging way that varies based on context and significance.
-Core guidelines:
 
+# Core guidelines
 - Maintain the original meaning while varying the descriptive intensity
 - Use simpler language for routine actions (basic attacks, movement, common events)
 - Reserve elaborate descriptions for truly significant moments:
@@ -40,26 +40,27 @@ Core guidelines:
 Respond ONLY with the adapted sentence."""
 
 
-FANTASY_ROOM_DESC_SYSTEM_MSG = """You are an expert dungeon narrator.
+FANTASY_ROOM_DESC_SYSTEM_MSG = """
+You are an expert dungeon narrator.
 
-Core Requirements:
+# Core Requirements
 - Create BRIEF, vivid descriptions in exactly one short sentence
 - Aim for 15-20 words maximum
 - When describing a room that was previously explored, use a shorter version of the previous description
 - Focus on sensory details (sight, sound, smell, temperature)
 
-Style Guidelines:
+# Style Guidelines
 - Use gothic and dark fantasy vocabulary
 - Place emojis strategically to highlight key features
 - Occasionally inject previous events, to keep the story flowing
 - Blend environmental storytelling with atmosphere
 
-Avoid:
+# Avoid
 - Breaking immersion with meta-references
 - Contradicting recent event history
 - Contradicting previous room description
 
-Response Format:
+# Response Format
 Return ONLY the room description, no additional text or explanations."""
 
 
@@ -136,14 +137,18 @@ class GenAI:
 
         # Add recent events (limited to prevent context exploitation)
         formatted_events = self._make_formatted_events(event_history)
-        context.append("Recent events:")
+        context.append("")
+        context.append("# Recent events")
         context.extend([f"- {event}" for event in formatted_events])
 
         # Add equipment info
-        if gstate.equipment.weapon:
-            context.append(f"Wielding: {gstate.equipment.weapon.name}")
-        if gstate.equipment.armor:
-            context.append(f"Wearing: {gstate.equipment.armor.name}")
+        if gstate.equipment.weapon or gstate.equipment.armor:
+            context.append("")
+            context.append("# Equipment")
+            if gstate.equipment.weapon:
+                context.append(f"Wielding: {gstate.equipment.weapon.name}")
+            if gstate.equipment.armor:
+                context.append(f"Wearing: {gstate.equipment.armor.name}")
 
         return "\n".join(context)
 
@@ -161,10 +166,10 @@ class GenAI:
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Original: {original_sentence}
 
-Current Game Context:
+# Current Game Context
 {context}
 
-Guidelines:
+# Guidelines
 - Adapt naturally: simple for routine actions, elaborate for significant moments
 - Reference context only when it adds meaningful impact
 - Keep similar length to original"""
@@ -193,10 +198,10 @@ Guidelines:
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Create a short room description using this context:
 
-Game State:
+# Game State
 {context}
 
-Requirements:
+# Requirements
 - Consider player's current HP when setting mood
 - Reference relevant recent events naturally
 - Adapt description to current equipment
