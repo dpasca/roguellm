@@ -60,9 +60,27 @@ class GenAI:
         """Create a context string for the LLM based on game state and recent history."""
         context = []
 
-        # Add current position
+        # Add current position and exploration status
         x, y = gstate.player_pos
+        was_explored = gstate.explored[y][x]
         context.append(f"Current position: ({x}, {y}) in a {gstate.map_width}x{gstate.map_height} dungeon")
+        if was_explored:
+            context.append("This room has been previously explored.")
+            # Add previous room description if it exists
+            if event_history:
+                previous_descriptions = [
+                    event['event']['description'] 
+                    for event in event_history 
+                    if event['event'].get('type') == 'update' 
+                    and event['action'] in ['move', 'initialize']
+                    and (event['event'].get('state', {}).get('player_pos') == (x, y))
+                ]
+                if previous_descriptions:
+                    context.append(f"Previous description of this room: {previous_descriptions[-1]}")
+                else:
+                    assert False, "No previous room description found"
+            else:
+                assert False, "No event history found"
 
         # Add player status
         health_pct = int(gstate.player_hp / gstate.player_max_hp * 100.0)

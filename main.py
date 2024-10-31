@@ -68,13 +68,14 @@ class Game:
         self.state = GameState.from_config(config) # Initialize GameState with "config"
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
-        self.state.explored[0][0] = True
         self.state.inventory = []
         self.state.equipment = Equipment()
         self.state.game_over = False
-        return await self.create_update(
+        initial_update = await self.create_update(
             "You find yourself at the entrance of a mysterious dungeon..."
         )
+        self.state.explored[0][0] = True
+        return initial_update
 
     #==================================================================
     # Events
@@ -289,8 +290,10 @@ class Game:
 
         if moved:
             x, y = self.state.player_pos
-            self.state.explored[y][x] = True
             encounter_result = await self.check_encounters()
+            # Set after encounter check so that the room is not marked
+            # as explored from the first time
+            self.state.explored[y][x] = True
 
             # Process temporary effects
             effects_log = await self.process_temporary_effects()
