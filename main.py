@@ -54,48 +54,15 @@ class Game:
         self.connected_clients = set()
         self.event_history = []
 
-    ENEMY_TYPES_JSON = '''
-    {
-      "enemy_types": [
-        {
-          "name": "Goblin",
-          "hp": {"min": 30, "max": 50},
-          "attack": {"min": 8, "max": 12},
-          "xp": 10
-        },
-        {
-          "name": "Skeleton",
-          "hp": {"min": 40, "max": 60},
-          "attack": {"min": 10, "max": 15},
-          "xp": 15
-        },
-        {
-          "name": "Orc",
-          "hp": {"min": 50, "max": 70},
-          "attack": {"min": 12, "max": 18},
-          "xp": 20
-        },
-        {
-          "name": "Dark Elf",
-          "hp": {"min": 45, "max": 65},
-          "attack": {"min": 15, "max": 20},
-          "xp": 25
-        },
-        {
-          "name": "Troll",
-          "hp": {"min": 70, "max": 90},
-          "attack": {"min": 15, "max": 25},
-          "xp": 35
-        }
-      ]
-    }
-    '''
-
     def initialize_enemy_types(self):
         try:
-            self.enemy_types = json.loads(self.ENEMY_TYPES_JSON)['enemy_types']
+            with open('game_enemies.json', 'r') as f:
+                self.enemy_types = json.load(f)['enemy_types']
+        except FileNotFoundError:
+            self.log_error("game_enemies.json file not found.")
+            self.enemy_types = []
         except json.JSONDecodeError:
-            self.log_error("Invalid JSON in enemy types string.")
+            self.log_error("Invalid JSON in game_enemies.json file.")
             self.enemy_types = []
 
     def initialize_item_templates(self):
@@ -520,11 +487,11 @@ async def websocket_endpoint(websocket: WebSocket):
     # Create a new game instance for each connection
     rand_seed = int(time.time())
     game_instance = Game(seed=rand_seed)
-    
+
     try:
         # Initialize the game
         await game_instance.initialize_game()
-        
+
         game_instance.connected_clients.add(websocket)
 
         if game_instance.error_message:
