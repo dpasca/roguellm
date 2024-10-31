@@ -168,30 +168,30 @@ Guidelines:
                 "A small room with mysterious runes etched into the floor."
             ])
 
-        system_msg = """You are an expert dungeon narrator specialized in atmospheric room descriptions. Follow these guidelines:
+        system_msg = """You are an expert dungeon narrator.
 
 Core Requirements:
-- Create vivid but brief descriptions (max 100 tokens)
-- Alternate between brief and very brief descriptions
+- Create BRIEF, vivid descriptions in exactly one short sentence
+- Aim for 15-20 words maximum
+- When describing a room that was previously explored, use a shorter version of the previous description
 - Focus on sensory details (sight, sound, smell, temperature)
-- Include subtle hints about room importance without revealing mechanics
 
 Style Guidelines:
 - Use gothic and dark fantasy vocabulary
 - Place emojis strategically to highlight key features
-- Maintain consistent tone, sometimes recalling recent events
+- Occasionally inject previous events, to keep the story flowing
 - Blend environmental storytelling with atmosphere
 
 Avoid:
-- Generic descriptions that could fit any room
 - Breaking immersion with meta-references
 - Contradicting recent event history
+- Contradicting previous room description
 
 Response Format:
 Return ONLY the room description, no additional text or explanations."""
 
         context = self._create_context(game_state, event_history or [])
-        user_msg = f"""Create a room description using this context:
+        user_msg = f"""Create a short room description using this context:
 
 Game State:
 {context}
@@ -200,7 +200,7 @@ Requirements:
 - Consider player's current HP when setting mood
 - Reference relevant recent events naturally
 - Adapt description to current equipment
-- Match intensity to dungeon position (deeper = more ominous)"""
+"""
 
         logger.info(f"gen_room_description: User message: {user_msg}")
 
