@@ -39,6 +39,11 @@ createApp({
         }
     },
     methods: {
+        getCellSymbol(x, y, cell) {
+            if (this.isPlayerPosition(x, y)) return '👤';
+            if (!cell) return '❓';
+            return '·';
+        },
         initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);

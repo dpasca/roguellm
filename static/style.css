@@ -1,17 +1,35 @@
 /*==== Game map stuff ====*/
 .cell {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #666;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.cell.player {
+    background-color: #4CAF50;
     color: white;
 }
+
+.cell.explored {
+    background-color: #2c3e50;
+    color: #95a5a6;
+}
+
+.cell.unexplored {
+    background-color: #1a1a1a;
+    color: #666;
+}
+
+.cell:hover {
+    transform: scale(1.1);
+    z-index: 1;
+}
+
 .row { display: flex; }
-.player { background-color: #4CAF50; }
-.explored { background-color: #424242; }
-.unexplored { background-color: #212121; }
 
 .game-log {
     overflow-y: auto;
