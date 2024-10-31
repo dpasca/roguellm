@@ -19,6 +19,50 @@ MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 #==================================================================
 # GenAI
 #==================================================================
+FANTASY_ADAPT_SENTENCE_SYSTEM_MSG = """
+You are a skilled narrative adapter for a fantasy dungeon game.
+Your task is to describe events in a natural, engaging way that varies based on context and significance.
+Core guidelines:
+
+- Maintain the original meaning while varying the descriptive intensity
+- Use simpler language for routine actions (basic attacks, movement, common events)
+- Reserve elaborate descriptions for truly significant moments:
+  * Critical hits
+  * Defeating powerful enemies
+  * Finding rare items
+  * Major health changes
+  * Story-significant events
+- Place emojis strategically to highlight key features
+- Consider pacing: after several elaborate descriptions, use simpler ones to create rhythm
+- Let context guide description style - not every hit needs to be epic
+- Keep similar length to original text
+
+Respond ONLY with the adapted sentence."""
+
+
+FANTASY_ROOM_DESC_SYSTEM_MSG = """You are an expert dungeon narrator.
+
+Core Requirements:
+- Create BRIEF, vivid descriptions in exactly one short sentence
+- Aim for 15-20 words maximum
+- When describing a room that was previously explored, use a shorter version of the previous description
+- Focus on sensory details (sight, sound, smell, temperature)
+
+Style Guidelines:
+- Use gothic and dark fantasy vocabulary
+- Place emojis strategically to highlight key features
+- Occasionally inject previous events, to keep the story flowing
+- Blend environmental storytelling with atmosphere
+
+Avoid:
+- Breaking immersion with meta-references
+- Contradicting recent event history
+- Contradicting previous room description
+
+Response Format:
+Return ONLY the room description, no additional text or explanations."""
+
+
 class GenAI:
     def __init__(
         self,
@@ -45,6 +89,10 @@ class GenAI:
         except Exception as e:
             logger.error(f"Error initializing OpenAI client: {e}. Dummy fallback instead.")
             self.client = None
+
+        # Set the default system message for room descriptions
+        self.ROOM_DESC_SYSTEM_MSG = FANTASY_ROOM_DESC_SYSTEM_MSG
+        self.ADAPT_SENTENCE_SYSTEM_MSG = FANTASY_ADAPT_SENTENCE_SYSTEM_MSG
 
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
@@ -109,23 +157,6 @@ class GenAI:
         if self.client is None:
             return original_sentence
 
-        system_msg = """
-You are a skilled narrative adapter for a fantasy dungeon game. Your task is to describe events in a natural, engaging way that varies based on context and significance. Core guidelines:
-
-- Maintain the original meaning while varying the descriptive intensity
-- Use simpler language for routine actions (basic attacks, movement, common events)
-- Reserve elaborate descriptions for truly significant moments:
-  * Critical hits
-  * Defeating powerful enemies
-  * Finding rare items
-  * Major health changes
-  * Story-significant events
-- Place emojis strategically to highlight key features
-- Consider pacing: after several elaborate descriptions, use simpler ones to create rhythm
-- Let context guide description style - not every hit needs to be epic
-- Keep similar length to original text
-
-Respond ONLY with the adapted sentence."""
 
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Original: {original_sentence}
@@ -134,7 +165,7 @@ Current Game Context:
 {context}
 
 Guidelines:
-- Adapt naturally - simple for routine actions, elaborate for significant moments
+- Adapt naturally: simple for routine actions, elaborate for significant moments
 - Reference context only when it adds meaningful impact
 - Keep similar length to original"""
 
@@ -144,7 +175,7 @@ Guidelines:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_msg},
+                    {"role": "system", "content": self.ADAPT_SENTENCE_SYSTEM_MSG},
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
@@ -158,37 +189,6 @@ Guidelines:
     # Generator for room descriptions
     def gen_room_description(self, game_state: GameState, event_history: List[dict]) -> str:
         """Generate a room description based on game state and history."""
-        if self.client is None:
-            return self.random.choice([
-                "A dark, musty room with ancient writings on the wall.",
-                "A chamber filled with mysterious artifacts and glowing crystals.",
-                "A damp cave with strange mushrooms growing on the ceiling.",
-                "An eerie room with flickering torches on the walls.",
-                "A grand hall with crumbling pillars.",
-                "A small room with mysterious runes etched into the floor."
-            ])
-
-        system_msg = """You are an expert dungeon narrator.
-
-Core Requirements:
-- Create BRIEF, vivid descriptions in exactly one short sentence
-- Aim for 15-20 words maximum
-- When describing a room that was previously explored, use a shorter version of the previous description
-- Focus on sensory details (sight, sound, smell, temperature)
-
-Style Guidelines:
-- Use gothic and dark fantasy vocabulary
-- Place emojis strategically to highlight key features
-- Occasionally inject previous events, to keep the story flowing
-- Blend environmental storytelling with atmosphere
-
-Avoid:
-- Breaking immersion with meta-references
-- Contradicting recent event history
-- Contradicting previous room description
-
-Response Format:
-Return ONLY the room description, no additional text or explanations."""
 
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Create a short room description using this context:
@@ -208,7 +208,7 @@ Requirements:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_msg},
+                    {"role": "system", "content": self.ROOM_DESC_SYSTEM_MSG},
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
