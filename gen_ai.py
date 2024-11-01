@@ -12,9 +12,9 @@ MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 #==================================================================
 # GenAI
 #==================================================================
-FANTASY_ADAPT_SENTENCE_SYSTEM_MSG = """
-You are a skilled narrative adapter for a fantasy dungeon game.
-Your task is to describe events in a natural, engaging way that varies based on context and significance.
+ADAPT_SENTENCE_SYSTEM_MSG = """
+You are a skilled narrative adapter for a RPG game.
+Your task is to describe events in a natural, engaging way that varies based on context and significance, and based on the theme description provided below.
 
 # Core guidelines
 - Maintain the original meaning while varying the descriptive intensity
@@ -30,11 +30,15 @@ Your task is to describe events in a natural, engaging way that varies based on 
 - Let context guide description style - not every hit needs to be epic
 - Keep similar length to original text
 
-Respond ONLY with the adapted sentence."""
+Respond ONLY with the adapted sentence.
+
+# Game Theme Description
+"""
 
 
-FANTASY_ROOM_DESC_SYSTEM_MSG = """
-You are an expert dungeon narrator.
+ROOM_DESC_SYSTEM_MSG = """
+You are an expert RPG game narrator. Your task is to create a short room description
+using based on the theme description provided below.
 
 # Core Requirements
 - Create BRIEF, vivid descriptions in exactly one short sentence
@@ -43,7 +47,6 @@ You are an expert dungeon narrator.
 - Focus on sensory details (sight, sound, smell, temperature)
 
 # Style Guidelines
-- Use gothic and dark fantasy vocabulary
 - Place emojis strategically to highlight key features
 - Occasionally inject previous events, to keep the story flowing
 - Blend environmental storytelling with atmosphere
@@ -51,10 +54,26 @@ You are an expert dungeon narrator.
 # Avoid
 - Breaking immersion with meta-references
 - Contradicting recent event history
-- Contradicting previous room description
+- Repeating the same description for different rooms
 
 # Response Format
-Return ONLY the room description, no additional text or explanations."""
+Return ONLY the room description, no additional text or explanations.
+
+# Game Theme Description
+"""
+
+# This is a description improving prompt from a theme description. Useful in case
+# the user provides a very short or unclear theme description.
+SYS_BETTER_DESC_PROMPT_MSG = """
+You generate game theme descriptions for RPG games.
+The user provides you with a rough theme description, and you return an improved
+version that is more descriptive and detailed.
+You reply will be used as a system prompt for a game generator, so pay attention
+to the format and style. Do not include any narrative style or tone, just a
+detailed and useful theme description, including made-up names and details.
+
+# Response Format
+Return ONLY the description, no additional text or explanations."""
 
 # GenAIModel
 class GenAIModel:
@@ -80,13 +99,32 @@ class GenAI:
         self.random = random.Random(random_seed)
         self.lo_model = lo_model
         self.hi_model = hi_model
+        self.theme_desc = None
+        self.theme_desc_better = None
 
         logger.info(f"Low spec model: {self.lo_model.model_name}")
         logger.info(f"High spec model: {self.hi_model.model_name}")
 
-        # Set the default system message for room descriptions
-        self.ROOM_DESC_SYSTEM_MSG = FANTASY_ROOM_DESC_SYSTEM_MSG
-        self.ADAPT_SENTENCE_SYSTEM_MSG = FANTASY_ADAPT_SENTENCE_SYSTEM_MSG
+    # Quick completion with the high-spec model
+    def _quick_completion_hi(self, system_msg: str, user_msg: str, temp: float = 0.7) -> str:
+        response = self.hi_model.client.chat.completions.create(
+            model=self.hi_model.model_name,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg}
+            ],
+            temperature=temp,  # Add some variability but keep it coherent
+        )
+        return response.choices[0].message.content
+
+    # Upon setting the theme description, translate the basic system prompts
+    def set_theme_description(self, theme_desc: str):
+        self.theme_desc = theme_desc
+        self.theme_desc_better = self._quick_completion_hi(
+            system_msg=SYS_BETTER_DESC_PROMPT_MSG,
+            user_msg=theme_desc,
+        )
+        logger.info(f"Improved theme description: {self.theme_desc_better}")
 
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
@@ -173,7 +211,7 @@ class GenAI:
             response = self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
-                    {"role": "system", "content": self.ADAPT_SENTENCE_SYSTEM_MSG},
+                    {"role": "system", "content": ADAPT_SENTENCE_SYSTEM_MSG + self.theme_desc_better},
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
@@ -206,7 +244,7 @@ class GenAI:
             response = self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
-                    {"role": "system", "content": self.ROOM_DESC_SYSTEM_MSG},
+                    {"role": "system", "content": ROOM_DESC_SYSTEM_MSG + self.theme_desc_better},
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent

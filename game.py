@@ -1,7 +1,10 @@
 import json
 import random
 import time
+
 import logging
+logger = logging.getLogger()
+
 from typing import Dict, List, Optional, Union
 
 from gen_ai import GenAI, GenAIModel
@@ -14,18 +17,21 @@ from models import GameState, Enemy, Item, Equipment
 # Model definitions
 #_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
-_hi_model = GenAIModel(model_name="gpt-4o-mini")
+_hi_model = GenAIModel(model_name="gpt-4o")
 # GenAI instance, with low and high spec models
 _gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
 class Game:
-    def __init__(self, seed : int, game_desc : str):
+    def __init__(self, seed : int, theme_desc : str):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.initialize_item_templates()
         self.initialize_enemy_types()
         self.connected_clients = set()
         self.event_history = []
+        # Set the theme description if any
+        logger.info(f"Setting theme description: {theme_desc}")
+        _gen_ai.set_theme_description(theme_desc)
 
     def initialize_enemy_types(self):
         try:

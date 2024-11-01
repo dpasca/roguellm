@@ -83,8 +83,8 @@ async def logout(request: Request):
 @app.post("/set-theme")
 async def set_theme(request: Request):
     data = await request.json()
-    theme = data.get('theme', 'fantasy')
-    request.session["game_desc"] = theme
+    # Copy the theme description to the session (for websocket use)
+    request.session["theme_desc"] = data.get('theme', 'fantasy')
     return JSONResponse({"status": "success"})
 
 # WebSocket endpoint for the game
@@ -93,13 +93,13 @@ async def websocket_endpoint(websocket: WebSocket):
     # Accept the connection once at the beginning
     await websocket.accept()
 
-    # Get theme from query parameters
-    params = dict(websocket.query_params)
-    theme_desc = params.get('theme', 'fantasy')
+    # Get theme from session (set by /set-theme)
+    session = websocket.session
+    theme_desc = session.get("theme_desc", "fantasy")
 
     # Create the game instance with a random seed and the theme description
     rand_seed = int(time.time())
-    game_instance = Game(seed=rand_seed, game_desc=theme_desc)
+    game_instance = Game(seed=rand_seed, theme_desc=theme_desc)
 
     logging.info("New WebSocket connection established")
 
