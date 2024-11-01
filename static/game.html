@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Modern Roguelike</title>
+    <title>RogueLLM</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app">
         <div class="container">
-            <h1>Roguelike Game</h1>
+            <h1>RogueLLM</h1>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <button @click="restartGame" class="control-button">Restart</button>
+                <button @click="newGame" class="control-button">New Game</button>
+            </div>
 
             <!-- Game Over Overlay -->
             <div v-if="gameState && gameState.game_over" class="game-over">

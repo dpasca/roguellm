@@ -62,6 +62,15 @@ async def read_game(request: Request):
         return RedirectResponse(url="/")
     return FileResponse("static/game.html")
 
+# Logout
+@app.post("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    response = RedirectResponse(url="/", status_code=302)
+    # Create new session immediately
+    request.session["game_session"] = str(uuid.uuid4())
+    return response
+
 #==================================================================
 # Game
 #==================================================================

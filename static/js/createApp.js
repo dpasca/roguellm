@@ -48,7 +48,6 @@ createApp({
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);
 
-            // Handle incoming messages
             this.ws.onmessage = (event) => {
                 if (!event.data) {
                     console.warn("Received empty message, ignoring");
@@ -75,8 +74,12 @@ createApp({
             };
 
             this.ws.onclose = (event) => {
-                console.log('WebSocket connection closed', event.code, event.reason);
-                setTimeout(() => this.initWebSocket(), 5000);
+                if (event.code === 1006) {
+                    // Redirect to landing page if connection fails
+                    window.location.href = '/';
+                } else {
+                    setTimeout(() => this.initWebSocket(), 5000);
+                }
             };
 
             this.ws.onerror = (error) => {
@@ -145,7 +148,26 @@ createApp({
                     item_id: itemId
                 }));
             }
-        }
+        },
+        newGame() {
+            // Send a POST request to the server to clear the session
+            fetch('/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Redirect to the landing page
+                    window.location.href = response.url;
+                } else {
+                    // Handle error if logout was not successful
+                    console.error('Failed to start a new game.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        },
     },
     mounted() {
         this.initWebSocket();
