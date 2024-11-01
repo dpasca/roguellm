@@ -183,17 +183,28 @@ button:disabled {
 }
 
 .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
+    display: grid;
+    grid-template-areas:
+        ". n ."
+        "w . e"
+        ". s .";
+    gap: 5px;
+    width: 150px;
+    margin: 10px auto;
 }
 
 .controls button {
-    flex: 1 1 calc(50% - 10px);
-    padding: 10px;
+    width: 40px;
+    height: 40px;
+    padding: 5px;
     font-size: 16px;
+    border-radius: 5px;
 }
+
+.controls button[data-dir="n"] { grid-area: n; }
+.controls button[data-dir="s"] { grid-area: s; }
+.controls button[data-dir="w"] { grid-area: w; }
+.controls button[data-dir="e"] { grid-area: e; }
 .player-status h3 {
     margin-top: 0;
 }
