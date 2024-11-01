@@ -43,29 +43,33 @@
                             rows="4"
                             class="theme-textarea"></textarea>
                 </div>
-
+                <div v-if="errorMessage && selectedTheme === 'custom'" class="error-message">
+                    {{ errorMessage }}
+                </div>
                 <button @click="launchGame" class="launch-btn">Launch Game</button>
             </div>
-        </div>
-    </div>
 
     <script>
         const { createApp } = Vue
-
         createApp({
             data() {
                 return {
                     selectedTheme: 'fantasy',
-                    customDescription: ''
+                    customDescription: '',
+                    errorMessage: null
                 }
             },
             methods: {
                 launchGame() {
+                    if (this.selectedTheme === 'custom' && !this.customDescription.trim()) {
+                        this.errorMessage = "Please provide a description for your custom theme";
+                        return;
+                    }
+
                     const description = this.selectedTheme === 'custom'
-                        ? (this.customDescription || 'custom game')
+                        ? this.customDescription.trim()
                         : 'fantasy';
 
-                    // Send theme via POST request
                     fetch('/set-theme', {
                         method: 'POST',
                         headers: {
@@ -80,7 +84,15 @@
                         }
                     });
                 }
-            }        }).mount('#app')
+            },
+            watch: {
+                selectedTheme(newTheme) {
+                    if (newTheme === 'fantasy') {
+                        this.errorMessage = null;
+                    }
+                }
+            }
+        }).mount('#app')
     </script>
 </body>
 </html>
