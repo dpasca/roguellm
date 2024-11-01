@@ -38,6 +38,14 @@
                         </div>
                     </div>
 
+                    <!-- Movement Controls -->
+                    <div class="controls">
+                        <button @click="move('n')" :disabled="!canMove('n') || (gameState && gameState.in_combat)">North</button>
+                        <button @click="move('s')" :disabled="!canMove('s') || (gameState && gameState.in_combat)">South</button>
+                        <button @click="move('w')" :disabled="!canMove('w') || (gameState && gameState.in_combat)">West</button>
+                        <button @click="move('e')" :disabled="!canMove('e') || (gameState && gameState.in_combat)">East</button>
+                    </div>
+
                     <!-- Combat UI -->
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
                         <h3>Combat</h3>
@@ -56,7 +64,7 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Player Status, Inventory, Controls -->
+                <!-- Right Column: Player Status and Inventory -->
                 <div class="game-sidebar">
                     <!-- Player Status -->
                     <div class="player-status">
@@ -117,14 +125,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Movement Controls -->
-                    <div class="controls">
-                        <button @click="move('n')" :disabled="!canMove('n') || (gameState && gameState.in_combat)">North</button>
-                        <button @click="move('s')" :disabled="!canMove('s') || (gameState && gameState.in_combat)">South</button>
-                        <button @click="move('w')" :disabled="!canMove('w') || (gameState && gameState.in_combat)">West</button>
-                        <button @click="move('e')" :disabled="!canMove('e') || (gameState && gameState.in_combat)">East</button>
                     </div>
                 </div>
             </div>

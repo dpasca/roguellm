@@ -169,7 +169,6 @@ button:disabled {
     border-radius: 5px;
     margin-top: 0;
 }
-
 .game-sidebar {
     flex: 1;
     display: flex;
@@ -183,6 +182,18 @@ button:disabled {
     border-radius: 5px;
 }
 
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.controls button {
+    flex: 1 1 calc(50% - 10px);
+    padding: 10px;
+    font-size: 16px;
+}
 .player-status h3 {
     margin-top: 0;
 }
