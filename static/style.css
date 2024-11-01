@@ -260,3 +260,41 @@ button:disabled {
     border-radius: 5px;
     text-align: center;
 }
+
+.landing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    padding: 20px;
+}
+
+.landing-container h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #4CAF50;
+}
+
+.landing-container p {
+    font-size: 24px;
+    margin-bottom: 40px;
+    color: #aaa;
+}
+
+.launch-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 20px 40px;
+    font-size: 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.launch-button:hover {
+    background-color: #45a049;
+    transform: scale(1.05);
+}

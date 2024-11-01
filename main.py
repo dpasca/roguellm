@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union
 import json
@@ -32,8 +32,12 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
-async def read_root():
+async def read_landing():
     return FileResponse("static/index.html")
+
+@app.get("/game")
+async def read_game():
+    return FileResponse("static/game.html")
 
 #==================================================================
 # Game
@@ -473,13 +477,14 @@ class Game:
         print(f"Error: {error_message}")
         self.error_message = error_message  # Store the error message
 
-# Create the game instance with a random seed (use fixed seed for debugging)
-rand_seed = int(time.time())
-#rand_seed = 699
-game_instance = Game(seed=rand_seed)
-
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
+
+    # Create the game instance with a random seed (use fixed seed for debugging)
+    rand_seed = int(time.time())
+    #rand_seed = 699
+    game_instance = Game(seed=rand_seed)
+
     logging.info("New WebSocket connection attempt")
     await websocket.accept()
     logging.info("WebSocket connection accepted")
