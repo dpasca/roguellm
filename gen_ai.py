@@ -2,13 +2,6 @@ from openai import OpenAI
 import random
 from typing import List
 from models import GameState
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_API_KEY = "ollama"
-OLLAMA_DEFAULT_MODEL = "llama3.1"
-
-# NOTE: For OpenAI, OPENAI_API_KEY should be set in the environment
-def is_openai_model(model: str):
-    return "gpt" in model
 
 import logging
 logger = logging.getLogger()
@@ -63,33 +56,33 @@ You are an expert dungeon narrator.
 # Response Format
 Return ONLY the room description, no additional text or explanations."""
 
+# GenAIModel
+class GenAIModel:
+    def __init__(self, base_url = None, api_key = None, model_name = None):
+        self.base_url = base_url
+        self.api_key = api_key
+        self.model_name = model_name
 
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
+
+# GenAI
 class GenAI:
+
     def __init__(
         self,
-        base_url: str = OLLAMA_BASE_URL + "/v1",
-        api_key: str = OLLAMA_API_KEY,
-        model: str = OLLAMA_DEFAULT_MODEL,
+        lo_model: GenAIModel,
+        hi_model: GenAIModel,
         random_seed: int = None,
     ):
         self.random = random.Random(random_seed)
-        self.model = model
+        self.lo_model = lo_model
+        self.hi_model = hi_model
 
-        if is_openai_model(model):
-            if api_key == OLLAMA_API_KEY:
-                api_key = None
-            if base_url == OLLAMA_BASE_URL + "/v1":
-                base_url = None
-        logger.info(f"Model: {model}, Base URL: {base_url}")
-
-        try:
-            self.client = OpenAI(
-                api_key=api_key,
-                base_url=base_url,
-            )
-        except Exception as e:
-            logger.error(f"Error initializing OpenAI client: {e}. Dummy fallback instead.")
-            self.client = None
+        logger.info(f"Low spec model: {self.lo_model.model_name}")
+        logger.info(f"High spec model: {self.hi_model.model_name}")
 
         # Set the default system message for room descriptions
         self.ROOM_DESC_SYSTEM_MSG = FANTASY_ROOM_DESC_SYSTEM_MSG
@@ -159,7 +152,7 @@ class GenAI:
             event_history: List[dict],
             original_sentence: str
     ) -> str:
-        if self.client is None:
+        if self.lo_model.client is None:
             return original_sentence
 
 
@@ -177,8 +170,8 @@ class GenAI:
         logger.info(f"gen_adapt_sentence: User message: {user_msg}")
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
+            response = self.lo_model.client.chat.completions.create(
+                model=self.lo_model.model_name,
                 messages=[
                     {"role": "system", "content": self.ADAPT_SENTENCE_SYSTEM_MSG},
                     {"role": "user", "content": user_msg}
@@ -210,8 +203,8 @@ class GenAI:
         logger.info(f"gen_room_description: User message: {user_msg}")
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
+            response = self.lo_model.client.chat.completions.create(
+                model=self.lo_model.model_name,
                 messages=[
                     {"role": "system", "content": self.ROOM_DESC_SYSTEM_MSG},
                     {"role": "user", "content": user_msg}

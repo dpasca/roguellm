@@ -4,10 +4,19 @@ import time
 import logging
 from typing import Dict, List, Optional, Union
 
-from gen_ai import GenAI
+from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
 
-_gen_ai = GenAI(model="gpt-4o-mini")
+#OLLAMA_BASE_URL = "http://localhost:11434"
+#OLLAMA_API_KEY = "ollama"
+#OLLAMA_DEFAULT_MODEL = "llama3.1"
+
+# Model definitions
+#_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
+_lo_model = GenAIModel(model_name="gpt-4o-mini")
+_hi_model = GenAIModel(model_name="gpt-4o-mini")
+# GenAI instance, with low and high spec models
+_gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
 class Game:
     def __init__(self, seed : int, game_desc : str):
