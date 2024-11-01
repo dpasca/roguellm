@@ -296,27 +296,45 @@ button:disabled {
 }
 
 .landing-container {
+    padding-top: 30px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
     text-align: center;
-    padding: 20px;
 }
 
-.landing-container h1 {
-    font-size: 48px;
-    margin-bottom: 20px;
+h1 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 2.5em;
+    font-weight: bold;
     color: #4CAF50;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: 1px;
+}
+p {
+    margin-bottom: 20px;
+    font-size: 1.2em;
+    color: #e0e0e0;
 }
 
-.landing-container p {
-    font-size: 24px;
-    margin-bottom: 40px;
-    color: #aaa;
+.theme-selector {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
+.theme-textarea {
+    width: 400px;
+    min-height: 100px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #2a2a2a;
+    color: white;
+    border: 2px solid #333;
+}
 .launch-button {
     background-color: #4CAF50;
     color: white;
@@ -376,12 +394,15 @@ button:disabled {
     margin: 2rem auto;
     padding: 2rem;
 }
-
 .theme-options {
     display: flex;
-    gap: 2rem;
+    gap: 20px;
     justify-content: center;
-    margin: 2rem 0;
+    margin: 20px 0;
+}
+
+.theme-option {
+    cursor: pointer;
 }
 
 .theme-option input[type="radio"] {
@@ -389,14 +410,44 @@ button:disabled {
 }
 
 .theme-card {
-    border: 2px solid #ddd;
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    min-width: 200px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+    border: 2px solid #333;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 20px;
+    border-radius: 8px;
+    background: #2a2a2a;
 }
 
+.theme-selector h2 {
+    margin-top: 10px;
+}
+.theme-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    background: #3a3a3a;
+}
+
+.theme-card i {
+    transition: color 0.3s ease;
+}
+
+.theme-card:hover i {
+    color: #4CAF50;
+}
+
+.theme-card h3 {
+    transition: color 0.3s ease;
+}
+
+.theme-card:hover h3 {
+    color: #4CAF50;
+}
 .theme-option input[type="radio"]:checked + label .theme-card {
     border-color: #4CAF50;
     box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
@@ -407,6 +458,10 @@ button:disabled {
     height: 120px;
     object-fit: cover;
     margin: 1rem 0;
+}
+.theme-description {
+    width: 600px;
+    margin: 0 auto;
 }
 
 .theme-description textarea {
@@ -420,7 +475,6 @@ button:disabled {
     color: white;
     resize: vertical;
 }
-
 .theme-description textarea:focus {
     border-color: #4CAF50;
     outline: none;

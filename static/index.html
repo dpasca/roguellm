@@ -4,6 +4,7 @@
     <title>RogueLLM - Welcome</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app">
@@ -18,24 +19,26 @@
                         <label for="fantasy">
                             <div class="theme-card">
                                 <h3>Fantasy Theme</h3>
-                                <img src="/static/images/fantasy-icon.png" alt="Fantasy Theme">
+                                <!-- <img src="/static/images/fantasy-icon.png" alt="Fantasy Theme"> -->
+                                <i class="fas fa-dragon fa-3x"></i>
                             </div>
                         </label>
                     </div>
-                    
+
                     <div class="theme-option">
                         <input type="radio" id="custom" name="theme" value="custom" v-model="selectedTheme">
                         <label for="custom">
                             <div class="theme-card">
                                 <h3>Custom Theme</h3>
-                                <img src="/static/images/custom-icon.png" alt="Custom Theme">
+                                <!-- <img src="/static/images/custom-icon.png" alt="Custom Theme"> -->
+                                <i class="fas fa-magic fa-3x"></i>
                             </div>
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="theme-description" v-show="selectedTheme === 'custom'">
-                    <textarea v-model="customDescription" 
+                    <textarea v-model="customDescription"
                             placeholder="Describe your custom theme (e.g., 'A cyberpunk world with neon lights and advanced technology')"
                             rows="4"
                             class="theme-textarea"></textarea>
@@ -58,10 +61,10 @@
             },
             methods: {
                 launchGame() {
-                    const description = this.selectedTheme === 'custom' 
-                        ? (this.customDescription || 'custom game') 
+                    const description = this.selectedTheme === 'custom'
+                        ? (this.customDescription || 'custom game')
                         : 'fantasy';
-                    
+
                     window.location.href = `/game?theme=${encodeURIComponent(description)}`;
                 }
             }
