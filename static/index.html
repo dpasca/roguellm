@@ -2,13 +2,70 @@
 <html>
 <head>
     <title>RogueLLM - Welcome</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body style="background-color: #121212; color: white;">
-    <div class="landing-container">
-        <h1>Welcome to RogueLLM</h1>
-        <p>An experimental roguelike game powered by AI</p>
-        <button onclick="window.location.href='/game'" class="launch-button">Launch Game</button>
+    <div id="app">
+        <div class="landing-container">
+            <h1>Welcome to RogueLLM</h1>
+            <p>An experimental roguelike game powered by AI</p>
+            <div class="theme-selector">
+                <h2>Select Your Theme</h2>
+                <div class="theme-options">
+                    <div class="theme-option">
+                        <input type="radio" id="fantasy" name="theme" value="fantasy" v-model="selectedTheme">
+                        <label for="fantasy">
+                            <div class="theme-card">
+                                <h3>Fantasy Theme</h3>
+                                <img src="/static/images/fantasy-icon.png" alt="Fantasy Theme">
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="theme-option">
+                        <input type="radio" id="custom" name="theme" value="custom" v-model="selectedTheme">
+                        <label for="custom">
+                            <div class="theme-card">
+                                <h3>Custom Theme</h3>
+                                <img src="/static/images/custom-icon.png" alt="Custom Theme">
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="theme-description" v-show="selectedTheme === 'custom'">
+                    <textarea v-model="customDescription" 
+                            placeholder="Describe your custom theme (e.g., 'A cyberpunk world with neon lights and advanced technology')"
+                            rows="4"
+                            class="theme-textarea"></textarea>
+                </div>
+
+                <button @click="launchGame" class="launch-btn">Launch Game</button>
+            </div>
+        </div>
     </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    selectedTheme: 'fantasy',
+                    customDescription: ''
+                }
+            },
+            methods: {
+                launchGame() {
+                    const description = this.selectedTheme === 'custom' 
+                        ? (this.customDescription || 'custom game') 
+                        : 'fantasy';
+                    
+                    window.location.href = `/game?theme=${encodeURIComponent(description)}`;
+                }
+            }
+        }).mount('#app')
+    </script>
 </body>
 </html>

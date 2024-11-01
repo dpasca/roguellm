@@ -33,7 +33,7 @@ load_dotenv(".env.dev" if os.getenv("ENVIRONMENT") == "development" else ".env.p
 
 # Session middleware
 app.add_middleware(
-    SessionMiddleware, 
+    SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY")
 )
 
@@ -80,20 +80,18 @@ async def logout(request: Request):
 
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
-    # Get session from websocket cookies
-    session = websocket.cookies.get("session")
-    if not session:
-        await websocket.close()
-        return
-
-    # Create the game instance with a random seed (use fixed seed for debugging)
-    rand_seed = int(time.time())
-    #rand_seed = 699
-    game_instance = Game(seed=rand_seed, game_desc="fantasy")
-
-    logging.info("New WebSocket connection attempt")
+    # Accept the connection once at the beginning
     await websocket.accept()
-    logging.info("WebSocket connection accepted")
+
+    # Get theme from query parameters
+    params = dict(websocket.query_params)
+    theme_desc = params.get('theme', 'fantasy')
+
+    # Create the game instance with a random seed and the theme description
+    rand_seed = int(time.time())
+    game_instance = Game(seed=rand_seed, game_desc=theme_desc)
+
+    logging.info("New WebSocket connection established")
 
     try:
         # Initialize the game

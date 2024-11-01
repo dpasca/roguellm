@@ -369,3 +369,75 @@ button:disabled {
 .header-bar h1 {
     margin: 0;
 }
+
+/* Add these new styles */
+.theme-selector {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.theme-options {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.theme-option input[type="radio"] {
+    display: none;
+}
+
+.theme-card {
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-option input[type="radio"]:checked + label .theme-card {
+    border-color: #4CAF50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+}
+
+.theme-card img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    margin: 1rem 0;
+}
+
+.theme-description textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #444;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin: 1rem 0;
+    background-color: #1a1a1a;
+    color: white;
+    resize: vertical;
+}
+
+.theme-description textarea:focus {
+    border-color: #4CAF50;
+    outline: none;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.2);
+}
+
+.launch-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.launch-btn:hover {
+    background-color: #45a049;
+}
