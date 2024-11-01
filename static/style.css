@@ -328,3 +328,22 @@ button:disabled {
     text-align: center;
     margin-bottom: 20px;
 }
+
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.header-bar h1 {
+    margin: 0;
+}
