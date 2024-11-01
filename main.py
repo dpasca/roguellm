@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
@@ -7,6 +7,9 @@ import json
 import random
 import time
 import asyncio
+import uuid
+
+from starlette.middleware.sessions import SessionMiddleware
 
 #==================================================================
 # Logging
@@ -29,14 +32,34 @@ _gen_ai = GenAI(model="gpt-4o-mini")
 # FastAPI
 #==================================================================
 app = FastAPI()
+
+# Load the appropriate .env file
+import os
+from dotenv import load_dotenv
+load_dotenv(".env.dev" if os.getenv("ENVIRONMENT") == "development" else ".env.prod")
+
+# Session middleware
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=os.getenv("SESSION_SECRET_KEY")
+)
+
+# Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Landing page
 @app.get("/")
-async def read_landing():
+async def read_landing(request: Request):
+    # Create new session
+    request.session["game_session"] = str(uuid.uuid4())
     return FileResponse("static/index.html")
 
+# Game page
 @app.get("/game")
-async def read_game():
+async def read_game(request: Request):
+    # Check if valid session exists
+    if "game_session" not in request.session:
+        return RedirectResponse(url="/")
     return FileResponse("static/game.html")
 
 #==================================================================
@@ -479,6 +502,11 @@ class Game:
 
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
+    # Get session from websocket cookies
+    session = websocket.cookies.get("session")
+    if not session:
+        await websocket.close()
+        return
 
     # Create the game instance with a random seed (use fixed seed for debugging)
     rand_seed = int(time.time())
@@ -488,10 +516,6 @@ async def websocket_endpoint(websocket: WebSocket):
     logging.info("New WebSocket connection attempt")
     await websocket.accept()
     logging.info("WebSocket connection accepted")
-
-    # Create a new game instance for each connection
-    rand_seed = int(time.time())
-    game_instance = Game(seed=rand_seed)
 
     try:
         # Initialize the game

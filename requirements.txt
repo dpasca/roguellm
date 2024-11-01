@@ -1,6 +1,7 @@
 fastapi
+python-dotenv
 uvicorn
 pydantic
 websockets
 openai
-
+itsdangerous
