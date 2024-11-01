@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union
 import json
@@ -78,6 +79,15 @@ async def logout(request: Request):
     request.session["game_session"] = str(uuid.uuid4())
     return response
 
+# Set the game theme / description
+@app.post("/set-theme")
+async def set_theme(request: Request):
+    data = await request.json()
+    theme = data.get('theme', 'fantasy')
+    request.session["game_desc"] = theme
+    return JSONResponse({"status": "success"})
+
+# WebSocket endpoint for the game
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
     # Accept the connection once at the beginning

@@ -65,10 +65,22 @@
                         ? (this.customDescription || 'custom game')
                         : 'fantasy';
 
-                    window.location.href = `/game?theme=${encodeURIComponent(description)}`;
+                    // Send theme via POST request
+                    fetch('/set-theme', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ theme: description }),
+                        credentials: 'include'
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '/game';
+                        }
+                    });
                 }
-            }
-        }).mount('#app')
+            }        }).mount('#app')
     </script>
 </body>
 </html>

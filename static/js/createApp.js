@@ -46,10 +46,7 @@ createApp({
         },
         initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const urlParams = new URLSearchParams(window.location.search);
-            const theme = urlParams.get('theme') || 'fantasy';
-            
-            this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?theme=${encodeURIComponent(theme)}`);
+            this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);
 
             this.ws.onmessage = (event) => {
                 if (!event.data) {
