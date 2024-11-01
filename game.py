@@ -10,7 +10,7 @@ from models import GameState, Enemy, Item, Equipment
 _gen_ai = GenAI(model="gpt-4o-mini")
 
 class Game:
-    def __init__(self, seed=None):
+    def __init__(self, seed : int, game_desc : str):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.initialize_item_templates()

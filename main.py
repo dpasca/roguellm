@@ -40,7 +40,21 @@ app.add_middleware(
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Landing page
+# Landing page - Updated to handle POST requests for theme selection
+@app.post("/")
+async def select_theme(request: Request):
+    form = await request.form()
+    theme = form.get("theme")
+    if theme == "fantasy":
+        game_desc = "fantasy"
+    elif theme == "custom":
+        game_desc = form.get("description", "custom")
+    else:
+        game_desc = "fantasy"  # default fallback
+
+    request.session["game_desc"] = game_desc
+    return RedirectResponse(url="/game", status_code=303)
+
 @app.get("/")
 async def read_landing(request: Request):
     # Create new session
@@ -75,7 +89,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # Create the game instance with a random seed (use fixed seed for debugging)
     rand_seed = int(time.time())
     #rand_seed = 699
-    game_instance = Game(seed=rand_seed)
+    game_instance = Game(seed=rand_seed, game_desc="fantasy")
 
     logging.info("New WebSocket connection attempt")
     await websocket.accept()
