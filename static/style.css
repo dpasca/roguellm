@@ -42,7 +42,20 @@
     min-height: 200px;
     max-height: 400px;
 }
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .game-log div {
+    animation: fadeIn 0.3s ease-in;
     font-size: 18px !important;
     text-size-adjust: none; /* Prevent mobile browsers from auto-adjusting text */
     -webkit-text-size-adjust: none; /* For Safari */
@@ -50,7 +63,6 @@
     padding: 5px;
     border-bottom: 1px solid #333;
 }
-
 button {
     background-color: #4CAF50;
     border: none;

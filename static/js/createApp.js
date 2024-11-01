@@ -59,7 +59,11 @@ createApp({
                         if (response.type === 'update') {
                             this.gameState = response.state;
                             if (response.description) {
-                                this.gameLogs.unshift(response.description);
+                                this.gameLogs.push(response.description);
+                                this.$nextTick(() => {
+                                    const gameLog = document.querySelector('.game-log');
+                                    gameLog.scrollTop = gameLog.scrollHeight;
+                                });
                             }
                         } else if (response.type === 'error') {
                             this.errorMessage = response.message;
