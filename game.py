@@ -36,7 +36,7 @@ class Game:
     def initialize_enemy_defs(self):
         try:
             with open('game_enemies.json', 'r') as f:
-                self.enemy_defs = json.load(f)['enemy_types']
+                self.enemy_defs = json.load(f)['enemy_defs']
         except FileNotFoundError:
             self.log_error("game_enemies.json file not found.")
             self.enemy_defs = []

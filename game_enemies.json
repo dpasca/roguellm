@@ -1,5 +1,5 @@
 {
-    "enemy_types": [
+    "enemy_defs": [
     {
         "name": "Goblin",
         "hp": {"min": 30, "max": 50},
