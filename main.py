@@ -11,6 +11,8 @@ import sys
 import os
 from dotenv import load_dotenv
 import uuid
+import zlib
+import base64
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
@@ -78,13 +80,14 @@ async def logout(request: Request):
     # Create new session immediately
     request.session["game_session"] = str(uuid.uuid4())
     return response
-
 # Set the game theme / description
 @app.post("/set-theme")
 async def set_theme(request: Request):
     data = await request.json()
-    # Copy the theme description to the session (for websocket use)
-    request.session["theme_desc"] = data.get('theme', 'fantasy')
+    theme = data.get('theme', 'fantasy')
+    # Compress the theme string
+    compressed = base64.b64encode(zlib.compress(theme.encode())).decode()
+    request.session["theme_desc"] = compressed
     return JSONResponse({"status": "success"})
 
 # WebSocket endpoint for the game
@@ -95,12 +98,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Get theme from session (set by /set-theme)
     session = websocket.session
-    theme_desc = session.get("theme_desc", "fantasy")
+    compressed_theme = session.get("theme_desc", "fantasy")
+    
+    # If it's the default "fantasy" string, no need to decompress
+    if compressed_theme == "fantasy":
+        theme_desc = compressed_theme
+    else:
+        # Decompress the theme
+        theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
 
     # Create the game instance with a random seed and the theme description
     rand_seed = int(time.time())
     game_instance = Game(seed=rand_seed, theme_desc=theme_desc)
-
     logging.info("New WebSocket connection established")
 
     try:

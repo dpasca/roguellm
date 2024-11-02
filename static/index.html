@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>RogueLLM - Welcome</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link rel="stylesheet" href="static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
@@ -19,7 +19,6 @@
                         <label for="fantasy">
                             <div class="theme-card">
                                 <h3>Fantasy Theme</h3>
-                                <!-- <img src="/static/images/fantasy-icon.png" alt="Fantasy Theme"> -->
                                 <i class="fas fa-dragon fa-3x"></i>
                             </div>
                         </label>
@@ -30,7 +29,6 @@
                         <label for="custom">
                             <div class="theme-card">
                                 <h3>Custom Theme</h3>
-                                <!-- <img src="/static/images/custom-icon.png" alt="Custom Theme"> -->
                                 <i class="fas fa-magic fa-3x"></i>
                             </div>
                         </label>
@@ -41,6 +39,7 @@
                     <textarea v-model="customDescription"
                             placeholder="Describe your custom theme (e.g., 'A cyberpunk world with neon lights and advanced technology')"
                             rows="4"
+                            maxlength="3000"
                             class="theme-textarea"></textarea>
                 </div>
                 <div v-if="errorMessage && selectedTheme === 'custom'" class="error-message">
@@ -48,51 +47,9 @@
                 </div>
                 <button @click="launchGame" class="launch-btn">Launch Game</button>
             </div>
-
-    <script>
-        const { createApp } = Vue
-        createApp({
-            data() {
-                return {
-                    selectedTheme: 'fantasy',
-                    customDescription: '',
-                    errorMessage: null
-                }
-            },
-            methods: {
-                launchGame() {
-                    if (this.selectedTheme === 'custom' && !this.customDescription.trim()) {
-                        this.errorMessage = "Please provide a description for your custom theme";
-                        return;
-                    }
-
-                    const description = this.selectedTheme === 'custom'
-                        ? this.customDescription.trim()
-                        : 'fantasy';
-
-                    fetch('/set-theme', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ theme: description }),
-                        credentials: 'include'
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            window.location.href = '/game';
-                        }
-                    });
-                }
-            },
-            watch: {
-                selectedTheme(newTheme) {
-                    if (newTheme === 'fantasy') {
-                        this.errorMessage = null;
-                    }
-                }
-            }
-        }).mount('#app')
-    </script>
+        </div>
+    </div>
+    <!-- Load the landing.js script -->
+    <script type="module" src="static/js/landing.js"></script>
 </body>
 </html>
