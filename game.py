@@ -27,6 +27,7 @@ class Game:
         self.error_message = None
         self.initialize_item_defs()
         self.initialize_enemy_defs()
+        self.item_sequence_cnt = 0
         self.connected_clients = set()
         self.event_history = []
         # Set the theme description if any
@@ -59,7 +60,7 @@ class Game:
         # Read config.json
         with open('game_config.json', 'r') as f:
             config = json.load(f)
-            
+
         self.state = GameState.from_config(config) # Initialize GameState with "config"
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
@@ -100,12 +101,15 @@ class Game:
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
-        template_id = self.random.choice(list(self.item_defs.keys()))
-        template = self.item_defs[template_id]
+        defn = self.random.choice(self.item_defs['item_defs'])
+        self.item_sequence_cnt += 1
         return Item(
-            id=f"{template_id}_{self.random.randint(1000, 9999)}",
+            id=f"{defn['id']}_{self.item_sequence_cnt}",
             is_equipped=False,
-            **template
+            name=defn['name'],
+            type=defn['type'],
+            effect=defn['effect'],
+            description=defn['description']
         )
 
     async def handle_message(self, message: dict) -> dict:
@@ -325,7 +329,7 @@ class Game:
         # Read config.json
         with open('game_config.json', 'r') as f:
             config = json.load(f)
-            
+
         roll = self.random.random()
         roll_thresh_enemy = config['encounter_chances']['enemy']
         roll_thresh_item = roll_thresh_enemy + config['encounter_chances']['item']
