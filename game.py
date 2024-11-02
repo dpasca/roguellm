@@ -25,35 +25,35 @@ class Game:
     def __init__(self, seed : int, theme_desc : str):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
-        self.initialize_item_templates()
-        self.initialize_enemy_types()
+        self.initialize_item_defs()
+        self.initialize_enemy_defs()
         self.connected_clients = set()
         self.event_history = []
         # Set the theme description if any
         logger.info(f"Setting theme description: {theme_desc}")
         _gen_ai.set_theme_description(theme_desc)
 
-    def initialize_enemy_types(self):
+    def initialize_enemy_defs(self):
         try:
             with open('game_enemies.json', 'r') as f:
-                self.enemy_types = json.load(f)['enemy_types']
+                self.enemy_defs = json.load(f)['enemy_types']
         except FileNotFoundError:
             self.log_error("game_enemies.json file not found.")
-            self.enemy_types = []
+            self.enemy_defs = []
         except json.JSONDecodeError:
             self.log_error("Invalid JSON in game_enemies.json file.")
-            self.enemy_types = []
+            self.enemy_defs = []
 
-    def initialize_item_templates(self):
+    def initialize_item_defs(self):
         try:
             with open('game_items.json', 'r') as f:
-                self.item_templates = json.load(f)
+                self.item_defs = json.load(f)
         except FileNotFoundError:
             self.log_error("game_items.json file not found.")
-            self.item_templates = {}
+            self.item_defs = {}
         except json.JSONDecodeError:
             self.log_error("Invalid JSON in game_items.json file.")
-            self.item_templates = {}
+            self.item_defs = {}
 
     async def initialize_game(self):
         # Read config.json
@@ -100,8 +100,8 @@ class Game:
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
-        template_id = self.random.choice(list(self.item_templates.keys()))
-        template = self.item_templates[template_id]
+        template_id = self.random.choice(list(self.item_defs.keys()))
+        template = self.item_defs[template_id]
         return Item(
             id=f"{template_id}_{self.random.randint(1000, 9999)}",
             is_equipped=False,
@@ -304,21 +304,21 @@ class Game:
             }
 
     def generate_enemy(self) -> Enemy:
-        if not self.enemy_types:
+        if not self.enemy_defs:
             # Fallback to a basic enemy if no types are loaded
             return Enemy(name="Basic Enemy", hp=50, max_hp=50, attack=10)
 
-        enemy_type = self.random.choice(self.enemy_types)
-        hp = self.random.randint(enemy_type['hp']['min'], enemy_type['hp']['max'])
+        enemy_def = self.random.choice(self.enemy_defs)
+        hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
 
         enemy = Enemy(
-            name=enemy_type['name'],
+            name=enemy_def['name'],
             hp=hp,
             max_hp=hp,
-            attack=self.random.randint(enemy_type['attack']['min'], enemy_type['attack']['max'])
+            attack=self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max'])
         )
         # Store XP value as a private attribute
-        enemy._xp_reward = enemy_type['xp']
+        enemy._xp_reward = enemy_def['xp']
         return enemy
 
     async def check_encounters(self) -> dict:
