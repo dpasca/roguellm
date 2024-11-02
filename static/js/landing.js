@@ -3,7 +3,7 @@ const { createApp } = Vue
 createApp({
     data() {
         return {
-            selectedTheme: 'fantasy',
+            selectedTheme: 'custom',
             customDescription: '',
             errorMessage: null
         }
