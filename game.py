@@ -76,6 +76,8 @@ class Game:
         self.state.inventory = []
         self.state.equipment = Equipment()
         self.state.game_over = False
+        self.state.game_title = self.get_game_title()
+        logging.info(f"Game title set to: {self.state.game_title}")
         initial_update = await self.create_update(
             f"You find yourself at the initial location of {self.get_game_title()}."
         )

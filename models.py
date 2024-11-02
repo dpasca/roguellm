@@ -35,6 +35,7 @@ class GameState(BaseModel):
     current_enemy: Optional[Enemy] = None
     game_over: bool = False
     temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}  # For temporary potion
+    game_title: str = "Unknown Game"
 
     @classmethod
     def from_config(cls, config):

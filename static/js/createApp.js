@@ -1,6 +1,4 @@
-const { createApp } = Vue
-
-createApp({
+const app = Vue.createApp({
     data() {
         return {
             gameState: {
@@ -21,6 +19,7 @@ createApp({
             },
             gameLogs: [],
             ws: null,
+            gameTitle: 'RogueLLM',
             errorMessage: null
         }
     },
@@ -36,7 +35,13 @@ createApp({
         displayInventory() {
             if (!this.gameState || !this.gameState.inventory.length) return 'Empty';
             return this.gameState.inventory.map(item => item.name).join(', ');
-        }
+        },
+        /*formattedGameTitle() {
+            if (this.gameState && this.gameState.game_title) {
+                return `${this.gameState.game_title} <small>(RogueLLM)</small>`;
+            }
+            return 'RogueLLM';
+        },*/
     },
     methods: {
         getCellSymbol(x, y, cell) {
@@ -64,6 +69,9 @@ createApp({
                                     const gameLog = document.querySelector('.game-log');
                                     gameLog.scrollTop = gameLog.scrollHeight;
                                 });
+                            }
+                            if (this.gameState.game_title) {
+                                this.gameTitle = `${this.gameState.game_title} (RogueLLM)`;
                             }
                         } else if (response.type === 'error') {
                             this.errorMessage = response.message;
@@ -204,4 +212,6 @@ createApp({
             });
         }
     }
-}).mount('#app')
+});
+
+app.mount('#app');

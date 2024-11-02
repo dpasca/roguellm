@@ -386,7 +386,6 @@ p {
     text-align: center;
     margin-bottom: 20px;
 }
-
 .header-bar {
     display: flex;
     justify-content: space-between;
@@ -404,8 +403,14 @@ p {
 
 .header-bar h1 {
     margin: 0;
+    font-size: 2em;
+    color: #ffffff;
 }
 
+.header-bar h1 small {
+    font-size: 0.6em;
+    color: #aaa;
+}
 /* Add these new styles */
 .theme-selector {
     max-width: 800px;
