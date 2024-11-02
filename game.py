@@ -25,36 +25,42 @@ class Game:
     def __init__(self, seed : int, theme_desc : str):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
-        self.initialize_item_defs()
-        self.initialize_enemy_defs()
         self.item_sequence_cnt = 0
         self.connected_clients = set()
         self.event_history = []
         # Set the theme description if any
         logger.info(f"Setting theme description: {theme_desc}")
         _gen_ai.set_theme_description(theme_desc)
+        # Initialize these after setting the theme description, because
+        # they depend on it
+        self.initialize_item_defs()
+        logger.info(f"Generated Item defs: {self.item_defs}")
+        self.initialize_enemy_defs()
+        logger.info(f"Generated Enemy defs: {self.enemy_defs}")
 
-    def initialize_enemy_defs(self):
+    def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
-            with open('game_enemies.json', 'r') as f:
-                self.enemy_defs = json.load(f)['enemy_defs']
+            with open(filename, 'r') as f:
+                data = f.read()
+                return transform_fn(data) if transform_fn else json.loads(data)
         except FileNotFoundError:
-            self.log_error("game_enemies.json file not found.")
-            self.enemy_defs = []
+            self.log_error(f"{filename} file not found.")
+            return {} if transform_fn else []
         except json.JSONDecodeError:
-            self.log_error("Invalid JSON in game_enemies.json file.")
-            self.enemy_defs = []
+            self.log_error(f"Invalid JSON in {filename} file.")
+            return {} if transform_fn else []
 
     def initialize_item_defs(self):
-        try:
-            with open('game_items.json', 'r') as f:
-                self.item_defs = json.load(f)
-        except FileNotFoundError:
-            self.log_error("game_items.json file not found.")
-            self.item_defs = {}
-        except json.JSONDecodeError:
-            self.log_error("Invalid JSON in game_items.json file.")
-            self.item_defs = {}
+        self.item_defs = self.make_defs_from_json(
+            'game_items.json',
+            transform_fn=_gen_ai.gen_game_items_from_json_sample
+        )["item_defs"]
+
+    def initialize_enemy_defs(self):
+        self.enemy_defs = self.make_defs_from_json(
+            'game_enemies.json',
+            transform_fn=_gen_ai.gen_game_enemies_from_json_sample
+        )["enemy_defs"]
 
     async def initialize_game(self):
         # Read config.json
@@ -101,7 +107,7 @@ class Game:
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
-        defn = self.random.choice(self.item_defs['item_defs'])
+        defn = self.random.choice(self.item_defs)
         self.item_sequence_cnt += 1
         return Item(
             id=f"{defn['id']}_{self.item_sequence_cnt}",
@@ -308,10 +314,6 @@ class Game:
             }
 
     def generate_enemy(self) -> Enemy:
-        if not self.enemy_defs:
-            # Fallback to a basic enemy if no types are loaded
-            return Enemy(name="Basic Enemy", hp=50, max_hp=50, attack=10)
-
         enemy_def = self.random.choice(self.enemy_defs)
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
 
