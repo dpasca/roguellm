@@ -38,6 +38,9 @@ class Game:
         self.initialize_enemy_defs()
         logger.info(f"Generated Enemy defs: {self.enemy_defs}")
 
+    def get_game_title(self):
+        return _gen_ai.game_title
+
     def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
             with open(filename, 'r') as f:
@@ -74,7 +77,7 @@ class Game:
         self.state.equipment = Equipment()
         self.state.game_over = False
         initial_update = await self.create_update(
-            "You find yourself at the entrance of a mysterious dungeon..."
+            f"You find yourself at the initial location of {self.get_game_title()}."
         )
         self.state.explored[0][0] = True
         return initial_update

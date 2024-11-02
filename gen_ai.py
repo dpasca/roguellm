@@ -17,52 +17,45 @@ def clean_json_str(json_str: str) -> str:
 # GenAI
 #==================================================================
 ADAPT_SENTENCE_SYSTEM_MSG = """
-You are a skilled narrative adapter for a RPG game.
-Your task is to describe events in a natural, engaging way that varies based on context and significance, and based on the theme description provided below.
+You are an expert interactive game narrator. Your job is to create a BRIEF
+adaptation of a raw piece of text from the user, into one more ore sentences
+that fit the Game Theme Description provided below.
 
-# Core guidelines
-- Maintain the original meaning while varying the descriptive intensity
-- Use simpler language for routine actions (basic attacks, movement, common events)
-- Reserve elaborate descriptions for truly significant moments:
-  * Critical hits
-  * Defeating powerful enemies
-  * Finding rare items
-  * Major health changes
-  * Story-significant events
+Describe events in a natural, engaging way that matches:
+1. The specified theme/setting
+2. The current context
+3. The significance of the event
+
+# Guidelines
+- Use vocabulary and tone appropriate to the setting
+- Reference setting-specific elements
+- Adapt description style to event importance
 - Place emojis strategically to highlight key features
-- Consider pacing: after several elaborate descriptions, use simpler ones to create rhythm
-- Let context guide description style: not every hit needs to be epic
-- Reference context only when it adds meaningful impact
+- Be brief, aim for 20-25 words maximum
 
+# Response Format
 Respond ONLY with the adapted sentence.
 
 # Game Theme Description
 """
 
-
 ROOM_DESC_SYSTEM_MSG = """
-You are an expert RPG game narrator. Your task is to create a short room description
-using based on the theme description provided below.
+You are an expert interactive game narrator. Your task is to create a BRIEF
+location description based on the Game Theme Description provided below.
 
-# Core Requirements
-- Create BRIEF, vivid descriptions in exactly one short sentence
-- Aim for 20-25 words maximum
-- When describing a room that was previously explored, use a shorter version of the previous description
-- Focus on sensory details (sight, sound, smell, temperature)
-- Do not break immersion with meta-references
-- Do not contradict recent event history
-- Do not create a room description that is similar to the previous one. Each room should be unique, be as creative as possible
-
-# Style Guidelines
-- Place emojis strategically to highlight key features
-- Occasionally inject previous events, to keep the story flowing
-- Blend environmental storytelling with atmosphere
-- Consider player's current HP when setting mood
+# Guidelines
+- Use setting-appropriate terminology
+- Do not over-dramatize the location
+- Include relevant atmospheric elements
+- Consider current context and player status
+- When describing a location that was previously explored, reuse the previous description
+- Do NOT repeat the same location description twice
+- Consider player's current status when setting the mood
 - Reference relevant recent events naturally
-- Adapt description to current equipment
 
 # Response Format
-Return ONLY the room description, no additional text or explanations.
+- Be brief, aim for 20-25 words maximum
+- Return ONLY the location description, no additional text or explanations
 
 # Game Theme Description
 """
@@ -70,15 +63,22 @@ Return ONLY the room description, no additional text or explanations.
 # This is a description improving prompt from a theme description. Useful in case
 # the user provides a very short or unclear theme description.
 SYS_BETTER_DESC_PROMPT_MSG = """
-You generate game theme descriptions for RPG games.
+You generate game theme descriptions for interactive games.
 The user provides you with a rough theme description, and you return an improved
 version that is more descriptive and detailed.
-You reply will be used as a system prompt for a game generator, so pay attention
-to the format and style. Do not include any narrative style or tone, just a
-detailed and useful theme description, including made-up names and details.
+
+# Requirements
+- Do not include any narrative style or tone, just a detailed and useful theme description
+- Clearly list what are the types of locations that the player can explore
+  (e.g. "dungeon room", "cave", "street", "dark corridor", "subway station", "town square", etc.)
+- All listed locations must be part of an area that the player can explore by moving
+  around the map. Do NOT include widely distant locations such as "alien planet" and
+  "starship".
 
 # Response Format
-Return ONLY the description, no additional text or explanations."""
+- The first row of the response must be the game title, with no formatting or additional text
+- Return ONLY the description, no additional text or explanations
+"""
 
 SYS_GEN_GAME_ITEMS_JSON_MSG = """
 You are an expert game item generator. Your task is to generate a JSON object
@@ -93,7 +93,7 @@ with "med-kit" for a modern combat theme.
 Do not create new fields, do not create new effect types, as the game is not able
 to handle them yet.
 
-# New Theme Description
+# New Game Theme Description
 """
 
 SYS_GEN_GAME_ENEMIES_JSON_MSG = """
@@ -108,7 +108,7 @@ but they must use a new theme description. For example, replace a "Orc" item
 with "tank" for a modern combat theme.
 Do not create new fields, as the game is not able to handle them yet.
 
-# New Theme Description
+# New Game Theme Description
 """
 
 # GenAIModel
@@ -136,6 +136,7 @@ class GenAI:
         self.lo_model = lo_model
         self.hi_model = hi_model
         self.theme_desc = None
+        self.game_title = None
         self.theme_desc_better = None
 
         logger.info(f"Low spec model: {self.lo_model.model_name}")
@@ -160,7 +161,9 @@ class GenAI:
             system_msg=SYS_BETTER_DESC_PROMPT_MSG,
             user_msg=theme_desc,
         )
-        logger.info(f"Improved theme description: {self.theme_desc_better}")
+        self.game_title = self.theme_desc_better.split("\n")[0]
+        logger.info(f"Game title: {self.game_title}")
+        logger.info(f"Theme description: {self.theme_desc_better}")
 
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
@@ -179,9 +182,9 @@ class GenAI:
         # Add current position and exploration status
         x, y = gstate.player_pos
         was_explored = gstate.explored[y][x]
-        context.append(f"Current position: ({x}, {y}) in a {gstate.map_width}x{gstate.map_height} dungeon")
+        context.append(f"Current position: ({x}, {y}) of a {gstate.map_width}x{gstate.map_height} map")
         if was_explored:
-            context.append("This room has been previously explored.")
+            context.append("This location has been previously explored.")
             # Add previous room description if it exists
             if event_history:
                 previous_descriptions = [
@@ -288,9 +291,7 @@ class GenAI:
         """Generate a room description based on game state and history."""
 
         context = self._create_context(game_state, event_history or [])
-        user_msg = f"""Create a short room description using the game context below.
-
-# Requirements
+        user_msg = f"""Generate a short random location description.
 
 # Current Game Context
 {context}
@@ -311,4 +312,4 @@ class GenAI:
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error generating room description: {e}")
-            return "You enter a mysterious chamber in the dungeon. [FALLBACK]"
+            return "You enter a mysterious location. [FALLBACK]"
