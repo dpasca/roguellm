@@ -9,7 +9,7 @@ mechanics with LLM (Large Language Model) integration for dynamic gameplay exper
 
 The game features:
 - **LLM integration** for dynamic narrative and interactions
-- Procedurally generated dungeons
+- Procedurally generated map
 - Item and equipment systems
 - Combat mechanics
 - Inventory management
@@ -51,9 +51,3 @@ The game uses configuration files for:
 - Combat parameters
 
 See `game_config.json` and `game_items.json` for more details.
-
-## Development Status
-- Core game mechanics: Implemented
-- Basic combat system: Implemented
-- Item system: Implemented
-- LLM Integration: Implemented for room and action descriptions
