@@ -668,11 +668,55 @@ p {
 
 /* Add media query for mobile devices in portrait mode */
 @media screen and (max-width: 768px) {
+    .game-container {
+        flex-direction: column;
+        padding: 0 10px;
+    }
+
+    .game-sidebar {
+        width: 100%;
+    }
+
+    /* Keep Player Status and Equipment side by side */
     .player-status-row {
-        flex-direction: column;  /* Stack children vertically */
+        flex-direction: row;  /* Keep horizontal layout */
+        gap: 10px;  /* Reduce gap between status and equipment */
     }
 
     .player-status, .equipment-slots {
-        width: 100%;  /* Take full width */
+        flex: 1;  /* Each takes equal width */
+        min-width: 0;  /* Allow flexbox to shrink items if needed */
+        margin: 0;
+    }
+
+    /* Map and controls layout */
+    .game-left-column {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .game-map {
+        flex: 0 0 auto;
+    }
+
+    .controls, .combat-ui {
+        flex: 1;
+        margin-top: 0;
+    }
+
+    .combat-ui {
+        min-width: 200px;
+    }
+
+    .controls {
+        margin-left: 10px;
+        margin-top: 20px;
+        padding-right: 10px;
+    }
+
+    .combat-ui {
+        margin-left: 10px;
+        min-width: 200px;
     }
 }
