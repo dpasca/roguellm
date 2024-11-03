@@ -35,6 +35,26 @@
                     </div>
                 </div>
 
+                <!-- Add language selector here -->
+                <div class="language-selector">
+                    <h2>Game Language</h2>
+                    <div class="language-options">
+                        <select v-model="selectedLanguage" class="language-select">
+                            <option value="en">English</option>
+                            <option value="it">Italiano</option>
+                            <option value="de">Deutsch</option>
+                            <option value="ja">日本語</option>
+                            <option value="fr">Français</option>
+                            <option value="es">Español</option>
+                            <option value="pt">Português</option>
+                            <option value="ru">Русский</option>
+                            <option value="el">Ελληνικά</option>
+                            <option value="zh-CN">简体中文</option>
+                            <option value="zh-TW">繁體中文</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="theme-description" v-show="selectedTheme === 'custom'">
                     <textarea v-model="customDescription"
                             placeholder="Describe your custom theme (e.g., 'An office environment with overdue TPS reports and finicky printers')"

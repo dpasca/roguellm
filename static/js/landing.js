@@ -4,6 +4,7 @@ createApp({
     data() {
         return {
             selectedTheme: 'custom',
+            selectedLanguage: 'en',
             customDescription: '',
             errorMessage: null
         }

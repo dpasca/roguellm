@@ -22,15 +22,18 @@ _hi_model = GenAIModel(model_name="gpt-4o")
 _gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
 class Game:
-    def __init__(self, seed : int, theme_desc : str):
+    def __init__(self, seed : int, theme_desc : str, language : str = "en"):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.item_sequence_cnt = 0
         self.connected_clients = set()
         self.event_history = []
-        # Set the theme description if any
-        logger.info(f"Setting theme description: {theme_desc}")
-        _gen_ai.set_theme_description(theme_desc)
+        self.language = language
+
+        # Set the theme description and language
+        logger.info(f"Setting theme description: {theme_desc} with language: {language}")
+        _gen_ai.set_theme_desc(theme_desc, language)
+
         # Initialize these after setting the theme description, because
         # they depend on it
         self.initialize_item_defs()

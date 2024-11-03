@@ -136,6 +136,7 @@ class GenAI:
         self.lo_model = lo_model
         self.hi_model = hi_model
         self.theme_desc = None
+        self.language = "en"
         self.game_title = None
         self.theme_desc_better = None
 

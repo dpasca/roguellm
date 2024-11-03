@@ -357,8 +357,10 @@ p {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0 10px;
+    /*padding: 0 10px;*/
+    padding: 1rem;
     box-sizing: border-box;
+    margin: 1rem auto;
 }
 .theme-description {
     width: 100%;
@@ -434,12 +436,7 @@ p {
     font-size: 0.6em;
     color: #aaa;
 }
-/* Add these new styles */
-.theme-selector {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 2rem;
-}
+
 .theme-options {
     display: flex;
     gap: 20px;
@@ -531,6 +528,7 @@ p {
     background-color: #4CAF50;
     color: white;
     padding: 1rem 2rem;
+    margin: 0.5rem auto;
     border: none;
     border-radius: 8px;
     font-size: 1.2rem;
@@ -580,4 +578,47 @@ p {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.language-selector {
+    margin: 0px 0px 20px 0;
+    text-align: center;
+}
+
+.language-selector h2 {
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.language-options {
+    display: flex;
+    justify-content: center;
+}
+
+.language-select {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    background-color: #2a2a2a;
+    color: white;
+    border: 2px solid #333;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.language-select:hover {
+    border-color: #4CAF50;
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.2);
+}
+
+.language-select option {
+    background-color: #2a2a2a;
+    color: white;
+    padding: 10px;
 }
