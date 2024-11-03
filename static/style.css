@@ -45,9 +45,10 @@
     padding: 10px;
     background-color: #1a1a1a;
     border: 1px solid #333;
+    border-radius: 5px;
     margin-top: 10px;
-    min-height: 200px;
-    max-height: 400px;
+    min-height: 250px;
+    max-height: 250px;
 }
 
 @keyframes fadeIn {
@@ -210,7 +211,7 @@ button:disabled {
 
 .combat-ui {
     background-color: #2a2a2a;
-    padding: 15px;
+    padding: 10px;
     border-radius: 5px;
     margin-top: 0;
 }
@@ -221,7 +222,13 @@ button:disabled {
     gap: 20px;
 }
 
-.player-status, .inventory-ui, .controls {
+.player-status-row {
+    display: flex;
+    gap: 20px;
+}
+
+.player-status, .equipment-slots {
+    flex: 1;
     background-color: #2a2a2a;
     padding: 15px;
     border-radius: 5px;
@@ -252,6 +259,7 @@ button:disabled {
 .controls button[data-dir="e"] { grid-area: e; }
 .player-status h3 {
     margin-top: 0;
+    margin-bottom: 10px;
 }
 
 .player-status p {
@@ -267,6 +275,7 @@ button:disabled {
 }
 .inventory-ui h3 {
     margin-top: 0;
+    margin-bottom: 10px;
 }
 .inventory-grid {
     display: grid;
@@ -303,19 +312,27 @@ button:disabled {
 }
 .equipment-slots {
     display: flex;
-    gap: 20px;
-    margin-bottom: 15px;
+    flex-direction: column;
+    gap: 10px;
+}
+.equipment-slots h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
 }
 .equipment-slot {
     background-color: #333;
     padding: 10px;
     border-radius: 5px;
-    min-width: 150px;
 }
 .equipment-slot h4 {
     margin: 0 0 7px 0;
     font-weight: bold;
     color: #fff;
+    font-size: 1em;
+}
+.equipment-slot p {
+    margin: 5px 0;
+    font-size: 0.9em;
 }
 
 /*==== Service messages ====*/

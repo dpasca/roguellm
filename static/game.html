@@ -65,7 +65,7 @@
                             <span>{{ gameState.current_enemy.name }}</span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label">❤️ HP:</span>
+                            <span class="status-label">❤️ HP</span>
                             <div class="health-bar-container">
                                 <div class="health-bar">
                                     <div class="health-bar-fill"
@@ -76,7 +76,7 @@
                             </div>
                         </div>
                         <div class="status-item">
-                            <span class="status-label">⚔️ Attack:</span>
+                            <span class="status-label">⚔️ Attack</span>
                             <span>{{ gameState.current_enemy.attack }}</span>
                         </div>
                         <div class="combat-buttons">
@@ -88,37 +88,39 @@
 
                 <!-- Right Column: Player Status and Inventory -->
                 <div class="game-sidebar">
-                    <!-- Player Status -->
-                    <div class="player-status">
-                        <h3>Player Status</h3>
-                        <div class="status-item">
-                            <span class="status-label">❤️ HP:</span>
-                            <div class="health-bar-container">
-                                <div class="health-bar">
-                                    <div class="health-bar-fill"
-                                         :style="{ width: getPlayerHealthPercentage + '%' }">
+                    <!-- Player Status Row -->
+                    <div class="player-status-row">
+                        <!-- Player Status -->
+                        <div class="player-status">
+                            <h3>Player Status</h3>
+                            <div class="status-item">
+                                <span class="status-label">❤️ HP</span>
+                                <div class="health-bar-container">
+                                    <div class="health-bar">
+                                        <div class="health-bar-fill"
+                                             :style="{ width: getPlayerHealthPercentage + '%' }">
+                                        </div>
                                     </div>
+                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
                                 </div>
-                                <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">⚔️ Attack</span>
+                                <span>{{ gameState.player_attack }}</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">⭐ XP</span>
+                                <span>{{ gameState.player_xp }}</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">📍 Position</span>
+                                <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
                             </div>
                         </div>
-                        <div class="status-item">
-                            <span class="status-label">⚔️ Attack:</span>
-                            <span>{{ gameState.player_attack }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">⭐ XP:</span>
-                            <span>{{ gameState.player_xp }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">📍 Position:</span>
-                            <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
-                        </div>
-                    </div>
-                    <!-- Inventory UI -->
-                    <div class="inventory-ui" v-if="gameState">
-                        <h3>Equipment</h3>
+                        
+                        <!-- Equipment -->
                         <div class="equipment-slots">
+                            <h3>Equipment</h3>
                             <div class="equipment-slot">
                                 <h4>Weapon</h4>
                                 <div v-if="gameState.equipment.weapon">
@@ -136,7 +138,10 @@
                                 <p v-else>No armor equipped</p>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Inventory UI -->
+                    <div class="inventory-ui" v-if="gameState">
                         <h3>Inventory</h3>
                         <div class="inventory-grid">
                             <div v-for="item in gameState.inventory" 
