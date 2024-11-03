@@ -60,14 +60,25 @@
                     <!-- Combat UI -->
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
                         <h3>Combat</h3>
-                        <p>Fighting: {{ gameState.current_enemy.name }}</p>
-                        <div class="health-bar">
-                            <div class="health-bar-fill"
-                                 :style="{ width: getEnemyHealthPercentage + '%' }">
+                        <div class="status-item">
+                            <span class="status-label">🎯 Enemy:</span>
+                            <span>{{ gameState.current_enemy.name }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">❤️ HP:</span>
+                            <div class="health-bar-container">
+                                <div class="health-bar">
+                                    <div class="health-bar-fill"
+                                         :style="{ width: getEnemyHealthPercentage + '%' }">
+                                    </div>
+                                </div>
+                                <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
                             </div>
                         </div>
-                        <p>Enemy HP: {{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</p>
-                        <p>Enemy Attack: {{ gameState.current_enemy.attack }}</p>
+                        <div class="status-item">
+                            <span class="status-label">⚔️ Attack:</span>
+                            <span>{{ gameState.current_enemy.attack }}</span>
+                        </div>
                         <div class="combat-buttons">
                             <button @click="attack" class="attack-button">Attack</button>
                             <button @click="run" class="run-button">Run</button>
