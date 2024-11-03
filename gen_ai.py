@@ -16,6 +16,7 @@ def clean_json_str(json_str: str) -> str:
 #==================================================================
 # GenAI
 #==================================================================
+# NOTE: Should append language req and theme desc at the bottom
 ADAPT_SENTENCE_SYSTEM_MSG = """
 You are an expert interactive game narrator. Your job is to create a BRIEF
 adaptation of a raw piece of text from the user, into one more ore sentences
@@ -35,10 +36,9 @@ Describe events in a natural, engaging way that matches:
 
 # Response Format
 Respond ONLY with the adapted sentence.
-
-# Game Theme Description
 """
 
+# NOTE: Should append language req and theme desc at the bottom
 ROOM_DESC_SYSTEM_MSG = """
 You are an expert interactive game narrator. Your task is to create a BRIEF
 location description based on the Game Theme Description provided below.
@@ -56,12 +56,11 @@ location description based on the Game Theme Description provided below.
 # Response Format
 - Be brief, aim for 20-25 words maximum
 - Return ONLY the location description, no additional text or explanations
-
-# Game Theme Description
 """
 
 # This is a description improving prompt from a theme description. Useful in case
 # the user provides a very short or unclear theme description.
+# NOTE: Should append language req at the bottom
 SYS_BETTER_DESC_PROMPT_MSG = """
 You generate game theme descriptions for interactive games.
 The user provides you with a rough theme description, and you return an improved
@@ -80,6 +79,7 @@ version that is more descriptive and detailed.
 - Return ONLY the description, no additional text or explanations
 """
 
+# NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_GAME_ITEMS_JSON_MSG = """
 You are an expert game item generator. Your task is to generate a JSON object
 describing game items. The user will provide a sample JSON object of an existing
@@ -92,10 +92,10 @@ but they must use a new theme description. For example, replace a "potion" item
 with "med-kit" for a modern combat theme.
 Do not create new fields, do not create new effect types, as the game is not able
 to handle them yet.
-
-# New Game Theme Description
+Do not translate the field names, because they are used as identifiers.
 """
 
+# NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_GAME_ENEMIES_JSON_MSG = """
 You are an expert game enemy generator. Your task is to generate a JSON object
 describing game enemies. The user will provide a sample JSON object of an existing
@@ -107,8 +107,16 @@ The new item definitions must follow the same format as the sample item definiti
 but they must use a new theme description. For example, replace a "Orc" item
 with "tank" for a modern combat theme.
 Do not create new fields, as the game is not able to handle them yet.
+Do not translate the field names, because they are used as identifiers.
+"""
+
+def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) -> str:
+    return f"""{prompt}
+
+The language of the response must be {language}
 
 # New Game Theme Description
+{desc}
 """
 
 # GenAIModel
@@ -160,7 +168,7 @@ class GenAI:
         self.theme_desc = theme_desc
         self.language = language
         self.theme_desc_better = self._quick_completion_hi(
-            system_msg=SYS_BETTER_DESC_PROMPT_MSG,
+            system_msg=SYS_BETTER_DESC_PROMPT_MSG + f"\n- The language of the response must be {language}",
             user_msg=theme_desc,
         )
         self.game_title = self.theme_desc_better.split("\n")[0]
@@ -249,10 +257,24 @@ class GenAI:
             return source_list
 
     def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
-        return self._json_str_to_list_gen(item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG + self.theme_desc)
+        return self._json_str_to_list_gen(
+            item_defs,
+            append_language_and_desc_to_prompt(
+                SYS_GEN_GAME_ITEMS_JSON_MSG,
+                self.language,
+                self.theme_desc
+            )
+        )
 
     def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
-        return self._json_str_to_list_gen(enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG + self.theme_desc)
+        return self._json_str_to_list_gen(
+            enemy_defs,
+            append_language_and_desc_to_prompt(
+                SYS_GEN_GAME_ENEMIES_JSON_MSG,
+                self.language,
+                self.theme_desc
+            )
+        )
 
     # Generator for generic sentences
     def gen_adapt_sentence(
@@ -277,7 +299,13 @@ class GenAI:
             response = self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
-                    {"role": "system", "content": ADAPT_SENTENCE_SYSTEM_MSG + self.theme_desc_better},
+                    {"role": "system", "content":
+                        append_language_and_desc_to_prompt(
+                            ADAPT_SENTENCE_SYSTEM_MSG,
+                            self.language,
+                            self.theme_desc_better
+                      )
+                    },
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
@@ -305,7 +333,13 @@ class GenAI:
             response = self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
-                    {"role": "system", "content": ROOM_DESC_SYSTEM_MSG + self.theme_desc_better},
+                    {"role": "system", "content":
+                      append_language_and_desc_to_prompt(
+                          ROOM_DESC_SYSTEM_MSG,
+                          self.language,
+                          self.theme_desc_better
+                      )
+                    },
                     {"role": "user", "content": user_msg}
                 ],
                 temperature=0.7,  # Add some variability but keep it coherent
