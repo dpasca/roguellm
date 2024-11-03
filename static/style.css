@@ -407,7 +407,7 @@ p {
 }
 .theme-description {
     width: 100%;
-    padding: 0 10px
+    padding: 0 10px;
     margin: 0 auto;
     /* Removed max-width to allow full responsiveness */
 }
@@ -664,4 +664,15 @@ p {
     background-color: #2a2a2a;
     color: white;
     padding: 10px;
+}
+
+/* Add media query for mobile devices in portrait mode */
+@media screen and (max-width: 768px) {
+    .player-status-row {
+        flex-direction: column;  /* Stack children vertically */
+    }
+
+    .player-status, .equipment-slots {
+        width: 100%;  /* Take full width */
+    }
 }
