@@ -45,7 +45,7 @@
                                         explored: cell && !isPlayerPosition(x, y),
                                         unexplored: !cell
                                     }">
-                                    {{ isPlayerPosition(x, y) ? '👤' : (cell ? '·' : '❓') }}
+                                    {{ isPlayerPosition(x, y) ? '👤' : (cell ? '·' : '?') }}
                                 </div>
                             </div>
                         </div>
@@ -113,10 +113,6 @@
                         <div class="status-item">
                             <span class="status-label">📍 Position:</span>
                             <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">🧳 Inventory:</span>
-                            <span>{{ displayInventory }}</span>
                         </div>
                     </div>
                     <!-- Inventory UI -->

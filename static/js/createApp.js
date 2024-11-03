@@ -35,16 +35,12 @@ const app = Vue.createApp({
             if (!this.gameState.current_enemy) return 0;
             return (this.gameState.current_enemy.hp / this.gameState.current_enemy.max_hp) * 100;
         },
+        /*
         displayInventory() {
             if (!this.gameState.inventory.length) return 'Empty';
             return this.gameState.inventory.map(item => item.name).join(', ');
         },
-        /*formattedGameTitle() {
-            if (this.gameState && this.gameState.game_title) {
-                return `${this.gameState.game_title} <small>(RogueLLM)</small>`;
-            }
-            return 'RogueLLM';
-        },*/
+        */
     },
     methods: {
         getCellSymbol(x, y, cell) {
