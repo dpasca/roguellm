@@ -1,12 +1,14 @@
 const app = Vue.createApp({
     data() {
         return {
+            isGameInitialized: false,
             gameState: {
                 player_pos: [0, 0],
                 player_hp: 100,
                 player_max_hp: 100,
                 player_attack: 15,
                 player_defense: 0,
+                player_xp: 0,
                 inventory: [],
                 equipment: {
                     weapon: null,
@@ -15,7 +17,9 @@ const app = Vue.createApp({
                 explored: [],
                 in_combat: false,
                 current_enemy: null,
-                game_over: false
+                game_over: false,
+                temporary_effects: {},
+                game_title: 'RogueLLM'
             },
             gameLogs: [],
             ws: null,
@@ -25,15 +29,14 @@ const app = Vue.createApp({
     },
     computed: {
         getPlayerHealthPercentage() {
-            if (!this.gameState) return 0;
             return (this.gameState.player_hp / this.gameState.player_max_hp) * 100;
         },
         getEnemyHealthPercentage() {
-            if (!this.gameState || !this.gameState.current_enemy) return 0;
+            if (!this.gameState.current_enemy) return 0;
             return (this.gameState.current_enemy.hp / this.gameState.current_enemy.max_hp) * 100;
         },
         displayInventory() {
-            if (!this.gameState || !this.gameState.inventory.length) return 'Empty';
+            if (!this.gameState.inventory.length) return 'Empty';
             return this.gameState.inventory.map(item => item.name).join(', ');
         },
         /*formattedGameTitle() {
@@ -58,27 +61,38 @@ const app = Vue.createApp({
                     console.warn("Received empty message, ignoring");
                     return;
                 }
+                console.log('Received message:', event.data);
                 try {
                     const response = JSON.parse(event.data);
-                    if (response && response.type) {
-                        if (response.type === 'update') {
-                            this.gameState = response.state;
+                    if (!response || !response.type) {
+                        console.warn('Received message with no type:', event.data);
+                        return;
+                    }
+
+                    if (response.type === 'update') {
+                        this.gameState = response.state;
+                        if (response.description) {
+                            this.gameLogs.push(response.description);
+                        }
+                        if (!this.isGameInitialized) { // This is the initial state
+                            console.log('Initial game state received:', this.gameState);
+                            this.isGameInitialized = true;
+                        } else {
                             if (response.description) {
-                                this.gameLogs.push(response.description);
                                 this.$nextTick(() => {
                                     const gameLog = document.querySelector('.game-log');
                                     gameLog.scrollTop = gameLog.scrollHeight;
                                 });
                             }
-                            if (this.gameState.game_title) {
-                                this.gameTitle = `${this.gameState.game_title} (RogueLLM)`;
-                            }
-                        } else if (response.type === 'error') {
-                            this.errorMessage = response.message;
-                            setTimeout(() => {
-                                this.errorMessage = null;
-                            }, 5000);
                         }
+                        if (this.gameState.game_title) {
+                            this.gameTitle = this.gameState.game_title;
+                        }
+                    } else if (response.type === 'error') {
+                        this.errorMessage = response.message;
+                        setTimeout(() => {
+                            this.errorMessage = null;
+                        }, 5000);
                     }
                 } catch (error) {
                     console.log('WebSocket message parsing error:', error);
