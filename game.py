@@ -32,7 +32,7 @@ class Game:
 
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
-        _gen_ai.set_theme_desc(theme_desc, language)
+        _gen_ai.set_theme_description(theme_desc, language)
 
         # Initialize these after setting the theme description, because
         # they depend on it

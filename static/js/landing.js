@@ -25,7 +25,7 @@ createApp({
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ theme: description }),
+                body: JSON.stringify({ theme: description, language: this.selectedLanguage }),
                 credentials: 'include'
             })
             .then(response => {

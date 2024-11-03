@@ -156,8 +156,9 @@ class GenAI:
         return response.choices[0].message.content
 
     # Upon setting the theme description, translate the basic system prompts
-    def set_theme_description(self, theme_desc: str):
+    def set_theme_description(self, theme_desc: str, language: str = "en"):
         self.theme_desc = theme_desc
+        self.language = language
         self.theme_desc_better = self._quick_completion_hi(
             system_msg=SYS_BETTER_DESC_PROMPT_MSG,
             user_msg=theme_desc,

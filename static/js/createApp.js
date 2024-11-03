@@ -221,8 +221,8 @@ const app = Vue.createApp({
                 const description = selectedTheme === 'custom' 
                     ? (customDescription.value || 'custom game') 
                     : 'fantasy';
-                    
-                window.location.href = `/game?theme=${encodeURIComponent(description)}`;
+                const selectedLanguage = document.querySelector('input[name="language"]:checked').value;
+                window.location.href = `/game?theme=${encodeURIComponent(description)}&lang=${encodeURIComponent(selectedLanguage)}`;
             });
         }
     }

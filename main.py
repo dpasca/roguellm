@@ -85,9 +85,12 @@ async def logout(request: Request):
 async def set_theme(request: Request):
     data = await request.json()
     theme = data.get('theme', 'fantasy')
+    lang = data.get('language', 'en')
+
     # Compress the theme string
     compressed = base64.b64encode(zlib.compress(theme.encode())).decode()
     request.session["theme_desc"] = compressed
+    request.session["language"] = lang
     return JSONResponse({"status": "success"})
 
 # WebSocket endpoint for the game
@@ -99,7 +102,6 @@ async def websocket_endpoint(websocket: WebSocket):
     # Get theme from session (set by /set-theme)
     session = websocket.session
     compressed_theme = session.get("theme_desc", "fantasy")
-    
     # If it's the default "fantasy" string, no need to decompress
     if compressed_theme == "fantasy":
         theme_desc = compressed_theme
@@ -107,9 +109,13 @@ async def websocket_endpoint(websocket: WebSocket):
         # Decompress the theme
         theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
 
+    # Get language from session (set by /set-theme)
+    lang = session.get("language", "en")
+    logging.info(f"******* Language: {lang}")
+
     # Create the game instance with a random seed and the theme description
     rand_seed = int(time.time())
-    game_instance = Game(seed=rand_seed, theme_desc=theme_desc)
+    game_instance = Game(seed=rand_seed, theme_desc=theme_desc, language=lang)
     logging.info("New WebSocket connection established")
 
     try:
