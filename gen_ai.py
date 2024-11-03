@@ -7,6 +7,8 @@ import json
 import logging
 logger = logging.getLogger()
 
+DO_BYPAST_WORLD_GEN = False
+
 MAX_TOKENS_FOR_ROOM_DESC = 200
 MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 
@@ -167,9 +169,18 @@ class GenAI:
     def set_theme_description(self, theme_desc: str, language: str = "en"):
         self.theme_desc = theme_desc
         self.language = language
-        self.theme_desc_better = self._quick_completion_hi(
-            system_msg=SYS_BETTER_DESC_PROMPT_MSG + f"\n- The language of the response must be {language}",
-            user_msg=theme_desc,
+
+        if DO_BYPAST_WORLD_GEN: # Quick version for testing
+            self.theme_desc_better = f"""
+Generic Game (TEST)
+A universe where you can become the master of the universe by defeating other masters.
+- Locations: dungeon, castle, village, forest, mountain, desert, space station, alien planet
+- The language of the response must be {language}
+"""
+        else:
+            self.theme_desc_better = self._quick_completion_hi(
+                system_msg=SYS_BETTER_DESC_PROMPT_MSG + f"\n- The language of the response must be {language}",
+                user_msg=theme_desc,
         )
         self.game_title = self.theme_desc_better.split("\n")[0]
         logger.info(f"Game title: {self.game_title}")
@@ -257,6 +268,9 @@ class GenAI:
             return source_list
 
     def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
+        if DO_BYPAST_WORLD_GEN:
+            return json.loads(item_defs)
+
         return self._json_str_to_list_gen(
             item_defs,
             append_language_and_desc_to_prompt(
@@ -267,6 +281,9 @@ class GenAI:
         )
 
     def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
+        if DO_BYPAST_WORLD_GEN:
+            return json.loads(enemy_defs)
+
         return self._json_str_to_list_gen(
             enemy_defs,
             append_language_and_desc_to_prompt(
