@@ -197,33 +197,22 @@ const app = Vue.createApp({
     },
     mounted() {
         this.initWebSocket();
-        
+
         // Theme selection handling
         const customRadio = document.getElementById('custom');
         const fantasyRadio = document.getElementById('fantasy');
         const customDescriptionContainer = document.getElementById('customDescriptionContainer');
-        const customDescription = document.getElementById('customDescription');
         const launchButton = document.getElementById('launchGame');
 
         if (customRadio && fantasyRadio && customDescriptionContainer && launchButton) {
             // Show/hide custom description based on selection
             const updateDescriptionVisibility = () => {
-                customDescriptionContainer.style.display = 
+                customDescriptionContainer.style.display =
                     customRadio.checked ? 'block' : 'none';
             };
 
             customRadio.addEventListener('change', updateDescriptionVisibility);
             fantasyRadio.addEventListener('change', updateDescriptionVisibility);
-
-            // Launch game handler
-            launchButton.addEventListener('click', () => {
-                const selectedTheme = document.querySelector('input[name="theme"]:checked').value;
-                const description = selectedTheme === 'custom' 
-                    ? (customDescription.value || 'custom game') 
-                    : 'fantasy';
-                const selectedLanguage = document.querySelector('input[name="language"]:checked').value;
-                window.location.href = `/game?theme=${encodeURIComponent(description)}&lang=${encodeURIComponent(selectedLanguage)}`;
-            });
         }
     }
 });
