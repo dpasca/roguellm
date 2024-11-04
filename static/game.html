@@ -52,13 +52,12 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- Movement Controls -->
-                    <div class="controls" v-if="gameState && !gameState.in_combat">
-                        <button @click="move('n')" data-dir="n" :disabled="!canMove('n')">N</button>
-                        <button @click="move('s')" data-dir="s" :disabled="!canMove('s')">S</button>
-                        <button @click="move('w')" data-dir="w" :disabled="!canMove('w')">W</button>
-                        <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">E</button>
+                        <div class="controls" v-if="gameState && !gameState.in_combat">
+                            <button @click="move('n')" data-dir="n" :disabled="!canMove('n')">↑</button>
+                            <button @click="move('s')" data-dir="s" :disabled="!canMove('s')">↓</button>
+                            <button @click="move('w')" data-dir="w" :disabled="!canMove('w')">←</button>
+                            <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
+                        </div>
                     </div>
                     <!-- Combat UI -->
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
