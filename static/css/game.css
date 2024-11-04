@@ -346,8 +346,12 @@
         height: 24px;
     }
 
-    .player-status, .equipment-slots,
-    .combat-ui, .inventory-ui, .equipment-slot {
+    .player-status,
+    .equipment-slots,
+    .combat-ui,
+    .inventory-ui,
+    .equipment-slot,
+    .item-card {
         padding: 6px;
     }
 

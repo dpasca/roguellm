@@ -20,7 +20,7 @@
                 </div>
             </div>
             <!-- Creating/Loading Overlay -->
-            <div v-if="isLoading" class="loading-overlay">
+            <div v-if="!isGameInitialized" class="loading-overlay">
                 <div class="loading-content">
                     <h2>Creating game</h2>
                     <div class="spinner"></div>
