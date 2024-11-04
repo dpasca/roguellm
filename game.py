@@ -15,6 +15,8 @@ from models import GameState, Enemy, Item, Equipment
 #OLLAMA_API_KEY = "ollama"
 #OLLAMA_DEFAULT_MODEL = "llama3.1"
 
+TEST_DUMMY_EQUIP_AND_ITEMS = False
+
 # Model definitions
 #_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
@@ -90,6 +92,16 @@ class Game:
             f"You find yourself at the initial location of {self.get_game_title()}."
         )
         self.state.explored[0][0] = True
+
+        if TEST_DUMMY_EQUIP_AND_ITEMS:
+            self.state.inventory = [self.generate_random_item() for _ in range(5)]
+            # Find a weapon and an armor
+            weapon = next((item for item in self.state.inventory if item.type == 'weapon'), None)
+            armor = next((item for item in self.state.inventory if item.type == 'armor'), None)
+            if weapon and armor:
+                self.handle_equip_item(weapon.id)
+                self.handle_equip_item(armor.id)
+
         return initial_update
 
     #==================================================================
