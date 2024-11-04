@@ -49,15 +49,10 @@
 }
 .combat-ui {
     background-color: #2a2a2a;
-    padding: 15px;
     border-radius: 5px;
-    margin-top: 0;
 }
 .combat-ui p {
     margin: 8px 0;
-}
-.combat-ui h3 {
-    margin-top: 0;
 }
 
 .status-item {
@@ -140,15 +135,16 @@
 
 .game-container {
     display: flex;
-    gap: 20px;
+    gap: 10px;
     margin: 20px 0;
 }
 
 .game-left-column {
     flex: 0 0 auto;
     display: flex;
-    flex-direction: column;
-    gap: 20px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
 }
 
 .game-map {
@@ -234,16 +230,10 @@
     gap: 10px;
 }
 
-.player-status, .equipment-slots {
+.player-status, .equipment-slots, .combat-ui {
     flex: 1;
     min-width: 0;
     margin: 0;
-}
-
-.game-left-column {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 20px;
 }
 
 /* Remove any padding from mobile media queries that affect the game container */
@@ -254,7 +244,7 @@
     }
 }
 
-.player-status h3 {
+.player-status h3, .equipment-slots h3, .combat-ui h3, .inventory-ui h3 {
     margin-top: 0;
     margin-bottom: 10px;
 }
@@ -269,10 +259,6 @@
     padding: 15px;
     border-radius: 5px;
     margin: 0;
-}
-.inventory-ui h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
 }
 .inventory-grid {
     display: grid;
@@ -312,10 +298,6 @@
     flex-direction: column;
     gap: 10px;
 }
-.equipment-slots h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-}
 .equipment-slot {
     background-color: #333;
     padding: 10px;
@@ -350,5 +332,42 @@
 @media screen and (max-width: 480px) {
     .header-bar h1 {
         font-size: 1.0em;
+        padding: 4px 0;
+        padding-top: 0px;
+    }
+    .header-bar {
+        padding: 4px 10px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+
+    .cell {
+        width: 20px;
+        height: 24px;
+    }
+
+    .player-status, .equipment-slots,
+    .combat-ui, .inventory-ui, .equipment-slot {
+        padding: 6px;
+    }
+
+    .player-status h3, .equipment-slots h3, .combat-ui h3, .inventory-ui h3 {
+        margin-top: 0;
+        margin-bottom: 0px;
+        font-size: 1.0em;
+    }
+
+    .game-container {
+        gap: 10px;
+        margin: 4px 0;
+    }
+    .game-sidebar {
+        gap: 10px;
+    }
+
+    .game-log div {
+        font-size: 14px !important;
+        margin: 0px 0;
+        padding: 4px 0;
     }
 }
