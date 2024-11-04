@@ -1,5 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+}
+
 /* Base font */
 * {
     font-family: 'Poppins', sans-serif;
@@ -345,14 +353,6 @@ button:disabled {
     text-align: center;
 }
 
-.landing-container {
-    padding-top: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
 h1 {
     margin-top: 0;
     margin-bottom: 10px;
@@ -385,12 +385,13 @@ p {
 }
 
 .landing-container {
-    padding: 30px 10px;
+    padding: 6px 0px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
@@ -400,16 +401,18 @@ p {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /*padding: 0 10px;*/
-    padding: 1rem;
     box-sizing: border-box;
+    /*
+    padding: 1rem;
     margin: 1rem auto;
+    */
 }
 .theme-description {
     width: 100%;
+    max-width: 600px;
     padding: 0 10px;
     margin: 0 auto;
-    /* Removed max-width to allow full responsiveness */
+    box-sizing: border-box;
 }
 .theme-textarea {
     width: 100%;
@@ -420,6 +423,8 @@ p {
     color: white;
     border: 2px solid #333;
     box-sizing: border-box;
+    max-width: 100%;  /* Ensures it doesn't overflow */
+    resize: vertical;  /* Allows vertical resizing only */
 }
 .launch-button {
     background-color: #4CAF50;
@@ -482,22 +487,30 @@ p {
 
 .theme-options {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     justify-content: center;
-    margin: 20px 0;
+    margin: 0 0 20px 0;
+    width: 100%;
+    flex-wrap: wrap;
 }
 
 .theme-option {
     cursor: pointer;
 }
 
+.language-selector {
+    margin: 40px 0px 20px 0;
+    text-align: center;
+}
 .theme-option input[type="radio"] {
     display: none;
 }
 
 .theme-card {
-    min-width: 200px;
-    min-height: 150px;
+    min-width: 150px;
+    min-height: 130px;
+    width: 100%;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -512,6 +525,7 @@ p {
 
 .theme-selector h2 {
     margin-top: 10px;
+    margin-bottom: 10px;
 }
 .theme-card:hover {
     transform: translateY(-5px);
@@ -529,6 +543,7 @@ p {
 
 .theme-card h3 {
     transition: color 0.3s ease;
+    margin-top: 0;
 }
 
 .theme-card:hover h3 {
@@ -546,20 +561,17 @@ p {
     margin: 1rem 0;
 }
 .theme-description {
-    width: 600px;
+    width: 100%;
+    max-width: 600px;
+    padding: 0 20px;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .theme-description textarea {
-    width: 95%;
-    padding: 1rem;
-    border: 2px solid #444;
-    border-radius: 8px;
-    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
     margin: 1rem 0;
-    background-color: #1a1a1a;
-    color: white;
-    resize: vertical;
 }
 .theme-description textarea:focus {
     border-color: #4CAF50;
@@ -629,8 +641,8 @@ p {
 }
 
 .language-selector h2 {
-    margin-bottom: 15px;
-    color: #fff;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .language-options {
@@ -718,5 +730,26 @@ p {
     .combat-ui {
         margin-left: 10px;
         min-width: 200px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .theme-options {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .theme-card {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .theme-description {
+        width: 100%;
+        padding: 0 15px;
+    }
+
+    h1 {
+        font-size: 2em;
     }
 }
