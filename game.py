@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger()
 
 from typing import Dict, List, Optional, Union
+import concurrent.futures
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
@@ -34,11 +35,15 @@ class Game:
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
         _gen_ai.set_theme_description(theme_desc, language)
 
-        # Initialize these after setting the theme description, because
-        # they depend on it
-        self.initialize_item_defs()
+        # Initialize these after setting the theme description
+        def run_parallel_init():
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                i_fut = executor.submit(self.initialize_item_defs)
+                e_fut = executor.submit(self.initialize_enemy_defs)
+                concurrent.futures.wait([i_fut, e_fut])
+
+        run_parallel_init()
         logger.info(f"Generated Item defs: {self.item_defs}")
-        self.initialize_enemy_defs()
         logger.info(f"Generated Enemy defs: {self.enemy_defs}")
 
     def get_game_title(self):
