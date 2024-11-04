@@ -3,33 +3,36 @@
 <head>
     <title>RogueLLM</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link rel="stylesheet" href="static/css/base.css?v=1.2">
-    <link rel="stylesheet" href="static/css/style.css?v=1.2">
-    <link rel="stylesheet" href="static/css/game.css?v=1.2">
+    <link rel="stylesheet" href="static/css/base.css?v=1.3">
+    <link rel="stylesheet" href="static/css/style.css?v=1.3">
+    <link rel="stylesheet" href="static/css/game.css?v=1.3">
     <meta name="viewport" content="width=device-width, initial-scale=1.1">
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app">
         <div class="container">
             <div class="header-bar">
-                <h1>{{ gameTitle }} <small>(RogueLLM)</small></h1>
-                <div class="header-controls">
-                    <button @click="restartGame" class="control-button">Restart</button>
-                    <button @click="newGame" class="control-button">New Game</button>
+                <h1>{{ gameTitle }}</h1>
+                <div class="menu-icon" @click="toggleMenu">☰</div>
+                <div class="popup-menu" :class="{ active: isMenuOpen }">
+                    <button @click="restartGame">Restart</button>
+                    <button @click="newGame">New Game</button>
                 </div>
             </div>
             <!-- Creating/Loading Overlay -->
-            <div v-if="!isGameInitialized" class="loading-overlay">
+            <div v-if="isLoading" class="loading-overlay">
                 <div class="loading-content">
                     <h2>Creating game</h2>
                     <div class="spinner"></div>
                     <h2>This may take a minute,<br>please wait...</h2>
                 </div>
             </div>
+
             <!-- Game Over Overlay -->
             <div v-if="isGameInitialized && gameState.game_over" class="game-over">
                 <h2>Game Over!</h2>
-                <button @click="restartGame" class="restart-button">Restart Game</button>
+                <button @click="restartGame" class="restart-button">Restart</button>
+                <button @click="newGame" class="restart-button">Create New</button>
             </div>
 
             <!-- Game Container -->

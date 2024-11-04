@@ -23,7 +23,8 @@ const app = Vue.createApp({
             },
             gameLogs: [],
             ws: null,
-            gameTitle: 'RogueLLM',
+            gameTitle: 'RogueLLM: Unknown Title',
+            isMenuOpen: false,
             errorMessage: null
         }
     },
@@ -47,6 +48,17 @@ const app = Vue.createApp({
             if (this.isPlayerPosition(x, y)) return '👤';
             if (!cell) return '❓';
             return '·';
+        },
+        toggleMenu() {
+            this.isMenuOpen = !this.isMenuOpen;
+        },
+        closeMenuIfClickedOutside(event) {
+            const menu = document.querySelector('.popup-menu');
+            const menuIcon = document.querySelector('.menu-icon');
+
+            if (!menu.contains(event.target) && !menuIcon.contains(event.target)) {
+                this.isMenuOpen = false;
+            }
         },
         initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -210,6 +222,12 @@ const app = Vue.createApp({
             customRadio.addEventListener('change', updateDescriptionVisibility);
             fantasyRadio.addEventListener('change', updateDescriptionVisibility);
         }
+
+        // Close the menu if clicked outside
+        document.addEventListener('click', this.closeMenuIfClickedOutside);
+    },
+    beforeUnmount() {
+        document.removeEventListener('click', this.closeMenuIfClickedOutside);
     }
 });
 
