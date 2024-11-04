@@ -491,7 +491,7 @@ p {
     justify-content: center;
     margin: 0 0 20px 0;
     width: 100%;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .theme-option {
@@ -571,7 +571,8 @@ p {
 .theme-description textarea {
     width: 100%;
     box-sizing: border-box;
-    margin: 1rem 0;
+    margin: 0;
+    margin-bottom: 1rem;
 }
 .theme-description textarea:focus {
     border-color: #4CAF50;
@@ -651,8 +652,8 @@ p {
 }
 
 .language-select {
-    padding: 10px 20px;
-    font-size: 1.1em;
+    padding: 10px 16px;
+    font-size: 1.0em;
     background-color: #2a2a2a;
     color: white;
     border: 2px solid #333;
@@ -735,18 +736,30 @@ p {
 
 @media screen and (max-width: 480px) {
     .theme-options {
-        flex-direction: column;
-        align-items: center;
+        gap: 10px;  /* Reduce gap on mobile */
+        padding: 0 10px;
     }
 
     .theme-card {
-        width: 100%;
-        max-width: 280px;
+        min-width: auto; /* Remove min-width constraint */
+        min-height: 100px;
+        padding: 10px;
+    }
+
+    .theme-card i {
+        font-size: 2em;    /* Slightly smaller icons */
+    }
+
+    .theme-card h3 {
+        font-size: 1.0em;  /* Slightly smaller text */
     }
 
     .theme-description {
         width: 100%;
         padding: 0 15px;
+    }
+    .theme-description textarea {
+        font-size: 1.1em;
     }
 
     h1 {
