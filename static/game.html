@@ -125,24 +125,27 @@
 
                         <!-- Equipment -->
                         <div class="equipment-slots">
-                            <!--
-                            <h3>Equipment</h3>
-                            -->
                             <div class="equipment-slot">
-                                <h4>Weapon</h4>
-                                <div v-if="gameState.equipment.weapon">
-                                    <p>{{ gameState.equipment.weapon.name }}</p>
-                                    <p>Attack: +{{ gameState.equipment.weapon.effect.attack }}</p>
+                                <div class="equipment-header">
+                                    <h4>Weapon</h4>
+                                    <span class="equipment-status">{{ gameState.equipment.weapon ? '●' : '○' }}</span>
                                 </div>
-                                <p v-else>No weapon equipped</p>
+                                <div v-if="gameState.equipment.weapon" class="equipment-details">
+                                    <span class="equipment-name">{{ gameState.equipment.weapon.name }}</span>
+                                    <span class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
+                                </div>
+                                <p v-else class="empty-slot">No weapon equipped</p>
                             </div>
                             <div class="equipment-slot">
-                                <h4>Armor</h4>
-                                <div v-if="gameState.equipment.armor">
-                                    <p>{{ gameState.equipment.armor.name }}</p>
-                                    <p>Defense: +{{ gameState.equipment.armor.effect.defense }}</p>
+                                <div class="equipment-header">
+                                    <h4>Armor</h4>
+                                    <span class="equipment-status">{{ gameState.equipment.armor ? '●' : '○' }}</span>
                                 </div>
-                                <p v-else>No armor equipped</p>
+                                <div v-if="gameState.equipment.armor" class="equipment-details">
+                                    <span class="equipment-name">{{ gameState.equipment.armor.name }}</span>
+                                    <span class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
+                                </div>
+                                <p v-else class="empty-slot">No armor equipped</p>
                             </div>
                         </div>
                     </div>

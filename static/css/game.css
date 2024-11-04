@@ -472,3 +472,62 @@
     gap: 8px;
     margin-top: 8px;
 }
+
+/* Update equipment slot styling */
+.equipment-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.equipment-slot {
+    background-color: #333;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #444;
+}
+
+.equipment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.equipment-slot h4 {
+    margin: 0;
+    font-weight: bold;
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.equipment-status {
+    font-size: 1.2em;
+    color: #27ae60; /* Green for equipped */
+}
+
+.empty-slot {
+    margin: 0;
+    font-size: 0.8em;
+    color: #666;
+    font-style: italic;
+}
+
+.equipment-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.equipment-name {
+    font-size: 0.8em;
+    color: #aaa;
+    flex: 1;
+}
+
+.equipment-stat {
+    font-size: 0.8em;
+    color: #4CAF50;
+    font-weight: bold;
+}
