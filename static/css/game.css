@@ -328,8 +328,7 @@
     margin: 0;
 }
 
-/* Add mobile-specific h1 size just for game page */
-@media screen and (max-width: 480px) {
+@media screen and (max-width: 180mm) {
     .header-bar h1 {
         font-size: 1.0em;
         padding: 4px 0;

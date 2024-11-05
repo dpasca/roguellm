@@ -370,7 +370,7 @@
     }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: 180mm) {
     .theme-options {
         gap: 10px;  /* Reduce gap on mobile */
         padding: 0 10px;
