@@ -34,8 +34,8 @@
     border: 1px solid #333;
     border-radius: 5px;
     margin-top: 10px;
-    min-height: 250px;
-    max-height: 250px;
+    min-height: 150px;
+    max-height: 150px;
 }
 
 .game-log div {
@@ -341,8 +341,8 @@
     }
 
     .cell {
-        width: 20px;
-        height: 24px;
+        width: 24px;
+        height: 26px;
     }
 
     .player-status,
@@ -541,4 +541,8 @@
 .status-item span:last-child:contains('None') {
     color: #666;
     font-style: italic;
+}
+
+.game-map.in-combat {
+    display: none;
 }

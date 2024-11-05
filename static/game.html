@@ -40,7 +40,7 @@
                 <!-- Left Column: Map and Status -->
                 <div class="game-left-column">
                     <!-- Game Map -->
-                    <div class="game-map">
+                    <div class="game-map" :class="{ 'in-combat': gameState.in_combat }">
                         <div v-if="gameState && gameState.explored" class="map">
                             <div v-for="(row, y) in gameState.explored" :key="y" class="row">
                                 <div v-for="(cell, x) in row"
@@ -60,6 +60,34 @@
                             <button @click="move('s')" data-dir="s" :disabled="!canMove('s')">↓</button>
                             <button @click="move('w')" data-dir="w" :disabled="!canMove('w')">←</button>
                             <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
+                        </div>
+                    </div>
+
+                    <!-- Combat UI -->
+                    <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
+                        <h3>Combat</h3>
+                        <div class="status-item">
+                            <span class="status-label">🎯 Enemy:</span>
+                            <span>{{ gameState.current_enemy.name }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">❤️ HP</span>
+                            <div class="health-bar-container">
+                                <div class="health-bar">
+                                    <div class="health-bar-fill"
+                                         :style="{ width: getEnemyHealthPercentage + '%' }">
+                                    </div>
+                                </div>
+                                <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">⚔️ Attack</span>
+                            <span>{{ gameState.current_enemy.attack }}</span>
+                        </div>
+                        <div class="combat-buttons">
+                            <button @click="attack" class="attack-button">Attack</button>
+                            <button @click="run" class="run-button">Run</button>
                         </div>
                     </div>
 
@@ -102,34 +130,6 @@
                                 <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
                                 <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Combat UI -->
-                    <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
-                        <h3>Combat</h3>
-                        <div class="status-item">
-                            <span class="status-label">🎯 Enemy:</span>
-                            <span>{{ gameState.current_enemy.name }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">❤️ HP</span>
-                            <div class="health-bar-container">
-                                <div class="health-bar">
-                                    <div class="health-bar-fill"
-                                         :style="{ width: getEnemyHealthPercentage + '%' }">
-                                    </div>
-                                </div>
-                                <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
-                            </div>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">⚔️ Attack</span>
-                            <span>{{ gameState.current_enemy.attack }}</span>
-                        </div>
-                        <div class="combat-buttons">
-                            <button @click="attack" class="attack-button">Attack</button>
-                            <button @click="run" class="run-button">Run</button>
                         </div>
                     </div>
                 </div>
