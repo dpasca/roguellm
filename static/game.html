@@ -136,35 +136,6 @@
 
                 <!-- Right Column: Player Status and Inventory -->
                 <div class="game-sidebar">
-                    <!-- Player Status Row -->
-                    <div class="player-status-row">
-                        <!-- Equipment -->
-                        <div class="equipment-slots">
-                            <div class="equipment-slot">
-                                <div class="equipment-header">
-                                    <h4>Weapon</h4>
-                                    <span class="equipment-status">{{ gameState.equipment.weapon ? '●' : '○' }}</span>
-                                </div>
-                                <div v-if="gameState.equipment.weapon" class="equipment-details">
-                                    <span class="equipment-name">{{ gameState.equipment.weapon.name }}</span>
-                                    <span class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
-                                </div>
-                                <p v-else class="empty-slot">No weapon equipped</p>
-                            </div>
-                            <div class="equipment-slot">
-                                <div class="equipment-header">
-                                    <h4>Armor</h4>
-                                    <span class="equipment-status">{{ gameState.equipment.armor ? '●' : '○' }}</span>
-                                </div>
-                                <div v-if="gameState.equipment.armor" class="equipment-details">
-                                    <span class="equipment-name">{{ gameState.equipment.armor.name }}</span>
-                                    <span class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
-                                </div>
-                                <p v-else class="empty-slot">No armor equipped</p>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Inventory UI -->
                     <div class="inventory-ui" v-if="gameState">
                         <h3>Inventory</h3>
