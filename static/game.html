@@ -37,7 +37,7 @@
 
             <!-- Game Container -->
             <div v-if="isGameInitialized" class="game-container">
-                <!-- Left Column: Map and Combat -->
+                <!-- Left Column: Map and Status -->
                 <div class="game-left-column">
                     <!-- Game Map -->
                     <div class="game-map">
@@ -62,6 +62,35 @@
                             <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
                         </div>
                     </div>
+                    
+                    <!-- Player Status (moved from sidebar) -->
+                    <div class="player-status">
+                        <h3>Player Status</h3>
+                        <div class="status-item">
+                            <span class="status-label">❤️ HP</span>
+                            <div class="health-bar-container">
+                                <div class="health-bar">
+                                    <div class="health-bar-fill"
+                                         :style="{ width: getPlayerHealthPercentage + '%' }">
+                                    </div>
+                                </div>
+                                <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">⚔️ Attack</span>
+                            <span>{{ gameState.player_attack }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">⭐ XP</span>
+                            <span>{{ gameState.player_xp }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">📍 Position</span>
+                            <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
+                        </div>
+                    </div>
+                    
                     <!-- Combat UI -->
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
                         <h3>Combat</h3>
@@ -95,34 +124,6 @@
                 <div class="game-sidebar">
                     <!-- Player Status Row -->
                     <div class="player-status-row">
-                        <!-- Player Status -->
-                        <div class="player-status">
-                            <h3>Player Status</h3>
-                            <div class="status-item">
-                                <span class="status-label">❤️ HP</span>
-                                <div class="health-bar-container">
-                                    <div class="health-bar">
-                                        <div class="health-bar-fill"
-                                             :style="{ width: getPlayerHealthPercentage + '%' }">
-                                        </div>
-                                    </div>
-                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
-                                </div>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">⚔️ Attack</span>
-                                <span>{{ gameState.player_attack }}</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">⭐ XP</span>
-                                <span>{{ gameState.player_xp }}</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">📍 Position</span>
-                                <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
-                            </div>
-                        </div>
-
                         <!-- Equipment -->
                         <div class="equipment-slots">
                             <div class="equipment-slot">
