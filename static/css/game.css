@@ -378,12 +378,12 @@
 /* Update inventory item card styling */
 .item-card {
     background-color: #333;
-    padding: 8px;
+    padding: 6px;
     border-radius: 5px;
     border: 1px solid #444;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
 }
 
 .item-card.equipped {
@@ -400,15 +400,15 @@
 .item-card h4 {
     margin: 0;
     color: #fff;
-    font-size: 0.9em;
+    font-size: 0.85em;
     flex: 1;
 }
 
 .item-card p {
     margin: 0;
-    font-size: 0.8em;
+    font-size: 0.75em;
     color: #aaa;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
 .item-actions {
@@ -417,10 +417,10 @@
 }
 
 .item-actions button {
-    padding: 2px 8px;
-    font-size: 1.0em;
-    min-width: 32px;
-    height: 24px;
+    padding: 2px 6px;
+    font-size: 0.9em;
+    min-width: 28px;
+    height: 22px;
     margin: 0;
     display: flex;
     align-items: center;
@@ -440,7 +440,7 @@
     color: white;
 }
 
-/* Style for equipped button */
+/* Style for equipped */
 .equipped-button {
     background-color: #27ae60;
     color: white;
@@ -456,7 +456,7 @@
     background-color: #8e44ad;
     color: white;
     font-size: 0.8em;
-    min-width: 60px;
+    min-width: 50px;
     border: 1px solid #9b59b6;
 }
 
@@ -464,15 +464,13 @@
     background-color: #9b59b6;
 }
 
-/* Make inventory grid more compact */
 .inventory-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
-    margin-top: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+    margin-top: 6px;
 }
 
-/* Update equipment slot styling */
 .equipment-slots {
     display: flex;
     flex-direction: column;
