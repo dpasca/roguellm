@@ -96,6 +96,16 @@ p {
     font-size: 24px;
     padding: 10px;
     color: #4CAF50;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1001;
 }
 
 .popup-menu {
