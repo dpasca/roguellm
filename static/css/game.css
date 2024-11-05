@@ -63,12 +63,12 @@
 }
 
 .status-label {
-    min-width: 80px;
+    min-width: 90px;
 }
 
 .health-bar-container {
     position: relative;
-    width: 100px;
+    width: 90px;
 }
 
 .health-bar {
@@ -418,7 +418,7 @@
 
 .item-actions button {
     padding: 2px 8px;
-    font-size: 1.2em;
+    font-size: 1.0em;
     min-width: 32px;
     height: 24px;
     margin: 0;
@@ -529,4 +529,16 @@
     font-size: 0.8em;
     color: #4CAF50;
     font-weight: bold;
+}
+
+/* Enhance the equipment display in player status */
+.status-item span:last-child {
+    color: #cacaca;
+    font-weight: 500;
+}
+
+.status-item span:last-child:empty::after,
+.status-item span:last-child:contains('None') {
+    color: #666;
+    font-style: italic;
 }

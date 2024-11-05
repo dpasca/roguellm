@@ -62,7 +62,7 @@
                             <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
                         </div>
                     </div>
-                    
+
                     <!-- Player Status (moved from sidebar) -->
                     <div class="player-status">
                         <h3>Player Status</h3>
@@ -89,8 +89,22 @@
                             <span class="status-label">📍 Position</span>
                             <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
                         </div>
+                        <div class="status-item">
+                            <span class="status-label">🗡️ Weapon</span>
+                            <div class="equipment-details">
+                                <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None' }}</span>
+                                <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">🛡️ Armor</span>
+                            <div class="equipment-details">
+                                <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
+                                <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
+                            </div>
+                        </div>
                     </div>
-                    
+
                     <!-- Combat UI -->
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
                         <h3>Combat</h3>
@@ -155,8 +169,8 @@
                     <div class="inventory-ui" v-if="gameState">
                         <h3>Inventory</h3>
                         <div class="inventory-grid">
-                            <div v-for="item in gameState.inventory" 
-                                :key="item.id" 
+                            <div v-for="item in gameState.inventory"
+                                :key="item.id"
                                 class="item-card"
                                 :class="{ equipped: item.is_equipped }">
                                 <div class="item-card-header">
