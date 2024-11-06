@@ -93,11 +93,25 @@ async def set_theme(request: Request):
     request.session["language"] = lang
     return JSONResponse({"status": "success"})
 
+# Time profiler
+class TimeProfiler:
+    def __init__(self, name="Operation"):
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.elapsed = time.time() - self.start
+        logging.info(f"{self.name} took {self.elapsed:.2f} seconds")
+
 # WebSocket endpoint for the game
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
     # Accept the connection once at the beginning
     await websocket.accept()
+    logging.info("New WebSocket connection established")
 
     # Get theme from session (set by /set-theme)
     session = websocket.session
@@ -111,12 +125,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Get language from session (set by /set-theme)
     lang = session.get("language", "en")
-    logging.info(f"******* Language: {lang}")
+    logging.info(f"Language: {lang}")
 
     # Create the game instance with a random seed and the theme description
     rand_seed = int(time.time())
-    game_instance = Game(seed=rand_seed, theme_desc=theme_desc, language=lang)
-    logging.info("New WebSocket connection established")
+    with TimeProfiler("Game instance creation"):
+       game_instance = Game(seed=rand_seed, theme_desc=theme_desc, language=lang)
 
     try:
         # Initialize the game
