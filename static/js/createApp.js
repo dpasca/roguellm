@@ -2,6 +2,7 @@ const app = Vue.createApp({
     data() {
         return {
             isGameInitialized: false,
+            isLoading: true,
             gameState: {
                 player_pos: [0, 0],
                 player_hp: 100,
@@ -204,6 +205,8 @@ const app = Vue.createApp({
         },
     },
     mounted() {
+        // Show loading immediately when component mounts
+        showLoading();
         this.initWebSocket();
 
         // Theme selection handling
@@ -232,3 +235,42 @@ const app = Vue.createApp({
 });
 
 app.mount('#app');
+
+// Find the function that handles loading/waiting state
+function showLoading() {
+    const loading = document.getElementById('loading');
+    if (!loading) return;  // Guard clause in case element isn't found
+
+    loading.style.display = 'block';
+    const progressBar = loading.querySelector('.progress-bar');
+    if (!progressBar) return;  // Guard clause in case progress bar isn't found
+
+    progressBar.style.width = '0%';
+
+    // Simulate progress
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += 0.5;
+        if (progress >= 100) {
+            clearInterval(interval);
+        }
+        progressBar.style.width = `${progress}%`;
+    }, 100);
+
+    return interval;  // Return interval so we can clear it if needed
+}
+/*
+function hideLoading() {
+    const loading = document.getElementById('loading');
+    if (!loading) return;
+
+    const progressBar = loading.querySelector('.progress-bar');
+    if (!progressBar) return;
+
+    progressBar.style.width = '100%';
+
+    setTimeout(() => {
+        loading.style.display = 'none';
+    }, 300);
+}
+*/

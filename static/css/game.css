@@ -572,16 +572,37 @@
     margin-top: 20px;
 }
 
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+/* Add the new progress bar styles */
+.progress-bar-container {
+    width: 300px;
+    height: 20px;
+    background-color: #2a2a2a;
+    border-radius: 10px;
+    margin: 20px auto;
+    overflow: hidden;
+    border: 1px solid #333;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease-in-out;
+    border-radius: 10px;
+}
+
+/* Optional: Add a pulsing animation */
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.progress-bar.animated {
+    animation: pulse 1.5s infinite;
+}
+
+#loading {
+    display: block;
+    margin: 20px 0;
 }

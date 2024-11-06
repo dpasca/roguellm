@@ -22,9 +22,12 @@
             <!-- Creating/Loading Overlay -->
             <div v-if="!isGameInitialized" class="loading-overlay">
                 <div class="loading-content">
-                    <h2>Creating game</h2>
-                    <div class="spinner"></div>
-                    <h2>This may take a minute,<br>please wait...</h2>
+                    <div id="loading">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar animated"></div>
+                        </div>
+                        <p>Creating game...</p>
+                    </div>
                 </div>
             </div>
 
