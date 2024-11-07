@@ -582,24 +582,19 @@
     overflow: hidden;
     border: 1px solid #333;
 }
-
 .progress-bar {
-    width: 0%;
+    width: 100%;  /* Set to full width */
     height: 100%;
     background-color: #4CAF50;
-    transition: width 0.3s ease-in-out;
+    transition: all 0.3s ease;
     border-radius: 10px;
+    opacity: 0.8;  /* Give it a slight fade effect */
 }
-
 /* Optional: Add a pulsing animation */
 @keyframes pulse {
     0% { opacity: 0.6; }
     50% { opacity: 1; }
     100% { opacity: 0.6; }
-}
-
-.progress-bar.animated {
-    animation: pulse 1.5s infinite;
 }
 
 #loading {
