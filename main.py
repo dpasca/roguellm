@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union
 import json
@@ -42,6 +43,19 @@ app.add_middleware(
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Create custom middleware for headers
+class AddHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Add cache control headers
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
+# Add the middleware to your FastAPI app (place this after app = FastAPI())
+app.add_middleware(AddHeadersMiddleware)
 
 # Landing page - Updated to handle POST requests for theme selection
 @app.post("/")
