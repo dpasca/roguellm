@@ -31,16 +31,16 @@ class GameState(BaseModel):
     player_xp: int = 0
     inventory: List[Item] = []
     equipment: Equipment = Field(default_factory=Equipment)
-    explored: list = []
+    explored: List[List[bool]] = Field(default_factory=list)  # Changed this line
     in_combat: bool = False
     current_enemy: Optional[Enemy] = None
     game_over: bool = False
-    temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}  # For temporary potion
+    temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}
     game_title: str = "Unknown Game"
 
     @classmethod
     def from_config(cls, config):
-        return cls(
+        instance = cls(
             map_width=config['map_size']['width'],
             map_height=config['map_size']['height'],
             player_hp=config['player']['base_hp'],
@@ -49,3 +49,7 @@ class GameState(BaseModel):
             player_defense=config['player']['base_defense'],
             player_xp=0,
         )
+        # Initialize explored array with proper dimensions
+        instance.explored = [[False for _ in range(instance.map_width)] 
+                           for _ in range(instance.map_height)]
+        return instance

@@ -5,35 +5,35 @@
         "name": "Desert",
         "description": "A desert",
         "map_color": "#FFD700",
-        "fontaw_some_icon": "fa-solid fa-desert"
+        "fontaw_icon": "fa-solid fa-desert"
     },
     {
         "id": "1",
         "name": "Forest",
         "description": "A forest",
         "map_color": "#228B22",
-        "fontaw_some_icon": "fa-solid fa-tree"
+        "fontaw_icon": "fa-solid fa-tree"
     },
     {
         "id": "2",
         "name": "Mountain Base",
         "description": "Base of a mountain",
         "map_color": "#8B4513",
-        "fontaw_some_icon": "fa-solid fa-mountain"
+        "fontaw_icon": "fa-solid fa-mountain"
     },
     {
         "id": "2",
         "name": "Mountain",
         "description": "A mountain",
         "map_color": "#8B4513",
-        "fontaw_some_icon": "fa-solid fa-mountain"
+        "fontaw_icon": "fa-solid fa-mountain"
     },
     {
         "id": "4",
         "name": "Cave",
         "description": "A dark cave",
         "map_color": "#191900",
-        "fontaw_some_icon": "fa-solid fa-cave"
+        "fontaw_icon": "fa-solid fa-cave"
     }
     ]
 }

@@ -15,6 +15,23 @@ document.addEventListener('touchend', function(event) {
     lastTouchEnd = now;
 }, false);
 
+function getRGBFromHashHex(hhex) {
+    const hex = hhex.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    return [r, g, b];
+}
+function scaleColor(hhex, scale) {
+    const [r, g, b] = getRGBFromHashHex(hhex);
+    return `rgb(${Math.floor(r * scale)}, ${Math.floor(g * scale)}, ${Math.floor(b * scale)})`;
+}
+function isBrightColor(hhex) {
+    const [r, g, b] = getRGBFromHashHex(hhex);
+    const brightness = (r + g + b) / 3;
+    return brightness > 100;
+}
+
 const app = Vue.createApp({
     data() {
         return {
@@ -67,17 +84,20 @@ const app = Vue.createApp({
             if (!cell) return '❓';
             return '·';
         },
-        getCellStyle(x, y) {
-            if (!this.gameState.explored[y][x]) return {};
+        getCellStyle(x, y, explored) {
+            //if (!this.gameState.explored[y][x]) return {};
+            if (!this.gameState.cell_types || this.gameState.cell_types.length === 0) return {};
             const cellType = this.gameState.cell_types[y][x];
+            const bgCol = scaleColor(cellType.map_color, (explored ? 1 : 0.4));
+            // See if the background color is bright or dark
             return {
-                backgroundColor: cellType.map_color,
-                color: this.isPlayerPosition(x, y) ? 'white' : cellType.map_color
+                backgroundColor: bgCol,
+                color: isBrightColor(bgCol) ? '#666666' : '#aaaaaa'
             };
         },
         getCellIcon(x, y) {
             if (!this.gameState.explored[y][x]) return '';
-            return this.gameState.cell_types[y][x].fontaw_some_icon;
+            return this.gameState.cell_types[y][x].fontaw_icon;
         },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;

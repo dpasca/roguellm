@@ -59,10 +59,10 @@
                                         explored: cell && !isPlayerPosition(x, y),
                                         unexplored: !cell
                                     }"
-                                    :style="getCellStyle(x, y)">
+                                    :style="getCellStyle(x, y, explored)">
                                     <i v-if="cell && !isPlayerPosition(x, y)" :class="getCellIcon(x, y)"></i>
                                     <span v-else-if="isPlayerPosition(x, y)">👤</span>
-                                    <span v-else>?</span>
+                                    <span v-else>.</span>
                                 </div>
                             </div>
                         </div>

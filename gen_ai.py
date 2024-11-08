@@ -232,7 +232,7 @@ A universe where you can become the master of the universe by defeating other ma
                 if previous_descriptions:
                     context.append(f"Previous description of this room: {previous_descriptions[-1]}")
                 else:
-                    assert False, "No previous room description found"
+                    context.append("") # No previous room description
             else:
                 assert False, "No event history found"
 
