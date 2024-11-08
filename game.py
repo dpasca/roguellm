@@ -33,6 +33,11 @@ class Game:
         self.event_history = []
         self.language = language
 
+        # Initialize attributes with defaults in case of failure
+        self.item_defs = []
+        self.enemy_defs = []
+        self.celltype_defs = []
+
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
         _gen_ai.set_theme_description(theme_desc, language)
@@ -40,13 +45,22 @@ class Game:
         # Initialize these after setting the theme description
         def run_parallel_init():
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                i_fut = executor.submit(self.initialize_item_defs)
-                e_fut = executor.submit(self.initialize_enemy_defs)
-                concurrent.futures.wait([i_fut, e_fut])
+                futures = {
+                    'items': executor.submit(self.initialize_item_defs),
+                    'enemies': executor.submit(self.initialize_enemy_defs),
+                    'celltypes': executor.submit(self.initialize_celltype_defs)
+                }
+
+                for name, future in futures.items():
+                    try:
+                        future.result()  # This will raise any exceptions that occurred
+                    except Exception as e:
+                        logger.error(f"Failed to initialize {name}: {str(e)}")
 
         run_parallel_init()
         logger.info(f"Generated Item defs: {self.item_defs}")
         logger.info(f"Generated Enemy defs: {self.enemy_defs}")
+        logger.info(f"Generated Celltype defs: {self.celltype_defs}")
 
     def get_game_title(self):
         return _gen_ai.game_title
@@ -75,6 +89,12 @@ class Game:
             transform_fn=_gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
 
+    def initialize_celltype_defs(self):
+        self.celltype_defs = self.make_defs_from_json(
+            'game_celltypes.json',
+            transform_fn=_gen_ai.gen_game_celltypes_from_json_sample
+        )["celltype_defs"]
+
     async def initialize_game(self):
         # Read config.json
         with open('game_config.json', 'r') as f:
@@ -99,8 +119,8 @@ class Game:
             weapon = next((item for item in self.state.inventory if item.type == 'weapon'), None)
             armor = next((item for item in self.state.inventory if item.type == 'armor'), None)
             if weapon and armor:
-                self.handle_equip_item(weapon.id)
-                self.handle_equip_item(armor.id)
+                await self.handle_equip_item(weapon.id)
+                await self.handle_equip_item(armor.id)
 
         return initial_update
 

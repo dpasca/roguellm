@@ -67,14 +67,11 @@ SYS_BETTER_DESC_PROMPT_MSG = """
 You generate game theme descriptions for interactive games.
 The user provides you with a rough theme description, and you return an improved
 version that is more descriptive and detailed.
+This response will be used as a game design draft document.
+Mention any key details relevant to the game, anything of note that sets the
+atmosphere.
 
-# Requirements
-- Do not include any narrative style or tone, just a detailed and useful theme description
-- Clearly list what are the types of locations that the player can explore
-  (e.g. "dungeon room", "cave", "street", "dark corridor", "subway station", "town square", etc.)
-- All listed locations must be part of an area that the player can explore by moving
-  around the map. Do NOT include widely distant locations such as "alien planet" and
-  "starship".
+Do not include any narrative style or tone, just a detailed and useful theme description
 
 # Response Format
 - The first row of the response must be the game title, with no formatting or additional text
@@ -99,6 +96,21 @@ Do not translate the field names, because they are used as identifiers.
 
 # NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_GAME_ENEMIES_JSON_MSG = """
+You are an expert game enemy generator. Your task is to generate a JSON object
+describing game enemies. The user will provide a sample JSON object of an existing
+game.
+
+# Response Format
+Reply with a new JSON object that contains up to 10 item definitions.
+The new item definitions must follow the same format as the sample item definitions,
+but they must use a new theme description. For example, replace a "Orc" item
+with "tank" for a modern combat theme.
+Do not create new fields, as the game is not able to handle them yet.
+Do not translate the field names, because they are used as identifiers.
+"""
+
+# NOTE: Should append language req and theme desc at the bottom
+SYS_GEN_GAME_CELLTYPES_JSON_MSG = """
 You are an expert game enemy generator. Your task is to generate a JSON object
 describing game enemies. The user will provide a sample JSON object of an existing
 game.
@@ -179,7 +191,9 @@ A universe where you can become the master of the universe by defeating other ma
 """
         else:
             self.theme_desc_better = self._quick_completion_hi(
-                system_msg=SYS_BETTER_DESC_PROMPT_MSG + f"\n- The language of the response must be {language}",
+                system_msg=(
+                    SYS_BETTER_DESC_PROMPT_MSG +
+                    f"\n- The language of the response must be {language}"),
                 user_msg=theme_desc,
         )
         self.game_title = self.theme_desc_better.split("\n")[0]
@@ -267,31 +281,35 @@ A universe where you can become the master of the universe by defeating other ma
             logger.error(f"Invalid JSON output: {response}")
             return source_list
 
-    def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
+    # Generate a list of game elements from a JSON samples + system prompt
+    def _gen_game_elems_from_json_sample(
+            self,
+            elem_defs: str,
+            system_msg: str
+    ) -> List[dict]:
         if DO_BYPAST_WORLD_GEN:
-            return json.loads(item_defs)
+            return json.loads(elem_defs)
 
         return self._json_str_to_list_gen(
-            item_defs,
+            elem_defs,
             append_language_and_desc_to_prompt(
-                SYS_GEN_GAME_ITEMS_JSON_MSG,
+                system_msg,
                 self.language,
                 self.theme_desc
             )
         )
+
+    def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
+        return self._gen_game_elems_from_json_sample(
+            item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
 
     def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
-        if DO_BYPAST_WORLD_GEN:
-            return json.loads(enemy_defs)
+        return self._gen_game_elems_from_json_sample(
+            enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
 
-        return self._json_str_to_list_gen(
-            enemy_defs,
-            append_language_and_desc_to_prompt(
-                SYS_GEN_GAME_ENEMIES_JSON_MSG,
-                self.language,
-                self.theme_desc
-            )
-        )
+    def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
+        return self._gen_game_elems_from_json_sample(
+            celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
 
     # Generator for generic sentences
     def gen_adapt_sentence(
