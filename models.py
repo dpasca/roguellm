@@ -20,6 +20,7 @@ class Equipment(BaseModel):
     armor: Optional[Item] = None
 
 class GameState(BaseModel):
+    cell_types: List[List[dict]] = []
     map_width: int
     map_height: int
     player_pos: tuple = (0, 0)

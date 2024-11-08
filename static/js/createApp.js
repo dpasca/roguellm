@@ -67,6 +67,18 @@ const app = Vue.createApp({
             if (!cell) return '❓';
             return '·';
         },
+        getCellStyle(x, y) {
+            if (!this.gameState.explored[y][x]) return {};
+            const cellType = this.gameState.cell_types[y][x];
+            return {
+                backgroundColor: cellType.map_color,
+                color: this.isPlayerPosition(x, y) ? 'white' : cellType.map_color
+            };
+        },
+        getCellIcon(x, y) {
+            if (!this.gameState.explored[y][x]) return '';
+            return this.gameState.cell_types[y][x].fontaw_some_icon;
+        },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;
         },

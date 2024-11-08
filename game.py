@@ -113,6 +113,12 @@ class Game:
         )
         self.state.explored[0][0] = True
 
+        # Initialize cell types (random distribution for now)
+        self.state.cell_types = [
+            [self.random.choice(self.celltype_defs) for _ in range(self.state.map_width)]
+            for _ in range(self.state.map_height)
+        ]
+
         if TEST_DUMMY_EQUIP_AND_ITEMS:
             self.state.inventory = [self.generate_random_item() for _ in range(5)]
             # Find a weapon and an armor
