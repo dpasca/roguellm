@@ -1,0 +1,12 @@
+{
+    "player_defs": [
+    {
+        "name": "Alric",
+        "age": 25,
+        "class": "warrior",
+        "height_cm": 180,
+        "weight_kg": 80,
+        "fontaw_icon": "fa-solid fa-user"
+    }
+    ]
+}

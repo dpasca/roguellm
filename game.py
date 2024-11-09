@@ -37,6 +37,7 @@ class Game:
         self.language = language
 
         # Initialize attributes with defaults in case of failure
+        self.player_defs = []
         self.item_defs = []
         self.enemy_defs = []
         self.celltype_defs = []
@@ -49,6 +50,7 @@ class Game:
         def run_parallel_init():
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = {
+                    'players': executor.submit(self.initialize_player_defs),
                     'items': executor.submit(self.initialize_item_defs),
                     'enemies': executor.submit(self.initialize_enemy_defs),
                     'celltypes': executor.submit(self.initialize_celltype_defs)
@@ -61,6 +63,7 @@ class Game:
                         logger.error(f"Failed to initialize {name}: {str(e)}")
 
         run_parallel_init()
+        logger.info(f"Generated Player defs: {self.player_defs}")
         logger.info(f"Generated Item defs: {self.item_defs}")
         logger.info(f"Generated Enemy defs: {self.enemy_defs}")
         logger.info(f"Generated Celltype defs: {self.celltype_defs}")
@@ -79,6 +82,12 @@ class Game:
         except json.JSONDecodeError:
             self.log_error(f"Invalid JSON in {filename} file.")
             return {} if transform_fn else []
+
+    def initialize_player_defs(self):
+        self.player_defs = self.make_defs_from_json(
+            'game_players.json',
+            transform_fn=_gen_ai.gen_players_from_json_sample
+        )["player"]
 
     def initialize_item_defs(self):
         self.item_defs = self.make_defs_from_json(
@@ -110,6 +119,12 @@ class Game:
             config = json.load(f)
 
         self.state = GameState.from_config(config) # Initialize GameState with "config"
+        # Set player data with fallback to default
+        self.state.player = self.player_defs[0] if self.player_defs else {
+            "name": "Unknown Hero",
+            "class": "adventurer",
+            "fontaw_icon": "fa-solid fa-user"
+        }
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
         self.state.inventory = []

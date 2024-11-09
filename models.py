@@ -23,6 +23,7 @@ class GameState(BaseModel):
     cell_types: List[List[dict]] = []
     map_width: int
     map_height: int
+    player: dict = {}
     player_pos: tuple = (0, 0)
     player_pos_prev: tuple = (0, 0)
     player_hp: int

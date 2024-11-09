@@ -104,7 +104,13 @@
 
                     <!-- Player Status (moved from sidebar) -->
                     <div class="player-status">
+                        <!--
                         <h3>Player Status</h3>
+                        -->
+                        <div class="status-item">
+                            <span class="status-label"><i :class="gameState.player.fontaw_icon"></i></span>
+                            <span>{{ gameState.player.name }}</span>
+                        </div>
                         <div class="status-item">
                             <span class="status-label">❤️ HP</span>
                             <div class="health-bar-container">

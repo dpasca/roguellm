@@ -91,6 +91,22 @@ Do not include any narrative style or tone, just a detailed and useful theme des
 """
 
 # NOTE: Should append language req and theme desc at the bottom
+SYS_GEN_PLAYER_JSON_MSG = """
+You are an expert game player generator. Your task is to generate a JSON object
+describing a game player. The user will provide a sample JSON object of an existing
+game.
+
+# Response Format
+Reply with a new JSON object that contains player definition.
+Do not include any markdown formatting, including the triple backticks.
+The new player definition must follow the same format as the sample definition,
+but adapt it to match the game theme. For example, replace a "warrior" class
+with "space marine" for a sci-fi theme.
+Do not create new fields, as the game is not able to handle them yet.
+Do not translate the field names, because they are used as identifiers.
+"""
+
+# NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_GAME_ITEMS_JSON_MSG = """
 You are an expert game item generator. Your task is to generate a JSON object
 describing game items. The user will provide a sample JSON object of an existing
@@ -371,17 +387,17 @@ A universe where you can become the master of the universe by defeating other ma
             )
         )
 
+    def gen_players_from_json_sample(self, player_defs: str) -> dict:
+        return self._gen_game_elems_from_json_sample(player_defs, SYS_GEN_PLAYER_JSON_MSG)
+
     def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(
-            item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
+        return self._gen_game_elems_from_json_sample(item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
 
     def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(
-            enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
+        return self._gen_game_elems_from_json_sample(enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
 
     def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(
-            celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
+        return self._gen_game_elems_from_json_sample(celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
 
     def gen_game_map_from_celltypes(
             self,
