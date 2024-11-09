@@ -91,6 +91,7 @@ but they must use a new theme description. For example, replace a "potion" item
 with "med-kit" for a modern combat theme.
 Do not create new fields, do not create new effect types, as the game is not able
 to handle them yet.
+The only "effect" types currently supported are "attack", "defense" and "health".
 Do not translate the field names, because they are used as identifiers.
 """
 
