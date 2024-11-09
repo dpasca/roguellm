@@ -79,24 +79,19 @@ const app = Vue.createApp({
         */
     },
     methods: {
-        getCellSymbol(x, y, cell) {
-            if (this.isPlayerPosition(x, y)) return '👤';
-            if (!cell) return '❓';
-            return '·';
-        },
-        getCellStyle(x, y, explored) {
-            //if (!this.gameState.explored[y][x]) return {};
+        getCellStyle(x, y) {
             if (!this.gameState.cell_types || this.gameState.cell_types.length === 0) return {};
             const cellType = this.gameState.cell_types[y][x];
-            const bgCol = scaleColor(cellType.map_color, (explored ? 1 : 0.4));
-            // See if the background color is bright or dark
+            const isExplored = this.gameState.explored[y][x];
+            const scaleBg = isExplored ? 0.6 : 0.5; // Unexplored cells are darker
+            const scaleFg = isExplored ? 0.9 : 0.8; // Unexplored cells are darker
             return {
-                backgroundColor: bgCol,
-                color: isBrightColor(bgCol) ? '#666666' : '#aaaaaa'
+                backgroundColor: scaleColor(cellType.map_color, scaleBg),
+                color: scaleColor(cellType.map_color, scaleFg)
             };
         },
         getCellIcon(x, y) {
-            if (!this.gameState.explored[y][x]) return '';
+            //if (!this.gameState.explored[y][x]) return '';
             return this.gameState.cell_types[y][x].fontaw_icon;
         },
         toggleMenu() {

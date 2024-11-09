@@ -57,13 +57,12 @@
                                     class="cell"
                                     :class="{
                                         player: isPlayerPosition(x, y),
-                                        explored: cell && !isPlayerPosition(x, y),
-                                        unexplored: !cell
+                                        explored: gameState.explored[y][x],
+                                        unexplored: !gameState.explored[y][x]
                                     }"
-                                    :style="getCellStyle(x, y, explored)">
-                                    <i v-if="cell && !isPlayerPosition(x, y)" :class="getCellIcon(x, y)"></i>
-                                    <span v-else-if="isPlayerPosition(x, y)">👤</span>
-                                    <span v-else>.</span>
+                                    :style="getCellStyle(x, y)">
+                                    <i v-if="!isPlayerPosition(x, y)" :class="getCellIcon(x, y)"></i>
+                                    <span v-else>👤</span>
                                 </div>
                             </div>
                         </div>
