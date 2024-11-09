@@ -7,13 +7,24 @@ import json
 import logging
 logger = logging.getLogger()
 
-DO_BYPAST_WORLD_GEN = False
+# Default temperature for completions
+DEF_TEMP = 0.7
+
+# Do bypass world generation (for testing)
+DO_BYPASS_WORLD_GEN = False
 
 MAX_TOKENS_FOR_ROOM_DESC = 200
 MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 
-def clean_json_str(json_str: str) -> str:
-    return json_str.replace("```json", "").replace("```", "")
+# Extract clean data for cases where the LLM still uses markdown
+def extract_clean_data(data_str: str) -> str:
+    if data_str.startswith("```json"):
+        return data_str.replace("```json", "").replace("```", "")
+    elif data_str.startswith("```csv"):
+        return data_str.replace("```csv", "").replace("```", "")
+    elif data_str.startswith("```"):
+        return data_str.replace("```", "")
+    return data_str
 
 #==================================================================
 # GenAI
@@ -86,6 +97,7 @@ game.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
+Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "potion" item
 with "med-kit" for a modern combat theme.
@@ -103,6 +115,7 @@ game.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
+Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "Orc" item
 with "tank" for a modern combat theme.
@@ -112,17 +125,32 @@ Do not translate the field names, because they are used as identifiers.
 
 # NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_GAME_CELLTYPES_JSON_MSG = """
-You are an expert game enemy generator. Your task is to generate a JSON object
-describing game enemies. The user will provide a sample JSON object of an existing
+You are an expert game map cell type generator. Your task is to generate a JSON object
+describing game map cell types. The user will provide a sample JSON object of an existing
 game.
 
 # Response Format
-Reply with a new JSON object that contains up to 10 item definitions.
+Reply with a new JSON object that contains up to 5 item definitions.
+Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
-but they must use a new theme description. For example, replace a "Orc" item
-with "tank" for a modern combat theme.
+but they must use a new theme description. For example, replace a "grass" item
+with "desert" for a desert theme.
 Do not create new fields, as the game is not able to handle them yet.
 Do not translate the field names, because they are used as identifiers.
+"""
+
+# NOTE: Should append theme desc at the bottom
+SYS_GEN_MAP_CSV_MSG = """
+You are an expert game map generator. Your task is to generate a CSV map
+describing the game map. The user will provide a set of cell types, each with an "id",
+"name", "description".
+
+Your job is to respond with a CSV map, where each cell is described by the "id" of
+the cell type. Generate a map that is coherent with the game theme.
+
+# Response Format
+Return ONLY the CSV map, with no additional text or explanations.
+Do not include any markdown formatting, including the triple backticks.
 """
 
 def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) -> str:
@@ -130,7 +158,14 @@ def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) ->
 
 The language of the response must be {language}
 
-# New Game Theme Description
+# Game Theme Description
+{desc}
+"""
+
+def append_desc_to_prompt(prompt: str, desc: str) -> str:
+    return f"""{prompt}
+
+# Game Theme Description
 {desc}
 """
 
@@ -167,9 +202,31 @@ class GenAI:
         logger.info(f"High spec model: {self.hi_model.model_name}")
 
     # Quick completion with the high-spec model
-    def _quick_completion_hi(self, system_msg: str, user_msg: str, temp: float = 0.7) -> str:
+    def _quick_completion_hi(
+            self,
+            system_msg: str,
+            user_msg: str,
+            temp: float = DEF_TEMP
+    ) -> str:
         response = self.hi_model.client.chat.completions.create(
             model=self.hi_model.model_name,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg}
+            ],
+            temperature=temp,  # Add some variability but keep it coherent
+        )
+        return response.choices[0].message.content
+
+    # Quick completion with the low-spec model
+    def _quick_completion_lo(
+            self,
+            system_msg: str,
+            user_msg: str,
+            temp: float = DEF_TEMP
+    ) -> str:
+        response = self.lo_model.client.chat.completions.create(
+            model=self.lo_model.model_name,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg}
@@ -183,7 +240,7 @@ class GenAI:
         self.theme_desc = theme_desc
         self.language = language
 
-        if DO_BYPAST_WORLD_GEN: # Quick version for testing
+        if DO_BYPASS_WORLD_GEN: # Quick version for testing
             self.theme_desc_better = f"""
 Generic Game (TEST)
 A universe where you can become the master of the universe by defeating other masters.
@@ -224,9 +281,9 @@ A universe where you can become the master of the universe by defeating other ma
             # Add previous room description if it exists
             if event_history:
                 previous_descriptions = [
-                    event['event']['description'] 
-                    for event in event_history 
-                    if event['event'].get('type') == 'update' 
+                    event['event']['description']
+                    for event in event_history
+                    if event['event'].get('type') == 'update'
                     and event['action'] in ['move', 'initialize']
                     and (event['event'].get('state', {}).get('player_pos') == (x, y))
                 ]
@@ -273,7 +330,7 @@ A universe where you can become the master of the universe by defeating other ma
             user_msg=json_str,
         )
         # Clean the response to remove any markdown formatting
-        response = clean_json_str(response)
+        response = extract_clean_data(response)
         # Convert the response to a list of dictionaries
         try:
             return json.loads(response)
@@ -288,7 +345,7 @@ A universe where you can become the master of the universe by defeating other ma
             elem_defs: str,
             system_msg: str
     ) -> List[dict]:
-        if DO_BYPAST_WORLD_GEN:
+        if DO_BYPASS_WORLD_GEN:
             return json.loads(elem_defs)
 
         return self._json_str_to_list_gen(
@@ -311,6 +368,60 @@ A universe where you can become the master of the universe by defeating other ma
     def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
         return self._gen_game_elems_from_json_sample(
             celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
+
+    def gen_game_map_from_celltypes(
+            self,
+            celltype_defs: List[dict],
+            map_width: int,
+            map_height: int
+    ) -> List[List[dict]]:
+        # Prepare message
+        use_msg = "Here are the cell types:\n"
+        for ct in celltype_defs:
+            id = ct['id']
+            name = ct['name']
+            desc = ct['description']
+            use_msg += f'- id:{id}, name:"{name}", desc:"{desc}"\n'
+        use_msg += f"\nGenerate map with dimensions width:{map_width} and height:{map_height} using the above cell types."
+
+        logger.info(f"gen_game_map_from_celltypes: User message: {use_msg}")
+
+        # Get CSV response
+        result_csv = self._quick_completion_lo(
+            system_msg=append_desc_to_prompt(
+                SYS_GEN_MAP_CSV_MSG,
+                self.theme_desc_better
+            ),
+            user_msg=use_msg,
+        )
+        logger.info(f"Result CSV: {result_csv}")
+        # Clean the response to remove any markdown formatting (just in case)
+        result_csv = extract_clean_data(result_csv)
+
+        # Process CSV into map
+        out_map = []
+        rows = [row.strip() for row in result_csv.split("\n") if row.strip()]
+
+        if len(rows) != map_height:
+            logger.error(f"Generated map height {len(rows)} doesn't match requested height {map_height}")
+            raise ValueError("Generated map has incorrect dimensions")
+
+        for row in rows:
+            cells = [cell.strip() for cell in row.split(",")]
+            if len(cells) != map_width:
+                logger.error(f"Generated map width {len(cells)} doesn't match requested width {map_width}")
+                raise ValueError("Generated map has incorrect dimensions")
+
+            map_row = []
+            for cell_id in cells:
+                matching_cells = [ct for ct in celltype_defs if str(ct['id']) == cell_id]
+                if not matching_cells:
+                    logger.error(f"Unknown cell type ID: {cell_id}")
+                    raise ValueError(f"Generated map contains unknown cell type: {cell_id}")
+                map_row.append(matching_cells[0])
+            out_map.append(map_row)
+
+        return out_map
 
     # Generator for generic sentences
     def gen_adapt_sentence(
@@ -344,7 +455,7 @@ A universe where you can become the master of the universe by defeating other ma
                     },
                     {"role": "user", "content": user_msg}
                 ],
-                temperature=0.7,  # Add some variability but keep it coherent
+                temperature=DEF_TEMP,  # Add some variability but keep it coherent
                 max_tokens=max(MAX_TOKENS_FOR_GENERIC_SENTENCE, len(original_sentence)//4)
             )
             return response.choices[0].message.content
@@ -378,7 +489,7 @@ A universe where you can become the master of the universe by defeating other ma
                     },
                     {"role": "user", "content": user_msg}
                 ],
-                temperature=0.7,  # Add some variability but keep it coherent
+                temperature=DEF_TEMP,  # Add some variability but keep it coherent
                 max_tokens=MAX_TOKENS_FOR_ROOM_DESC
             )
             return response.choices[0].message.content

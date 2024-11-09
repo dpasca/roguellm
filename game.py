@@ -17,6 +17,9 @@ from models import GameState, Enemy, Item, Equipment
 
 TEST_DUMMY_EQUIP_AND_ITEMS = False
 
+# Use random map (for testing)
+USE_RANDOM_MAP = False
+
 # Model definitions
 #_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
@@ -95,6 +98,12 @@ class Game:
             transform_fn=_gen_ai.gen_game_celltypes_from_json_sample
         )["celltype_defs"]
 
+    def make_random_map(self):
+        return [
+            [self.random.choice(self.celltype_defs) for _ in range(self.state.map_width)]
+            for _ in range(self.state.map_height)
+        ]
+
     async def initialize_game(self):
         # Read config.json
         with open('game_config.json', 'r') as f:
@@ -113,11 +122,22 @@ class Game:
         )
         self.state.explored[0][0] = True
 
-        # Initialize cell types (random distribution for now)
-        self.state.cell_types = [
-            [self.random.choice(self.celltype_defs) for _ in range(self.state.map_width)]
-            for _ in range(self.state.map_height)
-        ]
+        # Initialize cell types
+        if USE_RANDOM_MAP:
+            logger.info("Using random map")
+            self.state.cell_types = self.make_random_map()
+        else:
+            try:
+                self.state.cell_types = _gen_ai.gen_game_map_from_celltypes(
+                    self.celltype_defs,
+                    self.state.map_width,
+                    self.state.map_height
+                )
+
+            except ValueError as e:
+                logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
+                # Fallback to random map generation
+                self.state.cell_types = self.make_random_map()
 
         if TEST_DUMMY_EQUIP_AND_ITEMS:
             self.state.inventory = [self.generate_random_item() for _ in range(5)]
