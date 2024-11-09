@@ -214,12 +214,20 @@ class Game:
             result = await self.handle_equip_item(message.get('item_id'))
         elif action == 'initialize':
             result = await self.initialize_game()
+        elif action == 'get_initial_state':
+            # This is used just to get the map initialized
+            result = {
+                'type': 'update',
+                'state': self.state.dict(),
+                'description': ""
+            }
+            return result
 
         if result is None:
             result = {
                 'type': 'update',
                 'state': self.state.dict(),
-                'description': "Unknown action!"
+                'description': f"Unknown action: {action}"
             }
 
         self.events_add(action, result) # Record the event
@@ -242,8 +250,8 @@ class Game:
                 'description': "Item not found in inventory!"
             }
 
-        if item.type == 'potion':
-            # Remove the potion immediately as it will be consumed
+        if item.type == 'consumable':
+            # Remove the consumable immediately as it will be consumed
             self.state.inventory = [i for i in self.state.inventory if i.id != item_id]
 
             if 'health' in item.effect:
@@ -340,7 +348,7 @@ class Game:
                 effects_to_remove.append(effect_name)
                 if effect['type'] == 'attack':
                     self.state.player_attack -= effect['amount']
-                    effects_log.append(f"The {effect_name} potion effect has worn off!")
+                    effects_log.append(f"The {effect_name} effect has worn off")
 
         for effect_name in effects_to_remove:
             del self.state.temporary_effects[effect_name]

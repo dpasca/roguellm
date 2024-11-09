@@ -100,10 +100,11 @@ Reply with a new JSON object that contains up to 10 item definitions.
 Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "potion" item
-with "med-kit" for a modern combat theme.
+with "med-kit", "energy drink" for another theme.
 Do not create new fields, do not create new effect types, as the game is not able
 to handle them yet.
-The only "effect" types currently supported are "attack", "defense" and "health".
+The only "effect" types currently supported are: attack, defense, health, duration.
+The only "type" fields currently supported are: weapon, armor, consumable.
 Do not translate the field names, because they are used as identifiers.
 """
 

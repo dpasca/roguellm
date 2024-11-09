@@ -31,14 +31,14 @@
     {
         "id": "health_potion",
         "name": "Health Potion",
-        "type": "potion",
+        "type": "consumable",
         "effect": {"health": 30},
         "description": "Restores 30 HP when used."
     },
     {
         "id": "strength_potion",
         "name": "Strength Potion",
-        "type": "potion",
+        "type": "consumable",
         "effect": {"attack": 5, "duration": 3},
         "description": "Temporarily increases attack by 5."
     }

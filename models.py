@@ -10,7 +10,7 @@ class Enemy(BaseModel):
 class Item(BaseModel):
     id: str
     name: str
-    type: str  # 'weapon', 'armor', 'potion'
+    type: str  # 'weapon', 'armor', 'consumable'
     effect: Dict[str, int]
     is_equipped: bool = False
     description: str
@@ -50,6 +50,6 @@ class GameState(BaseModel):
             player_xp=0,
         )
         # Initialize explored array with proper dimensions
-        instance.explored = [[False for _ in range(instance.map_width)] 
+        instance.explored = [[False for _ in range(instance.map_width)]
                            for _ in range(instance.map_height)]
         return instance
