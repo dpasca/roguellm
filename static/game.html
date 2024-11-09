@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/style.css">
     <link rel="stylesheet" href="static/css/game.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -104,12 +105,9 @@
 
                     <!-- Player Status (moved from sidebar) -->
                     <div class="player-status">
-                        <!--
-                        <h3>Player Status</h3>
-                        -->
-                        <div class="status-item">
-                            <span class="status-label"><i :class="gameState.player.fontaw_icon"></i></span>
-                            <span>{{ gameState.player.name }}</span>
+                        <div class="player-header">
+                            <h3>{{ gameState.player.name }}</h3>
+                            <i :class="gameState.player.fontaw_icon"></i>
                         </div>
                         <div class="status-item">
                             <span class="status-label">❤️ HP</span>

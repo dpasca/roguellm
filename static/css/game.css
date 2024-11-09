@@ -59,7 +59,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 5px 0;
+    margin: 8px 0;
 }
 
 .status-label {
@@ -601,4 +601,59 @@
 #loading {
     display: block;
     margin: 20px 0;
+}
+
+.player-status {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    position: relative;
+    width: 100%;
+}
+
+.player-header h3 {
+    margin: 0;
+    color: #4CAF50;
+    font-size: 1.4em;
+    font-weight: 600;
+    flex: 1;
+}
+
+.player-header i {
+    font-size: 1.4em;
+    color: #4CAF50;
+    margin-left: 10px;
+    display: block;
+}
+
+/* Remove any potential conflicting styles */
+.status-item:first-child {
+    margin-top: 0;
+}
+
+@media screen and (max-width: 180mm) {
+    .player-header h3 {
+        font-size: 1.2em;
+    }
+    
+    .player-header i {
+        font-size: 1.2em;
+    }
+    
+    .player-status {
+        padding: 10px;
+    }
+    
+    .player-header {
+        margin-bottom: 10px;
+    }
 }
