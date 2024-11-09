@@ -87,7 +87,7 @@ class Game:
         self.player_defs = self.make_defs_from_json(
             'game_players.json',
             transform_fn=_gen_ai.gen_players_from_json_sample
-        )["player"]
+        )["player_defs"]
 
     def initialize_item_defs(self):
         self.item_defs = self.make_defs_from_json(
