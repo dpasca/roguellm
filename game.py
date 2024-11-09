@@ -117,10 +117,6 @@ class Game:
         self.state.game_over = False
         self.state.game_title = self.get_game_title()
         logging.info(f"Game title set to: {self.state.game_title}")
-        initial_update = await self.create_update(
-            f"You find yourself at the initial location of {self.get_game_title()}."
-        )
-        self.state.explored[0][0] = True
 
         # Initialize cell types
         if USE_RANDOM_MAP:
@@ -147,6 +143,11 @@ class Game:
             if weapon and armor:
                 await self.handle_equip_item(weapon.id)
                 await self.handle_equip_item(armor.id)
+
+        initial_update = await self.create_update(
+            f"You find yourself at the initial location of {self.get_game_title()}."
+        )
+        self.state.explored[0][0] = True
 
         return initial_update
 
@@ -356,24 +357,24 @@ class Game:
         return "\n".join(effects_log) if effects_log else ""
 
     async def handle_move(self, direction: str) -> dict:
+        # Save previous position
+        self.state.player_pos_prev = self.state.player_pos
+        # Get current position
         x, y = self.state.player_pos
-        moved = False
-
+        moved = True
         if direction == 'n' and y > 0:
-            self.state.player_pos = (x, y - 1)
-            moved = True
+            y -= 1
         elif direction == 's' and y < self.state.map_height - 1:
-            self.state.player_pos = (x, y + 1)
-            moved = True
+            y += 1
         elif direction == 'w' and x > 0:
-            self.state.player_pos = (x - 1, y)
-            moved = True
+            x -= 1
         elif direction == 'e' and x < self.state.map_width - 1:
-            self.state.player_pos = (x + 1, y)
-            moved = True
+            x += 1
+        else:
+            moved = False
 
         if moved:
-            x, y = self.state.player_pos
+            self.state.player_pos = (x, y)
             encounter_result = await self.check_encounters()
             # Set after encounter check so that the room is not marked
             # as explored from the first time

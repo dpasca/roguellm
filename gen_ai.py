@@ -62,6 +62,7 @@ location description based on the Game Theme Description provided below.
 - Include relevant atmospheric elements
 - Consider current context and player status
 - When describing a location that was previously explored, reuse the previous description
+- Do not repeat the location name or description if the player's previous location was the same
 - Do NOT repeat the same location description twice
 - Consider player's current status when setting the mood
 - Reference relevant recent events naturally
@@ -276,7 +277,19 @@ A universe where you can become the master of the universe by defeating other ma
         # Add current position and exploration status
         x, y = gstate.player_pos
         was_explored = gstate.explored[y][x]
+
+        ct_name = gstate.cell_types[y][x]['name']
+        ct_desc = gstate.cell_types[y][x]['description']
         context.append(f"Current position: ({x}, {y}) of a {gstate.map_width}x{gstate.map_height} map")
+        context.append(f"Current location type: {ct_name} ({ct_desc})")
+
+        px, py = gstate.player_pos_prev
+        if px != x or py != y:
+            context.append(f"Previous position: ({px}, {py})")
+            pct_name = gstate.cell_types[py][px]['name']
+            pct_desc = gstate.cell_types[py][px]['description']
+            context.append(f"Previous location type: {pct_name} ({pct_desc})")
+
         if was_explored:
             context.append("This location has been previously explored.")
             # Add previous room description if it exists
@@ -433,7 +446,6 @@ A universe where you can become the master of the universe by defeating other ma
     ) -> str:
         if self.lo_model.client is None:
             return original_sentence
-
 
         context = self._create_context(game_state, event_history or [])
         user_msg = f"""Original sentence: {original_sentence}

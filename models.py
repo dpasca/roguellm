@@ -24,6 +24,7 @@ class GameState(BaseModel):
     map_width: int
     map_height: int
     player_pos: tuple = (0, 0)
+    player_pos_prev: tuple = (0, 0)
     player_hp: int
     player_max_hp: int
     player_attack: int
