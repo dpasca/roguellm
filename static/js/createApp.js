@@ -132,9 +132,12 @@ const app = Vue.createApp({
                         if (response.description) {
                             this.gameLogs.push(response.description);
                         }
-                        if (!this.isGameInitialized) { // This is the initial state
+                        if (!this.isGameInitialized) {
                             console.log('Initial game state received:', this.gameState);
                             this.isGameInitialized = true;
+                            this.ws.send(JSON.stringify({
+                                action: 'get_initial_state'
+                            }));
                         } else {
                             if (response.description) {
                                 this.$nextTick(() => {
@@ -176,6 +179,12 @@ const app = Vue.createApp({
                     action: 'restart'
                 }));
                 this.gameLogs = [];
+                // Request initial state after restart
+                setTimeout(() => {
+                    this.ws.send(JSON.stringify({
+                        action: 'get_initial_state'
+                    }));
+                }, 100); // Small delay to ensure restart completes first
             }
         },
         move(direction) {
