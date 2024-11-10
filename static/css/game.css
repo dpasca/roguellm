@@ -106,24 +106,7 @@
 }
 .attack-button { background-color: #f44336; }
 .run-button { background-color: #2196F3; }
-.game-over {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-.game-over h2 {
-    color: #f44336;
-    font-size: 48px;
-    margin-bottom: 20px;
-}
+
 .restart-button {
     background-color: #4CAF50;
     color: white;
@@ -180,39 +163,6 @@
     padding: 15px;
     border-radius: 5px;
 }
-
-/* Add new overlay controls styling */
-.controls {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    margin: 0;
-    padding: 0;
-    pointer-events: none; /* Allows clicking through the container */
-}
-.controls button {
-    position: absolute;
-    margin: 0;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    pointer-events: auto;
-    backdrop-filter: blur(1px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-/* Precise positioning relative to map edges */
-.controls button[data-dir="n"] { top: 0; left: 50%; transform: translateX(-50%); }
-.controls button[data-dir="s"] { bottom: 0; left: 50%; transform: translateX(-50%); }
-.controls button[data-dir="w"] { left: 0; top: 50%; transform: translateY(-50%); }
-.controls button[data-dir="e"] { right: 0; top: 50%; transform: translateY(-50%); }
 
 /* Update game container layout */
 .game-container {
@@ -551,33 +501,6 @@
     display: none;
 }
 
-/* Loading overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(18, 18, 18, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.loading-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    text-align: center;
-    color: white;
-}
-
-.loading-content h2 {
-    margin-top: 20px;
-}
-
 /* Add the new progress bar styles */
 .progress-bar-container {
     width: 300px;
@@ -601,11 +524,6 @@
     0% { opacity: 0.6; }
     50% { opacity: 1; }
     100% { opacity: 0.6; }
-}
-
-#loading {
-    display: block;
-    margin: 20px 0;
 }
 
 .player-status {
