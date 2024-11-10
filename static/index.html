@@ -71,6 +71,13 @@
                             rows="4"
                             maxlength="3000"
                             class="theme-textarea"></textarea>
+                    <div class="custom-checkbox">
+                        <label>
+                            <input type="checkbox" v-model="doWebSearch">
+                            <span class="checkbox-custom"></span>
+                            <span class="checkbox-label">Enable web search for theme generation</span>
+                        </label>
+                    </div>
                 </div>
                 <div v-if="errorMessage && selectedTheme === 'custom'" class="error-message">
                     {{ errorMessage }}

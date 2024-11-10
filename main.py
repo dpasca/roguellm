@@ -100,11 +100,12 @@ async def set_theme(request: Request):
     data = await request.json()
     theme = data.get('theme', 'fantasy')
     lang = data.get('language', 'en')
-
+    do_web_search = data.get('do_web_search', False)
     # Compress the theme string
     compressed = base64.b64encode(zlib.compress(theme.encode())).decode()
     request.session["theme_desc"] = compressed
     request.session["language"] = lang
+    request.session["do_web_search"] = do_web_search
     return JSONResponse({"status": "success"})
 
 # Time profiler
@@ -137,6 +138,10 @@ async def websocket_endpoint(websocket: WebSocket):
         # Decompress the theme
         theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
 
+    # Get do_web_search from session (set by /set-theme)
+    do_web_search = session.get("do_web_search", False)
+    logging.info(f"Do web search: {do_web_search}")
+
     # Get language from session (set by /set-theme)
     lang = session.get("language", "en")
     logging.info(f"Language: {lang}")
@@ -144,7 +149,12 @@ async def websocket_endpoint(websocket: WebSocket):
     # Create the game instance with a random seed and the theme description
     rand_seed = int(time.time())
     with TimeProfiler("Game instance creation"):
-       game_instance = Game(seed=rand_seed, theme_desc=theme_desc, language=lang)
+       game_instance = Game(
+           seed=rand_seed,
+           theme_desc=theme_desc,
+           do_web_search=do_web_search,
+           language=lang
+       )
 
     try:
         # Initialize the game

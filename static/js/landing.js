@@ -6,7 +6,8 @@ createApp({
             selectedTheme: 'custom',
             selectedLanguage: 'en',
             customDescription: '',
-            errorMessage: null
+            errorMessage: null,
+            doWebSearch: true
         }
     },
     methods: {
@@ -25,7 +26,11 @@ createApp({
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ theme: description, language: this.selectedLanguage }),
+                body: JSON.stringify({ 
+                    theme: description, 
+                    language: this.selectedLanguage,
+                    do_web_search: this.selectedTheme === 'custom' ? this.doWebSearch : false
+                }),
                 credentials: 'include'
             })
             .then(response => {
@@ -39,7 +44,10 @@ createApp({
         selectedTheme(newTheme) {
             if (newTheme === 'fantasy') {
                 this.errorMessage = null;
+                this.doWebSearch = false;
+            } else {
+                this.doWebSearch = true;
             }
         }
     }
-}).mount('#app') 
+}).mount('#app')

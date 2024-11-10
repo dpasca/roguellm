@@ -3,6 +3,7 @@ import random
 from typing import List
 from models import GameState
 import json
+from web_search import web_search
 
 import logging
 logger = logging.getLogger()
@@ -25,6 +26,37 @@ def extract_clean_data(data_str: str) -> str:
     elif data_str.startswith("```"):
         return data_str.replace("```", "")
     return data_str
+
+# Given a theme description, generate a web search query and return the results
+def make_query_and_web_search(
+        oai_client: OpenAI,
+        model_name: str,
+        subject_input: str,
+        language: str) -> str:
+    user_msg = f"""
+Generate web search query to research on the following subject:
+{subject_input}
+
+---
+
+# Response Format
+Return ONLY the query, no additional text or explanations.
+The language of the response must be: {language}
+"""
+    logger.info(f"Requesting web search query: {user_msg}")
+    response = oai_client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": "You are an expert web search query generator."},
+            {"role": "user", "content": user_msg}
+        ],
+        temperature=DEF_TEMP,
+    )
+    query = response.choices[0].message.content
+    logger.info(f"Obtained web search query: {query}")
+    query_result = web_search(query)
+    logger.info(f"Web search results: {query_result}")
+    return query_result
 
 #==================================================================
 # GenAI
@@ -254,7 +286,12 @@ class GenAI:
         return response.choices[0].message.content
 
     # Upon setting the theme description, translate the basic system prompts
-    def set_theme_description(self, theme_desc: str, language: str = "en"):
+    def set_theme_description(
+            self,
+            theme_desc: str,
+            do_web_search: bool = False,
+            language: str = "en"
+    ):
         self.theme_desc = theme_desc
         self.language = language
 
@@ -266,6 +303,18 @@ A universe where you can become the master of the universe by defeating other ma
 - The language of the response must be {language}
 """
         else:
+            research_result = ""
+            if do_web_search:
+                research_result = make_query_and_web_search(
+                    self.lo_model.client,
+                    self.lo_model.model_name,
+                    theme_desc,
+                    language
+                )
+
+            if research_result:
+                theme_desc += f"\n\n# Web Search Results\n{research_result}"
+
             self.theme_desc_better = self._quick_completion_hi(
                 system_msg=(
                     SYS_BETTER_DESC_PROMPT_MSG +

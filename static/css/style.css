@@ -61,6 +61,7 @@
     box-sizing: border-box;
     max-width: 100%;  /* Ensures it doesn't overflow */
     resize: vertical;  /* Allows vertical resizing only */
+    margin-bottom: 8px;  /* Changed from 15px to reduce gap */
 }
 .launch-button {
     background-color: #4CAF50;
@@ -275,7 +276,61 @@
     padding: 10px;
 }
 
-/* Add media query for mobile devices in portrait mode */
+/* Custom checkbox styles */
+.custom-checkbox {
+    text-align: center;
+    margin: 5px 0;
+    padding: 5px 0;
+    padding-top: 0;
+}
+
+.custom-checkbox label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    margin-right: 10px;
+    position: relative;
+    background: #2a2a2a;
+    transition: all 0.3s ease;
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkbox-custom {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '\2714';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+}
+
+.checkbox-label {
+    color: #e0e0e0;
+    font-size: 0.9em;
+}
+
+.custom-checkbox:hover .checkbox-custom {
+    border-color: #4CAF50;
+}
+
+/* Add media queries */
 @media screen and (max-width: 768px) {
     .game-container {
         flex-direction: column;
@@ -356,5 +411,9 @@
     }
     .theme-description textarea {
         font-size: 1.1em;
+    }
+
+    .custom-checkbox {
+        padding: 0 15px;
     }
 }

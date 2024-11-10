@@ -5,3 +5,4 @@ pydantic
 websockets
 openai
 itsdangerous
+duckduckgo_search

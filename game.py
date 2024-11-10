@@ -26,7 +26,13 @@ _lo_model = GenAIModel(model_name="gpt-4o-mini")
 _hi_model = GenAIModel(model_name="gpt-4o")
 
 class Game:
-    def __init__(self, seed : int, theme_desc : str, language : str = "en"):
+    def __init__(
+            self,
+            seed : int,
+            theme_desc : str,
+            do_web_search: bool = False,
+            language : str = "en"
+    ):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.item_sequence_cnt = 0
@@ -45,7 +51,11 @@ class Game:
 
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
-        self.gen_ai.set_theme_description(theme_desc, language)
+        self.gen_ai.set_theme_description(
+            theme_desc=theme_desc,
+            do_web_search=do_web_search,
+            language=language
+        )
 
         # Initialize these after setting the theme description
         def run_parallel_init():
