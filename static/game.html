@@ -129,8 +129,8 @@
                             <span>{{ gameState.player_xp }}</span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label">📍 Position</span>
-                            <span>({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
+                            <span class="status-label">📍 Location</span>
+                            <span>{{ gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name }} ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">🗡️ Weapon</span>
