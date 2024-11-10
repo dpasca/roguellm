@@ -92,7 +92,7 @@ const app = Vue.createApp({
         },
         getCellIcon(x, y) {
             //if (!this.gameState.explored[y][x]) return '';
-            return this.gameState.cell_types[y][x].fontaw_icon;
+            return this.gameState.cell_types[y][x].font_awesome_icon;
         },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;

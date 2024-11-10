@@ -123,7 +123,7 @@ class Game:
         self.state.player = self.player_defs[0] if self.player_defs else {
             "name": "Unknown Hero",
             "class": "adventurer",
-            "fontaw_icon": "fa-solid fa-user"
+            "font_awesome_icon": "fa-solid fa-user"
         }
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]

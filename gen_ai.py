@@ -94,7 +94,7 @@ Do not include any narrative style or tone, just a detailed and useful theme des
 SYS_GEN_PLAYER_JSON_MSG = """
 You are an expert game player generator. Your task is to generate a JSON object
 describing a game player. The user will provide a sample JSON object of an existing
-game.
+game. Make sure to select an appropriate font-awesome icon for the player.
 
 # Response Format
 Reply with a new JSON object that contains player definition.
@@ -129,7 +129,7 @@ Do not translate the field names, because they are used as identifiers.
 SYS_GEN_GAME_ENEMIES_JSON_MSG = """
 You are an expert game enemy generator. Your task is to generate a JSON object
 describing game enemies. The user will provide a sample JSON object of an existing
-game.
+game. Make sure to select an appropriate font-awesome icon for the enemy.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
