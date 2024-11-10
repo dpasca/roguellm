@@ -6,6 +6,7 @@ class Enemy(BaseModel):
     hp: int
     max_hp: int
     attack: int
+    font_awesome_icon: str
 
 class Item(BaseModel):
     id: str

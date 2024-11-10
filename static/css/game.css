@@ -616,7 +616,7 @@
     position: relative;
 }
 
-.player-header {
+.player-header, .enemy-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -625,7 +625,7 @@
     width: 100%;
 }
 
-.player-header h3 {
+.player-header h3, .enemy-header h3 {
     margin: 0;
     color: #4CAF50;
     font-size: 1.4em;
@@ -633,11 +633,19 @@
     flex: 1;
 }
 
-.player-header i {
+.enemy-header h3 {
+    color: #f44336; /* Red color for enemy */
+}
+
+.player-header i, .enemy-header i {
     font-size: 1.4em;
     color: #4CAF50;
     margin-left: 10px;
     display: block;
+}
+
+.enemy-header i {
+    color: #f44336; /* Red color to match enemy theme */
 }
 
 /* Remove any potential conflicting styles */
@@ -646,11 +654,11 @@
 }
 
 @media screen and (max-width: 180mm) {
-    .player-header h3 {
+    .player-header h3, .enemy-header h3 {
         font-size: 1.2em;
     }
     
-    .player-header i {
+    .player-header i, .enemy-header i {
         font-size: 1.2em;
     }
     
@@ -658,7 +666,7 @@
         padding: 10px;
     }
     
-    .player-header {
+    .player-header, .enemy-header {
         margin-bottom: 10px;
     }
 }

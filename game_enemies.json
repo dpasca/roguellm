@@ -2,30 +2,35 @@
     "enemy_defs": [
     {
         "name": "Goblin",
+        "font_awesome_icon": "fa-solid fa-ghost",
         "hp": {"min": 30, "max": 50},
         "attack": {"min": 8, "max": 12},
         "xp": 10
     },
     {
         "name": "Skeleton",
+        "font_awesome_icon": "fa-solid fa-skull",
         "hp": {"min": 40, "max": 60},
         "attack": {"min": 10, "max": 15},
         "xp": 15
     },
     {
         "name": "Orc",
+        "font_awesome_icon": "fa-solid fa-dragon",
         "hp": {"min": 50, "max": 70},
         "attack": {"min": 12, "max": 18},
         "xp": 20
     },
     {
         "name": "Dark Elf",
+        "font_awesome_icon": "fa-solid fa-hat-wizard",
         "hp": {"min": 45, "max": 65},
         "attack": {"min": 15, "max": 20},
         "xp": 25
     },
     {
         "name": "Troll",
+        "font_awesome_icon": "fa-solid fa-person-circle-question",
         "hp": {"min": 70, "max": 90},
         "attack": {"min": 15, "max": 25},
         "xp": 35

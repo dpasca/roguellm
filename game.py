@@ -416,7 +416,8 @@ class Game:
             name=enemy_def['name'],
             hp=hp,
             max_hp=hp,
-            attack=self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max'])
+            attack=self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max']),
+            font_awesome_icon=enemy_def['font_awesome_icon']
         )
         # Store XP value as a private attribute
         enemy._xp_reward = enemy_def['xp']
