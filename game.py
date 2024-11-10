@@ -24,8 +24,6 @@ USE_RANDOM_MAP = False
 #_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
 _hi_model = GenAIModel(model_name="gpt-4o")
-# GenAI instance, with low and high spec models
-_gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
 class Game:
     def __init__(self, seed : int, theme_desc : str, language : str = "en"):
@@ -42,9 +40,12 @@ class Game:
         self.enemy_defs = []
         self.celltype_defs = []
 
+        # GenAI instance, with low and high spec models
+        self.gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
+
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
-        _gen_ai.set_theme_description(theme_desc, language)
+        self.gen_ai.set_theme_description(theme_desc, language)
 
         # Initialize these after setting the theme description
         def run_parallel_init():
@@ -69,7 +70,7 @@ class Game:
         logger.info(f"Generated Celltype defs: {self.celltype_defs}")
 
     def get_game_title(self):
-        return _gen_ai.game_title
+        return self.gen_ai.game_title
 
     def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
@@ -86,25 +87,25 @@ class Game:
     def initialize_player_defs(self):
         self.player_defs = self.make_defs_from_json(
             'game_players.json',
-            transform_fn=_gen_ai.gen_players_from_json_sample
+            transform_fn=self.gen_ai.gen_players_from_json_sample
         )["player_defs"]
 
     def initialize_item_defs(self):
         self.item_defs = self.make_defs_from_json(
             'game_items.json',
-            transform_fn=_gen_ai.gen_game_items_from_json_sample
+            transform_fn=self.gen_ai.gen_game_items_from_json_sample
         )["item_defs"]
 
     def initialize_enemy_defs(self):
         self.enemy_defs = self.make_defs_from_json(
             'game_enemies.json',
-            transform_fn=_gen_ai.gen_game_enemies_from_json_sample
+            transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
 
     def initialize_celltype_defs(self):
         self.celltype_defs = self.make_defs_from_json(
             'game_celltypes.json',
-            transform_fn=_gen_ai.gen_game_celltypes_from_json_sample
+            transform_fn=self.gen_ai.gen_game_celltypes_from_json_sample
         )["celltype_defs"]
 
     def make_random_map(self):
@@ -139,7 +140,7 @@ class Game:
             self.state.cell_types = self.make_random_map()
         else:
             try:
-                self.state.cell_types = _gen_ai.gen_game_map_from_celltypes(
+                self.state.cell_types = self.gen_ai.gen_game_map_from_celltypes(
                     self.celltype_defs,
                     self.state.map_width,
                     self.state.map_height
@@ -546,14 +547,14 @@ class Game:
 
     async def gen_adapt_sentence(self, original_sentence: str) -> str:
         try:
-            return _gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
+            return self.gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
         except Exception as e:
             logging.exception("Exception in gen_adapt_sentence")
             return original_sentence
 
     async def get_room_description(self) -> str:
         try:
-            return _gen_ai.gen_room_description(self.state, self.event_history)
+            return self.gen_ai.gen_room_description(self.state, self.event_history)
         except Exception as e:
             logging.exception("Exception in get_room_description")
             return "Error generating room description!"
