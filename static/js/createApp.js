@@ -60,7 +60,9 @@ const app = Vue.createApp({
             ws: null,
             gameTitle: 'RogueLLM: Unknown Title',
             isMenuOpen: false,
-            errorMessage: null
+            errorMessage: null,
+            generatorId: null,
+            showShareNotification: false
         }
     },
     computed: {
@@ -70,13 +72,7 @@ const app = Vue.createApp({
         getEnemyHealthPercentage() {
             if (!this.gameState.current_enemy) return 0;
             return (this.gameState.current_enemy.hp / this.gameState.current_enemy.max_hp) * 100;
-        },
-        /*
-        displayInventory() {
-            if (!this.gameState.inventory.length) return 'Empty';
-            return this.gameState.inventory.map(item => item.name).join(', ');
-        },
-        */
+        }
     },
     methods: {
         getCellStyle(x, y) {
@@ -91,7 +87,6 @@ const app = Vue.createApp({
             };
         },
         getCellIcon(x, y) {
-            //if (!this.gameState.explored[y][x]) return '';
             return this.gameState.cell_types[y][x].font_awesome_icon;
         },
         toggleMenu() {
@@ -104,6 +99,24 @@ const app = Vue.createApp({
             if (!menu.contains(event.target) && !menuIcon.contains(event.target)) {
                 this.isMenuOpen = false;
             }
+        },
+        async shareGame() {
+            if (!this.generatorId) return;
+            
+            // Create the share URL
+            const shareUrl = `${window.location.origin}/?generator=${this.generatorId}`;
+            
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                this.showShareNotification = true;
+                setTimeout(() => {
+                    this.showShareNotification = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy URL:', err);
+            }
+            
+            this.isMenuOpen = false;
         },
         initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -144,6 +157,10 @@ const app = Vue.createApp({
                         if (this.gameState.game_title) {
                             this.gameTitle = this.gameState.game_title;
                         }
+                        // Store generator ID if provided
+                        if (response.generator_id) {
+                            this.generatorId = response.generator_id;
+                        }
                     } else if (response.type === 'error') {
                         this.errorMessage = response.message;
                         setTimeout(() => {
@@ -171,7 +188,8 @@ const app = Vue.createApp({
         restartGame() {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({
-                    action: 'restart'
+                    action: 'restart',
+                    generator_id: this.generatorId
                 }));
                 this.gameLogs = [];
                 // Request initial state after restart
@@ -312,18 +330,3 @@ function showLoading() {
 
     return interval;  // Return interval so we can clear it if needed
 }
-/*
-function hideLoading() {
-    const loading = document.getElementById('loading');
-    if (!loading) return;
-
-    const progressBar = loading.querySelector('.progress-bar');
-    if (!progressBar) return;
-
-    progressBar.style.width = '100%';
-
-    setTimeout(() => {
-        loading.style.display = 'none';
-    }, 300);
-}
-*/

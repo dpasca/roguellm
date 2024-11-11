@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Request, Response
+from fastapi import FastAPI, WebSocket, Request, Response, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.responses import JSONResponse
@@ -17,6 +17,7 @@ import base64
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
+from db import db
 
 #==================================================================
 # Logging
@@ -26,6 +27,15 @@ logging.basicConfig(
     format='%(levelname)s: %(message)s',
     stream=sys.stdout
 )
+
+#==================================================================
+# Models
+#==================================================================
+class CreateGameRequest(BaseModel):
+    theme: Optional[str] = None
+    language: str = "en"
+    do_web_search: bool = False
+    generator_id: Optional[str] = None
 
 #==================================================================
 # FastAPI
@@ -54,8 +64,16 @@ class AddHeadersMiddleware(BaseHTTPMiddleware):
         response.headers['Expires'] = '0'
         return response
 
-# Add the middleware to your FastAPI app (place this after app = FastAPI())
+# Add the middleware to your FastAPI app
 app.add_middleware(AddHeadersMiddleware)
+
+# Global dictionary to store active games
+games: Dict[str, Game] = {}
+
+@app.on_event("startup")
+async def startup_event():
+    # Initialize database
+    db.init_db()
 
 # Landing page - Updated to handle POST requests for theme selection
 @app.post("/")
@@ -76,15 +94,73 @@ async def select_theme(request: Request):
 async def read_landing(request: Request):
     # Create new session
     request.session["game_session"] = str(uuid.uuid4())
+
+    # Check if there's a generator ID in the query params
+    generator_id = request.query_params.get("generator")
+    if generator_id:
+        request.session["generator_id"] = generator_id
+
     return FileResponse("static/index.html")
 
 # Game page
-@app.get("/game")
+@app.get("/game.html")
 async def read_game(request: Request):
     # Check if valid session exists
     if "game_session" not in request.session:
         return RedirectResponse(url="/")
+
+    # Get game_id from query parameters
+    game_id = request.query_params.get("id")
+    if game_id:
+        request.session["game_id"] = game_id
+    else:
+        # If no game_id in query parameters, redirect to home
+        return RedirectResponse(url="/", status_code=302)
+
     return FileResponse("static/game.html")
+
+# API endpoint for creating a new game
+@app.post("/api/create_game")
+async def create_game(request: CreateGameRequest, req: Request):
+    try:
+        # Generate a unique game ID
+        game_id = str(uuid.uuid4())[:8]
+        req.session["game_id"] = game_id
+
+        # Create the Game instance
+        rand_seed = int(time.time())
+        if request.generator_id:
+            # Load from existing generator
+            game_instance = Game(
+                seed=rand_seed,
+                theme_desc="",  # Will be loaded from generator
+                language=request.language,
+                generator_id=request.generator_id
+            )
+        else:
+            # Compress theme if it's not using a generator
+            theme = request.theme if request.theme else "fantasy"
+            compressed = base64.b64encode(zlib.compress(theme.encode())).decode()
+            req.session["theme_desc"] = compressed
+            req.session["do_web_search"] = request.do_web_search
+            game_instance = Game(
+                seed=rand_seed,
+                theme_desc=theme,
+                do_web_search=request.do_web_search,
+                language=request.language
+            )
+
+        # Store game instance in games dictionary
+        games[game_id] = game_instance
+
+        return JSONResponse({
+            "game_id": game_id
+        })
+    except Exception as e:
+        logging.error(f"Error creating game: {str(e)}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
 
 # Logout
 @app.post("/logout")
@@ -94,19 +170,6 @@ async def logout(request: Request):
     # Create new session immediately
     request.session["game_session"] = str(uuid.uuid4())
     return response
-# Set the game theme / description
-@app.post("/set-theme")
-async def set_theme(request: Request):
-    data = await request.json()
-    theme = data.get('theme', 'fantasy')
-    lang = data.get('language', 'en')
-    do_web_search = data.get('do_web_search', False)
-    # Compress the theme string
-    compressed = base64.b64encode(zlib.compress(theme.encode())).decode()
-    request.session["theme_desc"] = compressed
-    request.session["language"] = lang
-    request.session["do_web_search"] = do_web_search
-    return JSONResponse({"status": "success"})
 
 # Time profiler
 class TimeProfiler:
@@ -124,41 +187,23 @@ class TimeProfiler:
 # WebSocket endpoint for the game
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
-    # Accept the connection once at the beginning
     await websocket.accept()
     logging.info("New WebSocket connection established")
 
-    # Get theme from session (set by /set-theme)
     session = websocket.session
-    compressed_theme = session.get("theme_desc", "fantasy")
-    # If it's the default "fantasy" string, no need to decompress
-    if compressed_theme == "fantasy":
-        theme_desc = compressed_theme
-    else:
-        # Decompress the theme
-        theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
 
-    # Get do_web_search from session (set by /set-theme)
-    do_web_search = session.get("do_web_search", False)
-    logging.info(f"Do web search: {do_web_search}")
+    # Get game_id from session
+    game_id = session.get("game_id")
+    if not game_id or game_id not in games:
+        await websocket.close()
+        return
 
-    # Get language from session (set by /set-theme)
-    lang = session.get("language", "en")
-    logging.info(f"Language: {lang}")
-
-    # Create the game instance with a random seed and the theme description
-    rand_seed = int(time.time())
-    with TimeProfiler("Game instance creation"):
-       game_instance = Game(
-           seed=rand_seed,
-           theme_desc=theme_desc,
-           do_web_search=do_web_search,
-           language=lang
-       )
+    game_instance = games[game_id]
 
     try:
-        # Initialize the game
-        await game_instance.initialize_game()
+        # Initialize the game if not already initialized
+        if not hasattr(game_instance, 'state'):
+            await game_instance.initialize_game()
 
         game_instance.connected_clients.add(websocket)
 
@@ -171,6 +216,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
         logging.info("Sending initial state")
         initial_state = await game_instance.handle_message({'action': 'initialize'})
+        # Add generator_id to the response if available
+        if game_instance.generator_id:
+            initial_state['generator_id'] = game_instance.generator_id
         logging.info(f"Initial state: {initial_state}")
         await websocket.send_json(initial_state)
 
@@ -185,7 +233,37 @@ async def websocket_endpoint(websocket: WebSocket):
             if LOG_IN_LOOP:
                 logging.info(f"Received message: {message}")
 
+            # Handle restart with generator
+            if message.get('action') == 'restart':
+                rand_seed = int(time.time())
+                if game_instance.generator_id:
+                    # Recreate the game with the same generator
+                    game_instance = Game(
+                        seed=rand_seed,
+                        theme_desc="",
+                        language=game_instance.language,
+                        generator_id=game_instance.generator_id
+                    )
+                else:
+                    # Recreate the game with the same theme
+                    theme_desc = session.get("theme_desc", "fantasy")
+                    if theme_desc != "fantasy":
+                        theme_desc = zlib.decompress(base64.b64decode(theme_desc)).decode()
+                    do_web_search = session.get("do_web_search", False)
+                    game_instance = Game(
+                        seed=rand_seed,
+                        theme_desc=theme_desc,
+                        do_web_search=do_web_search,
+                        language=game_instance.language
+                    )
+                games[game_id] = game_instance
+                await game_instance.initialize_game()
+
             response = await game_instance.handle_message(message)
+
+            # Add generator_id to responses if available
+            if game_instance.generator_id and isinstance(response, dict):
+                response['generator_id'] = game_instance.generator_id
 
             if LOG_IN_LOOP:
                 response_str = str(response)
@@ -199,3 +277,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.exception("Exception in WebSocket endpoint")
     finally:
         game_instance.connected_clients.remove(websocket)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

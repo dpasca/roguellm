@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="static/css/game.css">
     <link rel="stylesheet" href="static/css/game_overlay.css">
     <link rel="stylesheet" href="static/css/game_controls.css">
+    <link rel="stylesheet" href="static/css/generator.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -23,10 +24,17 @@
                 <h1>{{ gameTitle }}</h1>
                 <div class="menu-icon" @click="toggleMenu">☰</div>
                 <div class="popup-menu" :class="{ active: isMenuOpen }">
+                    <button @click="shareGame" v-if="generatorId">Share Game</button>
                     <button @click="restartGame">Restart</button>
                     <button @click="newGame">New Game</button>
                 </div>
             </div>
+
+            <!-- Share notification -->
+            <div class="share-notification" :class="{ active: showShareNotification }">
+                Generator ID copied to clipboard!
+            </div>
+
             <!-- Creating/Loading Overlay -->
             <div v-if="!isGameInitialized" class="loading-overlay">
                 <div class="loading-content">
@@ -103,7 +111,7 @@
                         </div>
                     </div>
 
-                    <!-- Player Status (moved from sidebar) -->
+                    <!-- Player Status -->
                     <div class="player-status">
                         <div class="player-header">
                             <h3>{{ gameState.player.name }}</h3>

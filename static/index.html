@@ -5,6 +5,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="static/css/generator.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <!-- Force versioning of CSS files to prevent caching -->
     <script src="static/js/versioning.js"></script>
@@ -41,13 +42,20 @@
                             </div>
                         </label>
                     </div>
+
+                    <div class="theme-option">
+                        <input type="radio" id="generator" name="theme" value="generator" v-model="selectedTheme">
+                        <label for="generator">
+                            <div class="theme-card">
+                                <h3>Use Generator</h3>
+                                <i class="fas fa-share-alt fa-3x"></i>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Add language selector here -->
                 <div class="language-selector">
-                    <!--
-                    <h2>Game Language</h2>
-                    -->
                     <div class="language-options">
                         <select v-model="selectedLanguage" class="language-select">
                             <option value="en">English</option>
@@ -79,7 +87,15 @@
                         </label>
                     </div>
                 </div>
-                <div v-if="errorMessage && selectedTheme === 'custom'" class="error-message">
+
+                <div class="theme-description" v-show="selectedTheme === 'generator'">
+                    <input v-model="generatorId"
+                           placeholder="Enter generator ID"
+                           class="generator-input"
+                           type="text">
+                </div>
+
+                <div v-if="errorMessage" class="error-message">
                     {{ errorMessage }}
                 </div>
                 <button @click="launchGame" class="launch-btn">Create Game</button>

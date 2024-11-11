@@ -1,53 +1,67 @@
-const { createApp } = Vue
+const { createApp } = Vue;
 
 createApp({
     data() {
         return {
-            selectedTheme: 'custom',
+            selectedTheme: 'fantasy',
             selectedLanguage: 'en',
             customDescription: '',
-            errorMessage: null,
-            doWebSearch: true
+            generatorId: '',
+            doWebSearch: false,
+            errorMessage: null
+        }
+    },
+    created() {
+        // Check if there's a generator ID in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const generatorId = urlParams.get('generator');
+        if (generatorId) {
+            this.selectedTheme = 'generator';
+            this.generatorId = generatorId;
         }
     },
     methods: {
-        launchGame() {
-            if (this.selectedTheme === 'custom' && !this.customDescription.trim()) {
-                this.errorMessage = "Please provide a description for your custom theme";
-                return;
-            }
+        async launchGame() {
+            try {
+                let params = {
+                    language: this.selectedLanguage
+                };
 
-            const description = this.selectedTheme === 'custom'
-                ? this.customDescription.trim()
-                : 'fantasy';
-
-            fetch('/set-theme', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    theme: description, 
-                    language: this.selectedLanguage,
-                    do_web_search: this.selectedTheme === 'custom' ? this.doWebSearch : false
-                }),
-                credentials: 'include'
-            })
-            .then(response => {
-                if (response.ok) {
-                    window.location.href = '/game';
+                if (this.selectedTheme === 'fantasy') {
+                    params.theme = 'fantasy';
+                } else if (this.selectedTheme === 'custom') {
+                    if (!this.customDescription.trim()) {
+                        this.errorMessage = 'Please enter a theme description';
+                        return;
+                    }
+                    params.theme = this.customDescription;
+                    params.do_web_search = this.doWebSearch;
+                } else if (this.selectedTheme === 'generator') {
+                    if (!this.generatorId.trim()) {
+                        this.errorMessage = 'Please enter a generator ID';
+                        return;
+                    }
+                    params.generator_id = this.generatorId;
                 }
-            });
-        }
-    },
-    watch: {
-        selectedTheme(newTheme) {
-            if (newTheme === 'fantasy') {
-                this.errorMessage = null;
-                this.doWebSearch = false;
-            } else {
-                this.doWebSearch = true;
+
+                const response = await fetch('/api/create_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to create game');
+                }
+
+                const data = await response.json();
+                window.location.href = `/game.html?id=${data.game_id}`;
+            } catch (error) {
+                this.errorMessage = error.message;
             }
         }
     }
-}).mount('#app')
+}).mount('#app');

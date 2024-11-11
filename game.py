@@ -10,6 +10,7 @@ import concurrent.futures
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
+from db import db
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -31,7 +32,8 @@ class Game:
             seed : int,
             theme_desc : str,
             do_web_search: bool = False,
-            language : str = "en"
+            language : str = "en",
+            generator_id: Optional[str] = None
     ):
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
@@ -39,6 +41,7 @@ class Game:
         self.connected_clients = set()
         self.event_history = []
         self.language = language
+        self.generator_id = generator_id
 
         # Initialize attributes with defaults in case of failure
         self.player_defs = []
@@ -49,6 +52,19 @@ class Game:
         # GenAI instance, with low and high spec models
         self.gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
+        if generator_id:
+            # Load from existing generator
+            generator_data = db.get_generator(generator_id)
+            if generator_data:
+                self.player_defs = generator_data['player_defs']
+                self.item_defs = generator_data['item_defs']
+                self.enemy_defs = generator_data['enemy_defs']
+                self.celltype_defs = generator_data['celltype_defs']
+                theme_desc = generator_data['theme_desc']
+                language = generator_data['language']
+            else:
+                raise ValueError(f"Generator with ID {generator_id} not found")
+
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
         self.gen_ai.set_theme_description(
@@ -58,26 +74,41 @@ class Game:
         )
 
         # Initialize these after setting the theme description
-        def run_parallel_init():
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futures = {
-                    'players': executor.submit(self.initialize_player_defs),
-                    'items': executor.submit(self.initialize_item_defs),
-                    'enemies': executor.submit(self.initialize_enemy_defs),
-                    'celltypes': executor.submit(self.initialize_celltype_defs)
-                }
+        if not generator_id:
+            def run_parallel_init():
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = {
+                        'players': executor.submit(self.initialize_player_defs),
+                        'items': executor.submit(self.initialize_item_defs),
+                        'enemies': executor.submit(self.initialize_enemy_defs),
+                        'celltypes': executor.submit(self.initialize_celltype_defs)
+                    }
 
-                for name, future in futures.items():
-                    try:
-                        future.result()  # This will raise any exceptions that occurred
-                    except Exception as e:
-                        logger.error(f"Failed to initialize {name}: {str(e)}")
+                    for name, future in futures.items():
+                        try:
+                            future.result()  # This will raise any exceptions that occurred
+                        except Exception as e:
+                            logger.error(f"Failed to initialize {name}: {str(e)}")
 
-        run_parallel_init()
-        logger.info(f"Generated Player defs: {self.player_defs}")
-        logger.info(f"Generated Item defs: {self.item_defs}")
-        logger.info(f"Generated Enemy defs: {self.enemy_defs}")
-        logger.info(f"Generated Celltype defs: {self.celltype_defs}")
+            run_parallel_init()
+            logger.info(f"Generated Player defs: {self.player_defs}")
+            logger.info(f"Generated Item defs: {self.item_defs}")
+            logger.info(f"Generated Enemy defs: {self.enemy_defs}")
+            logger.info(f"Generated Celltype defs: {self.celltype_defs}")
+
+            # Save the generator if it was newly created
+            try:
+                self.generator_id = db.save_generator(
+                    theme_desc=theme_desc,
+                    language=language,
+                    player_defs=self.player_defs,
+                    item_defs=self.item_defs,
+                    enemy_defs=self.enemy_defs,
+                    celltype_defs=self.celltype_defs
+                )
+                logger.info(f"Saved generator with ID: {self.generator_id}")
+            except Exception as e:
+                logger.error(f"Failed to save generator: {str(e)}")
 
     def get_game_title(self):
         return self.gen_ai.game_title
