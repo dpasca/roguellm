@@ -201,6 +201,15 @@
             </div>
         </div>
     </div>
-    <script type="module" src="static/js/createApp.js"></script>
+    <!-- Load Vue first, then our app -->
+    <script>
+        // Wait for Vue to be loaded
+        window.addEventListener('load', function() {
+            // Now load our app code
+            var script = document.createElement('script');
+            script.src = 'static/js/createApp.js';
+            document.body.appendChild(script);
+        });
+    </script>
 </body>
 </html>

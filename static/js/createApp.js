@@ -102,10 +102,10 @@ const app = Vue.createApp({
         },
         async shareGame() {
             if (!this.generatorId) return;
-            
-            // Create the share URL
-            const shareUrl = `${window.location.origin}/?generator=${this.generatorId}`;
-            
+
+            // Create the share URL with generator_id
+            const shareUrl = `${window.location.origin}/game.html?generator_id=${this.generatorId}`;
+
             try {
                 await navigator.clipboard.writeText(shareUrl);
                 this.showShareNotification = true;
@@ -115,7 +115,7 @@ const app = Vue.createApp({
             } catch (err) {
                 console.error('Failed to copy URL:', err);
             }
-            
+
             this.isMenuOpen = false;
         },
         initWebSocket() {
@@ -228,7 +228,7 @@ const app = Vue.createApp({
                     this.gameState.player_pos[1] === y;
         },
         canMove(direction) {
-            if (!this.gameState) return false;
+            if (!this.gameState || this.gameState.in_combat) return false;
             const [x, y] = this.gameState.player_pos;
             switch(direction) {
                 case 'n': return y > 0;
@@ -278,24 +278,15 @@ const app = Vue.createApp({
     mounted() {
         // Show loading immediately when component mounts
         showLoading();
-        this.initWebSocket();
 
-        // Theme selection handling
-        const customRadio = document.getElementById('custom');
-        const fantasyRadio = document.getElementById('fantasy');
-        const customDescriptionContainer = document.getElementById('customDescriptionContainer');
-        const launchButton = document.getElementById('launchGame');
-
-        if (customRadio && fantasyRadio && customDescriptionContainer && launchButton) {
-            // Show/hide custom description based on selection
-            const updateDescriptionVisibility = () => {
-                customDescriptionContainer.style.display =
-                    customRadio.checked ? 'block' : 'none';
-            };
-
-            customRadio.addEventListener('change', updateDescriptionVisibility);
-            fantasyRadio.addEventListener('change', updateDescriptionVisibility);
+        // Check if there's a generator_id in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const generatorIdParam = urlParams.get('generator_id');
+        if (generatorIdParam) {
+            this.generatorId = generatorIdParam;
         }
+
+        this.initWebSocket();
 
         // Close the menu if clicked outside
         document.addEventListener('click', this.closeMenuIfClickedOutside);

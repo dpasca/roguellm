@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import sqlite3
+import hashlib
 from typing import Dict, List, Optional, Union
 
 class DatabaseManager:
@@ -30,6 +31,23 @@ class DatabaseManager:
             """)
             conn.commit()
 
+    def generate_generator_id(self, theme_desc: str, language: str, player_defs: List[Dict], item_defs: List[Dict], enemy_defs: List[Dict], celltype_defs: List[Dict]) -> str:
+        """
+        Generate a consistent generator ID based on the hash of the generator data.
+        """
+        data = {
+            'theme_desc': theme_desc,
+            'language': language,
+            'player_defs': player_defs,
+            'item_defs': item_defs,
+            'enemy_defs': enemy_defs,
+            'celltype_defs': celltype_defs
+        }
+        data_json = json.dumps(data, sort_keys=True)
+        hash_object = hashlib.sha256(data_json.encode('utf-8'))
+        generator_id = hash_object.hexdigest()
+        return generator_id
+
     def save_generator(self,
                       theme_desc: str,
                       language: str,
@@ -40,24 +58,36 @@ class DatabaseManager:
         """
         Save a generator and return its unique ID.
         """
-        generator_id = str(uuid.uuid4())[:8]  # Use first 8 chars for shorter IDs
+        generator_id = self.generate_generator_id(
+            theme_desc,
+            language,
+            player_defs,
+            item_defs,
+            enemy_defs,
+            celltype_defs
+        )
 
         with self.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO generators
-                (id, theme_desc, language, player_defs, item_defs, enemy_defs, celltype_defs)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                generator_id,
-                theme_desc,
-                language,
-                json.dumps(player_defs),
-                json.dumps(item_defs),
-                json.dumps(enemy_defs),
-                json.dumps(celltype_defs)
-            ))
-            conn.commit()
+            # Check if the generator already exists
+            cur.execute("SELECT id FROM generators WHERE id = ?", (generator_id,))
+            result = cur.fetchone()
+            if result is None:
+                # Insert new generator
+                cur.execute("""
+                    INSERT INTO generators
+                    (id, theme_desc, language, player_defs, item_defs, enemy_defs, celltype_defs)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    generator_id,
+                    theme_desc,
+                    language,
+                    json.dumps(player_defs),
+                    json.dumps(item_defs),
+                    json.dumps(enemy_defs),
+                    json.dumps(celltype_defs)
+                ))
+                conn.commit()
 
         return generator_id
 
