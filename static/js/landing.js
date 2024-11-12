@@ -38,7 +38,7 @@ createApp({
                     params.do_web_search = this.doWebSearch;
                 } else if (this.selectedTheme === 'generator') {
                     if (!this.generatorId.trim()) {
-                        this.errorMessage = 'Please enter a generator ID';
+                        this.errorMessage = 'Please enter a Game ID';
                         return;
                     }
                     params.generator_id = this.generatorId;

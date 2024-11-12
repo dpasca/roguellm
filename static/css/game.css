@@ -575,15 +575,15 @@
     .player-header h3, .enemy-header h3 {
         font-size: 1.2em;
     }
-    
+
     .player-header i, .enemy-header i {
         font-size: 1.2em;
     }
-    
+
     .player-status {
         padding: 10px;
     }
-    
+
     .player-header, .enemy-header {
         margin-bottom: 10px;
     }
