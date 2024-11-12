@@ -303,6 +303,10 @@ class GenAI:
             logger.info("Generating theme description 'better'")
             self.gen_theme_desc_better()
 
+        # Extract the game title from the theme description
+        self.game_title = self.theme_desc_better.split("\n")[0]
+        logger.info(f"Game title: {self.game_title}")
+
         return self.theme_desc_better
 
     # Generate a better/extended theme description
@@ -333,9 +337,7 @@ A universe where you can become the master of the universe by defeating other ma
                     f"\n- The language of the response must be {self.language}"),
                 user_msg=self.theme_desc,
         )
-        self.game_title = self.theme_desc_better.split("\n")[0]
-        logger.info(f"Game title: {self.game_title}")
-        logger.info(f"Theme description: {self.theme_desc_better}")
+        logger.info(f"Theme description 'better': {self.theme_desc_better}")
 
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
