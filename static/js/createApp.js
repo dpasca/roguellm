@@ -1,20 +1,3 @@
-// Prevent pinch-to-zoom
-document.addEventListener('touchstart', function(event) {
-    if (event.touches.length > 1) {
-        event.preventDefault();
-    }
-}, { passive: false });
-
-// Prevent double-tap zoom
-let lastTouchEnd = 0;
-document.addEventListener('touchend', function(event) {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
-    }
-    lastTouchEnd = now;
-}, false);
-
 function getRGBFromHashHex(hhex) {
     const hex = hhex.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
@@ -25,11 +8,6 @@ function getRGBFromHashHex(hhex) {
 function scaleColor(hhex, scale) {
     const [r, g, b] = getRGBFromHashHex(hhex);
     return `rgb(${Math.floor(r * scale)}, ${Math.floor(g * scale)}, ${Math.floor(b * scale)})`;
-}
-function isBrightColor(hhex) {
-    const [r, g, b] = getRGBFromHashHex(hhex);
-    const brightness = (r + g + b) / 3;
-    return brightness > 100;
 }
 
 const app = Vue.createApp({
@@ -305,6 +283,31 @@ const app = Vue.createApp({
 });
 
 app.mount('#app');
+
+// Touch Handlers
+document.addEventListener('touchstart', function(event) {
+    if (event.touches.length > 1) {
+        event.preventDefault();
+    }
+}, { passive: false });
+
+document.addEventListener('touchmove', function(event) {
+    event.preventDefault();
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
+// Prevent context menu on long press
+document.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+}, false);
 
 // Find the function that handles loading/waiting state
 function showLoading() {

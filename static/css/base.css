@@ -10,6 +10,10 @@ body, html {
     -webkit-text-size-adjust: none;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+    /* Prevent iOS context menu */
+    -webkit-touch-callout: none;
+    /* Prevent text selection */
+    user-select: none;
 }
 
 /* Base font */
