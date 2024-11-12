@@ -195,14 +195,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 'type': 'error',
                 'message': game_instance.error_message
             })
-
-        # Send connection confirmation instead of full initial state
+        # Send initial state with generator ID
         initial_response = {
             'type': 'connection_established',
             'generator_id': game_instance.generator_id
         }
         await websocket.send_json(initial_response)
-
         while True:
             message = await websocket.receive_json()
             response = await game_instance.handle_message(message)

@@ -118,11 +118,11 @@ const app = Vue.createApp({
 
             this.isMenuOpen = false;
         },
-        initWebSocket() {
+        async initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);
 
-            this.ws.onmessage = (event) => {
+            this.ws.onmessage = async (event) => {
                 if (!event.data) {
                     console.warn("Received empty message, ignoring");
                     return;
@@ -165,6 +165,9 @@ const app = Vue.createApp({
                         // Store generator ID if provided
                         if (response.generator_id) {
                             this.generatorId = response.generator_id;
+                            // Update URL with generator ID when received
+                            const newUrl = `${window.location.pathname}?generator_id=${response.generator_id}`;
+                            window.history.replaceState({}, '', newUrl);
                         }
                     } else if (response.type === 'error') {
                         this.errorMessage = response.message;
