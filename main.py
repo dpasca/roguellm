@@ -113,6 +113,14 @@ async def read_game(request: Request):
 @app.post("/api/create_game")
 async def create_game(request: CreateGameRequest, req: Request):
     try:
+        if request.generator_id:
+            # Check if generator exists
+            generator_data = db.get_generator(request.generator_id)
+            if not generator_data:
+                return JSONResponse({
+                    "error": f"Game ID not found: {request.generator_id}"
+                }, status_code=404)
+
         # Store generator_id in session if provided
         req.session["generator_id"] = request.generator_id if request.generator_id else None
 
