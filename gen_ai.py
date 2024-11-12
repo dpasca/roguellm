@@ -244,9 +244,10 @@ class GenAI:
         self.lo_model = lo_model
         self.hi_model = hi_model
         self.theme_desc = None
+        self.theme_desc_better = None
+        self.do_web_search = False
         self.language = "en"
         self.game_title = None
-        self.theme_desc_better = None
 
         logger.info(f"Low spec model: {self.lo_model.model_name}")
         logger.info(f"High spec model: {self.hi_model.model_name}")
@@ -289,37 +290,48 @@ class GenAI:
     def set_theme_description(
             self,
             theme_desc: str,
-            do_web_search: bool = False,
-            language: str = "en"
-    ):
+            theme_desc_better: str,
+            do_web_search: bool,
+            language: str,
+    ) -> str:
         self.theme_desc = theme_desc
+        self.theme_desc_better = theme_desc_better
+        self.do_web_search = do_web_search
         self.language = language
 
+        if not self.theme_desc_better:
+            logger.info("Generating theme description 'better'")
+            self.gen_theme_desc_better()
+
+        return self.theme_desc_better
+
+    # Generate a better/extended theme description
+    def gen_theme_desc_better(self):
         if DO_BYPASS_WORLD_GEN: # Quick version for testing
             self.theme_desc_better = f"""
 Generic Game (TEST)
 A universe where you can become the master of the universe by defeating other masters.
 - Locations: dungeon, castle, village, forest, mountain, desert, space station, alien planet
-- The language of the response must be {language}
+- The language of the response must be {self.language}
 """
         else:
             research_result = ""
-            if do_web_search:
+            if self.do_web_search:
                 research_result = make_query_and_web_search(
                     self.lo_model.client,
                     self.lo_model.model_name,
-                    theme_desc,
-                    language
+                    self.theme_desc,
+                    self.language
                 )
 
             if research_result:
-                theme_desc += f"\n\n# Web Search Results\n{research_result}"
+                self.theme_desc += f"\n\n# Web Search Results\n{research_result}"
 
             self.theme_desc_better = self._quick_completion_hi(
                 system_msg=(
                     SYS_BETTER_DESC_PROMPT_MSG +
-                    f"\n- The language of the response must be {language}"),
-                user_msg=theme_desc,
+                    f"\n- The language of the response must be {self.language}"),
+                user_msg=self.theme_desc,
         )
         self.game_title = self.theme_desc_better.split("\n")[0]
         logger.info(f"Game title: {self.game_title}")

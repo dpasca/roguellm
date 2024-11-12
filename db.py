@@ -22,6 +22,7 @@ class DatabaseManager:
                     id TEXT PRIMARY KEY,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     theme_desc TEXT NOT NULL,
+                    theme_desc_better TEXT NOT NULL,
                     language TEXT DEFAULT 'en',
                     player_defs TEXT NOT NULL,
                     item_defs TEXT NOT NULL,
@@ -31,12 +32,23 @@ class DatabaseManager:
             """)
             conn.commit()
 
-    def generate_generator_id(self, theme_desc: str, language: str, player_defs: List[Dict], item_defs: List[Dict], enemy_defs: List[Dict], celltype_defs: List[Dict]) -> str:
+    def generate_generator_id(
+            self,
+            theme_desc: str,
+            theme_desc_better: str,
+            language: str,
+            player_defs: List[Dict],
+            item_defs: List[Dict],
+            enemy_defs: List[Dict],
+            celltype_defs: List[Dict]
+    ) -> str:
         """
         Generate a consistent generator ID based on the hash of the generator data.
+        Returns first 8 characters of the hash for a shorter ID.
         """
         data = {
             'theme_desc': theme_desc,
+            'theme_desc_better': theme_desc_better,
             'language': language,
             'player_defs': player_defs,
             'item_defs': item_defs,
@@ -45,21 +57,25 @@ class DatabaseManager:
         }
         data_json = json.dumps(data, sort_keys=True)
         hash_object = hashlib.sha256(data_json.encode('utf-8'))
-        generator_id = hash_object.hexdigest()
+        generator_id = hash_object.hexdigest()[:8]  # Take only first 8 characters
         return generator_id
 
-    def save_generator(self,
-                      theme_desc: str,
-                      language: str,
-                      player_defs: List[Dict],
-                      item_defs: List[Dict],
-                      enemy_defs: List[Dict],
-                      celltype_defs: List[Dict]) -> str:
+    def save_generator(
+            self,
+            theme_desc: str,
+            theme_desc_better: str,
+            language: str,
+            player_defs: List[Dict],
+            item_defs: List[Dict],
+            enemy_defs: List[Dict],
+            celltype_defs: List[Dict]
+    ) -> str:
         """
         Save a generator and return its unique ID.
         """
         generator_id = self.generate_generator_id(
             theme_desc,
+            theme_desc_better,
             language,
             player_defs,
             item_defs,
@@ -76,11 +92,12 @@ class DatabaseManager:
                 # Insert new generator
                 cur.execute("""
                     INSERT INTO generators
-                    (id, theme_desc, language, player_defs, item_defs, enemy_defs, celltype_defs)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (id, theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     generator_id,
                     theme_desc,
+                    theme_desc_better,
                     language,
                     json.dumps(player_defs),
                     json.dumps(item_defs),
@@ -99,7 +116,7 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cur = conn.cursor()
             cur.execute("""
-                SELECT theme_desc, language, player_defs, item_defs, enemy_defs, celltype_defs
+                SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs
                 FROM generators
                 WHERE id = ?
             """, (generator_id,))
@@ -111,11 +128,12 @@ class DatabaseManager:
 
             return {
                 'theme_desc': result[0],
-                'language': result[1],
-                'player_defs': json.loads(result[2]),
-                'item_defs': json.loads(result[3]),
-                'enemy_defs': json.loads(result[4]),
-                'celltype_defs': json.loads(result[5])
+                'theme_desc_better': result[1],
+                'language': result[2],
+                'player_defs': json.loads(result[3]),
+                'item_defs': json.loads(result[4]),
+                'enemy_defs': json.loads(result[5]),
+                'celltype_defs': json.loads(result[6])
             }
 
 # Create a global instance

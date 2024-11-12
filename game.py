@@ -52,23 +52,27 @@ class Game:
         # GenAI instance, with low and high spec models
         self.gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
+        theme_desc_better = None
         if generator_id:
             # Load from existing generator
             generator_data = db.get_generator(generator_id)
             if generator_data:
+                logger.info(f"Loaded generator with ID: {generator_id}")
                 self.player_defs = generator_data['player_defs']
                 self.item_defs = generator_data['item_defs']
                 self.enemy_defs = generator_data['enemy_defs']
                 self.celltype_defs = generator_data['celltype_defs']
                 theme_desc = generator_data['theme_desc']
+                theme_desc_better = generator_data['theme_desc_better']
                 language = generator_data['language']
             else:
                 raise ValueError(f"Generator with ID {generator_id} not found")
 
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
-        self.gen_ai.set_theme_description(
+        theme_desc_better = self.gen_ai.set_theme_description(
             theme_desc=theme_desc,
+            theme_desc_better=theme_desc_better,
             do_web_search=do_web_search,
             language=language
         )
@@ -100,7 +104,8 @@ class Game:
             try:
                 self.generator_id = db.save_generator(
                     theme_desc=theme_desc,
-                    language=language,
+                    theme_desc_better=theme_desc_better,
+                    language=self.language,
                     player_defs=self.player_defs,
                     item_defs=self.item_defs,
                     enemy_defs=self.enemy_defs,
@@ -250,11 +255,22 @@ class Game:
     async def handle_message(self, message: dict) -> dict:
         action = message.get('action')
 
+        if action == 'get_initial_state' or action == 'initialize':
+            return await self.initialize_game()
+
+        # Only check game state for other actions after initialization
+        if not hasattr(self, 'state'):
+            return {
+                'type': 'error',
+                'message': 'Game not initialized yet'
+            }
+
         if action == 'restart':
             self.events_reset()
             return await self.initialize_game()
 
         if self.state.game_over:
+            # TODO: Add stats and other info (win/lose, reached XP, killed enemies, etc.)
             result = await self.create_update("Game Over! Press Restart to play again.")
             self.events_add('game_over', result) # Record the event
             return result

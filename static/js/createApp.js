@@ -135,6 +135,14 @@ const app = Vue.createApp({
                         return;
                     }
 
+                    if (response.type === 'connection_established') {
+                        // Request initial state once connection is confirmed
+                        this.ws.send(JSON.stringify({
+                            action: 'get_initial_state'
+                        }));
+                        return;
+                    }
+
                     if (response.type === 'update') {
                         this.gameState = response.state;
                         if (response.description) {
@@ -143,9 +151,6 @@ const app = Vue.createApp({
                         if (!this.isGameInitialized) {
                             console.log('Initial game state received:', this.gameState);
                             this.isGameInitialized = true;
-                            this.ws.send(JSON.stringify({
-                                action: 'get_initial_state'
-                            }));
                         } else {
                             if (response.description) {
                                 this.$nextTick(() => {
