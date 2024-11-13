@@ -6,3 +6,4 @@ websockets
 openai
 itsdangerous
 duckduckgo_search
+boto3
