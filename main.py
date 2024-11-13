@@ -1,3 +1,12 @@
+import sys
+# Logging before everything else
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s',
+    stream=sys.stdout
+)
+
 from fastapi import FastAPI, WebSocket, Request, Response, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
@@ -7,8 +16,6 @@ from pydantic import BaseModel
 from typing import Dict, Optional
 import json
 import time
-import logging
-import sys
 import os
 from dotenv import load_dotenv
 import uuid
@@ -18,15 +25,6 @@ import base64
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
 from db import db
-
-#==================================================================
-# Logging
-#==================================================================
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s: %(message)s',
-    stream=sys.stdout
-)
 
 #==================================================================
 # Models
