@@ -7,9 +7,11 @@ from typing import Dict, List, Optional, Union
 
 class DatabaseManager:
     def __init__(self):
-        self.db_path = "rllm_game_data.db"
+        self.db_path = os.path.join("_data", "rllm_game_data.db")
 
     def get_connection(self):
+        # Ensure _data directory exists
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         return sqlite3.connect(self.db_path)
 
     def init_db(self):
