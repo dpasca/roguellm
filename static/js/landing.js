@@ -1,11 +1,11 @@
 const app = Vue.createApp({
     data() {
         return {
-            selectedTheme: 'fantasy',
+            selectedTheme: 'custom',  // Changed from 'fantasy' to 'custom'
             customDescription: '',
             generatorId: '',
             errorMessage: null,
-            doWebSearch: false,
+            doWebSearch: true,
             selectedLanguage: 'en'
         }
     },
@@ -13,7 +13,7 @@ const app = Vue.createApp({
         // Add watcher for generatorId to clean up pasted URLs
         generatorId(newValue) {
             if (!newValue) return;
-            
+
             try {
                 // Try to parse as URL first
                 const url = new URL(newValue);
