@@ -357,6 +357,24 @@ class Game:
                     'state': self.state.dict(),
                     'description': f"Used {item.name}! Attack increased by {attack_boost} for {duration} turns!"
                 }
+            elif 'defense' in item.effect:
+                defense_boost = item.effect['defense']
+                duration = item.effect.get('duration', 3)  # Default to 3 turns if not specified
+
+                # Store the temporary effect
+                self.state.temporary_effects['protection'] = {
+                    'type': 'defense',
+                    'amount': defense_boost,
+                    'turns_remaining': duration
+                }
+
+                # Apply the boost
+                self.state.player_defense += defense_boost
+                return {
+                    'type': 'update',
+                    'state': self.state.dict(),
+                    'description': f"Used {item.name}! Defense increased by {defense_boost} for {duration} turns!"
+                }
 
         return {
             'type': 'update',
@@ -422,6 +440,9 @@ class Game:
                 effects_to_remove.append(effect_name)
                 if effect['type'] == 'attack':
                     self.state.player_attack -= effect['amount']
+                    effects_log.append(f"The {effect_name} effect has worn off")
+                elif effect['type'] == 'defense':
+                    self.state.player_defense -= effect['amount']
                     effects_log.append(f"The {effect_name} effect has worn off")
 
         for effect_name in effects_to_remove:

@@ -41,6 +41,13 @@
         "type": "consumable",
         "effect": {"attack": 5, "duration": 3},
         "description": "Temporarily increases attack by 5."
+    },
+    {
+        "id": "defense_potion",
+        "name": "Defense Potion",
+        "type": "consumable",
+        "effect": {"defense": 5, "duration": 3},
+        "description": "Temporarily increases defense by 5."
     }
     ]
 }
