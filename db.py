@@ -3,22 +3,73 @@ import json
 import uuid
 import sqlite3
 import hashlib
+import time
 from typing import Dict, List, Optional, Union
+from contextlib import contextmanager
 
 class DatabaseManager:
     def __init__(self):
         self.db_path = os.path.join("_data", "rllm_game_data.db")
+        # Timeout in seconds for waiting to acquire a database lock
+        self.timeout = 20.0
+        # Maximum number of retries for operations
+        self.max_retries = 3
+        # Delay between retries in seconds
+        self.retry_delay = 0.1
 
+    @contextmanager
     def get_connection(self):
+        """
+        Context manager for database connections with proper timeout and retry logic.
+        Automatically handles connection cleanup.
+        """
         # Ensure _data directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        return sqlite3.connect(self.db_path)
+
+        conn = None
+        try:
+            conn = sqlite3.connect(
+                self.db_path,
+                timeout=self.timeout,
+                isolation_level='IMMEDIATE'  # This ensures better transaction handling
+            )
+            # Enable foreign keys
+            conn.execute('PRAGMA foreign_keys = ON')
+            yield conn
+        except sqlite3.OperationalError as e:
+            if conn:
+                conn.rollback()
+            raise e
+        finally:
+            if conn:
+                conn.close()
+
+    def _execute_with_retry(self, operation, *args):
+        """
+        Execute a database operation with retry logic.
+        """
+        last_error = None
+        for attempt in range(self.max_retries):
+            try:
+                with self.get_connection() as conn:
+                    result = operation(conn, *args)
+                    return result
+            except sqlite3.OperationalError as e:
+                last_error = e
+                if "database is locked" in str(e):
+                    time.sleep(self.retry_delay * (attempt + 1))
+                    continue
+                raise e
+            except Exception as e:
+                raise e
+
+        raise last_error if last_error else Exception("Max retries exceeded")
 
     def init_db(self):
         """Initialize the database schema."""
-        with self.get_connection() as conn:
+        def _init(conn):
             cur = conn.cursor()
-            # Create generators table
+            # Create generators table with index
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS generators (
                     id TEXT PRIMARY KEY,
@@ -32,7 +83,14 @@ class DatabaseManager:
                     celltype_defs TEXT NOT NULL
                 )
             """)
+            # Add index for faster lookups
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_generators_created_at 
+                ON generators(created_at)
+            """)
             conn.commit()
+
+        self._execute_with_retry(_init)
 
     def generate_generator_id(
             self,
@@ -74,48 +132,46 @@ class DatabaseManager:
     ) -> str:
         """
         Save a generator and return its unique ID.
+        Uses UPSERT pattern to handle concurrent inserts safely.
         """
-        generator_id = self.generate_generator_id(
-            theme_desc,
-            theme_desc_better,
-            language,
-            player_defs,
-            item_defs,
-            enemy_defs,
-            celltype_defs
-        )
+        def _save(conn, *args):
+            generator_id = self.generate_generator_id(
+                theme_desc,
+                theme_desc_better,
+                language,
+                player_defs,
+                item_defs,
+                enemy_defs,
+                celltype_defs
+            )
 
-        with self.get_connection() as conn:
             cur = conn.cursor()
-            # Check if the generator already exists
-            cur.execute("SELECT id FROM generators WHERE id = ?", (generator_id,))
-            result = cur.fetchone()
-            if result is None:
-                # Insert new generator
-                cur.execute("""
-                    INSERT INTO generators
-                    (id, theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    generator_id,
-                    theme_desc,
-                    theme_desc_better,
-                    language,
-                    json.dumps(player_defs),
-                    json.dumps(item_defs),
-                    json.dumps(enemy_defs),
-                    json.dumps(celltype_defs)
-                ))
-                conn.commit()
+            # Use INSERT OR REPLACE to handle concurrent inserts
+            cur.execute("""
+                INSERT OR REPLACE INTO generators
+                (id, theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                generator_id,
+                theme_desc,
+                theme_desc_better,
+                language,
+                json.dumps(player_defs),
+                json.dumps(item_defs),
+                json.dumps(enemy_defs),
+                json.dumps(celltype_defs)
+            ))
+            conn.commit()
+            return generator_id
 
-        return generator_id
+        return self._execute_with_retry(_save)
 
     def get_generator(self, generator_id: str) -> Optional[Dict]:
         """
         Retrieve a generator by its ID.
         Returns None if not found.
         """
-        with self.get_connection() as conn:
+        def _get(conn, generator_id):
             cur = conn.cursor()
             cur.execute("""
                 SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs
@@ -124,7 +180,6 @@ class DatabaseManager:
             """, (generator_id,))
 
             result = cur.fetchone()
-
             if result is None:
                 return None
 
@@ -137,6 +192,8 @@ class DatabaseManager:
                 'enemy_defs': json.loads(result[5]),
                 'celltype_defs': json.loads(result[6])
             }
+
+        return self._execute_with_retry(_get, generator_id)
 
 # Create a global instance
 db = DatabaseManager()
