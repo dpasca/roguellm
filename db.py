@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Union
 
 class DatabaseManager:
     def __init__(self):
-        self.db_path = "roguellm.db"
+        self.db_path = "rllm_game_data.db"
 
     def get_connection(self):
         return sqlite3.connect(self.db_path)
