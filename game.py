@@ -550,15 +550,21 @@ class Game:
                 # Award XP for defeating the enemy
                 xp_gained = getattr(self.state.current_enemy, '_xp_reward', 20)  # Default 20 XP if not set
                 self.state.player_xp += xp_gained
+
+                # Restore some HP (25% of max HP)
+                hp_restored = max(1, int(self.state.player_max_hp * 0.25))
+                old_hp = self.state.player_hp
+                self.state.player_hp = min(self.state.player_max_hp, self.state.player_hp + hp_restored)
+                actual_restore = self.state.player_hp - old_hp
+
                 self.state.in_combat = False
                 self.state.current_enemy = None
 
-                # Process temporary effects
-                effects_log = await self.process_temporary_effects()
-                if effects_log:
-                    combat_log = f"{combat_log}\nYou have defeated the enemy and gained {xp_gained} XP!\n{effects_log}"
-                else:
-                    combat_log = f"{combat_log}\nYou have defeated the enemy and gained {xp_gained} XP!"
+                # Append enemy defeat to the combat log
+                combat_log += f"\nYou have defeated the enemy. Gained XP: {xp_gained}. Restored HP: {actual_restore}"
+                # Append temporary effects log
+                if effects_log := await self.process_temporary_effects():
+                    combat_log += f"\n{effects_log}"
 
                 return await self.create_update(combat_log)
 
