@@ -128,7 +128,9 @@
     justify-content: center;
     margin: 0 0 20px 0;
     width: 100%;
-    flex-wrap: nowrap;
+    flex-wrap: wrap; /* Changed from nowrap to wrap */
+    padding: 0 10px;
+    box-sizing: border-box;
 }
 
 .theme-option {
@@ -152,10 +154,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: 10px;
+    margin: 5px; /* Reduced from 10px */
     border: 2px solid #333;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    padding: 20px;
+    padding: 15px; /* Reduced from 20px */
     border-radius: 8px;
     background: #2a2a2a;
 }
@@ -415,5 +417,53 @@
 
     .custom-checkbox {
         padding: 0 15px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .theme-options {
+        gap: 10px;
+        padding: 0 5px;
+    }
+
+    .theme-option {
+        flex: 1;
+        min-width: 100px; /* Minimum width for very small screens */
+        max-width: calc(33.33% - 10px); /* Ensure 3 cards fit with gap */
+    }
+
+    .theme-card {
+        min-width: auto;
+        min-height: 100px;
+        padding: 10px;
+        margin: 3px;
+    }
+
+    .theme-card h3 {
+        font-size: 0.9em;
+        margin-bottom: 8px;
+    }
+
+    .theme-card i {
+        font-size: 2em;
+    }
+}
+
+@media screen and (max-width: 400px) {
+    .theme-options {
+        gap: 5px;
+    }
+
+    .theme-card {
+        padding: 8px;
+    }
+
+    .theme-card h3 {
+        font-size: 0.8em;
+        margin-bottom: 5px;
+    }
+
+    .theme-card i {
+        font-size: 1.8em;
     }
 }

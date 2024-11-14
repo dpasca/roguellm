@@ -152,3 +152,21 @@ p {
 .popup-menu button:hover {
     background-color: #3a3a3a;
 }
+
+a {
+    color: #7dcaff;  /* Light blue color */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #4CAF50;  /* Green color on hover, matching the theme */
+}
+
+a:visited {
+    color: #bb86fc;  /* Light purple for visited links */
+}
+
+a:visited:hover {
+    color: #4CAF50;
+}
