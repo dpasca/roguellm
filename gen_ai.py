@@ -144,17 +144,28 @@ You are an expert game item generator. Your task is to generate a JSON object
 describing game items. The user will provide a sample JSON object of an existing
 game.
 
+# Effect Types and Patterns
+You must EXACTLY follow these patterns for effects:
+1. Weapons must have: {"effect": {"attack": X}} where X is a positive integer
+2. Armor must have: {"effect": {"defense": X}} where X is a positive integer
+3. Consumables must have one of:
+   - {"effect": {"health": X}} where X is a positive integer
+   - {"effect": {"attack": X, "duration": Y}} where X and Y are positive integers
+
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
 Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "potion" item
-with "med-kit", "energy drink" for another theme.
+with "med-kit" for another theme.
 Do not create new fields, do not create new effect types, as the game is not able
 to handle them yet.
-The only "effect" types currently supported are: attack, defense, health, duration.
-The only "type" fields currently supported are: weapon, armor, consumable.
 Do not translate the field names, because they are used as identifiers.
+
+# Important
+- Only use the exact effect patterns shown above
+- Do not invent new effect types
+- Do not add additional effect fields
 """
 
 # NOTE: Should append language req and theme desc at the bottom
