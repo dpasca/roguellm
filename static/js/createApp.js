@@ -323,7 +323,7 @@ function showLoading() {
     // Simulate progress
     let progress = 0;
     const interval = setInterval(() => {
-        progress += 0.5;
+        progress += 0.4;
         if (progress >= 100) {
             clearInterval(interval);
         }
