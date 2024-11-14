@@ -80,14 +80,14 @@
                                 <div v-for="(cell, x) in row"
                                     :key="x"
                                     class="cell"
+                                    :data-x="x"
+                                    :data-y="y"
                                     :class="{
-                                        player: isPlayerPosition(x, y),
                                         explored: gameState.explored[y][x],
                                         unexplored: !gameState.explored[y][x]
                                     }"
                                     :style="getCellStyle(x, y)">
-                                    <i v-if="!isPlayerPosition(x, y)" :class="getCellIcon(x, y)"></i>
-                                    <span v-else>👤</span>
+                                    <i :class="getCellIcon(x, y)"></i>
                                 </div>
                             </div>
                         </div>
@@ -96,6 +96,10 @@
                             <button @click="move('s')" data-dir="s" :disabled="!canMove('s')">↓</button>
                             <button @click="move('w')" data-dir="w" :disabled="!canMove('w')">←</button>
                             <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
+                        </div>
+                        <!-- Move the player icon inside the game-map container -->
+                        <div id="player-icon" class="player-icon">
+                            <i class="fa-solid fa-user"></i>
                         </div>
                     </div>
 

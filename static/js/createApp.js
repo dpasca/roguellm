@@ -10,6 +10,40 @@ function scaleColor(hhex, scale) {
     return `rgb(${Math.floor(r * scale)}, ${Math.floor(g * scale)}, ${Math.floor(b * scale)})`;
 }
 
+function updatePlayerPosition(x, y, force = false) {
+    const playerIcon = document.getElementById('player-icon');
+    const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+    if (!cell || !playerIcon) return;
+
+    const gameMap = document.querySelector('.game-map');
+    if (!gameMap) return;
+
+    // If not forcing update and position hasn't changed, skip update
+    if (!force && 
+        playerIcon.dataset.x === x.toString() && 
+        playerIcon.dataset.y === y.toString()) {
+        return;
+    }
+
+    const cellRect = cell.getBoundingClientRect();
+    const mapRect = gameMap.getBoundingClientRect();
+
+    const offsetX = cellRect.left - mapRect.left;
+    const offsetY = cellRect.top - mapRect.top;
+
+    // Store the position as data attributes
+    playerIcon.dataset.x = x;
+    playerIcon.dataset.y = y;
+    
+    // Update position without resetting transforms
+    // Remove the following line to allow CSS transitions to handle movement
+    // playerIcon.style.transform = 'none';
+    playerIcon.style.width = `${cellRect.width}px`;
+    playerIcon.style.height = `${cellRect.height}px`;
+    playerIcon.style.left = `${offsetX}px`;
+    playerIcon.style.top = `${offsetY}px`;
+}
+
 const app = Vue.createApp({
     data() {
         return {
@@ -147,6 +181,11 @@ const app = Vue.createApp({
                             const newUrl = `${window.location.pathname}?game_id=${response.generator_id}`;
                             window.history.replaceState({}, '', newUrl);
                         }
+                        const playerPos = this.gameState.player_pos;
+                        this.$nextTick(() => {
+                            const playerPos = this.gameState.player_pos;
+                            updatePlayerPosition(playerPos[0], playerPos[1]);
+                        });
                     } else if (response.type === 'error') {
                         this.errorMessage = response.message;
                         setTimeout(() => {
@@ -260,6 +299,16 @@ const app = Vue.createApp({
                 console.error('Error:', error);
             });
         },
+        handleWindowResize() {
+            // Force position update on resize
+            const playerIcon = document.getElementById('player-icon');
+            if (playerIcon && playerIcon.dataset.x && playerIcon.dataset.y) {
+                updatePlayerPosition(parseInt(playerIcon.dataset.x), parseInt(playerIcon.dataset.y), true);
+            } else if (this.gameState && this.gameState.player_pos) {
+                const [x, y] = this.gameState.player_pos;
+                updatePlayerPosition(x, y, true);
+            }
+        }
     },
     mounted() {
         // Show loading immediately when component mounts
@@ -276,9 +325,35 @@ const app = Vue.createApp({
 
         // Close the menu if clicked outside
         document.addEventListener('click', this.closeMenuIfClickedOutside);
+
+        // Add event listener for window resize
+        window.addEventListener('resize', this.handleWindowResize);
     },
     beforeUnmount() {
         document.removeEventListener('click', this.closeMenuIfClickedOutside);
+        // Remove the resize event listener
+        window.removeEventListener('resize', this.handleWindowResize);
+    },
+    watch: {
+        // Watch for changes in player position
+        'gameState.player_pos': function(newVal, oldVal) {
+            // Only update if position has actually changed
+            if (!oldVal || newVal[0] !== oldVal[0] || newVal[1] !== oldVal[1]) {
+                this.$nextTick(() => {
+                    const [x, y] = newVal;
+                    updatePlayerPosition(x, y);
+                });
+            }
+        },
+        // Watch for changes in combat state
+        'gameState.in_combat': function(newVal, oldVal) {
+            if (!newVal) { // Combat has ended
+                const [x, y] = this.gameState.player_pos;
+                this.$nextTick(() => {
+                    updatePlayerPosition(x, y, true); // Force update
+                });
+            }
+        }
     }
 });
 

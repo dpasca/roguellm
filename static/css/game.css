@@ -8,10 +8,12 @@
     transition: all 0.2s ease;
 }
 
-.cell.player {
+/* Remove or comment out the .cell.player style since we're not using it anymore */
+/*.cell.player {
     background-color: #4CAF50;
     color: white;
-}
+}*/
+
 /*
 .cell.explored {
     background-color: #2c3e50;
@@ -163,10 +165,16 @@
     flex-direction: row;
     align-items: flex-start;
     gap: 10px;
+    width: 100%; /* Ensure full width */
 }
 
 .game-map {
     flex: 0 0 auto;
+    position: relative; /* Ensure relative positioning for absolute children */
+    width: fit-content;
+    margin: 0;
+    display: inline-block;
+    transition: all 0.3s ease;
 }
 
 .combat-ui {
@@ -174,7 +182,13 @@
     padding: 10px;
     border-radius: 5px;
     margin-top: 0;
+    width: 100%; /* Ensure it takes full width */
 }
+
+.game-map.in-combat {
+    display: none; /* Change back to display: none */
+}
+
 .game-sidebar {
     flex: 1;
     display: flex;
@@ -368,6 +382,17 @@
     .status-item {
         gap: 5px;
     }
+
+    .game-left-column {
+        flex-direction: column; /* Stack items vertically on mobile */
+        width: 100%;
+    }
+
+    .combat-ui {
+        width: 100%;
+        padding: 6px;
+        margin: 0;
+    }
 }
 
 /* Update inventory item card styling */
@@ -537,7 +562,19 @@
 }
 
 .game-map.in-combat {
-    display: none;
+    display: none; /* Keep using display: none for combat state */
+}
+
+.player-icon {
+    position: absolute;
+    background-color: rgba(0,0,0,0.25);
+    border-radius: 50%;
+    /* Add transitions for left and top to enable smooth movement */
+    transition: left 0.5s ease, top 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
 }
 
 /* Add the new progress bar styles */
