@@ -1,3 +1,18 @@
+// Language configuration
+const SUPPORTED_LANGUAGES = [
+    { code: 'en', name: 'English' },
+    { code: 'it', name: 'Italiano' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'ja', name: '日本語' },
+    { code: 'fr', name: 'Français' },
+    { code: 'es', name: 'Español' },
+    { code: 'pt', name: 'Português' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'el', name: 'Ελληνικά' },
+    { code: 'zh-CN', name: '简体中文' },
+    { code: 'zh-TW', name: '繁體中文' }
+];
+
 const app = Vue.createApp({
     data() {
         return {
@@ -6,7 +21,8 @@ const app = Vue.createApp({
             generatorId: '',
             errorMessage: null,
             doWebSearch: true,
-            selectedLanguage: 'en'
+            selectedLanguage: this.getDefaultLanguage(),
+            supportedLanguages: SUPPORTED_LANGUAGES
         }
     },
     watch: {
@@ -75,6 +91,19 @@ const app = Vue.createApp({
             } catch (error) {
                 this.errorMessage = error.message || "Failed to start game. Please try again.";
             }
+        },
+        getDefaultLanguage() {
+            const browserLang = navigator.language || navigator.userLanguage;
+
+            // Handle special cases for Chinese
+            if (browserLang.startsWith('zh')) {
+                return browserLang.includes('TW') || browserLang.includes('HK') ? 'zh-TW' : 'zh-CN';
+            }
+
+            // For other languages, just take the first part before the dash
+            const shortLang = browserLang.split('-')[0];
+            const supportedCodes = SUPPORTED_LANGUAGES.map(lang => lang.code);
+            return supportedCodes.includes(shortLang) ? shortLang : 'en';
         }
     },
     mounted() {
