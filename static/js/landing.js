@@ -34,7 +34,7 @@ const app = Vue.createApp({
                 // Try to parse as URL first
                 const url = new URL(newValue);
                 const searchParams = new URLSearchParams(url.search);
-                const id = searchParams.get('generator_id');
+                const id = searchParams.get('generator_id') || searchParams.get('game_id');
                 if (id) {
                     this.generatorId = id; // This will trigger the watcher again, but with just the ID
                     return;
@@ -82,10 +82,10 @@ const app = Vue.createApp({
                     return;
                 }
 
-                // Redirect to game page with generator_id if it exists
+                // Redirect to game page with game_id if it exists
                 const params = new URLSearchParams();
                 if (this.selectedTheme === 'generator') {
-                    params.append('generator_id', this.generatorId.trim());
+                    params.append('game_id', this.generatorId.trim());
                 }
                 window.location.href = `/game.html${params.toString() ? '?' + params.toString() : ''}`;
             } catch (error) {

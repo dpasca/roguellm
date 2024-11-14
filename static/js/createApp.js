@@ -82,7 +82,7 @@ const app = Vue.createApp({
             if (!this.generatorId) return;
 
             // Create the share URL with generator_id
-            const shareUrl = `${window.location.origin}/game.html?generator_id=${this.generatorId}`;
+            const shareUrl = `${window.location.origin}/game.html?game_id=${this.generatorId}`;
 
             try {
                 await navigator.clipboard.writeText(shareUrl);
@@ -144,7 +144,7 @@ const app = Vue.createApp({
                         if (response.generator_id) {
                             this.generatorId = response.generator_id;
                             // Update URL with generator ID when received
-                            const newUrl = `${window.location.pathname}?generator_id=${response.generator_id}`;
+                            const newUrl = `${window.location.pathname}?game_id=${response.generator_id}`;
                             window.history.replaceState({}, '', newUrl);
                         }
                     } else if (response.type === 'error') {

@@ -95,7 +95,7 @@ async def read_landing(request: Request):
         if generator_data:
             # Store in session and redirect to game page
             request.session["generator_id"] = generator_id
-            return RedirectResponse(url=f"/game.html?generator_id={generator_id}")
+            return RedirectResponse(url=f"/game.html?game_id={generator_id}")
         else:
             # If invalid generator ID, redirect to landing with error
             return RedirectResponse(url=f"/?error=invalid_generator")
@@ -110,8 +110,11 @@ async def read_game(request: Request):
         # Create new session
         request.session["game_session"] = str(uuid.uuid4())
 
-    # Check for generator_id in query parameters
+    # Check for generator_id/game_id in query parameters
     generator_id = request.query_params.get("generator_id")
+    if not generator_id:
+        generator_id = request.query_params.get("game_id")
+
     if generator_id:
         # Validate generator ID
         generator_data = db.get_generator(generator_id)
