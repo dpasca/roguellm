@@ -106,19 +106,27 @@
                             <i :class="gameState.current_enemy.font_awesome_icon"></i>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i> HP</span>
-                            <div class="health-bar-container">
-                                <div class="health-bar">
-                                    <div class="health-bar-fill"
-                                         :style="{ width: getEnemyHealthPercentage + '%' }">
+                            <span class="status-label">
+                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
+                                <span class="label-text">HP</span>
+                            </span>
+                            <span class="status-value">
+                                <div class="health-bar-container">
+                                    <div class="health-bar">
+                                        <div class="health-bar-fill"
+                                             :style="{ width: getEnemyHealthPercentage + '%' }">
+                                        </div>
                                     </div>
+                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
                                 </div>
-                                <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
-                            </div>
+                            </span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i> Attack</span>
-                            <span>{{ gameState.current_enemy.attack }}</span>
+                            <span class="status-label">
+                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
+                                <span class="label-text">Attack</span>
+                            </span>
+                            <span class="status-value">{{ gameState.current_enemy.attack }}</span>
                         </div>
                         <div class="combat-buttons">
                             <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> Attack</button>
@@ -133,41 +141,65 @@
                             <i :class="gameState.player.font_awesome_icon"></i>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i> HP</span>
-                            <div class="health-bar-container">
-                                <div class="health-bar">
-                                    <div class="health-bar-fill"
-                                         :style="{ width: getPlayerHealthPercentage + '%' }">
+                            <span class="status-label">
+                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
+                                <span class="label-text">HP</span>
+                            </span>
+                            <span class="status-value">
+                                <div class="health-bar-container">
+                                    <div class="health-bar">
+                                        <div class="health-bar-fill"
+                                             :style="{ width: getPlayerHealthPercentage + '%' }">
+                                        </div>
                                     </div>
+                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
                                 </div>
-                                <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
-                            </div>
+                            </span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i> Attack</span>
-                            <span>{{ gameState.player_attack }}</span>
+                            <span class="status-label">
+                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
+                                <span class="label-text">Attack</span>
+                            </span>
+                            <span class="status-value">{{ gameState.player_attack }}</span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-star fa-fw" style="color: #4cd137;"></i> XP</span>
-                            <span>{{ gameState.player_xp }}</span>
+                            <span class="status-label">
+                                <i class="fas fa-star fa-fw" style="color: #4cd137;"></i>
+                                <span class="label-text">XP</span>
+                            </span>
+                            <span class="status-value">{{ gameState.player_xp }}</span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i> Location</span>
-                            <span>{{ gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name }} ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
+                            <span class="status-label">
+                                <i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i>
+                                <span class="label-text">Location</span>
+                            </span>
+                            <span class="status-value">{{ gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name }} ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-gavel fa-fw" style="color: #a8a8a8;"></i> Weapon</span>
-                            <div class="equipment-details">
-                                <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None' }}</span>
-                                <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
-                            </div>
+                            <span class="status-label">
+                                <i class="fas fa-gavel fa-fw" style="color: #a8a8a8;"></i>
+                                <span class="label-text">Weapon</span>
+                            </span>
+                            <span class="status-value">
+                                <div class="equipment-details">
+                                    <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None' }}</span>
+                                    <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
+                                </div>
+                            </span>
                         </div>
                         <div class="status-item">
-                            <span class="status-label"><i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i> Armor</span>
-                            <div class="equipment-details">
-                                <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
-                                <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
-                            </div>
+                            <span class="status-label">
+                                <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
+                                <span class="label-text">Armor</span>
+                            </span>
+                            <span class="status-value">
+                                <div class="equipment-details">
+                                    <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
+                                    <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
+                                </div>
+                            </span>
                         </div>
                     </div>
                 </div>

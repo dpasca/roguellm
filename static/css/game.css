@@ -61,14 +61,44 @@
 }
 
 .status-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 100px auto; /* Fixed width for labels */
     align-items: center;
-    gap: 10px;
     margin: 8px 0;
+    gap: 10px;
 }
 
 .status-label {
-    min-width: 90px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-value {
+    /* Ensure the value aligns to the right */
+    display: flex;
+    align-items: center;
+}
+
+@media screen and (max-width: 180mm) {
+    .label-text {
+        display: none;
+    }
+
+    .status-item {
+        grid-template-columns: 30px auto; /* Two columns: icon and value */
+        margin: 4px 0;
+        gap: 5px;
+    }
+
+    .status-label {
+        justify-content: center; /* Center the icon */
+        width: 30px; /* Ensure consistent width */
+    }
+
+    .status-label i {
+        margin: 0; /* Remove any margin to center the icon */
+    }
 }
 
 .health-bar-container {
@@ -328,6 +358,15 @@
         font-size: 14px !important;
         margin: 0px 0;
         padding: 4px 0;
+    }
+
+    .label-text {
+        display: none;
+    }
+
+    /* Reduce gap when labels are hidden */
+    .status-item {
+        gap: 5px;
     }
 }
 
