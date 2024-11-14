@@ -12,8 +12,6 @@ body, html {
     overscroll-behavior: none;
     /* Prevent iOS context menu */
     -webkit-touch-callout: none;
-    /* Prevent text selection */
-    user-select: none;
 }
 
 /* Base font */
@@ -33,6 +31,13 @@ body, html {
     }
 }
 
+/* Add touch device specific styles */
+@media (hover: none) and (pointer: coarse) {
+    body, html {
+        user-select: none;
+    }
+}
+
 button {
     background-color: #4CAF50;
     border: none;
@@ -45,6 +50,7 @@ button {
     margin: 4px 2px;
     cursor: pointer;
     border-radius: 4px;
+    user-select: none;
 }
 button:hover { background-color: #45a049; }
 button:disabled {
@@ -140,6 +146,7 @@ p {
     background: none;
     border: none;
     color: white;
+    user-select: none;
 }
 
 .popup-menu button:hover {
