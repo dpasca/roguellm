@@ -51,3 +51,9 @@ pip install -r requirements.txt
 2. Open browser and navigate to `http://127.0.0.1:8000/`.
 
 See `game_config.json` and `game_items.json` for more details.
+
+## Icons generation
+
+```bash
+python tools/generate_icons.py square_icon.png wide-promotional-image.png
+```
