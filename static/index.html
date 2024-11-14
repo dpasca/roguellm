@@ -73,7 +73,7 @@
 
                 <div class="theme-description" v-show="selectedTheme === 'custom'">
                     <textarea v-model="customDescription"
-                            placeholder="Describe your custom theme (e.g., 'An office environment with overdue TPS reports and finicky printers')"
+                            placeholder="Describe the setting for your game. e.g. 'Programmers in the wild'"
                             rows="4"
                             maxlength="3000"
                             class="theme-textarea"></textarea>
@@ -81,7 +81,7 @@
                         <label>
                             <input type="checkbox" v-model="doWebSearch">
                             <span class="checkbox-custom"></span>
-                            <span class="checkbox-label">Enable web search for theme generation</span>
+                            <span class="checkbox-label">Improve game description with web search</span>
                         </label>
                     </div>
                 </div>
@@ -96,7 +96,11 @@
                 <div v-if="errorMessage" class="error-message">
                     {{ errorMessage }}
                 </div>
-                <button @click="launchGame" class="launch-btn">Create Game</button>
+                <button @click="launchGame"
+                        class="launch-btn"
+                        :disabled="selectedTheme === 'custom' && !customDescription.trim()">
+                    Create Game
+                </button>
             </div>
         </div>
     </div>

@@ -42,6 +42,7 @@ class Game:
         self.event_history = []
         self.language = language
         self.generator_id = generator_id
+        self.last_described_ct = None  # Add this line to track previous cell type
 
         # Initialize attributes with defaults in case of failure
         self.player_defs = []
@@ -510,7 +511,6 @@ class Game:
         roll = self.random.random()
         roll_thresh_enemy = config['encounter_chances']['enemy']
         roll_thresh_item = roll_thresh_enemy + config['encounter_chances']['item']
-        #roll_thresh_story = roll_thresh_item + config['encounter_chances']['story']
 
         if roll < roll_thresh_enemy:  # 30% chance for enemy
             enemy = self.generate_enemy()
@@ -530,7 +530,20 @@ class Game:
             self.state.inventory.append(item)
             return await self.create_update(f"You found a {item.name}! {item.description}")
         else:
-            return await self.create_update_room()
+            # Only get room description if we're in a new cell type or don't have a previous description
+            px = self.state.player_pos[0]
+            py = self.state.player_pos[1]
+            cur_ct = self.state.cell_types[py][px]
+            if self.last_described_ct != cur_ct:
+                self.last_described_ct = cur_ct
+                return await self.create_update_room()
+            else:
+                # Return empty description if in same room type
+                return {
+                    'type': 'update',
+                    'state': self.state.dict(),
+                    'description': ""
+                }
 
     async def handle_combat_action(self, action: str) -> dict:
         if not self.state.in_combat or not self.state.current_enemy:

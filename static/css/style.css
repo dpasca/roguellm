@@ -235,6 +235,12 @@
     background-color: #45a049;
 }
 
+.launch-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #4CAF50;  /* Keep the same green color as enabled state */
+}
+
 .language-selector {
     margin: 0px 0px 20px 0;
     text-align: center;
