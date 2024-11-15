@@ -596,7 +596,14 @@ class Game:
                 self.state.player_hp = 0
                 self.state.game_over = True
                 self.state.in_combat = False
-                return await self.create_update(f"{combat_log}\nYou have been defeated! Game Over!")
+                # Include explored tiles in the state update instead of setting it directly
+                game_state = self.state.dict()
+                game_state['explored_tiles'] = self.count_explored_tiles()
+                return {
+                    'type': 'update',
+                    'state': game_state,
+                    'description': f"{combat_log}\nYou have been defeated! Game Over!"
+                }
 
             # Process temporary effects
             effects_log = await self.process_temporary_effects()
@@ -659,3 +666,6 @@ class Game:
     def log_error(self, error_message):
         print(f"Error: {error_message}")
         self.error_message = error_message  # Store the error message
+
+    def count_explored_tiles(self) -> int:
+        return sum(sum(1 for cell in row if cell) for row in self.state.explored)

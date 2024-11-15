@@ -84,6 +84,18 @@ const app = Vue.createApp({
         getEnemyHealthPercentage() {
             if (!this.gameState.current_enemy) return 0;
             return (this.gameState.current_enemy.hp / this.gameState.current_enemy.max_hp) * 100;
+        },
+        countExploredTiles() {
+            if (this.gameState && this.gameState.explored_tiles !== undefined) {
+                return this.gameState.explored_tiles;
+            }
+            // Fallback to counting from explored array if needed
+            if (this.gameState && this.gameState.explored) {
+                return this.gameState.explored.reduce((total, row) => 
+                    total + row.reduce((rowTotal, cell) => rowTotal + (cell ? 1 : 0), 0), 0
+                );
+            }
+            return 0;
         }
     },
     methods: {
@@ -308,6 +320,19 @@ const app = Vue.createApp({
                 const [x, y] = this.gameState.player_pos;
                 updatePlayerPosition(x, y, true);
             }
+        },
+        handleGameState(response) {
+            if (response.type === 'update') {
+                this.gameState = response.state;
+                if (response.description) {
+                    this.addToGameLog(response.description);
+                }
+                // Store explored tiles count if provided
+                if (response.explored_tiles !== undefined) {
+                    this.gameState.explored_tiles = response.explored_tiles;
+                }
+            }
+            // ...rest of the method
         }
     },
     mounted() {

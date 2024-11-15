@@ -101,6 +101,31 @@
     font-size: 16px;
 }
 
+.game-over-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border-radius: 10px;
+    min-width: 200px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    font-size: 18px;
+}
+
+.stat-item i {
+    width: 24px;
+    text-align: center;
+    color: #4CAF50;
+}
+
 @media screen and (max-width: 180mm) {
     .game-over h2 {
         font-size: 36px;
@@ -110,6 +135,15 @@
     .game-over .restart-button,
     .game-over .new-game-button {
         padding: 10px 20px;
+        font-size: 16px;
+    }
+
+    .game-over-stats {
+        padding: 15px;
+        gap: 10px;
+    }
+
+    .stat-item {
         font-size: 16px;
     }
 }
