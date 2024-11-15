@@ -92,9 +92,9 @@
             </div>
 
             <!-- Game Container -->
-            <div v-if="isGameInitialized" class="game-container">
-                <!-- Left Column: Map and Status -->
-                <div class="game-left-column">
+            <div class="game-container">
+                <!-- Replace previous containers with .game-content -->
+                <div class="game-content">
                     <!-- Game Map -->
                     <div class="game-map" :class="{ 'in-combat': gameState.in_combat }">
                         <div v-if="gameState && gameState.explored" class="map">
@@ -229,8 +229,9 @@
                         </div>
                     </div>
                 </div>
+                <!-- End of .game-content -->
 
-                <!-- Right Column: Player Status and Inventory -->
+                <!-- Inventory stays below .game-content -->
                 <div class="game-sidebar">
                     <!-- Inventory UI -->
                     <div class="inventory-ui" v-if="gameState">

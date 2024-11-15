@@ -154,21 +154,85 @@
 }
 
 .game-container {
-    display: flex;
-    gap: 10px;
+    display: block; /* Change from flex to block layout */
     margin: 20px 0;
-    flex-wrap: nowrap; /* Prevent wrapping */
-    flex-direction: row; /* Maintain horizontal layout */
+}
+
+/* Remove or comment out .game-main and .game-left-column styles */
+.game-main,
+.game-left-column {
+    /* Remove all styles or delete these selectors */
+}
+
+/* Adjust the main content layout */
+.game-content {
+    display: flex;
+    flex-direction: row; /* Keep map/combat and status side by side */
+    gap: 10px;
+}
+
+/* Ensure map/combat box and player status have fixed positions */
+.game-map, .combat-ui {
+    width: 300px; /* Set a fixed width */
+    flex-shrink: 0; /* Prevent shrinking */
     position: relative;
 }
 
-.game-left-column {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 10px;
-    width: 100%; /* Ensure full width */
+.player-status {
+    flex-grow: 1; /* Allow to grow */
+    min-width: 250px;
+    max-width: 400px;
+}
+
+/* Inventory stays below .game-content */
+.game-sidebar {
+    margin-top: 20px; /* Add space above inventory */
+    width: 100%;
+}
+
+/* Remove media queries that change layout positions */
+@media screen and (max-width: 180mm) {
+    /* Optional: Adjust sizes but keep positions */
+    .game-content {
+        flex-direction: row; /* Keep elements side by side */
+    }
+    
+    .game-map, .combat-ui, .player-status {
+        width: auto; /* Allow widths to adjust */
+    }
+}
+
+.game-map, .combat-ui {
+    flex: 0 0 auto; /* Don't grow or shrink */
+    position: relative;
+}
+
+.player-status {
+    flex: 1; /* Take remaining space */
+    min-width: 250px; /* Minimum width for readability */
+    max-width: 400px; /* Maximum width for larger screens */
+}
+
+.game-sidebar {
+    width: 100%;
+}
+
+.inventory-ui {
+    width: 100%;
+}
+
+@media screen and (max-width: 180mm) {
+    .game-left-column {
+        flex-direction: column; /* Stack on mobile */
+    }
+
+    .player-status {
+        max-width: none; /* Allow full width on mobile */
+    }
+
+    .game-map, .combat-ui, .player-status, .inventory-ui {
+        width: 100%;
+    }
 }
 
 .game-map {
@@ -194,9 +258,10 @@
 
 .game-sidebar {
     flex: 1;
+    min-width: 300px; /* Ensure minimum width */
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 10px;
 }
 
 .player-status-row {
@@ -264,12 +329,15 @@
     padding: 15px;
     border-radius: 5px;
     margin: 0;
+    width: 100%; /* Ensure it takes full width */
+    display: block; /* Explicitly set display */
 }
 .inventory-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
     margin-top: 10px;
+    width: 100%; /* Ensure full width */
 }
 .item-card {
     background-color: #333;
@@ -396,6 +464,15 @@
         width: 100%;
         padding: 6px;
         margin: 0;
+    }
+
+    .game-left-column,
+    .game-sidebar {
+        min-width: 100%; /* Full width on small screens */
+    }
+
+    .inventory-ui {
+        padding: 6px;
     }
 }
 
