@@ -81,7 +81,7 @@ def create_game_instance(seed: int, theme_desc: str, language: str, do_web_searc
     )
     return game_instance
 
-# Adjusted landing page
+# Landing page
 @app.get("/")
 async def read_landing(request: Request):
     # Create new session
@@ -95,7 +95,7 @@ async def read_landing(request: Request):
         if generator_data:
             # Store in session and redirect to game page
             request.session["generator_id"] = generator_id
-            return RedirectResponse(url=f"/game.html?game_id={generator_id}")
+            return RedirectResponse(url=f"/game?game_id={generator_id}")
         else:
             # If invalid generator ID, redirect to landing with error
             return RedirectResponse(url=f"/?error=invalid_generator")
@@ -103,7 +103,7 @@ async def read_landing(request: Request):
     return FileResponse("static/index.html")
 
 # Game page
-@app.get("/game.html")
+@app.get("/game")
 async def read_game(request: Request):
     # Check if valid session exists
     if "game_session" not in request.session:

@@ -87,7 +87,7 @@ const app = Vue.createApp({
                 if (this.selectedTheme === 'generator') {
                     params.append('game_id', this.generatorId.trim());
                 }
-                window.location.href = `/game.html${params.toString() ? '?' + params.toString() : ''}`;
+                window.location.href = `/game${params.toString() ? '?' + params.toString() : ''}`;
             } catch (error) {
                 this.errorMessage = error.message || "Failed to start game. Please try again.";
             }

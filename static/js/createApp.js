@@ -116,7 +116,7 @@ const app = Vue.createApp({
             if (!this.generatorId) return;
 
             // Create the share URL with generator_id
-            const shareUrl = `${window.location.origin}/game.html?game_id=${this.generatorId}`;
+            const shareUrl = `${window.location.origin}/game?game_id=${this.generatorId}`;
 
             try {
                 await navigator.clipboard.writeText(shareUrl);
