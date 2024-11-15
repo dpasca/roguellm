@@ -196,7 +196,7 @@
     .game-content {
         flex-direction: row; /* Keep elements side by side */
     }
-    
+
     .game-map, .combat-ui, .player-status {
         width: auto; /* Allow widths to adjust */
     }
@@ -236,9 +236,9 @@
 }
 
 .game-map {
-    flex: 0 0 auto;
+    width: 300px; /* Set a fixed width */
+    flex-shrink: 0; /* Prevent shrinking */
     position: relative; /* Ensure relative positioning for absolute children */
-    width: fit-content;
     margin: 0;
     display: inline-block;
     transition: all 0.3s ease;
@@ -469,10 +469,6 @@
     .game-left-column,
     .game-sidebar {
         min-width: 100%; /* Full width on small screens */
-    }
-
-    .inventory-ui {
-        padding: 6px;
     }
 }
 
