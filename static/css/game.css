@@ -186,7 +186,7 @@
 
 /* Inventory stays below .game-content */
 .game-sidebar {
-    margin-top: 20px; /* Add space above inventory */
+    margin-top: 10px; /* Add space above inventory */
     width: 100%;
 }
 
@@ -218,7 +218,12 @@
 }
 
 .inventory-ui {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 0; /* Ensure no margin */
     width: 100%;
+    display: block;
 }
 
 @media screen and (max-width: 180mm) {
@@ -335,8 +340,8 @@
 .inventory-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px; /* Gap between title and items */
     width: 100%; /* Ensure full width */
 }
 .item-card {
@@ -439,6 +444,7 @@
     }
     .game-sidebar {
         gap: 10px;
+        margin-top: 6px; /* Smaller gap on mobile */
     }
 
     .game-log div {
@@ -469,6 +475,10 @@
     .game-left-column,
     .game-sidebar {
         min-width: 100%; /* Full width on small screens */
+    }
+
+    .inventory-ui {
+        padding: 6px; /* Smaller padding on mobile */
     }
 }
 
