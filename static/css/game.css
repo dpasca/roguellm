@@ -157,6 +157,9 @@
     display: flex;
     gap: 10px;
     margin: 20px 0;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    flex-direction: row; /* Maintain horizontal layout */
+    position: relative;
 }
 
 .game-left-column {
@@ -209,10 +212,12 @@
 }
 
 /* Update game container layout */
+/*
 .game-container {
     flex-direction: column;
     position: relative;
 }
+*/
 
 .game-map {
     position: relative;
@@ -239,7 +244,7 @@
 /* Remove any padding from mobile media queries that affect the game container */
 @media screen and (max-width: 768px) {
     .game-container {
-        flex-direction: column;
+        flex-direction: row; /* Keep row direction */
         padding: 0; /* Remove this padding */
     }
 }
@@ -384,7 +389,6 @@
     }
 
     .game-left-column {
-        flex-direction: column; /* Stack items vertically on mobile */
         width: 100%;
     }
 
