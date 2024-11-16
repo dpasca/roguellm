@@ -31,6 +31,10 @@ body, html {
     }
 }
 
+[v-cloak] {
+    display: none;
+}
+
 /* Add touch device specific styles */
 @media (hover: none) and (pointer: coarse) {
     body, html {

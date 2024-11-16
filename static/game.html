@@ -25,7 +25,7 @@
     <script src="static/js/versioning.js"></script>
 </head>
 <body style="background-color: #121212; color: white;">
-    <div id="app">
+    <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
                 <h1>{{ gameTitle }}</h1>
@@ -51,7 +51,7 @@
             </div>
 
             <!-- Game Over Overlay -->
-            <div v-if="isGameInitialized && gameState.game_over" class="game-over">
+            <div v-if="isGameInitialized && gameState && gameState.game_over" class="game-over">
                 <h2>Game Over!</h2>
                 <div class="game-over-stats">
                     <div class="stat-item">
