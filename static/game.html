@@ -23,6 +23,62 @@
     <meta http-equiv="Expires" content="0">
     <!-- Force versioning of CSS files to prevent caching -->
     <script src="static/js/versioning.js"></script>
+    <style>
+        /* Debug Panel Styles */
+        .debug-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+        }
+
+        .debug-panel.active {
+            display: block;
+        }
+
+        .debug-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .debug-panel-header h3 {
+            margin: 0;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .debug-section {
+            margin-bottom: 20px;
+        }
+
+        .debug-section h4 {
+            margin-bottom: 10px;
+            color: #888;
+        }
+
+        .debug-item {
+            padding: 5px;
+            border-bottom: 1px solid #333;
+        }
+    </style>
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app" v-cloak>
@@ -41,6 +97,10 @@
                     </button>
                     <button @click="newGame">
                         <i class="fas fa-plus fa-fw popup-menu-item-icon"></i>Create New Game
+                    </button>
+                    <!-- Debug button - only visible during development -->
+                    <button @click="toggleDebugPanel">
+                        <i class="fas fa-bug fa-fw popup-menu-item-icon"></i>Debug Info
                     </button>
                 </div>
             </div>
@@ -246,6 +306,28 @@
                                 </div>
                                 <p>{{ item.description }}</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Panel -->
+            <div class="debug-panel" :class="{ active: isDebugPanelOpen }" v-if="gameState">
+                <div class="debug-panel-header">
+                    <h3>Debug Information</h3>
+                    <button @click="toggleDebugPanel" class="close-button">×</button>
+                </div>
+                <div class="debug-panel-content">
+                    <div class="debug-section">
+                        <h4>Items on Map</h4>
+                        <div v-for="item in gameState.items" :key="item.id" class="debug-item">
+                            <span>{{ item.name }} ({{ item.x }}, {{ item.y }})</span>
+                        </div>
+                    </div>
+                    <div class="debug-section">
+                        <h4>Enemies on Map</h4>
+                        <div v-for="enemy in gameState.enemies" :key="enemy.id" class="debug-item">
+                            <span>{{ enemy.name }} ({{ enemy.x }}, {{ enemy.y }}) - HP: {{ enemy.hp }}</span>
                         </div>
                     </div>
                 </div>

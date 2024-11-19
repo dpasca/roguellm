@@ -98,6 +98,7 @@ const app = Vue.createApp({
             ws: null,
             gameTitle: 'RogueLLM: Unknown Title',
             isMenuOpen: false,
+            isDebugPanelOpen: false,
             errorMessage: null,
             generatorId: null,
             showShareNotification: false
@@ -141,6 +142,12 @@ const app = Vue.createApp({
         },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;
+        },
+        toggleDebugPanel() {
+            this.isDebugPanelOpen = !this.isDebugPanelOpen;
+            if (this.isDebugPanelOpen) {
+                this.isMenuOpen = false;  // Close the menu when debug panel opens
+            }
         },
         closeMenuIfClickedOutside(event) {
             const menu = document.querySelector('.popup-menu');
