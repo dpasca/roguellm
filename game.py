@@ -198,6 +198,19 @@ class Game:
                 # Fallback to random map generation
                 self.state.cell_types = self.make_random_map()
 
+        # Generate enemy placements
+        try:
+            self.enemy_placements = self.gen_ai.gen_enemy_placements(
+                self.state.cell_types,
+                self.enemy_defs,
+                self.state.map_width,
+                self.state.map_height
+            )
+            logger.info(f"Generated enemy placements: {self.enemy_placements}")
+        except Exception as e:
+            logger.error(f"Failed to generate enemy placements: {str(e)}")
+            self.enemy_placements = []
+
         if TEST_DUMMY_EQUIP_AND_ITEMS:
             self.state.inventory = [self.generate_random_item() for _ in range(5)]
             # Find a weapon and an armor
@@ -508,27 +521,56 @@ class Game:
         with open('game_config.json', 'r') as f:
             config = json.load(f)
 
-        roll = self.random.random()
-        roll_thresh_enemy = config['encounter_chances']['enemy']
-        roll_thresh_item = roll_thresh_enemy + config['encounter_chances']['item']
+        x, y = self.state.player_pos
 
-        if roll < roll_thresh_enemy:  # 30% chance for enemy
-            enemy = self.generate_enemy()
-            self.state.current_enemy = enemy
-            self.state.in_combat = True
-            return await self.create_update(f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})")
-        elif roll < roll_thresh_item:  # 20% chance for item
+        # Check if there's a pre-placed enemy at this location
+        enemy_here = next(
+            (p for p in self.enemy_placements if p['x'] == x and p['y'] == y),
+            None
+        )
+
+        if enemy_here:
+            # Find the enemy definition
+            enemy_def = next(
+                (e for e in self.enemy_defs if e['enemy_id'] == enemy_here['enemy_id']),
+                None
+            )
+            if enemy_def:
+                # Generate the enemy from the definition
+                enemy = self.generate_enemy_from_def(enemy_def)
+                self.state.current_enemy = enemy
+                self.state.in_combat = True
+                # Remove this enemy placement so it doesn't respawn
+                self.enemy_placements = [
+                    p for p in self.enemy_placements
+                    if not (p['x'] == x and p['y'] == y)
+                ]
+                return await self.create_update(
+                    f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
+                )
+
+        # If no pre-placed enemy, check for random item
+        roll = self.random.random()
+        roll_thresh_item = config['encounter_chances']['item']
+
+        if roll < roll_thresh_item:  # 20% chance for item
             item = self.generate_random_item()
 
             # Check for duplicates if item is not consumable
             if item.type in ['weapon', 'armor']:
-                existing_item = next((i for i in self.state.inventory
-                                    if i.name == item.name), None)
+                existing_item = next(
+                    (i for i in self.state.inventory if i.name == item.name),
+                    None
+                )
                 if existing_item:
-                    return await self.create_update(f"You found another {item.name}, but you already have one.")
+                    return await self.create_update(
+                        f"You found another {item.name}, but you already have one."
+                    )
 
             self.state.inventory.append(item)
-            return await self.create_update(f"You found a {item.name}! {item.description}")
+            return await self.create_update(
+                f"You found a {item.name}! {item.description}"
+            )
         else:
             # Only get room description if we're in a new cell type or don't have a previous description
             px = self.state.player_pos[0]
@@ -544,6 +586,24 @@ class Game:
                     'state': self.state.dict(),
                     'description': ""
                 }
+
+    def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
+        """Generate an enemy from a specific enemy definition."""
+        hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
+
+        enemy = Enemy(
+            name=enemy_def['name'],
+            hp=hp,
+            max_hp=hp,
+            attack=self.random.randint(
+                enemy_def['attack']['min'],
+                enemy_def['attack']['max']
+            ),
+            font_awesome_icon=enemy_def['font_awesome_icon']
+        )
+        # Store XP value as a private attribute
+        enemy._xp_reward = enemy_def['xp']
+        return enemy
 
     async def handle_combat_action(self, action: str) -> dict:
         if not self.state.in_combat or not self.state.current_enemy:

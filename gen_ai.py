@@ -214,6 +214,36 @@ Return ONLY the CSV map, with no additional text or explanations.
 Do not include any markdown formatting, including the triple backticks.
 """
 
+# NOTE: Should append theme desc at the bottom
+SYS_GEN_ENEMY_PLACEMENT_MSG = """
+You are an expert game enemy placement strategist. Your task is to analyze a game map and suggest strategic enemy placements that fit the theme and environment.
+
+Given:
+1. A map layout with different cell types
+2. A list of available enemy types with their stats and IDs
+3. The map dimensions
+
+Your job is to respond with a JSON array of enemy placements, considering:
+1. Enemy type suitability for each location (e.g., aquatic enemies near water)
+2. Strategic placement for game progression
+3. Balanced difficulty across the map
+4. Theme consistency
+
+# Response Format
+Return a JSON array of enemy placements in the format:
+[
+  {
+    "x": <x_coordinate>,
+    "y": <y_coordinate>,
+    "enemy_id": <enemy_id>,
+    "reason": <brief explanation of placement>
+  },
+  ...
+]
+
+Note: Use the enemy's exact enemy_id as specified in the enemy definitions.
+"""
+
 def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) -> str:
     return f"""{prompt}
 
@@ -526,6 +556,58 @@ A universe where you can become the master of the universe by defeating other ma
             out_map.append(map_row)
 
         return out_map
+
+    # Generate strategic enemy placements
+    def gen_enemy_placements(
+            self,
+            cell_types: List[List[dict]],
+            enemy_defs: List[dict],
+            map_width: int,
+            map_height: int
+    ) -> List[dict]:
+        """Generate strategic enemy placements based on the map layout."""
+
+        # Create a string representation of the map for the LLM
+        map_desc = []
+        for y in range(map_height):
+            row = []
+            for x in range(map_width):
+                cell = cell_types[y][x]
+                row.append(f"{cell['name']} ({cell['id']})")
+            map_desc.append(" | ".join(row))
+        map_str = "\n".join(map_desc)
+
+        # Format enemy definitions
+        enemy_desc = []
+        for enemy in enemy_defs:
+            enemy_desc.append(f"ID: {enemy['enemy_id']}, Name: {enemy['name']}, HP: {enemy['hp']['min']}-{enemy['hp']['max']}, Attack: {enemy['attack']['min']}-{enemy['attack']['max']}")
+        enemy_str = "\n".join(enemy_desc)
+
+        # Create user message
+        user_msg = f"""Here is the map layout (width: {map_width}, height: {map_height}):
+{map_str}
+
+Available enemy types:
+{enemy_str}
+
+Place enemies strategically on this map, considering the terrain types and theme. Use the enemy's exact enemy_id as specified in the definitions."""
+
+        # Get placement suggestions from LLM
+        response = self._quick_completion_hi(
+            system_msg=append_desc_to_prompt(
+                SYS_GEN_ENEMY_PLACEMENT_MSG,
+                self.theme_desc_better
+            ),
+            user_msg=user_msg,
+        )
+
+        # Parse the response
+        try:
+            placements = json.loads(extract_clean_data(response))
+            return placements
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON in enemy placement response: {response}")
+            return []
 
     # Generator for generic sentences
     def gen_adapt_sentence(

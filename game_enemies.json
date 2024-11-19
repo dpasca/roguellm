@@ -1,6 +1,7 @@
 {
     "enemy_defs": [
     {
+        "enemy_id": "goblin",
         "name": "Goblin",
         "font_awesome_icon": "fa-solid fa-ghost",
         "hp": {"min": 30, "max": 50},
@@ -8,6 +9,7 @@
         "xp": 10
     },
     {
+        "enemy_id": "skeleton",
         "name": "Skeleton",
         "font_awesome_icon": "fa-solid fa-skull",
         "hp": {"min": 40, "max": 60},
@@ -15,6 +17,7 @@
         "xp": 15
     },
     {
+        "enemy_id": "orc",
         "name": "Orc",
         "font_awesome_icon": "fa-solid fa-dragon",
         "hp": {"min": 50, "max": 70},
@@ -22,6 +25,7 @@
         "xp": 20
     },
     {
+        "enemy_id": "dark_elf",
         "name": "Dark Elf",
         "font_awesome_icon": "fa-solid fa-hat-wizard",
         "hp": {"min": 45, "max": 65},
@@ -29,6 +33,7 @@
         "xp": 25
     },
     {
+        "enemy_id": "troll",
         "name": "Troll",
         "font_awesome_icon": "fa-solid fa-person-circle-question",
         "hp": {"min": 70, "max": 90},
