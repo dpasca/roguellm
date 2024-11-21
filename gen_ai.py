@@ -445,49 +445,42 @@ A universe where you can become the master of the universe by defeating other ma
 
         return "\n".join(context)
 
-    def _json_str_to_list_gen(self, json_str: str, system_msg: str) -> List[dict]:
+    # Generate a list of game elements from a JSON samples + system prompt
+    def _gen_game_elems_from_json_sample(
+            self,
+            json_template: str,
+            system_msg: str
+    ) -> List[dict]:
+        if DO_BYPASS_WORLD_GEN:
+            return json.loads(json_template)
+
+        system_msg = append_language_and_desc_to_prompt(
+            # NOTE: We're adding the general JSON rules to help against bad formatting
+            system_msg + SYS_GENERAL_JSON_RULES_MSG,
+            self.language,
+            self.theme_desc
+        )
         # Verify that the input is valid JSON
-        source_list = []
+        template_list = []
         try:
-            source_list = json.loads(json_str)
+            template_list = json.loads(json_template)
         except json.JSONDecodeError:
-            logger.error(f"Invalid JSON input: {json_str}")
+            logger.error(f"Invalid JSON input: {json_template}")
             raise ValueError("Invalid JSON input")
 
         # Generate a new list of items
         response = self._quick_completion(
             system_msg=system_msg,
-            user_msg=json_str,
+            user_msg=json_template,
             quality=MODEL_QUALITY_FOR_JSON
         )
-        # Clean the response to remove any markdown formatting
-        response = extract_clean_data(response)
         # Convert the response to a list of dictionaries
         try:
-            return json.loads(response)
+            return json.loads(extract_clean_data(response))
         except json.JSONDecodeError:
             # Fallback to the original list if the response is broken
             logger.error(f"Invalid JSON output: {response}")
-            return source_list
-
-    # Generate a list of game elements from a JSON samples + system prompt
-    def _gen_game_elems_from_json_sample(
-            self,
-            elem_defs: str,
-            system_msg: str
-    ) -> List[dict]:
-        if DO_BYPASS_WORLD_GEN:
-            return json.loads(elem_defs)
-
-        return self._json_str_to_list_gen(
-            elem_defs,
-            append_language_and_desc_to_prompt(
-                # NOTE: We're adding the general JSON rules to help against bad formatting
-                system_msg + SYS_GENERAL_JSON_RULES_MSG,
-                self.language,
-                self.theme_desc
-            )
-        )
+            return template_list
 
     def gen_players_from_json_sample(self, player_defs: str) -> dict:
         return self._gen_game_elems_from_json_sample(player_defs, SYS_GEN_PLAYER_JSON_MSG)
@@ -615,11 +608,10 @@ Place both enemies and items strategically on this map, considering the terrain 
 For enemies, use their exact enemy_id, and for items use their exact item_id.
 Each placement should indicate whether it's an enemy or an item.
 """
-
-        # Get placement suggestions from LLM
-        response = self._quick_completion_hi(
+        response = self._quick_completion(
             system_msg=append_desc_to_prompt(SYS_GEN_ENTITY_PLACEMENT_MSG, self.theme_desc_better),
             user_msg=user_msg,
+            quality=MODEL_QUALITY_FOR_JSON
         )
 
         # Parse the response
