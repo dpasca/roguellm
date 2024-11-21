@@ -718,6 +718,92 @@ Place items strategically on this map, considering the terrain types, enemy posi
             logger.error(f"Invalid JSON in item placement response: {response}")
             return []
 
+    # Generate strategic entity placements (both enemies and items)
+    def gen_entity_placements(
+            self,
+            cell_types: List[List[dict]],
+            enemy_defs: List[dict],
+            item_defs: List[dict],
+            map_width: int,
+            map_height: int
+    ) -> List[dict]:
+        """Generate strategic placements for both enemies and items based on the map layout."""
+
+        # Create a string representation of the map for the LLM
+        map_desc = []
+        for y in range(map_height):
+            row = []
+            for x in range(map_width):
+                cell = cell_types[y][x]
+                row.append(f"{cell['name']} ({cell['id']})")
+            map_desc.append(" | ".join(row))
+        map_str = "\n".join(map_desc)
+
+        # Format enemy definitions
+        enemy_desc = []
+        for enemy in enemy_defs:
+            enemy_desc.append(f"ID: {enemy['enemy_id']}, Name: {enemy['name']}, HP: {enemy['hp']['min']}-{enemy['hp']['max']}, Attack: {enemy['attack']['min']}-{enemy['attack']['max']}")
+        enemy_str = "\n".join(enemy_desc)
+
+        # Format item definitions
+        item_desc = []
+        for item in item_defs:
+            effects = []
+            for k, v in item['effect'].items():
+                effects.append(f"{k}: {v}")
+            item_desc.append(f"ID: {item['id']}, Name: {item['name']}, Type: {item['type']}, Effects: {', '.join(effects)}")
+        item_str = "\n".join(item_desc)
+
+        # Create user message
+        user_msg = f"""Here is the map layout (width: {map_width}, height: {map_height}):
+{map_str}
+
+Available enemy types:
+{enemy_str}
+
+Available items:
+{item_str}
+
+Place both enemies and items strategically on this map, considering the terrain types and theme. For enemies, use their exact enemy_id, and for items use their exact item_id. Each placement should indicate whether it's an enemy or an item."""
+
+        # Get placement suggestions from LLM
+        response = self._quick_completion_hi(
+            system_msg=append_desc_to_prompt(
+                """You are an expert game level designer. Your task is to strategically place both enemies and items on a game map.
+
+For each placement, specify:
+1. The type ('enemy' or 'item')
+2. The x,y coordinates
+3. The entity_id (enemy_id for enemies, id for items)
+
+Consider:
+- Terrain types and accessibility
+- Balance between enemies and items
+- Strategic positioning of power-ups and equipment
+- Progressive difficulty curve
+- Thematic appropriateness
+
+# Response Format
+Return a JSON array of placement objects. Each object should have:
+{
+    "type": "enemy" or "item",
+    "x": <x coordinate>,
+    "y": <y coordinate>,
+    "entity_id": <id of the enemy or item>
+}""",
+                self.theme_desc_better
+            ),
+            user_msg=user_msg,
+        )
+
+        # Parse the response
+        try:
+            placements = json.loads(extract_clean_data(response))
+            return placements
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON in entity placement response: {response}")
+            return []
+
     # Generator for generic sentences
     def gen_adapt_sentence(
             self,

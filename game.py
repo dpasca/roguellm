@@ -198,31 +198,32 @@ class Game:
                 # Fallback to random map generation
                 self.state.cell_types = self.make_random_map()
 
-        # Generate enemy placements
+        # Generate entity placements (both enemies and items)
         try:
-            self.enemy_placements = self.gen_ai.gen_enemy_placements(
+            entity_placements = self.gen_ai.gen_entity_placements(
                 self.state.cell_types,
                 self.enemy_defs,
-                self.state.map_width,
-                self.state.map_height
-            )
-            logger.info(f"Generated enemy placements: {self.enemy_placements}")
-        except Exception as e:
-            logger.error(f"Failed to generate enemy placements: {str(e)}")
-            self.enemy_placements = []
-
-        # Generate item placements
-        try:
-            self.item_placements = self.gen_ai.gen_item_placements(
-                self.state.cell_types,
-                self.enemy_placements,
                 self.item_defs,
                 self.state.map_width,
                 self.state.map_height
             )
-            logger.info(f"Generated item placements: {self.item_placements}")
+            logger.info(f"Generated entity placements: {entity_placements}")
+            
+            # Split placements into enemies and items
+            self.enemy_placements = [
+                {'x': p['x'], 'y': p['y'], 'enemy_id': p['entity_id']} 
+                for p in entity_placements if p['type'] == 'enemy'
+            ]
+            self.item_placements = [
+                {'x': p['x'], 'y': p['y'], 'id': p['entity_id']} 
+                for p in entity_placements if p['type'] == 'item'
+            ]
+            
+            logger.info(f"Split into enemy placements: {self.enemy_placements}")
+            logger.info(f"Split into item placements: {self.item_placements}")
         except Exception as e:
-            logger.error(f"Failed to generate item placements: {str(e)}")
+            logger.error(f"Failed to generate entity placements: {str(e)}")
+            self.enemy_placements = []
             self.item_placements = []
 
         if TEST_DUMMY_EQUIP_AND_ITEMS:
@@ -572,7 +573,7 @@ class Game:
         if item_here:
             # Find the item definition
             item_def = next(
-                (i for i in self.item_defs if i['id'] == item_here['item_id']),
+                (i for i in self.item_defs if i['id'] == item_here['id']),
                 None
             )
             if item_def:
