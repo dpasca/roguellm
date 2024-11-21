@@ -18,6 +18,8 @@ MAX_TOKENS_FOR_ROOM_DESC = 200
 MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 
 MODEL_QUALITY_FOR_JSON = "low"
+MODEL_QUALITY_FOR_THEME_DESC = "low"
+MODEL_QUALITY_FOR_MAP = "low"
 
 # Extract clean data for cases where the LLM still uses markdown
 def extract_clean_data(data_str: str) -> str:
@@ -315,14 +317,6 @@ class GenAI:
         )
         return response.choices[0].message.content
 
-    # Quick completion with the high-spec model
-    def _quick_completion_hi(self, system_msg: str, user_msg: str, temp: float = DEF_TEMP) -> str:
-        return self._quick_completion(system_msg, user_msg, "high", temp)
-
-    # Quick completion with the low-spec model
-    def _quick_completion_lo(self, system_msg: str, user_msg: str, temp: float = DEF_TEMP) -> str:
-        return self._quick_completion(system_msg, user_msg, "low", temp)
-
     # Upon setting the theme description, translate the basic system prompts
     def set_theme_description(
             self,
@@ -368,11 +362,12 @@ A universe where you can become the master of the universe by defeating other ma
             if research_result:
                 self.theme_desc += f"\n\n# Web Search Results\n{research_result}"
 
-            self.theme_desc_better = self._quick_completion_hi(
+            self.theme_desc_better = self._quick_completion(
                 system_msg=(
                     SYS_BETTER_DESC_PROMPT_MSG +
                     f"\n- The language of the response must be {self.language}"),
                 user_msg=self.theme_desc,
+                quality=MODEL_QUALITY_FOR_THEME_DESC
         )
         logger.info(f"Theme description 'better': {self.theme_desc_better}")
 
@@ -512,12 +507,13 @@ A universe where you can become the master of the universe by defeating other ma
         logger.info(f"gen_game_map_from_celltypes: User message: {use_msg}")
 
         # Get CSV response
-        result_csv = self._quick_completion_lo(
+        result_csv = self._quick_completion(
             system_msg=append_desc_to_prompt(
                 SYS_GEN_MAP_CSV_MSG,
                 self.theme_desc_better
             ),
             user_msg=use_msg,
+            quality=MODEL_QUALITY_FOR_MAP
         )
         logger.info(f"Result CSV: {result_csv}")
         # Clean the response to remove any markdown formatting (just in case)
