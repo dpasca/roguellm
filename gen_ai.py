@@ -21,13 +21,24 @@ MODEL_QUALITY_FOR_JSON = "low"
 
 # Extract clean data for cases where the LLM still uses markdown
 def extract_clean_data(data_str: str) -> str:
-    if data_str.startswith("```json"):
-        return data_str.replace("```json", "").replace("```", "")
-    elif data_str.startswith("```csv"):
-        return data_str.replace("```csv", "").replace("```", "")
-    elif data_str.startswith("```"):
-        return data_str.replace("```", "")
-    return data_str
+    import re
+
+    # Try to find content between ```json and ``` markers
+    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', data_str)
+    if json_match:
+        return json_match.group(1).strip()
+
+    # Try to find content between ```csv and ``` markers
+    csv_match = re.search(r'```csv\s*([\s\S]*?)\s*```', data_str)
+    if csv_match:
+        return csv_match.group(1).strip()
+
+    # Try to find content between generic ``` markers
+    generic_match = re.search(r'```\s*([\s\S]*?)\s*```', data_str)
+    if generic_match:
+        return generic_match.group(1).strip()
+
+    return data_str.strip()
 
 # Given a theme description, generate a web search query and return the results
 def make_query_and_web_search(
@@ -124,6 +135,14 @@ Do not include any narrative style or tone, just a detailed and useful theme des
 - Return ONLY the description, no additional text or explanations
 """
 
+SYS_GENERAL_JSON_RULES_MSG = """
+Reply only with a JSON object.
+Do NOT add any fields.
+Do NOT translate the field names, because they are used as identifiers.
+Do NOT include any additional text before or after the JSON object.
+Do NOT include any markdown formatting, including the triple backticks.
+"""
+
 # NOTE: Should append language req and theme desc at the bottom
 SYS_GEN_PLAYER_JSON_MSG = """
 You are an expert game player generator. Your task is to generate a JSON object
@@ -132,12 +151,9 @@ game. Make sure to select an appropriate font-awesome icon for the player.
 
 # Response Format
 Reply with a new JSON object that contains player definition.
-Do not include any markdown formatting, including the triple backticks.
 The new player definition must follow the same format as the sample definition,
 but adapt it to match the game theme. For example, replace a "warrior" class
 with "space marine" for a sci-fi theme.
-Do not create new fields, as the game is not able to handle them yet.
-Do not translate the field names, because they are used as identifiers.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -154,20 +170,17 @@ You must EXACTLY follow these patterns for effects:
    - {"effect": {"health": X}} where X is a positive integer
    - {"effect": {"attack": X, "duration": Y}} where X and Y are positive integers
 
-# Response Format
-Reply with a new JSON object that contains up to 10 item definitions.
-Do not include any markdown formatting, including the triple backticks.
-The new item definitions must follow the same format as the sample item definitions,
-but they must use a new theme description. For example, replace a "potion" item
-with "med-kit" for another theme.
-Do not create new fields, do not create new effect types, as the game is not able
-to handle them yet.
-Do not translate the field names, because they are used as identifiers.
-
 # Important
 - Only use the exact effect patterns shown above
 - Do not invent new effect types
 - Do not add additional effect fields
+
+# Response Format
+Reply with a new JSON object that contains up to 10 item definitions.
+The new item definitions must follow the same format as the sample item definitions,
+but they must use a new theme description. For example, replace a "potion" item
+with "med-kit" for another theme.
+Do not create new effect types, as the game is not able to handle them yet.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -178,12 +191,9 @@ game. Make sure to select an appropriate font-awesome icon for the enemy.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
-Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "Orc" item
 with "tank" for a modern combat theme.
-Do not create new fields, as the game is not able to handle them yet.
-Do not translate the field names, because they are used as identifiers.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -194,12 +204,9 @@ game.
 
 # Response Format
 Reply with a new JSON object that contains up to 5 item definitions.
-Do not include any markdown formatting, including the triple backticks.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "grass" item
 with "desert" for a desert theme.
-Do not create new fields, as the game is not able to handle them yet.
-Do not translate the field names, because they are used as identifiers.
 """
 
 # NOTE: Should append theme desc at the bottom
@@ -238,7 +245,6 @@ Return a JSON array of enemy placements in the format:
     "x": <x_coordinate>,
     "y": <y_coordinate>,
     "enemy_id": <enemy_id>,
-    "reason": <brief explanation of placement>
   },
   ...
 ]
@@ -264,7 +270,6 @@ Return a JSON array of item placements, where each placement has:
 - "x": X coordinate on the map (0-based)
 - "y": Y coordinate on the map (0-based)
 - "item_id": The ID of the item to place (must match an ID from the provided item definitions)
-- "description": A brief explanation of why this item is placed here
 
 Example:
 {
@@ -272,14 +277,12 @@ Example:
         {
             "x": 3,
             "y": 2,
-            "item_id": "health_potion",
-            "description": "Placed near the entrance for early healing access"
+            "item_id": "health_potion"
         },
         {
             "x": 5,
             "y": 4,
-            "item_id": "steel_sword",
-            "description": "Located in a dangerous area with strong enemies"
+            "item_id": "steel_sword"
         }
     ]
 }
@@ -323,7 +326,6 @@ Return a JSON array of enemy placements in the format:
     "x": <x_coordinate>,
     "y": <y_coordinate>,
     "enemy_id": <enemy_id>,
-    "reason": <brief explanation of placement>
   },
   ...
 ]
@@ -349,7 +351,6 @@ Return a JSON array of item placements, where each placement has:
 - "x": X coordinate on the map (0-based)
 - "y": Y coordinate on the map (0-based)
 - "item_id": The ID of the item to place (must match an ID from the provided item definitions)
-- "description": A brief explanation of why this item is placed here
 
 Example:
 {
@@ -357,14 +358,12 @@ Example:
         {
             "x": 3,
             "y": 2,
-            "item_id": "health_potion",
-            "description": "Placed near the entrance for early healing access"
+            "item_id": "health_potion"
         },
         {
             "x": 5,
             "y": 4,
-            "item_id": "steel_sword",
-            "description": "Located in a dangerous area with strong enemies"
+            "item_id": "steel_sword"
         }
     ]
 }
@@ -606,7 +605,8 @@ A universe where you can become the master of the universe by defeating other ma
         return self._json_str_to_list_gen(
             elem_defs,
             append_language_and_desc_to_prompt(
-                system_msg,
+                # NOTE: We're adding the general JSON rules to help against bad formatting
+                system_msg + SYS_GENERAL_JSON_RULES_MSG,
                 self.language,
                 self.theme_desc
             )
