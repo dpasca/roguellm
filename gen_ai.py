@@ -244,6 +244,132 @@ Return a JSON array of enemy placements in the format:
 Note: Use the enemy's exact enemy_id as specified in the enemy definitions.
 """
 
+# System message for generating item placements
+SYS_GEN_ITEM_PLACEMENT_MSG = """
+You are an expert game item placement generator. Your task is to generate a JSON array
+of item placements that make strategic sense based on the map layout, enemy positions,
+and the theme of the game.
+
+Consider these factors when placing items:
+1. Place items in logical locations based on the terrain
+2. Consider enemy positions to create interesting risk/reward scenarios
+3. Ensure a good balance of item types (weapons, armor, consumables)
+4. Create strategic paths through the map
+5. Place powerful items in more dangerous areas
+
+# Response Format
+Return a JSON array of item placements, where each placement has:
+- "x": X coordinate on the map (0-based)
+- "y": Y coordinate on the map (0-based)
+- "item_id": The ID of the item to place (must match an ID from the provided item definitions)
+- "description": A brief explanation of why this item is placed here
+
+Example:
+{
+    "placements": [
+        {
+            "x": 3,
+            "y": 2,
+            "item_id": "health_potion",
+            "description": "Placed near the entrance for early healing access"
+        },
+        {
+            "x": 5,
+            "y": 4,
+            "item_id": "steel_sword",
+            "description": "Located in a dangerous area with strong enemies"
+        }
+    ]
+}
+
+Note: Do not use comments in the JSON. Put any reasoning in the description field.
+"""
+
+# NOTE: Should append theme desc at the bottom
+SYS_GEN_MAP_CSV_MSG = """
+You are an expert game map generator. Your task is to generate a CSV map
+describing the game map. The user will provide a set of cell types, each with an "id",
+"name", "description".
+
+Your job is to respond with a CSV map, where each cell is described by the "id" of
+the cell type. Generate a map that is coherent with the game theme.
+
+# Response Format
+Return ONLY the CSV map, with no additional text or explanations.
+Do not include any markdown formatting, including the triple backticks.
+"""
+
+# NOTE: Should append theme desc at the bottom
+SYS_GEN_ENEMY_PLACEMENT_MSG = """
+You are an expert game enemy placement strategist. Your task is to analyze a game map and suggest strategic enemy placements that fit the theme and environment.
+
+Given:
+1. A map layout with different cell types
+2. A list of available enemy types with their stats and IDs
+3. The map dimensions
+
+Your job is to respond with a JSON array of enemy placements, considering:
+1. Enemy type suitability for each location (e.g., aquatic enemies near water)
+2. Strategic placement for game progression
+3. Balanced difficulty across the map
+4. Theme consistency
+
+# Response Format
+Return a JSON array of enemy placements in the format:
+[
+  {
+    "x": <x_coordinate>,
+    "y": <y_coordinate>,
+    "enemy_id": <enemy_id>,
+    "reason": <brief explanation of placement>
+  },
+  ...
+]
+
+Note: Use the enemy's exact enemy_id as specified in the enemy definitions.
+"""
+
+# System message for generating item placements
+SYS_GEN_ITEM_PLACEMENT_MSG = """
+You are an expert game item placement generator. Your task is to generate a JSON array
+of item placements that make strategic sense based on the map layout, enemy positions,
+and the theme of the game.
+
+Consider these factors when placing items:
+1. Place items in logical locations based on the terrain
+2. Consider enemy positions to create interesting risk/reward scenarios
+3. Ensure a good balance of item types (weapons, armor, consumables)
+4. Create strategic paths through the map
+5. Place powerful items in more dangerous areas
+
+# Response Format
+Return a JSON array of item placements, where each placement has:
+- "x": X coordinate on the map (0-based)
+- "y": Y coordinate on the map (0-based)
+- "item_id": The ID of the item to place (must match an ID from the provided item definitions)
+- "description": A brief explanation of why this item is placed here
+
+Example:
+{
+    "placements": [
+        {
+            "x": 3,
+            "y": 2,
+            "item_id": "health_potion",
+            "description": "Placed near the entrance for early healing access"
+        },
+        {
+            "x": 5,
+            "y": 4,
+            "item_id": "steel_sword",
+            "description": "Located in a dangerous area with strong enemies"
+        }
+    ]
+}
+
+Note: Do not use comments in the JSON. Put any reasoning in the description field.
+"""
+
 def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) -> str:
     return f"""{prompt}
 
@@ -607,6 +733,75 @@ Place enemies strategically on this map, considering the terrain types and theme
             return placements
         except json.JSONDecodeError:
             logger.error(f"Invalid JSON in enemy placement response: {response}")
+            return []
+
+    # Generate strategic item placements
+    def gen_item_placements(
+            self,
+            cell_types: List[List[dict]],
+            enemy_placements: List[dict],
+            item_defs: List[dict],
+            map_width: int,
+            map_height: int
+    ) -> List[dict]:
+        """Generate strategic item placements based on the map layout and enemy positions."""
+
+        # Create a string representation of the map for the LLM
+        map_desc = []
+        for y in range(map_height):
+            row = []
+            for x in range(map_width):
+                cell = cell_types[y][x]
+                row.append(f"{cell['name']} ({cell['id']})")
+            map_desc.append(" | ".join(row))
+        map_str = "\n".join(map_desc)
+
+        # Format enemy placements
+        enemy_desc = []
+        for enemy in enemy_placements:
+            enemy_desc.append(f"Enemy at ({enemy['x']}, {enemy['y']}): {enemy['enemy_id']}")
+        enemy_str = "\n".join(enemy_desc)
+
+        # Format item definitions
+        item_desc = []
+        for item in item_defs:
+            effects = []
+            for k, v in item['effect'].items():
+                effects.append(f"{k}: {v}")
+            item_desc.append(f"ID: {item['id']}, Name: {item['name']}, Type: {item['type']}, Effects: {', '.join(effects)}")
+        item_str = "\n".join(item_desc)
+
+        # Create user message
+        user_msg = f"""Here is the map layout (width: {map_width}, height: {map_height}):
+{map_str}
+
+Enemy placements:
+{enemy_str}
+
+Available items:
+{item_str}
+
+Place items strategically on this map, considering the terrain types, enemy positions, and theme. Use the item's exact item_id as specified in the definitions."""
+
+        # Get placement suggestions from LLM
+        response = self._quick_completion_hi(
+            system_msg=append_desc_to_prompt(
+                SYS_GEN_ITEM_PLACEMENT_MSG,
+                self.theme_desc_better
+            ),
+            user_msg=user_msg,
+        )
+
+        # Parse the response and extract just the placements
+        try:
+            cleaned_json = extract_clean_data(response)
+            data = json.loads(cleaned_json)
+            # Handle both old and new format
+            placements = data.get('placements', data) if isinstance(data, dict) else data
+            # Remove description field before returning
+            return [{k: v for k, v in p.items() if k != 'description'} for p in placements]
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON in item placement response: {response}")
             return []
 
     # Generator for generic sentences

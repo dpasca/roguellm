@@ -211,6 +211,20 @@ class Game:
             logger.error(f"Failed to generate enemy placements: {str(e)}")
             self.enemy_placements = []
 
+        # Generate item placements
+        try:
+            self.item_placements = self.gen_ai.gen_item_placements(
+                self.state.cell_types,
+                self.enemy_placements,
+                self.item_defs,
+                self.state.map_width,
+                self.state.map_height
+            )
+            logger.info(f"Generated item placements: {self.item_placements}")
+        except Exception as e:
+            logger.error(f"Failed to generate item placements: {str(e)}")
+            self.item_placements = []
+
         if TEST_DUMMY_EQUIP_AND_ITEMS:
             self.state.inventory = [self.generate_random_item() for _ in range(5)]
             # Find a weapon and an armor
@@ -549,43 +563,62 @@ class Game:
                     f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
                 )
 
-        # If no pre-placed enemy, check for random item
-        roll = self.random.random()
-        roll_thresh_item = config['encounter_chances']['item']
+        # Check if there's a pre-placed item at this location
+        item_here = next(
+            (p for p in self.item_placements if p['x'] == x and p['y'] == y),
+            None
+        )
 
-        if roll < roll_thresh_item:  # 20% chance for item
-            item = self.generate_random_item()
-
-            # Check for duplicates if item is not consumable
-            if item.type in ['weapon', 'armor']:
-                existing_item = next(
-                    (i for i in self.state.inventory if i.name == item.name),
-                    None
-                )
-                if existing_item:
-                    return await self.create_update(
-                        f"You found another {item.name}, but you already have one."
-                    )
-
-            self.state.inventory.append(item)
-            return await self.create_update(
-                f"You found a {item.name}! {item.description}"
+        if item_here:
+            # Find the item definition
+            item_def = next(
+                (i for i in self.item_defs if i['id'] == item_here['item_id']),
+                None
             )
+            if item_def:
+                # Generate the item from the definition
+                item = self.generate_item_from_def(item_def)
+
+                # Check for duplicates if item is not consumable
+                if item.type in ['weapon', 'armor']:
+                    existing_item = next(
+                        (i for i in self.state.inventory if i.name == item.name),
+                        None
+                    )
+                    if existing_item:
+                        # Remove this item placement since we found it
+                        self.item_placements = [
+                            p for p in self.item_placements
+                            if not (p['x'] == x and p['y'] == y)
+                        ]
+                        return await self.create_update(
+                            f"You found another {item.name}, but you already have one."
+                        )
+
+                # Add item to inventory and remove from placements
+                self.state.inventory.append(item)
+                self.item_placements = [
+                    p for p in self.item_placements
+                    if not (p['x'] == x and p['y'] == y)
+                ]
+                return await self.create_update(
+                    f"You found a {item.name}! {item.description}"
+                )
+
+        # Only get room description if we're in a new cell type or don't have a previous description
+        px = self.state.player_pos[0]
+        py = self.state.player_pos[1]
+        cur_ct = self.state.cell_types[py][px]
+        if self.last_described_ct != cur_ct:
+            self.last_described_ct = cur_ct
+            return await self.create_update_room()
         else:
-            # Only get room description if we're in a new cell type or don't have a previous description
-            px = self.state.player_pos[0]
-            py = self.state.player_pos[1]
-            cur_ct = self.state.cell_types[py][px]
-            if self.last_described_ct != cur_ct:
-                self.last_described_ct = cur_ct
-                return await self.create_update_room()
-            else:
-                # Return empty description if in same room type
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': ""
-                }
+            # Return empty description if in same room type
+            return {
+                'type': 'update',
+                'state': self.state.dict(),
+                'description': ""
+            }
 
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a specific enemy definition."""
@@ -604,6 +637,18 @@ class Game:
         # Store XP value as a private attribute
         enemy._xp_reward = enemy_def['xp']
         return enemy
+
+    def generate_item_from_def(self, item_def: dict) -> Item:
+        """Generate an item from a specific item definition."""
+        self.item_sequence_cnt += 1
+        return Item(
+            id=f"{item_def['id']}_{self.item_sequence_cnt}",
+            is_equipped=False,
+            name=item_def['name'],
+            type=item_def['type'],
+            effect=item_def['effect'],
+            description=item_def['description']
+        )
 
     async def handle_combat_action(self, action: str) -> dict:
         if not self.state.in_combat or not self.state.current_enemy:
