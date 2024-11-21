@@ -126,6 +126,27 @@ const app = Vue.createApp({
         }
     },
     methods: {
+        async initializeGame(generatorId) {
+            try {
+                const response = await fetch('/api/create_game', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        generator_id: generatorId
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to initialize game');
+                }
+                // The WebSocket connection will handle the game state update
+                return true;
+            } catch (error) {
+                console.error('Error initializing game:', error);
+                throw error;
+            }
+        },
         getCellStyle(x, y) {
             if (!this.gameState.cell_types || this.gameState.cell_types.length === 0) return {};
             const cellType = this.gameState.cell_types[y][x];
@@ -205,6 +226,11 @@ const app = Vue.createApp({
                         if (response.description) {
                             this.gameLogs.push(response.description);
                         }
+                        // Hide loading overlay when we get a new game state
+                        const loadingOverlay = document.querySelector('.loading-overlay');
+                        if (loadingOverlay) {
+                            loadingOverlay.style.display = 'none';
+                        }
                         if (!this.isGameInitialized) {
                             console.log('Initial game state received:', this.gameState);
                             this.isGameInitialized = true;
@@ -255,19 +281,26 @@ const app = Vue.createApp({
                 console.error('WebSocket error:', error);
             };
         },
-        restartGame() {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.send(JSON.stringify({
-                    action: 'restart',
-                    generator_id: this.generatorId
-                }));
-                this.gameLogs = [];
-                // Request initial state after restart
-                setTimeout(() => {
+        async restartGame() {
+            // Show loading overlay
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            const loadingMessage = document.querySelector('#loading-message');
+            loadingMessage.textContent = 'Restarting game...';
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                await this.initializeGame(this.generatorId);
+                // Send restart message through WebSocket
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify({
-                        action: 'get_initial_state'
+                        action: 'restart'
                     }));
-                }, 100); // Small delay to ensure restart completes first
+                }
+                // Note: We'll let the WebSocket update handler hide the overlay when new state arrives
+            } catch (error) {
+                this.errorMessage = 'Failed to restart game: ' + error.message;
+                // Only hide overlay on error
+                loadingOverlay.style.display = 'none';
             }
         },
         move(direction) {
