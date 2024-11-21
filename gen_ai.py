@@ -17,6 +17,8 @@ DO_BYPASS_WORLD_GEN = False
 MAX_TOKENS_FOR_ROOM_DESC = 200
 MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
 
+MODEL_QUALITY_FOR_JSON = "low"
+
 # Extract clean data for cases where the LLM still uses markdown
 def extract_clean_data(data_str: str) -> str:
     if data_str.startswith("```json"):
@@ -419,15 +421,16 @@ class GenAI:
         logger.info(f"Low spec model: {self.lo_model.model_name}")
         logger.info(f"High spec model: {self.hi_model.model_name}")
 
-    # Quick completion with the high-spec model
-    def _quick_completion_hi(
+    def _quick_completion(
             self,
             system_msg: str,
             user_msg: str,
+            quality: str,
             temp: float = DEF_TEMP
     ) -> str:
-        response = self.hi_model.client.chat.completions.create(
-            model=self.hi_model.model_name,
+        use_model = self.lo_model if quality == "low" else self.hi_model
+        response = use_model.client.chat.completions.create(
+            model=use_model.model_name,
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg}
@@ -436,22 +439,13 @@ class GenAI:
         )
         return response.choices[0].message.content
 
+    # Quick completion with the high-spec model
+    def _quick_completion_hi(self, system_msg: str, user_msg: str, temp: float = DEF_TEMP) -> str:
+        return self._quick_completion(system_msg, user_msg, "high", temp)
+
     # Quick completion with the low-spec model
-    def _quick_completion_lo(
-            self,
-            system_msg: str,
-            user_msg: str,
-            temp: float = DEF_TEMP
-    ) -> str:
-        response = self.lo_model.client.chat.completions.create(
-            model=self.lo_model.model_name,
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg}
-            ],
-            temperature=temp,  # Add some variability but keep it coherent
-        )
-        return response.choices[0].message.content
+    def _quick_completion_lo(self, system_msg: str, user_msg: str, temp: float = DEF_TEMP) -> str:
+        return self._quick_completion(system_msg, user_msg, "low", temp)
 
     # Upon setting the theme description, translate the basic system prompts
     def set_theme_description(
@@ -585,9 +579,10 @@ A universe where you can become the master of the universe by defeating other ma
             raise ValueError("Invalid JSON input")
 
         # Generate a new list of items
-        response = self._quick_completion_hi(
+        response = self._quick_completion(
             system_msg=system_msg,
             user_msg=json_str,
+            quality=MODEL_QUALITY_FOR_JSON
         )
         # Clean the response to remove any markdown formatting
         response = extract_clean_data(response)
