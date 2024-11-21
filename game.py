@@ -208,17 +208,17 @@ class Game:
                 self.state.map_height
             )
             logger.info(f"Generated entity placements: {entity_placements}")
-            
+
             # Split placements into enemies and items
             self.enemy_placements = [
-                {'x': p['x'], 'y': p['y'], 'enemy_id': p['entity_id']} 
+                {'x': p['x'], 'y': p['y'], 'enemy_id': p['entity_id']}
                 for p in entity_placements if p['type'] == 'enemy'
             ]
             self.item_placements = [
-                {'x': p['x'], 'y': p['y'], 'id': p['entity_id']} 
+                {'x': p['x'], 'y': p['y'], 'id': p['entity_id']}
                 for p in entity_placements if p['type'] == 'item'
             ]
-            
+
             logger.info(f"Split into enemy placements: {self.enemy_placements}")
             logger.info(f"Split into item placements: {self.item_placements}")
         except Exception as e:
@@ -332,6 +332,10 @@ class Game:
                 'state': self.state.dict(),
                 'description': f"Unknown action: {action}"
             }
+
+        # Skip adding the event if the description is empty
+        if action == 'move' and result.get('description') == "":
+            return result
 
         self.events_add(action, result) # Record the event
         return result
