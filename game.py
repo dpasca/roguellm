@@ -284,14 +284,16 @@ class Game:
     async def handle_message(self, message: dict) -> dict:
         action = message.get('action')
 
-        if action == 'get_initial_state' or action == 'initialize':
+        # Only initialize if it's an initialize action or if state doesn't exist
+        if action == 'initialize' or not hasattr(self, 'state'):
             return await self.initialize_game()
 
-        # Only check game state for other actions after initialization
-        if not hasattr(self, 'state'):
+        # Handle get_initial_state - just return current state without reinitializing
+        if action == 'get_initial_state':
             return {
-                'type': 'error',
-                'message': 'Game not initialized yet'
+                'type': 'update',
+                'state': self.state.dict(),
+                'description': ""
             }
 
         if action == 'restart':
