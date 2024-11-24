@@ -38,6 +38,7 @@ class Game:
         self.random = random.Random(seed)  # Create a new Random object with the given seed
         self.error_message = None
         self.item_sequence_cnt = 0
+        self.enemy_sequence_cnt = 0  # Add counter for unique enemy IDs
         self.connected_clients = set()
         self.event_history = []
         self.language = language
@@ -219,13 +220,35 @@ class Game:
                 if placement['type'] == 'enemy':
                     enemy_def = next((e for e in self.enemy_defs if e['enemy_id'] == placement['entity_id']), None)
                     if enemy_def:
+                        self.enemy_sequence_cnt += 1
+                        enemy_id = f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}"
+
+                        # Check if this enemy was previously defeated (by position)
+                        was_defeated = any(
+                            de['x'] == placement['x'] and de['y'] == placement['y']
+                            for de in self.state.defeated_enemies
+                        )
+
+                        # Add to enemies list with proper defeated state
                         self.state.enemies.append({
+                            'id': enemy_id,
                             'x': placement['x'],
                             'y': placement['y'],
                             'name': enemy_def['name'],
                             'font_awesome_icon': enemy_def['font_awesome_icon'],
-                            'is_defeated': False
+                            'is_defeated': was_defeated
                         })
+
+                        # If it was defeated, add to defeated_enemies if not already there
+                        if was_defeated and not any(de['id'] == enemy_id for de in self.state.defeated_enemies):
+                            self.state.defeated_enemies.append({
+                                'x': placement['x'],
+                                'y': placement['y'],
+                                'name': enemy_def['name'],
+                                'id': enemy_id,
+                                'font_awesome_icon': enemy_def['font_awesome_icon'],
+                                'is_defeated': True
+                            })
                 elif placement['type'] == 'item':
                     self.item_placements.append({
                         'x': placement['x'],
@@ -266,9 +289,14 @@ class Game:
         })
 
     async def create_update(self, original_sentence: str):
+        logger.info("Creating game state update")
+        logger.info(f"Current enemies: {self.state.enemies}")
+        logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
+        state_dict = self.state.dict()
+        logger.info(f"State dict enemies: {state_dict['enemies']}")
         return {
             'type': 'update',
-            'state': self.state.dict(),
+            'state': state_dict,
             'description': await self.gen_adapt_sentence(original_sentence)
         }
 
@@ -536,8 +564,10 @@ class Game:
     def generate_enemy(self) -> Enemy:
         enemy_def = self.random.choice(self.enemy_defs)
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
+        self.enemy_sequence_cnt += 1
 
         enemy = Enemy(
+            id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
             name=enemy_def['name'],
             hp=hp,
             max_hp=hp,
@@ -572,14 +602,62 @@ class Game:
                 enemy = self.generate_enemy_from_def(enemy_def)
                 self.state.current_enemy = enemy
                 self.state.in_combat = True
+
+                # Check if this enemy was previously defeated
+                was_defeated = any(
+                    de['x'] == x and de['y'] == y
+                    for de in self.state.defeated_enemies
+                )
+
+                # Add enemy to state.enemies list
+                existing_enemy = next((e for e in self.state.enemies if e['x'] == x and e['y'] == y), None)
+                if existing_enemy:
+                    existing_enemy['id'] = enemy.id
+                    existing_enemy['name'] = enemy.name
+                    existing_enemy['font_awesome_icon'] = enemy.font_awesome_icon
+                    existing_enemy['is_defeated'] = was_defeated
+                else:
+                    self.state.enemies.append({
+                        'id': enemy.id,
+                        'x': x,
+                        'y': y,
+                        'name': enemy.name,
+                        'font_awesome_icon': enemy.font_awesome_icon,
+                        'is_defeated': was_defeated
+                    })
+
+                # If it was defeated, add to defeated_enemies if not already there
+                if was_defeated and not any(de['id'] == enemy.id for de in self.state.defeated_enemies):
+                    self.state.defeated_enemies.append({
+                        'x': x,
+                        'y': y,
+                        'name': enemy.name,
+                        'id': enemy.id,
+                        'font_awesome_icon': enemy.font_awesome_icon,
+                        'is_defeated': True
+                    })
+                logger.info(f"Updated enemies: {self.state.enemies}")
+                logger.info(f"Updated defeated enemies: {self.state.defeated_enemies}")
+
+                # Don't enter combat if the enemy was already defeated
+                if was_defeated:
+                    self.state.current_enemy = None
+                    self.state.in_combat = False
+
                 # Remove this enemy placement so it doesn't respawn
                 self.entity_placements = [
                     p for p in self.entity_placements
                     if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
                 ]
-                return await self.create_update(
-                    f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
-                )
+
+                if was_defeated:
+                    return await self.create_update(
+                        f"You see a defeated {enemy.name} here."
+                    )
+                else:
+                    return await self.create_update(
+                        f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
+                    )
 
         # Check if there's a pre-placed item at this location
         item_here = next(
@@ -641,8 +719,10 @@ class Game:
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a specific enemy definition."""
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
+        self.enemy_sequence_cnt += 1
 
         enemy = Enemy(
+            id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
             name=enemy_def['name'],
             hp=hp,
             max_hp=hp,
@@ -696,9 +776,13 @@ class Game:
                 # Find the enemy in the state's list to get its position
                 enemy_in_state = next(
                     (e for e in self.state.enemies
-                     if not e['is_defeated'] and e['name'] == self.state.current_enemy.name),
+                     if e['id'] == self.state.current_enemy.id),  # Remove not is_defeated check to find the enemy
                     None
                 )
+
+                logger.info(f"Enemy in state: {enemy_in_state}")
+                logger.info(f"Current enemies: {self.state.enemies}")
+                logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
 
                 if enemy_in_state:
                     enemy_x = enemy_in_state['x']
@@ -710,12 +794,22 @@ class Game:
 
                     # Update enemy status
                     enemy_in_state['is_defeated'] = True
-                    self.state.defeated_enemies.append({
-                        'x': enemy_x,
-                        'y': enemy_y,
-                        'name': enemy_in_state['name'],
-                        'font_awesome_icon': enemy_in_state['font_awesome_icon']
-                    })
+                    logger.info(f"Set enemy {enemy_in_state['id']} to defeated")
+
+                    # Add to defeated_enemies if not already there
+                    if not any(de['id'] == enemy_in_state['id'] for de in self.state.defeated_enemies):
+                        self.state.defeated_enemies.append({
+                            'x': enemy_x,
+                            'y': enemy_y,
+                            'name': enemy_in_state['name'],
+                            'id': enemy_in_state['id'],
+                            'font_awesome_icon': enemy_in_state['font_awesome_icon'],
+                            'is_defeated': True
+                        })
+                        logger.info(f"Added enemy {enemy_in_state['id']} to defeated_enemies")
+
+                    #logger.info(f"Updated enemies: {self.state.enemies}")
+                    #logger.info(f"Updated defeated enemies: {self.state.defeated_enemies}")
 
                 # Append enemy defeat to the combat log
                 combat_log += f"\nYou have defeated the enemy. Gained XP: {xp_gained}. Restored HP: {actual_restore}"
@@ -758,15 +852,56 @@ class Game:
 
         elif action == 'run':
             if self.random.random() < 0.6:  # 60% chance to escape
-                self.state.in_combat = False
-                self.state.current_enemy = None
+                # Find the enemy in the state's list to get its position
+                enemy_in_state = next(
+                    (e for e in self.state.enemies
+                     if e['id'] == self.state.current_enemy.id),  # Remove not is_defeated check to find the enemy
+                    None
+                )
+
+                #logger.info(f"Running from enemy: {self.state.current_enemy.id}")
+                #logger.info(f"Found enemy in state: {enemy_in_state}")
+                #logger.info(f"Current enemies: {self.state.enemies}")
+                #logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
+
+                if enemy_in_state:
+                    enemy_x = enemy_in_state['x']
+                    enemy_y = enemy_in_state['y']
+
+                    # Clear combat state
+                    self.state.in_combat = False
+                    self.state.current_enemy = None
+
+                    # Update enemy status in both lists
+                    enemy_in_state['is_defeated'] = True
+                    logger.info(f"Set enemy {enemy_in_state['id']} to defeated")
+
+                    # Add to defeated_enemies if not already there
+                    if not any(de['id'] == enemy_in_state['id'] for de in self.state.defeated_enemies):
+                        self.state.defeated_enemies.append({
+                            'x': enemy_x,
+                            'y': enemy_y,
+                            'name': enemy_in_state['name'],
+                            'id': enemy_in_state['id'],
+                            'font_awesome_icon': enemy_in_state['font_awesome_icon'],
+                            'is_defeated': True
+                        })
+                        logger.info(f"Added enemy {enemy_in_state['id']} to defeated_enemies")
+
+                    #logger.info(f"Updated enemies: {self.state.enemies}")
+                    #logger.info(f"Updated defeated enemies: {self.state.defeated_enemies}")
 
                 # Process temporary effects when running
                 effects_log = await self.process_temporary_effects()
+                description = "You successfully flee from battle!"
                 if effects_log:
-                    return await self.create_update(f"You successfully flee from battle!\n{effects_log}")
-                else:
-                    return await self.create_update("You successfully flee from battle!")
+                    description += f"\n{effects_log}"
+
+                return {
+                    'type': 'update',
+                    'state': self.state.dict(),
+                    'description': description
+                }
             else:
                 # Failed to escape, enemy gets a free attack
                 damage = self.random.randint(

@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Union
 
 class Enemy(BaseModel):
+    id: str
     name: str
     hp: int
     max_hp: int

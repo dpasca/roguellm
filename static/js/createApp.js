@@ -164,8 +164,9 @@ const app = Vue.createApp({
             };
         },
         getCellIcon(x, y) {
-            // Check if there's an enemy at this position
-            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y);
+            // Check if there's an enemy at this position (either active or defeated)
+            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y) ||
+                         this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
             if (enemy) {
                 const baseClass = enemy.font_awesome_icon;
                 const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
