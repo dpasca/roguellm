@@ -1,10 +1,17 @@
 {
+    "// Notes": "Parameters are indicated with {paramName}",
+
+    "// Main UI": "Main interface translations",
     "title": "RogueLLM",
     "subtitle_with_author": "An experimental roguelike game powered by AI by {author}",
+
+    "// Theme Selection": "Theme selection related translations",
     "selectTheme": "Select Your Theme",
     "fantasyTheme": "Fantasy Theme",
     "customTheme": "Custom Theme",
     "generatorTheme": "Generator Theme",
+
+    "// Game Setup": "Game setup and configuration translations",
     "useGameId": "Use Game ID",
     "customThemeDescription": "Enter a description for your custom theme:",
     "generatorIdLabel": "Enter Game ID:",

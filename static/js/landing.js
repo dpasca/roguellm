@@ -4,6 +4,18 @@ const SUPPORTED_LANGUAGES = [
     { code: 'it', name: 'Italiano' },
 ];
 
+// Configuration for external links and common values
+const CONFIG = {
+    links: {
+        author: {
+            url: 'https://newtypekk.com/',
+            text: 'NEWTYPE'
+        }
+    },
+    defaultLanguage: 'en',
+    fallbackLanguage: 'en'
+};
+
 const app = Vue.createApp({
     data() {
         return {
@@ -14,7 +26,8 @@ const app = Vue.createApp({
             doWebSearch: true,
             selectedLanguage: this.getDefaultLanguage(),
             supportedLanguages: SUPPORTED_LANGUAGES,
-            translations: {}
+            translations: {},
+            config: CONFIG
         }
     },
     watch: {
@@ -44,20 +57,37 @@ const app = Vue.createApp({
             try {
                 const response = await fetch(`static/translations/${lang}.json`);
                 this.translations[lang] = await response.json();
+                
+                // Load fallback language if it's not already loaded
+                if (lang !== CONFIG.fallbackLanguage && !this.translations[CONFIG.fallbackLanguage]) {
+                    const fallbackResponse = await fetch(`static/translations/${CONFIG.fallbackLanguage}.json`);
+                    this.translations[CONFIG.fallbackLanguage] = await fallbackResponse.json();
+                }
             } catch (error) {
                 console.error('Error loading translations:', error);
             }
         },
         t(key, params = {}) {
-            const translation = this.translations[this.selectedLanguage]?.[key];
-            if (!translation) return key;
+            // Try selected language first
+            let translation = this.translations[this.selectedLanguage]?.[key];
+            
+            // Fall back to default language if translation is missing
+            if (!translation && this.selectedLanguage !== CONFIG.fallbackLanguage) {
+                translation = this.translations[CONFIG.fallbackLanguage]?.[key];
+            }
+            
+            // Return key if no translation found
+            if (!translation) {
+                console.warn(`Missing translation for key: ${key}`);
+                return key;
+            }
             
             if (Object.keys(params).length === 0) {
                 return translation;
             }
             
-            return translation.replace(/\{(\w+)\}/g, (match, key) => {
-                return params[key] !== undefined ? params[key] : match;
+            return translation.replace(/\{(\w+)\}/g, (match, paramKey) => {
+                return params[paramKey] !== undefined ? params[paramKey] : match;
             });
         },
         clearError() {
@@ -118,7 +148,7 @@ const app = Vue.createApp({
             // For other languages, just take the first part before the dash
             const shortLang = browserLang.split('-')[0];
             const supportedCodes = SUPPORTED_LANGUAGES.map(lang => lang.code);
-            return supportedCodes.includes(shortLang) ? shortLang : 'en';
+            return supportedCodes.includes(shortLang) ? shortLang : CONFIG.defaultLanguage;
         }
     },
     async mounted() {
