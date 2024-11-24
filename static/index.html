@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>RogueLLM - Welcome</title>
+    <title>{{ t('title') }}</title>
     <!-- Update favicon paths -->
     <link rel="icon" type="image/png" sizes="32x32" href="static/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="static/favicon/favicon-16x16.png">
@@ -71,7 +71,7 @@
 
                 <div class="theme-description" v-show="selectedTheme === 'custom'">
                     <textarea v-model="customDescription"
-                            placeholder="Describe the setting for your game. e.g. 'Programmers in the wild'"
+                            :placeholder="t('enterGameDescription')"
                             rows="4"
                             maxlength="3000"
                             class="theme-textarea"></textarea>
@@ -79,7 +79,7 @@
                         <label>
                             <input type="checkbox" v-model="doWebSearch">
                             <span class="checkbox-custom"></span>
-                            <span class="checkbox-label">Improve game description with web search</span>
+                            <span class="checkbox-label">{{ t('improveGameDescription') }}</span>
                         </label>
                     </div>
                 </div>

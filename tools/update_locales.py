@@ -11,10 +11,6 @@ import argparse
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('translation_update.log'),
-        logging.StreamHandler()
-    ]
 )
 logger = logging.getLogger(__name__)
 

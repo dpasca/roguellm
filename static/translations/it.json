@@ -7,12 +7,14 @@
   "selectTheme": "Seleziona il tuo tema",
   "fantasyTheme": "Tema Fantasy",
   "customTheme": "Tema Personalizzato",
-  "generatorTheme": "Tema Generatore",
-  "// Game Setup": "Traduzioni della configurazione e impostazione del gioco",
+  "enterGameDescription": "Descrivi l'ambientazione del tuo gioco. ad es. 'Programmatore nella natura selvaggia'",
+  "generatorTheme": "Tema del Generatore",
+  "improveGameDescription": "Migliora la descrizione del gioco con la ricerca web",
+  "// Game Setup": "Traduzioni per la configurazione e l'impostazione del gioco",
   "useGameId": "Usa ID Gioco",
   "customThemeDescription": "Inserisci una descrizione per il tuo tema personalizzato:",
   "generatorIdLabel": "Inserisci ID Gioco:",
-  "startGame": "Inizia Gioco",
+  "startGame": "Avvia Gioco",
   "createGame": "Crea Gioco",
-  "errorGameId": "Per favore inserisci un ID Gioco"
+  "errorGameId": "Per favore, inserisci un ID Gioco"
 }

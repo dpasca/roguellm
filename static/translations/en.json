@@ -9,7 +9,9 @@
     "selectTheme": "Select Your Theme",
     "fantasyTheme": "Fantasy Theme",
     "customTheme": "Custom Theme",
+    "enterGameDescription": "Describe the setting for your game. e.g. 'Programmers in the wild'",
     "generatorTheme": "Generator Theme",
+    "improveGameDescription": "Improve game description with web search",
 
     "// Game Setup": "Game setup and configuration translations",
     "useGameId": "Use Game ID",
