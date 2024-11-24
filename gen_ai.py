@@ -3,6 +3,7 @@ import random
 from typing import List
 from models import GameState
 import json
+import pprint
 from web_search import web_search
 
 import logging
@@ -604,18 +605,40 @@ Place both enemies and items strategically on this map, considering the terrain 
 For enemies, use their exact enemy_id, and for items use their exact item_id.
 Each placement should indicate whether it's an enemy or an item.
 """
-        response = self._quick_completion(
-            system_msg=append_desc_to_prompt(SYS_GEN_ENTITY_PLACEMENT_MSG, self.theme_desc_better),
-            user_msg=user_msg,
-            quality=MODEL_QUALITY_FOR_JSON
-        )
+
+        if DO_BYPASS_WORLD_GEN:
+            placements_json = """[
+  {"entity_id": "goblin", "type": "enemy", "x": 0, "y": 3},
+  {"entity_id": "goblin", "type": "enemy", "x": 1, "y": 0},
+  {"entity_id": "skeleton", "type": "enemy", "x": 2, "y": 0},
+  {"entity_id": "orc", "type": "enemy", "x": 3, "y": 3},
+  {"entity_id": "skeleton", "type": "enemy", "x": 4, "y": 0},
+  {"entity_id": "dark_elf", "type": "enemy", "x": 5, "y": 2},
+  {"entity_id": "rusty_sword", "type": "item", "x": 5, "y": 1},
+  {"entity_id": "health_potion", "type": "item", "x": 6, "y": 4},
+  {"entity_id": "chain_mail", "type": "item", "x": 7, "y": 5},
+  {"entity_id": "troll", "type": "enemy", "x": 8, "y": 6},
+  {"entity_id": "strength_potion", "type": "item", "x": 9, "y": 7},
+  {"entity_id": "dark_elf", "type": "enemy", "x": 8, "y": 4}
+]"""
+        else:
+            response = self._quick_completion(
+                system_msg=append_desc_to_prompt(SYS_GEN_ENTITY_PLACEMENT_MSG, self.theme_desc_better),
+                user_msg=user_msg,
+                quality=MODEL_QUALITY_FOR_JSON)
+            placements_json = extract_clean_data(response)
+            logger.info(f"Entity placements:\n{pprint.pformat(json.loads(placements_json), indent=2)}")
 
         # Parse the response
         try:
-            placements = json.loads(extract_clean_data(response))
+            placements = json.loads(placements_json)
             return placements
-        except json.JSONDecodeError:
-            logger.error(f"Invalid JSON in entity placement response: {response}")
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"Invalid JSON in entity placement:\n" +
+                f"Error: {str(e)}\nPosition: {e.pos}\n" +
+                f"Line: {e.lineno}, Column: {e.colno}\n" +
+                f"JSON content: {placements_json}")
             return []
 
     # Generator for generic sentences
