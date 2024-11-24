@@ -154,28 +154,22 @@ const app = Vue.createApp({
 
             const cellType = this.gameState.cell_types[y][x];
             const isExplored = this.gameState.explored[y][x];
-            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y);
 
             const scaleBg = isExplored ? 0.6 : 0.5; // Unexplored cells are darker
             const scaleFg = isExplored ? 0.9 : 0.8; // Unexplored cells are darker
 
-            const baseStyle = {
+            return {
                 backgroundColor: scaleColor(cellType.map_color, scaleBg),
                 color: scaleColor(cellType.map_color, scaleFg)
             };
-
-            // Override color for enemies
-            if (enemy) {
-                baseStyle.color = enemy.is_defeated ? '#aa6666' : '#ff6666';
-            }
-
-            return baseStyle;
         },
         getCellIcon(x, y) {
             // Check if there's an enemy at this position
             const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y);
             if (enemy) {
-                return enemy.font_awesome_icon;
+                const baseClass = enemy.font_awesome_icon;
+                const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
+                return `${baseClass} ${enemyClass}`;
             }
             return this.gameState.cell_types[y][x].font_awesome_icon;
         },

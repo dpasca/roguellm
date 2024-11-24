@@ -733,3 +733,18 @@
         margin-bottom: 10px;
     }
 }
+
+/* Enemy icon styling */
+.cell i.enemy-icon {
+    color: white !important;
+    text-shadow:
+        3px 4px 3px #000000,
+        -2px 0 2px #000000,
+        0 2px 2px #000000,
+        0 -2px 2px #000000;
+}
+
+.cell i.enemy-icon.defeated {
+    color: #888888 !important;
+    text-shadow: none;
+}
