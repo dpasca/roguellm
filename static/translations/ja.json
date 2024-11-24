@@ -4,17 +4,74 @@
   "title": "RogueLLM",
   "subtitle_with_author": "AIによって駆動される実験的なローグライクゲーム {author} による",
   "// Theme Selection": "テーマ選択に関連する翻訳",
-  "selectTheme": "テーマを選択してください",
+  "selectTheme": "テーマを選択",
   "fantasyTheme": "ファンタジーテーマ",
   "customTheme": "カスタムテーマ",
-  "enterGameDescription": "ゲームの設定を説明してください。例：'野生のプログラマー'",
+  "enterGameDescription": "ゲームの設定を説明してください。例: '野生のプログラマー'",
   "generatorTheme": "ジェネレーターテーマ",
-  "improveGameDescription": "ウェブ検索でゲームの説明を改善する",
-  "// Game Setup": "ゲームのセットアップと構成の翻訳",
+  "improveGameDescription": "ウェブ検索でゲームの説明を改善",
+  "// Game Setup": "ゲーム設定および構成の翻訳",
   "useGameId": "ゲームIDを使用",
-  "customThemeDescription": "カスタムテーマの説明を入力してください：",
-  "generatorIdLabel": "ゲームIDを入力してください：",
-  "startGame": "ゲームを開始",
-  "createGame": "ゲームを作成",
-  "errorGameId": "ゲームIDを入力してください"
+  "customThemeDescription": "カスタムテーマの説明を入力してください:",
+  "generatorIdLabel": "ゲームIDを入力:",
+  "startGame": "ゲーム開始",
+  "createGame": "ゲーム作成",
+  "errorGameId": "ゲームIDを入力してください",
+  "// Game Interface": "ゲーム内インターフェースの翻訳",
+  "menu": {
+    "share": "ゲームを共有",
+    "restart": "ゲームを再開",
+    "newGame": "新しいゲームを作成",
+    "debug": "デバッグ情報"
+  },
+  "notifications": {
+    "gameCopied": "ゲームIDがクリップボードにコピーされました！"
+  },
+  "gameOver": {
+    "title": "ゲームオーバー！",
+    "stats": {
+      "xpGained": "獲得XP: {xp}",
+      "finalLevel": "最終レベル: {level}",
+      "tilesExplored": "探索したタイル: {tiles}"
+    },
+    "buttons": {
+      "restart": "再開",
+      "newGame": "新しいゲーム"
+    }
+  },
+  "combat": {
+    "stats": {
+      "hp": "HP",
+      "attack": "攻撃",
+      "defense": "防御"
+    },
+    "buttons": {
+      "attack": "攻撃",
+      "run": "逃げる"
+    }
+  },
+  "player": {
+    "inventory": "インベントリ",
+    "equipment": {
+      "weapon": "武器",
+      "armor": "防具"
+    },
+    "stats": {
+      "hp": "HP",
+      "attack": "攻撃",
+      "defense": "防御",
+      "xp": "XP",
+      "location": "位置"
+    }
+  },
+  "inventory": {
+    "use": "使用",
+    "equip": "装備",
+    "unequip": "装備解除"
+  },
+  "debug": {
+    "title": "デバッグ情報",
+    "itemsOnMap": "マップ上のアイテム",
+    "enemiesOnMap": "マップ上の敵"
+  }
 }

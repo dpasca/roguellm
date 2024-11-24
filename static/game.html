@@ -8,6 +8,7 @@
     <link rel="shortcut icon" href="static/icons/favicon.ico">
     <!-- Rest of your existing head content -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9"></script>
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/style.css">
     <link rel="stylesheet" href="static/css/game.css">
@@ -90,51 +91,51 @@
                 </div>
                 <div class="popup-menu" :class="{ active: isMenuOpen }">
                     <button @click="shareGame" v-if="generatorId">
-                        <i class="fas fa-share-alt fa-fw popup-menu-item-icon"></i>Share Game
+                        <i class="fas fa-share-alt fa-fw popup-menu-item-icon"></i>{{ $t('menu.share') }}
                     </button>
                     <button @click="restartGame">
-                        <i class="fas fa-redo fa-fw popup-menu-item-icon"></i>Restart Game
+                        <i class="fas fa-redo fa-fw popup-menu-item-icon"></i>{{ $t('menu.restart') }}
                     </button>
                     <button @click="newGame">
-                        <i class="fas fa-plus fa-fw popup-menu-item-icon"></i>Create New Game
+                        <i class="fas fa-plus fa-fw popup-menu-item-icon"></i>{{ $t('menu.newGame') }}
                     </button>
                     <!-- Debug button - only visible during development -->
                     <button @click="toggleDebugPanel">
-                        <i class="fas fa-bug fa-fw popup-menu-item-icon"></i>Debug Info
+                        <i class="fas fa-bug fa-fw popup-menu-item-icon"></i>{{ $t('menu.debug') }}
                     </button>
                 </div>
             </div>
 
             <!-- Share notification -->
             <div class="share-notification" :class="{ active: showShareNotification }">
-                Game ID copied to clipboard!
+                {{ $t('notifications.gameCopied') }}
             </div>
 
             <!-- Game Over Overlay -->
             <div v-if="isGameInitialized && gameState && gameState.game_over" class="game-over">
-                <h2>Game Over!</h2>
+                <h2>{{ $t('gameOver.title') }}</h2>
                 <div class="game-over-stats">
                     <div class="stat-item">
                         <i class="fas fa-star"></i>
-                        <span>XP Gained: {{ gameState.player_xp }}</span>
+                        <span>{{ $t('gameOver.stats.xpGained', { xp: gameState.player_xp }) }}</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-skull"></i>
-                        <span>Final Level: {{ Math.floor(gameState.player_xp / 100) + 1 }}</span>
+                        <span>{{ $t('gameOver.stats.finalLevel', { level: Math.floor(gameState.player_xp / 100) + 1 }) }}</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-map"></i>
-                        <span>Tiles Explored: {{ countExploredTiles }}</span>
+                        <span>{{ $t('gameOver.stats.tilesExplored', { tiles: countExploredTiles }) }}</span>
                     </div>
                 </div>
                 <div class="buttons-container">
                     <button @click="restartGame" class="restart-button">
                         <i class="fas fa-redo"></i>
-                        Restart
+                        {{ $t('gameOver.buttons.restart') }}
                     </button>
                     <button @click="newGame" class="new-game-button">
                         <i class="fas fa-plus"></i>
-                        New Game
+                        {{ $t('gameOver.buttons.newGame') }}
                     </button>
                 </div>
             </div>
@@ -182,7 +183,7 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                <span class="label-text">HP</span>
+                                <span class="label-text">{{ $t('combat.stats.hp') }}</span>
                             </span>
                             <span class="status-value">
                                 <div class="health-bar-container">
@@ -198,13 +199,20 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                <span class="label-text">Attack</span>
+                                <span class="label-text">{{ $t('combat.stats.attack') }}</span>
                             </span>
                             <span class="status-value">{{ gameState.current_enemy.attack }}</span>
                         </div>
+                        <div class="status-item">
+                            <span class="status-label">
+                                <i class="fas fa-shield-alt fa-fw" style="color: #4dabf7;"></i>
+                                <span class="label-text">{{ $t('combat.stats.defense') }}</span>
+                            </span>
+                            <span class="status-value">{{ gameState.current_enemy.defense }}</span>
+                        </div>
                         <div class="combat-buttons">
-                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> Attack</button>
-                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> Run</button>
+                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{ $t('combat.buttons.attack') }}</button>
+                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{ $t('combat.buttons.run') }}</button>
                         </div>
                     </div>
 
@@ -217,7 +225,7 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                <span class="label-text">HP</span>
+                                <span class="label-text">{{ $t('player.stats.hp') }}</span>
                             </span>
                             <span class="status-value">
                                 <div class="health-bar-container">
@@ -233,28 +241,28 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                <span class="label-text">Attack</span>
+                                <span class="label-text">{{ $t('player.stats.attack') }}</span>
                             </span>
                             <span class="status-value">{{ gameState.player_attack }}</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-star fa-fw" style="color: #4cd137;"></i>
-                                <span class="label-text">XP</span>
+                                <span class="label-text">{{ $t('player.stats.xp') }}</span>
                             </span>
                             <span class="status-value">{{ gameState.player_xp }}</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i>
-                                <span class="label-text">Location</span>
+                                <span class="label-text">{{ $t('player.stats.location') }}</span>
                             </span>
                             <span class="status-value">{{ gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name }} ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }})</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-gavel fa-fw" style="color: #a8a8a8;"></i>
-                                <span class="label-text">Weapon</span>
+                                <span class="label-text">{{ $t('player.equipment.weapon') }}</span>
                             </span>
                             <span class="status-value">
                                 <div class="equipment-details">
@@ -266,7 +274,7 @@
                         <div class="status-item">
                             <span class="status-label">
                                 <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
-                                <span class="label-text">Armor</span>
+                                <span class="label-text">{{ $t('player.equipment.armor') }}</span>
                             </span>
                             <span class="status-value">
                                 <div class="equipment-details">
@@ -283,7 +291,7 @@
                 <div class="game-sidebar">
                     <!-- Inventory UI -->
                     <div class="inventory-ui" v-if="gameState">
-                        <h3>Inventory</h3>
+                        <h3>{{ $t('player.inventory') }}</h3>
                         <div class="inventory-grid">
                             <div v-for="item in gameState.inventory"
                                 :key="item.id"
@@ -295,7 +303,7 @@
                                         <button v-if="item.type === 'consumable'"
                                                 @click="useItem(item.id)"
                                                 class="use-button">
-                                            Use
+                                            {{ $t('inventory.use') }}
                                         </button>
                                         <button v-if="item.type === 'weapon' || item.type === 'armor'"
                                                 @click="equipItem(item.id)"
@@ -314,18 +322,18 @@
             <!-- Debug Panel -->
             <div class="debug-panel" :class="{ active: isDebugPanelOpen }" v-if="gameState">
                 <div class="debug-panel-header">
-                    <h3>Debug Information</h3>
+                    <h3>{{ $t('debug.title') }}</h3>
                     <button @click="toggleDebugPanel" class="close-button">×</button>
                 </div>
                 <div class="debug-panel-content">
                     <div class="debug-section">
-                        <h4>Items on Map</h4>
+                        <h4>{{ $t('debug.itemsOnMap') }}</h4>
                         <div v-for="item in gameState.items" :key="item.id" class="debug-item">
                             <span>{{ item.name }} ({{ item.x }}, {{ item.y }})</span>
                         </div>
                     </div>
                     <div class="debug-section">
-                        <h4>Enemies on Map</h4>
+                        <h4>{{ $t('debug.enemiesOnMap') }}</h4>
                         <div v-for="enemy in gameState.enemies" :key="enemy.id" class="debug-item">
                             <span>{{ enemy.name }} ({{ enemy.x }}, {{ enemy.y }}) - HP: {{ enemy.hp }}</span>
                         </div>

@@ -19,5 +19,63 @@
     "generatorIdLabel": "Enter Game ID:",
     "startGame": "Start Game",
     "createGame": "Create Game",
-    "errorGameId": "Please enter a Game ID"
+    "errorGameId": "Please enter a Game ID",
+
+    "// Game Interface": "In-game interface translations",
+    "menu": {
+        "share": "Share Game",
+        "restart": "Restart Game",
+        "newGame": "Create New Game",
+        "debug": "Debug Info"
+    },
+    "notifications": {
+        "gameCopied": "Game ID copied to clipboard!"
+    },
+    "gameOver": {
+        "title": "Game Over!",
+        "stats": {
+            "xpGained": "XP Gained: {xp}",
+            "finalLevel": "Final Level: {level}",
+            "tilesExplored": "Tiles Explored: {tiles}"
+        },
+        "buttons": {
+            "restart": "Restart",
+            "newGame": "New Game"
+        }
+    },
+    "combat": {
+        "stats": {
+            "hp": "HP",
+            "attack": "Attack",
+            "defense": "Defense"
+        },
+        "buttons": {
+            "attack": "Attack",
+            "run": "Run"
+        }
+    },
+    "player": {
+        "inventory": "Inventory",
+        "equipment": {
+            "weapon": "Weapon",
+            "armor": "Armor"
+        },
+        "stats": {
+            "hp": "HP",
+            "attack": "Attack",
+            "defense": "Defense",
+            "xp": "XP",
+            "location": "Location"
+        }
+    },
+    "inventory": {
+        "use": "Use",
+        "equip": "Equip",
+        "unequip": "Unequip"
+    },
+    "debug": {
+        "title": "Debug Information",
+        "itemsOnMap": "Items on Map",
+        "enemiesOnMap": "Enemies on Map"
+    }
 }

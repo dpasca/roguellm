@@ -236,7 +236,7 @@ const app = Vue.createApp({
                     if (response.type === 'update') {
                         const wasInCombat = this.gameState.in_combat;
                         this.gameState = response.state;
-                        
+
                         // If we just entered combat, make sure player position is correct
                         if (!wasInCombat && this.gameState.in_combat) {
                             updatePlayerPosition(
@@ -283,8 +283,8 @@ const app = Vue.createApp({
                         // Only update position if it doesn't match what we predicted
                         const [expectedX, expectedY] = this.gameState.player_pos;
                         const playerIcon = document.getElementById('player-icon');
-                        if (playerIcon && 
-                            (playerIcon.dataset.x !== expectedX.toString() || 
+                        if (playerIcon &&
+                            (playerIcon.dataset.x !== expectedX.toString() ||
                              playerIcon.dataset.y !== expectedY.toString())) {
                             this.$nextTick(() => {
                                 updatePlayerPosition(expectedX, expectedY);
@@ -357,20 +357,20 @@ const app = Vue.createApp({
         },
         move(direction) {
             // Don't allow moves during combat or while another move is in progress
-            if (this.ws && 
-                this.ws.readyState === WebSocket.OPEN && 
+            if (this.ws &&
+                this.ws.readyState === WebSocket.OPEN &&
                 !this.gameState.game_over &&
                 !this.gameState.in_combat &&
                 !this.isMoveInProgress) {
-                
+
                 this.isMoveInProgress = true;
-                
+
                 // Start animation immediately if move is valid
                 if (this.canMove(direction)) {
                     const [nextX, nextY] = this.getNextPosition(direction);
                     updatePlayerPosition(nextX, nextY);
                 }
-                
+
                 this.ws.send(JSON.stringify({
                     action: 'move',
                     direction: direction
@@ -532,7 +532,45 @@ const app = Vue.createApp({
     }
 });
 
-app.mount('#app');
+// Create i18n instance
+const i18n = VueI18n.createI18n({
+    locale: 'en', // set locale
+    fallbackLocale: 'en', // set fallback locale
+    messages: {
+        en: {}, // Will be loaded dynamically
+        it: {}, // Will be loaded dynamically
+        ja: {}, // Will be loaded dynamically
+    }
+});
+
+// Load translations
+async function loadTranslations() {
+    try {
+        const [enResponse, itResponse, jaResponse] = await Promise.all([
+            fetch('/static/translations/en.json'),
+            fetch('/static/translations/it.json'),
+            fetch('/static/translations/ja.json'),
+        ]);
+
+        const [enMessages, itMessages, jaMessages] = await Promise.all([
+            enResponse.json(),
+            itResponse.json(),
+            jaResponse.json()
+        ]);
+
+        i18n.global.setLocaleMessage('en', enMessages);
+        i18n.global.setLocaleMessage('it', itMessages);
+        i18n.global.setLocaleMessage('ja', jaMessages);
+    } catch (error) {
+        console.error('Error loading translations:', error);
+    }
+}
+
+// Load translations and then mount the app
+loadTranslations().then(() => {
+    app.use(i18n);
+    app.mount('#app');
+});
 
 // Touch Handlers
 document.addEventListener('touchstart', function(event) {
