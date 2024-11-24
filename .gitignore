@@ -2,3 +2,4 @@ __pycache__
 .env
 .env.*
 _data
+tools/venv

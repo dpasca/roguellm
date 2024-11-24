@@ -2,6 +2,7 @@
 const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
     { code: 'it', name: 'Italiano' },
+    { code: 'ja', name: '日本語' },
 ];
 
 // Configuration for external links and common values
@@ -57,7 +58,7 @@ const app = Vue.createApp({
             try {
                 const response = await fetch(`static/translations/${lang}.json`);
                 this.translations[lang] = await response.json();
-                
+
                 // Load fallback language if it's not already loaded
                 if (lang !== CONFIG.fallbackLanguage && !this.translations[CONFIG.fallbackLanguage]) {
                     const fallbackResponse = await fetch(`static/translations/${CONFIG.fallbackLanguage}.json`);
@@ -70,22 +71,22 @@ const app = Vue.createApp({
         t(key, params = {}) {
             // Try selected language first
             let translation = this.translations[this.selectedLanguage]?.[key];
-            
+
             // Fall back to default language if translation is missing
             if (!translation && this.selectedLanguage !== CONFIG.fallbackLanguage) {
                 translation = this.translations[CONFIG.fallbackLanguage]?.[key];
             }
-            
+
             // Return key if no translation found
             if (!translation) {
                 console.warn(`Missing translation for key: ${key}`);
                 return key;
             }
-            
+
             if (Object.keys(params).length === 0) {
                 return translation;
             }
-            
+
             return translation.replace(/\{(\w+)\}/g, (match, paramKey) => {
                 return params[paramKey] !== undefined ? params[paramKey] : match;
             });
