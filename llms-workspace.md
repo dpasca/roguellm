@@ -5,7 +5,7 @@ Please, look into the TODO list below to see what's left to do.
 
 ## TODO
 - [x] Fix progress bar for game Restart
-- [ ] Show enemies on the map
+- [x] Show enemies on the map
 - [ ] Add goals to beat for each level
   - [ ] One big boss to kill, or one item to collect, or person to save for each level
 - [ ] Add logic for multiple levels (5 to finish ?)
