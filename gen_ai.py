@@ -375,7 +375,7 @@ A universe where you can become the master of the universe by defeating other ma
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
         formatted_events = []
-        RELEVANT_EVENTS = 10
+        RELEVANT_EVENTS = 5
         for event in event_history[-RELEVANT_EVENTS:]:  # Keep last N events
             formatted_events.append(
                 f"[{event['action']}] {event['event']['description']}"
