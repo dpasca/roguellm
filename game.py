@@ -211,8 +211,9 @@ class Game:
 
             # Initialize lists
             self.state.enemies = []
+            self.state.defeated_enemies = []  # Track defeated enemies
             self.item_placements = []
-            
+
             # Process each entity placement
             for placement in self.entity_placements:
                 if placement['type'] == 'enemy':
@@ -222,7 +223,8 @@ class Game:
                             'x': placement['x'],
                             'y': placement['y'],
                             'name': enemy_def['name'],
-                            'font_awesome_icon': enemy_def['font_awesome_icon']
+                            'font_awesome_icon': enemy_def['font_awesome_icon'],
+                            'is_defeated': False
                         })
                 elif placement['type'] == 'item':
                     self.item_placements.append({
@@ -691,8 +693,29 @@ class Game:
                 self.state.player_hp = min(self.state.player_max_hp, self.state.player_hp + hp_restored)
                 actual_restore = self.state.player_hp - old_hp
 
-                self.state.in_combat = False
-                self.state.current_enemy = None
+                # Find the enemy in the state's list to get its position
+                enemy_in_state = next(
+                    (e for e in self.state.enemies
+                     if not e['is_defeated'] and e['name'] == self.state.current_enemy.name),
+                    None
+                )
+
+                if enemy_in_state:
+                    enemy_x = enemy_in_state['x']
+                    enemy_y = enemy_in_state['y']
+
+                    # Clear combat state
+                    self.state.in_combat = False
+                    self.state.current_enemy = None
+
+                    # Update enemy status
+                    enemy_in_state['is_defeated'] = True
+                    self.state.defeated_enemies.append({
+                        'x': enemy_x,
+                        'y': enemy_y,
+                        'name': enemy_in_state['name'],
+                        'font_awesome_icon': enemy_in_state['font_awesome_icon']
+                    })
 
                 # Append enemy defeat to the combat log
                 combat_log += f"\nYou have defeated the enemy. Gained XP: {xp_gained}. Restored HP: {actual_restore}"
