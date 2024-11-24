@@ -52,7 +52,7 @@
     border-radius: 10px;
     /* Remove the `transition` property */
     /* Add CSS animation */
-    animation: progress-animation 25s linear forwards;
+    animation: progress-animation 40s linear forwards;
 }
 
 @keyframes progress-animation {

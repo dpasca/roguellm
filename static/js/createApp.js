@@ -285,6 +285,15 @@ const app = Vue.createApp({
             // Show loading overlay
             const loadingOverlay = document.querySelector('.loading-overlay');
             const loadingMessage = document.querySelector('#loading-message');
+            const progressBar = loadingOverlay.querySelector('.progress-bar');
+
+            // Reset and restart the progress bar animation
+            if (progressBar) {
+                progressBar.style.animation = 'none';
+                progressBar.offsetHeight; // Trigger reflow
+                progressBar.style.animation = 'progress-animation 10s linear forwards';
+            }
+
             loadingMessage.textContent = 'Restarting game...';
             loadingOverlay.style.display = 'flex';
 
