@@ -1,0 +1,15 @@
+{
+    "title": "RogueLLM",
+    "subtitle": "An experimental roguelike game powered by AI",
+    "selectTheme": "Select Your Theme",
+    "fantasyTheme": "Fantasy Theme",
+    "customTheme": "Custom Theme",
+    "generatorTheme": "Generator Theme",
+    "useGameId": "Use Game ID",
+    "customThemeDescription": "Enter a description for your custom theme:",
+    "generatorIdLabel": "Enter Game ID:",
+    "startGame": "Start Game",
+    "createGame": "Create Game",
+    "errorGameId": "Please enter a Game ID",
+    "by": "by"
+}

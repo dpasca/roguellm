@@ -1,0 +1,15 @@
+{
+    "title": "RogueLLM",
+    "subtitle": "Un gioco roguelike sperimentale basato su IA",
+    "selectTheme": "Seleziona il tuo Tema",
+    "fantasyTheme": "Tema Fantasy",
+    "customTheme": "Tema Personalizzato",
+    "generatorTheme": "Tema Generatore",
+    "useGameId": "Usa ID Gioco",
+    "customThemeDescription": "Inserisci una descrizione per il tuo tema personalizzato:",
+    "generatorIdLabel": "Inserisci ID Gioco:",
+    "startGame": "Inizia Gioco",
+    "createGame": "Crea Gioco",
+    "errorGameId": "Inserisci un ID Gioco",
+    "by": "di"
+}

@@ -4,40 +4,6 @@ const SUPPORTED_LANGUAGES = [
     { code: 'it', name: 'Italiano' },
 ];
 
-// Translations
-const TRANSLATIONS = {
-    en: {
-        title: 'RogueLLM',
-        subtitle: 'An experimental roguelike game powered by AI',
-        selectTheme: 'Select Your Theme',
-        fantasyTheme: 'Fantasy Theme',
-        customTheme: 'Custom Theme',
-        generatorTheme: 'Generator Theme',
-        useGameId: 'Use Game ID',
-        customThemeDescription: 'Enter a description for your custom theme:',
-        generatorIdLabel: 'Enter Game ID:',
-        startGame: 'Start Game',
-        createGame: 'Create Game',
-        errorGameId: 'Please enter a Game ID',
-        by: 'by'
-    },
-    it: {
-        title: 'RogueLLM',
-        subtitle: 'Un gioco roguelike sperimentale basato su IA',
-        selectTheme: 'Seleziona il tuo Tema',
-        fantasyTheme: 'Tema Fantasy',
-        customTheme: 'Tema Personalizzato',
-        generatorTheme: 'Tema Generatore',
-        useGameId: 'Usa ID Gioco',
-        customThemeDescription: 'Inserisci una descrizione per il tuo tema personalizzato:',
-        generatorIdLabel: 'Inserisci ID Gioco:',
-        startGame: 'Inizia Gioco',
-        createGame: 'Crea Gioco',
-        errorGameId: 'Inserisci un ID Gioco',
-        by: 'di'
-    }
-};
-
 const app = Vue.createApp({
     data() {
         return {
@@ -48,7 +14,7 @@ const app = Vue.createApp({
             doWebSearch: true,
             selectedLanguage: this.getDefaultLanguage(),
             supportedLanguages: SUPPORTED_LANGUAGES,
-            translations: TRANSLATIONS
+            translations: {}
         }
     },
     watch: {
@@ -68,11 +34,23 @@ const app = Vue.createApp({
             } catch (e) {
                 // Not a URL, treat as raw ID (no change needed)
             }
+        },
+        async selectedLanguage(newLang) {
+            await this.loadTranslations(newLang);
         }
     },
     methods: {
+        async loadTranslations(lang) {
+            try {
+                const response = await fetch(`static/translations/${lang}.json`);
+                this.translations[lang] = await response.json();
+            } catch (error) {
+                console.error('Error loading translations:', error);
+            }
+        },
         t(key) {
-            return this.translations[this.selectedLanguage][key] || key;
+            const currentTranslations = this.translations[this.selectedLanguage];
+            return currentTranslations ? currentTranslations[key] || key : key;
         },
         clearError() {
             this.errorMessage = null;
@@ -135,7 +113,7 @@ const app = Vue.createApp({
             return supportedCodes.includes(shortLang) ? shortLang : 'en';
         }
     },
-    mounted() {
+    async mounted() {
         // Check if there's a generator_id in the URL
         const urlParams = new URLSearchParams(window.location.search);
         const generatorId = urlParams.get('generator');
@@ -143,6 +121,7 @@ const app = Vue.createApp({
             this.selectedTheme = 'generator';
             this.generatorId = generatorId;
         }
+        await this.loadTranslations(this.selectedLanguage);
     }
 });
 
