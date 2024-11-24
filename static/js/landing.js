@@ -133,6 +133,12 @@ const app = Vue.createApp({
                 if (this.selectedTheme === 'generator') {
                     params.append('game_id', this.generatorId.trim());
                 }
+                // Always add the selected language to the URL
+                params.append('lang', this.selectedLanguage);
+                
+                // Store the language preference
+                localStorage.setItem('preferredLanguage', this.selectedLanguage);
+                
                 window.location.href = `/game${params.toString() ? '?' + params.toString() : ''}`;
             } catch (error) {
                 this.errorMessage = error.message || "Failed to start game. Please try again.";

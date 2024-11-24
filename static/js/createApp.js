@@ -534,8 +534,8 @@ const app = Vue.createApp({
 
 // Create i18n instance
 const i18n = VueI18n.createI18n({
-    locale: 'en', // set locale
-    fallbackLocale: 'en', // set fallback locale
+    locale: 'en', // will be updated before mounting
+    fallbackLocale: 'en',
     messages: {
         en: {}, // Will be loaded dynamically
         it: {}, // Will be loaded dynamically
@@ -546,10 +546,11 @@ const i18n = VueI18n.createI18n({
 // Load translations
 async function loadTranslations() {
     try {
+        // First load all translations
         const [enResponse, itResponse, jaResponse] = await Promise.all([
             fetch('/static/translations/en.json'),
             fetch('/static/translations/it.json'),
-            fetch('/static/translations/ja.json'),
+            fetch('/static/translations/ja.json')
         ]);
 
         const [enMessages, itMessages, jaMessages] = await Promise.all([
@@ -558,9 +559,25 @@ async function loadTranslations() {
             jaResponse.json()
         ]);
 
+        // Set all messages
         i18n.global.setLocaleMessage('en', enMessages);
         i18n.global.setLocaleMessage('it', itMessages);
         i18n.global.setLocaleMessage('ja', jaMessages);
+
+        // Set the preferred language before mounting
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlLang = urlParams.get('lang');
+
+        // Use URL language or localStorage language
+        if (urlLang && ['en', 'it', 'ja'].includes(urlLang)) {
+            i18n.global.locale = urlLang;
+            localStorage.setItem('preferredLanguage', urlLang);
+        } else {
+            const storedLang = localStorage.getItem('preferredLanguage');
+            if (storedLang && ['en', 'it', 'ja'].includes(storedLang)) {
+                i18n.global.locale = storedLang;
+            }
+        }
     } catch (error) {
         console.error('Error loading translations:', error);
     }
