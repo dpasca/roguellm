@@ -23,9 +23,7 @@
     <div id="app">
         <div class="landing-container">
             <h1>{{ t('title') }}</h1>
-            <p>{{ t('subtitle') }}
-                {{ t('by') }} <a href="https://newtypekk.com/" target="_blank">NEWTYPE</a>
-            </p>
+            <p v-html="t('subtitle_with_author', { author: '<a href=\'https://newtypekk.com/\' target=\'_blank\'>NEWTYPE</a>' })"></p>
             <div class="theme-selector">
                 <h2>{{ t('selectTheme') }}</h2>
                 <div class="theme-options">

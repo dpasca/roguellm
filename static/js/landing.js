@@ -48,9 +48,17 @@ const app = Vue.createApp({
                 console.error('Error loading translations:', error);
             }
         },
-        t(key) {
-            const currentTranslations = this.translations[this.selectedLanguage];
-            return currentTranslations ? currentTranslations[key] || key : key;
+        t(key, params = {}) {
+            const translation = this.translations[this.selectedLanguage]?.[key];
+            if (!translation) return key;
+            
+            if (Object.keys(params).length === 0) {
+                return translation;
+            }
+            
+            return translation.replace(/\{(\w+)\}/g, (match, key) => {
+                return params[key] !== undefined ? params[key] : match;
+            });
         },
         clearError() {
             this.errorMessage = null;
