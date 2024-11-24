@@ -37,6 +37,7 @@ class GameState(BaseModel):
     explored: List[List[bool]] = Field(default_factory=list)  # Changed this line
     in_combat: bool = False
     current_enemy: Optional[Enemy] = None
+    enemies: List[Dict[str, Union[int, str]]] = []
     game_over: bool = False
     temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}
     game_title: str = "Unknown Game"

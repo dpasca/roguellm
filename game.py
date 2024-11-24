@@ -200,30 +200,39 @@ class Game:
 
         # Generate entity placements (both enemies and items)
         try:
-            entity_placements = self.gen_ai.gen_entity_placements(
+            self.entity_placements = self.gen_ai.gen_entity_placements(
                 self.state.cell_types,
                 self.enemy_defs,
                 self.item_defs,
                 self.state.map_width,
                 self.state.map_height
             )
-            logger.info(f"Generated entity placements: {entity_placements}")
+            logger.info(f"Generated entity placements: {self.entity_placements}")
 
-            # Split placements into enemies and items
-            self.enemy_placements = [
-                {'x': p['x'], 'y': p['y'], 'enemy_id': p['entity_id']}
-                for p in entity_placements if p['type'] == 'enemy'
-            ]
-            self.item_placements = [
-                {'x': p['x'], 'y': p['y'], 'id': p['entity_id']}
-                for p in entity_placements if p['type'] == 'item'
-            ]
-
-            logger.info(f"Split into enemy placements: {self.enemy_placements}")
-            logger.info(f"Split into item placements: {self.item_placements}")
+            # Initialize lists
+            self.state.enemies = []
+            self.item_placements = []
+            
+            # Process each entity placement
+            for placement in self.entity_placements:
+                if placement['type'] == 'enemy':
+                    enemy_def = next((e for e in self.enemy_defs if e['enemy_id'] == placement['entity_id']), None)
+                    if enemy_def:
+                        self.state.enemies.append({
+                            'x': placement['x'],
+                            'y': placement['y'],
+                            'name': enemy_def['name'],
+                            'font_awesome_icon': enemy_def['font_awesome_icon']
+                        })
+                elif placement['type'] == 'item':
+                    self.item_placements.append({
+                        'x': placement['x'],
+                        'y': placement['y'],
+                        'id': placement['entity_id']
+                    })
         except Exception as e:
             logger.error(f"Failed to generate entity placements: {str(e)}")
-            self.enemy_placements = []
+            self.entity_placements = []
             self.item_placements = []
 
         if TEST_DUMMY_EQUIP_AND_ITEMS:
@@ -546,14 +555,14 @@ class Game:
 
         # Check if there's a pre-placed enemy at this location
         enemy_here = next(
-            (p for p in self.enemy_placements if p['x'] == x and p['y'] == y),
+            (p for p in self.entity_placements if p['x'] == x and p['y'] == y and p['type'] == 'enemy'),
             None
         )
 
         if enemy_here:
             # Find the enemy definition
             enemy_def = next(
-                (e for e in self.enemy_defs if e['enemy_id'] == enemy_here['enemy_id']),
+                (e for e in self.enemy_defs if e['enemy_id'] == enemy_here['entity_id']),
                 None
             )
             if enemy_def:
@@ -562,9 +571,9 @@ class Game:
                 self.state.current_enemy = enemy
                 self.state.in_combat = True
                 # Remove this enemy placement so it doesn't respawn
-                self.enemy_placements = [
-                    p for p in self.enemy_placements
-                    if not (p['x'] == x and p['y'] == y)
+                self.entity_placements = [
+                    p for p in self.entity_placements
+                    if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
                 ]
                 return await self.create_update(
                     f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
@@ -572,14 +581,14 @@ class Game:
 
         # Check if there's a pre-placed item at this location
         item_here = next(
-            (p for p in self.item_placements if p['x'] == x and p['y'] == y),
+            (p for p in self.entity_placements if p['x'] == x and p['y'] == y and p['type'] == 'item'),
             None
         )
 
         if item_here:
             # Find the item definition
             item_def = next(
-                (i for i in self.item_defs if i['id'] == item_here['id']),
+                (i for i in self.item_defs if i['id'] == item_here['entity_id']),
                 None
             )
             if item_def:
@@ -594,9 +603,9 @@ class Game:
                     )
                     if existing_item:
                         # Remove this item placement since we found it
-                        self.item_placements = [
-                            p for p in self.item_placements
-                            if not (p['x'] == x and p['y'] == y)
+                        self.entity_placements = [
+                            p for p in self.entity_placements
+                            if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                         ]
                         return await self.create_update(
                             f"You found another {item.name}, but you already have one."
@@ -604,9 +613,9 @@ class Game:
 
                 # Add item to inventory and remove from placements
                 self.state.inventory.append(item)
-                self.item_placements = [
-                    p for p in self.item_placements
-                    if not (p['x'] == x and p['y'] == y)
+                self.entity_placements = [
+                    p for p in self.entity_placements
+                    if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                 ]
                 return await self.create_update(
                     f"You found a {item.name}! {item.description}"

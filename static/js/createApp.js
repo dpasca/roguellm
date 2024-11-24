@@ -159,6 +159,11 @@ const app = Vue.createApp({
             };
         },
         getCellIcon(x, y) {
+            // Check if there's an enemy at this position
+            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y);
+            if (enemy) {
+                return enemy.font_awesome_icon;
+            }
             return this.gameState.cell_types[y][x].font_awesome_icon;
         },
         toggleMenu() {
