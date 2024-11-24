@@ -75,8 +75,10 @@ const app = Vue.createApp({
         return {
             isGameInitialized: false,
             isLoading: true,
+            isMoveInProgress: false,
             gameState: {
-                player_pos: [0, 0],
+                player_pos: [0, 0], // Start at top-left
+                player_pos_prev: [0, 0],
                 player_hp: 100,
                 player_max_hp: 100,
                 player_attack: 15,
@@ -238,7 +240,23 @@ const app = Vue.createApp({
                     }
 
                     if (response.type === 'update') {
+                        const wasInCombat = this.gameState.in_combat;
                         this.gameState = response.state;
+                        
+                        // If we just entered combat, make sure player position is correct
+                        if (!wasInCombat && this.gameState.in_combat) {
+                            updatePlayerPosition(
+                                this.gameState.player_pos[0],
+                                this.gameState.player_pos[1],
+                                true
+                            );
+                            // Clear any pending movement state
+                            this.isMoveInProgress = false;
+                        }
+
+                        // Reset move in progress flag after any state update
+                        this.isMoveInProgress = false;
+
                         if (response.description) {
                             this.gameLogs.push(response.description);
                         }
@@ -268,11 +286,16 @@ const app = Vue.createApp({
                             const newUrl = `${window.location.pathname}?game_id=${response.generator_id}`;
                             window.history.replaceState({}, '', newUrl);
                         }
-                        const playerPos = this.gameState.player_pos;
-                        this.$nextTick(() => {
-                            const playerPos = this.gameState.player_pos;
-                            updatePlayerPosition(playerPos[0], playerPos[1]);
-                        });
+                        // Only update position if it doesn't match what we predicted
+                        const [expectedX, expectedY] = this.gameState.player_pos;
+                        const playerIcon = document.getElementById('player-icon');
+                        if (playerIcon && 
+                            (playerIcon.dataset.x !== expectedX.toString() || 
+                             playerIcon.dataset.y !== expectedY.toString())) {
+                            this.$nextTick(() => {
+                                updatePlayerPosition(expectedX, expectedY);
+                            });
+                        }
                     } else if (response.type === 'error') {
                         this.errorMessage = response.message;
                         setTimeout(() => {
@@ -328,8 +351,32 @@ const app = Vue.createApp({
                 loadingOverlay.style.display = 'none';
             }
         },
+        getNextPosition(direction) {
+            const [x, y] = this.gameState.player_pos;
+            switch(direction) {
+                case 'n': return [x, y - 1];
+                case 's': return [x, y + 1];
+                case 'w': return [x - 1, y];
+                case 'e': return [x + 1, y];
+                default: return [x, y];
+            }
+        },
         move(direction) {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN && !this.gameState.game_over) {
+            // Don't allow moves during combat or while another move is in progress
+            if (this.ws && 
+                this.ws.readyState === WebSocket.OPEN && 
+                !this.gameState.game_over &&
+                !this.gameState.in_combat &&
+                !this.isMoveInProgress) {
+                
+                this.isMoveInProgress = true;
+                
+                // Start animation immediately if move is valid
+                if (this.canMove(direction)) {
+                    const [nextX, nextY] = this.getNextPosition(direction);
+                    updatePlayerPosition(nextX, nextY);
+                }
+                
                 this.ws.send(JSON.stringify({
                     action: 'move',
                     direction: direction
@@ -476,6 +523,14 @@ const app = Vue.createApp({
         // Add watcher for isGameInitialized
         isGameInitialized(newVal) {
             if (newVal) {
+                this.$nextTick(() => {
+                    // Force update player position when game is initialized
+                    updatePlayerPosition(
+                        this.gameState.player_pos[0],
+                        this.gameState.player_pos[1],
+                        true
+                    );
+                });
                 // Hide loading when game is initialized
                 hideLoading();
             }
