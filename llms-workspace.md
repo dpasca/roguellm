@@ -4,7 +4,7 @@ This is a workspace document for LLMs / AI agents to use as a reference for thei
 Please, look into the TODO list below to see what's left to do.
 
 ## TODO
-- [ ] Implement i18n to support multiple languages, with just English to start
+- [~] Implement support for multiple languages for the interface. Starting with "en" and "it"
 - [ ] Create localization script to support multiple languages (import from other project ?)
 - [ ] Add goals to beat for each level
   - [ ] One big boss to kill, or one item to collect, or person to save for each level

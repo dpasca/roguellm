@@ -22,18 +22,18 @@
 <body style="background-color: #121212; color: white;">
     <div id="app">
         <div class="landing-container">
-            <h1>RogueLLM</h1>
-            <p>An experimental roguelike game powered by AI
-                by <a href="https://newtypekk.com/" target="_blank">NEWTYPE</a>
+            <h1>{{ t('title') }}</h1>
+            <p>{{ t('subtitle') }}
+                {{ t('by') }} <a href="https://newtypekk.com/" target="_blank">NEWTYPE</a>
             </p>
             <div class="theme-selector">
-                <h2>Select Your Theme</h2>
+                <h2>{{ t('selectTheme') }}</h2>
                 <div class="theme-options">
                     <div class="theme-option">
                         <input type="radio" id="fantasy" name="theme" value="fantasy" v-model="selectedTheme">
                         <label for="fantasy">
                             <div class="theme-card">
-                                <h3>Fantasy Theme</h3>
+                                <h3>{{ t('fantasyTheme') }}</h3>
                                 <i class="fas fa-dragon fa-3x"></i>
                             </div>
                         </label>
@@ -43,7 +43,7 @@
                         <input type="radio" id="custom" name="theme" value="custom" v-model="selectedTheme">
                         <label for="custom">
                             <div class="theme-card">
-                                <h3>Custom Theme</h3>
+                                <h3>{{ t('customTheme') }}</h3>
                                 <i class="fas fa-magic fa-3x"></i>
                             </div>
                         </label>
@@ -53,7 +53,7 @@
                         <input type="radio" id="generator" name="theme" value="generator" v-model="selectedTheme">
                         <label for="generator">
                             <div class="theme-card">
-                                <h3>Use Game ID</h3>
+                                <h3>{{ t('useGameId') }}</h3>
                                 <i class="fas fa-share-alt fa-3x"></i>
                             </div>
                         </label>
@@ -99,7 +99,7 @@
                 <button @click="launchGame"
                         class="launch-btn"
                         :disabled="selectedTheme === 'custom' && !customDescription.trim()">
-                    Create Game
+                    {{ t('createGame') }}
                 </button>
             </div>
         </div>
