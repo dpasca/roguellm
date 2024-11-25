@@ -9,7 +9,7 @@ logging.basicConfig(
 
 from fastapi import FastAPI, WebSocket, Request, Response, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import uuid
 import zlib
 import base64
+from social_crawler import get_prerendered_content
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
@@ -84,50 +85,70 @@ def create_game_instance(seed: int, theme_desc: str, language: str, do_web_searc
 # Landing page
 @app.get("/")
 async def read_landing(request: Request):
-    # Create new session
-    request.session["game_session"] = str(uuid.uuid4())
+    try:
+        # Create new session
+        request.session["game_session"] = str(uuid.uuid4())
 
-    # Check if there's a generator ID in the query params
-    generator_id = request.query_params.get("generator")
-    if generator_id:
-        # Validate generator ID
-        generator_data = db.get_generator(generator_id)
-        if generator_data:
-            # Store in session and redirect to game page
-            request.session["generator_id"] = generator_id
-            return RedirectResponse(url=f"/game?game_id={generator_id}")
-        else:
-            # If invalid generator ID, redirect to landing with error
-            return RedirectResponse(url=f"/?error=invalid_generator")
+        # Check if there's a generator ID in the query params
+        generator_id = request.query_params.get("generator")
+        if generator_id:
+            # Validate generator ID
+            generator_data = db.get_generator(generator_id)
+            if generator_data:
+                # Store in session and redirect to game page
+                request.session["generator_id"] = generator_id
+                return RedirectResponse(url=f"/game?game_id={generator_id}")
+            else:
+                # If invalid generator ID, redirect to landing with error
+                return RedirectResponse(url=f"/?error=invalid_generator")
 
-    return FileResponse("static/index.html")
+        # Read and pre-render the HTML content
+        with open("static/index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        # Pre-render content for social media crawlers
+        html_content = await get_prerendered_content(request, html_content)
+        return HTMLResponse(content=html_content)
+    except Exception as e:
+        logging.error(f"Error reading landing page: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # Game page
 @app.get("/game")
 async def read_game(request: Request):
-    # Check if valid session exists
-    if "game_session" not in request.session:
-        # Create new session
-        request.session["game_session"] = str(uuid.uuid4())
+    try:
+        # Check if valid session exists
+        if "game_session" not in request.session:
+            # Create new session
+            request.session["game_session"] = str(uuid.uuid4())
 
-    # Check for generator_id/game_id in query parameters
-    generator_id = request.query_params.get("generator_id")
-    if not generator_id:
-        generator_id = request.query_params.get("game_id")
+        # Check for generator_id/game_id in query parameters
+        generator_id = request.query_params.get("generator_id")
+        if not generator_id:
+            generator_id = request.query_params.get("game_id")
 
-    if generator_id:
-        # Validate generator ID
-        generator_data = db.get_generator(generator_id)
-        if not generator_data:
-            # If invalid generator ID, redirect to landing with error
-            return RedirectResponse(url=f"/?error=invalid_generator")
-        # Store valid generator ID in session
-        request.session["generator_id"] = generator_id
-    else:
-        # Clear any existing generator ID if none provided
-        request.session["generator_id"] = None
+        if generator_id:
+            # Validate generator ID
+            generator_data = db.get_generator(generator_id)
+            if not generator_data:
+                # If invalid generator ID, redirect to landing with error
+                return RedirectResponse(url=f"/?error=invalid_generator")
+            # Store valid generator ID in session
+            request.session["generator_id"] = generator_id
+        else:
+            # Clear any existing generator ID if none provided
+            request.session["generator_id"] = None
 
-    return FileResponse("static/game.html")
+        # Read and pre-render the HTML content
+        with open("static/game.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        # Pre-render content for social media crawlers
+        html_content = await get_prerendered_content(request, html_content)
+        return HTMLResponse(content=html_content)
+    except Exception as e:
+        logging.error(f"Error reading game page: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # API endpoint for creating a new game
 @app.post("/api/create_game")

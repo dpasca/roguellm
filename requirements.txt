@@ -8,3 +8,4 @@ itsdangerous
 duckduckgo_search
 boto3
 Pillow
+bs4
