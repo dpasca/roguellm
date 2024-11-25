@@ -32,17 +32,43 @@ def prerender_template(html_content: str, translations: Dict, is_crawler: bool =
     """Replace template variables with actual content"""
     soup = BeautifulSoup(html_content, 'html.parser')
     
-    # Find all elements with {{ t('key') }} pattern
-    pattern = re.compile(r"{{\s*t\('([^']+)'(?:\s*,\s*([^}]+))?\)\s*}}")
+    # Find all elements with {{ t('key') }} or {{ variable }} pattern
+    t_pattern = re.compile(r"{{\s*t\('([^']+)'(?:\s*,\s*([^}]+))?\)\s*}}")
+    var_pattern = re.compile(r"{{\s*([a-zA-Z][a-zA-Z0-9._]*)\s*}}")
+    
+    # Default values for common variables
+    default_values = {
+        'lang.name': 'English',
+        'errorMessage': '',
+        'gameTitle': 'RogueLLM',
+        'config.links.author.text': 'Davide Aversa',
+        'config.links.author.url': 'https://github.com/DavideAversa'
+    }
     
     # Process text nodes
     for element in soup.find_all(text=True):
-        if pattern.search(str(element)):
-            new_text = pattern.sub(lambda m: process_translation(m, translations), str(element))
-            element.replace_with(new_text)
+        text = str(element)
+        modified = False
+        
+        # Handle t() translations
+        if t_pattern.search(text):
+            text = t_pattern.sub(lambda m: process_translation(m, translations), text)
+            modified = True
+            
+        # Handle simple variables
+        if var_pattern.search(text):
+            text = var_pattern.sub(lambda m: default_values.get(m.group(1), m.group(0)), text)
+            modified = True
+            
+        if modified:
+            element.replace_with(text)
     
     # If it's a social media crawler, keep everything pre-rendered
     if is_crawler:
+        # Also add v-cloak to prevent flash of uncompiled content
+        app_div = soup.find(id='app')
+        if app_div:
+            app_div['v-cloak'] = ''
         return str(soup)
     
     # For regular users, only pre-render the <title> and <meta> tags
@@ -51,9 +77,21 @@ def prerender_template(html_content: str, translations: Dict, is_crawler: bool =
         for element in soup.find_all(text=True):
             if element.parent and element.parent.name not in ['title', 'meta']:
                 continue
-            if pattern.search(str(element)):
-                new_text = pattern.sub(lambda m: process_translation(m, translations), str(element))
-                element.replace_with(new_text)
+            text = str(element)
+            modified = False
+            
+            # Handle t() translations
+            if t_pattern.search(text):
+                text = t_pattern.sub(lambda m: process_translation(m, translations), text)
+                modified = True
+                
+            # Handle simple variables
+            if var_pattern.search(text):
+                text = var_pattern.sub(lambda m: default_values.get(m.group(1), m.group(0)), text)
+                modified = True
+                
+            if modified:
+                element.replace_with(text)
     
     return str(soup)
 

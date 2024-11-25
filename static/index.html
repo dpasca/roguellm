@@ -18,9 +18,14 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
 </head>
 <body style="background-color: #121212; color: white;">
-    <div id="app">
+    <div id="app" v-cloak>
         <div class="landing-container">
             <h1>{{ t('title') }}</h1>
             <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
