@@ -45,12 +45,19 @@ function updatePlayerPosition(x, y, force = false) {
 }
 
 // Correct showLoading function
+let loadingInterval;
+
 function showLoading() {
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.display = 'flex';
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) {
+        loadingElement.style.display = 'flex';
+        loadingInterval = setInterval(() => {
+            const dots = loadingElement.querySelector('.loading-dots');
+            if (dots) {
+                dots.textContent = '.'.repeat((dots.textContent.length % 3) + 1);
+            }
+        }, 500);
     }
-    // No need to update the progress bar via JavaScript
 }
 
 // Correct hideLoading function
@@ -77,6 +84,10 @@ const app = Vue.createApp({
             isLoading: true,
             isMoveInProgress: false,
             gameState: {
+                player: {
+                    name: 'Player',
+                    font_awesome_icon: 'fas fa-user'
+                },
                 player_pos: [0, 0], // Start at top-left
                 player_pos_prev: [0, 0],
                 player_hp: 100,
