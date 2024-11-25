@@ -246,8 +246,16 @@ const app = Vue.createApp({
                     }
 
                     if (response.type === 'update') {
+                        console.log('Received state update:', response.state);
                         const wasInCombat = this.gameState.in_combat;
                         this.gameState = response.state;
+
+                        // Update game title
+                        if (response.state.game_title) {
+                            console.log('Setting game title to:', response.state.game_title);
+                            this.gameTitle = response.state.game_title;
+                            document.title = response.state.game_title; // Also update page title
+                        }
 
                         // If we just entered combat, make sure player position is correct
                         if (!wasInCombat && this.gameState.in_combat) {
@@ -273,6 +281,11 @@ const app = Vue.createApp({
                         }
                         if (!this.isGameInitialized) {
                             console.log('Initial game state received:', this.gameState);
+                            if (this.gameState.game_title) {
+                                console.log('Setting initial game title to:', this.gameState.game_title);
+                                this.gameTitle = this.gameState.game_title;
+                                document.title = this.gameState.game_title;
+                            }
                             this.isGameInitialized = true;
                         } else {
                             if (response.description) {
@@ -468,6 +481,10 @@ const app = Vue.createApp({
         handleGameState(response) {
             if (response.type === 'update') {
                 this.gameState = response.state;
+                // Update the gameTitle when we receive a new state
+                if (response.state.game_title) {
+                    this.gameTitle = response.state.game_title;
+                }
                 if (response.description) {
                     this.addToGameLog(response.description);
                 }
@@ -491,8 +508,16 @@ const app = Vue.createApp({
         }
 
         this.initWebSocket();
+
+        // Add event listeners
         document.addEventListener('click', this.closeMenuIfClickedOutside);
         window.addEventListener('resize', this.handleWindowResize);
+
+        // Get initial title from SSR if available
+        const h1 = document.querySelector('h1');
+        if (h1 && h1.dataset.initialTitle) {
+            this.gameTitle = h1.dataset.initialTitle;
+        }
 
         // Clear loading interval if it exists when component is destroyed
         if (loadingInterval) {
@@ -524,6 +549,12 @@ const app = Vue.createApp({
                 this.$nextTick(() => {
                     updatePlayerPosition(x, y, true); // Force update
                 });
+            }
+        },
+        // Watch for changes in game title
+        'gameState.game_title': function(newVal) {
+            if (newVal) {
+                this.gameTitle = newVal;
             }
         },
         // Add watcher for isGameInitialized
