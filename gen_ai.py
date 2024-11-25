@@ -125,17 +125,18 @@ location description based on the Game Theme Description provided below.
 # NOTE: Should append language req at the bottom
 SYS_BETTER_DESC_PROMPT_MSG = """
 You generate game theme descriptions for interactive games.
-The user provides you with a rough theme description, and you return an improved
-version that is more descriptive and detailed.
-This response will be used as a game design draft document.
-Mention any key details relevant to the game, anything of note that sets the
-atmosphere.
-
-Do not include any narrative style or tone, just a detailed and useful theme description
+The user provides you with a rough theme description, possibly including web search
+results. Your task to generate a theme description that will be used to generate
+the details of the game, such as enemies, items, and locations.
+Your description will be used by a dedicated AI agent with a brain like yours,
+therefore you should generate something that would make sense to you as a creative.
+Your description is meant solely for another LLM instance to consume, human readability
+is not required, it's discouraged in favor of efficiency, because the time of generation
+of the game details, including this description is critical.
 
 # Response Format
 - The first row of the response must be the game title, with no formatting or additional text
-- Return ONLY the description, no additional text or explanations
+- The rest of the response is free-form text
 """
 
 SYS_GENERAL_JSON_RULES_MSG = """
