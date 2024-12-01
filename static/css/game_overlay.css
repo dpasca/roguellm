@@ -90,6 +90,11 @@
     animation: fadeIn 0.5s ease;
 }
 
+.game-over.win h2 {
+    color: #4CAF50;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
 .game-over .buttons-container {
     display: flex;
     gap: 15px;

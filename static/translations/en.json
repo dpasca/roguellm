@@ -43,6 +43,19 @@
             "newGame": "New Game"
         }
     },
+    "gameWin": {
+        "title": "Victory!",
+        "stats": {
+            "victory": "You have defeated all enemies!",
+            "xpGained": "XP Gained: {xp}",
+            "finalLevel": "Final Level: {level}",
+            "tilesExplored": "Tiles Explored: {tiles}"
+        },
+        "buttons": {
+            "playAgain": "Play Again",
+            "newGame": "New Game"
+        }
+    },
     "combat": {
         "stats": {
             "hp": "HP",

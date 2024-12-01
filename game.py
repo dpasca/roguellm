@@ -179,6 +179,7 @@ class Game:
         self.state.inventory = []
         self.state.equipment = Equipment()
         self.state.game_over = False
+        self.state.game_won = False
         self.state.game_title = self.get_game_title()
         logging.info(f"Game title set to: {self.state.game_title}")
 
@@ -339,10 +340,15 @@ class Game:
             self.events_reset()
             return await self.initialize_game()
 
+        # Check game over and win states before processing any other action
         if self.state.game_over:
-            # TODO: Add stats and other info (win/lose, reached XP, killed enemies, etc.)
             result = await self.create_update("Game Over! Press Restart to play again.")
-            self.events_add('game_over', result) # Record the event
+            self.events_add('game_over', result)
+            return result
+
+        if self.state.game_won:
+            result = await self.create_update("Congratulations! You have won the game! Press Restart to play again.")
+            self.events_add('game_won', result)
             return result
 
         result = None
@@ -525,6 +531,12 @@ class Game:
         return "\n".join(effects_log) if effects_log else ""
 
     async def handle_move(self, direction: str) -> dict:
+        if not direction:
+            return await self.create_update("No direction specified!")
+
+        if self.state.game_won or self.state.game_over:
+            return await self.create_update("Game is over! Press Restart to play again.")
+
         # Save previous position
         self.state.player_pos_prev = self.state.player_pos
         # Get current position
@@ -796,6 +808,23 @@ class Game:
                     enemy_in_state['is_defeated'] = True
                     logger.info(f"Set enemy {enemy_in_state['id']} to defeated")
 
+                    # Check if all enemies are defeated
+                    all_enemies_defeated = all(e['is_defeated'] for e in self.state.enemies)
+                    if all_enemies_defeated:
+                        # Clear all game states
+                        self.state.game_won = True
+                        self.state.in_combat = False
+                        self.state.current_enemy = None
+                        # Return to previous position to prevent movement
+                        self.state.player_pos = self.state.player_pos_prev
+                        game_state = self.state.dict()
+                        game_state['explored_tiles'] = self.count_explored_tiles()
+                        return {
+                            'type': 'update',
+                            'state': game_state,
+                            'description': f"{combat_log}\nCongratulations! You have defeated all enemies and won the game!"
+                        }
+
                     # Add to defeated_enemies if not already there
                     if not any(de['id'] == enemy_in_state['id'] for de in self.state.defeated_enemies):
                         self.state.defeated_enemies.append({
@@ -834,14 +863,8 @@ class Game:
                 self.state.player_hp = 0
                 self.state.game_over = True
                 self.state.in_combat = False
-                # Include explored tiles in the state update instead of setting it directly
-                game_state = self.state.dict()
-                game_state['explored_tiles'] = self.count_explored_tiles()
-                return {
-                    'type': 'update',
-                    'state': game_state,
-                    'description': f"{combat_log}\nYou have been defeated! Game Over!"
-                }
+                return await self.create_update(
+                    f"{combat_log}\nYou have been defeated! Game Over!")
 
             # Process temporary effects
             effects_log = await self.process_temporary_effects()
