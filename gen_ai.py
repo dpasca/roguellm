@@ -152,12 +152,14 @@ SYS_GEN_PLAYER_JSON_MSG = """
 You are an expert game player generator. Your task is to generate a JSON object
 describing a game player. The user will provide a sample JSON object of an existing
 game. Make sure to select an appropriate font-awesome icon for the player.
+Include only free font awesome icons, do not use any pro icons.
 
 # Response Format
 Reply with a new JSON object that contains player definition.
 The new player definition must follow the same format as the sample definition,
 but adapt it to match the game theme. For example, replace a "warrior" class
 with "space marine" for a sci-fi theme.
+Include only free font-awesome icons, do not use any pro icons.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -192,6 +194,7 @@ SYS_GEN_GAME_ENEMIES_JSON_MSG = """
 You are an expert game enemy generator. Your task is to generate a JSON object
 describing game enemies. The user will provide a sample JSON object of an existing
 game. Make sure to select an appropriate font-awesome icon for the enemy.
+Include only free font-awesome icons, do not use any pro icons.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
