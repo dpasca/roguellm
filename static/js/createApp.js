@@ -49,8 +49,16 @@ let loadingInterval;
 
 function showLoading() {
     const loadingElement = document.getElementById('loading');
-    if (loadingElement) {
-        loadingElement.style.display = 'flex';
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingElement && loadingOverlay) {
+        // Reset the progress bar animation
+        const progressBar = loadingOverlay.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.animation = 'none';
+            progressBar.offsetHeight; // Trigger reflow
+            progressBar.style.animation = 'progress-animation 40s linear forwards';
+        }
+        loadingOverlay.style.display = 'flex';
         loadingInterval = setInterval(() => {
             const dots = loadingElement.querySelector('.loading-dots');
             if (dots) {
@@ -66,14 +74,20 @@ function hideLoading() {
     if (loadingOverlay) {
         const progressBar = loadingOverlay.querySelector('.progress-bar');
         if (progressBar) {
-            // Pause the animation and set width to 100%
-            progressBar.style.animationPlayState = 'paused';
+            // Reset the animation
+            progressBar.style.animation = 'none';
             progressBar.style.width = '100%';
         }
         // Delay hiding to show completion
         setTimeout(() => {
             loadingOverlay.style.display = 'none';
+            if (progressBar) {
+                progressBar.style.width = '0%';
+            }
         }, 500);
+    }
+    if (loadingInterval) {
+        clearInterval(loadingInterval);
     }
 }
 
