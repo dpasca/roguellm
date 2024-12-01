@@ -97,6 +97,7 @@
 
 .game-over .buttons-container {
     display: flex;
+    justify-content: center;
     gap: 15px;
     animation: fadeIn 0.5s ease 0.2s both;
 }
@@ -174,7 +175,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 128, 0, 0.95);
+    background-color: rgba(0, 48, 0, 0.95);  /* Darker green background */
     border: 2px solid #4cd137;
     border-radius: 12px;
     padding: 30px;
@@ -186,16 +187,16 @@
 }
 
 .game-win h2 {
-    color: #fff;
+    color: #4cd137;  /* Brighter green for the title */
     font-size: 2.5em;
     margin-bottom: 20px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .game-win .game-win-stats {
     margin: 20px 0;
     padding: 15px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);  /* Slightly lighter background */
     border-radius: 8px;
 }
 
@@ -206,36 +207,53 @@
 
 .game-win .stat-item i {
     margin-right: 10px;
-    color: #ffd700;
+    color: #4cd137;  /* Match with other green elements */
 }
 
 .game-win .buttons-container {
+    display: flex;
+    justify-content: center;  /* Center the buttons */
+    gap: 15px;
     margin-top: 20px;
 }
 
 .game-win .buttons-container button {
-    margin: 0 10px;
     padding: 12px 24px;
-    font-size: 1.1em;
+    font-size: 18px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .game-win .restart-button {
-    background-color: #4cd137;
+    background-color: #2196F3;  /* Match game over screen button style */
     color: white;
 }
 
 .game-win .new-game-button {
-    background-color: #2ecc71;
+    background-color: #4cd137;
     color: white;
 }
 
 .game-win .buttons-container button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.game-win .restart-button:hover {
+    background-color: #1976D2;
+}
+
+.game-win .new-game-button:hover {
+    background-color: #45a049;
+}
+
+.game-win button i {
+    font-size: 16px;
 }
 
 @media screen and (max-width: 180mm) {

@@ -135,8 +135,8 @@ is not required, it's discouraged in favor of efficiency, because the time of ge
 of the game details, including this description is critical.
 
 # Response Format
-- The first row of the response must be the game title, with no formatting or additional text
-- The rest of the response is free-form text
+- The first line of the response must be the title of the game in plain text
+- From the second line, the rest of the response is free-form text
 """
 
 SYS_GENERAL_JSON_RULES_MSG = """
