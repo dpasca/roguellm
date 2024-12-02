@@ -150,8 +150,8 @@ class Game:
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
-        # Validate FontAwesome icons in enemy definitions
-        self.enemy_defs = fa_runtime.process_game_data(enemy_defs, "enemy")
+        # Icons are already validated by gen_ai
+        self.enemy_defs = enemy_defs
 
     def initialize_celltype_defs(self):
         self.celltype_defs = self.make_defs_from_json(
@@ -163,8 +163,8 @@ class Game:
         """Load all game data from JSON files."""
         with open('game_celltypes.json', 'r') as f:
             self.celltype_defs = json.load(f)
-            # Validate FontAwesome icons
-            self.celltype_defs = fa_runtime.process_game_data(self.celltype_defs)
+            # Icons are already validated by gen_ai
+            self.celltype_defs = self.gen_ai.gen_game_celltypes_from_json_sample(json.dumps(self.celltype_defs))
 
         with open('game_config.json', 'r') as f:
             self.game_config = json.load(f)
@@ -189,6 +189,10 @@ class Game:
             "class": "adventurer",
             "font_awesome_icon": "fa-solid fa-user"
         }
+        # Validate player icon if using default
+        if not self.player_defs:
+            self.state.player = fa_runtime.process_game_data(self.state.player, "player")
+
         self.state.explored = [[False for _ in range(self.state.map_width)]
                              for _ in range(self.state.map_height)]
         self.state.inventory = []
@@ -748,18 +752,17 @@ class Game:
 
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a specific enemy definition."""
-        # Validate FontAwesome icon before creating the enemy
-        icon = fa_runtime.get_valid_icon(enemy_def['font_awesome_icon'], "enemy")
+        # Icons are already validated by gen_ai
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
         attack = self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max'])
         defense = self.random.randint(enemy_def.get('defense', {}).get('min', 0),
-                                    enemy_def.get('defense', {}).get('max', 5))
+                                enemy_def.get('defense', {}).get('max', 5))
 
         self.enemy_sequence_cnt += 1
         enemy = Enemy(
             id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
             name=enemy_def['name'],
-            font_awesome_icon=icon,
+            font_awesome_icon=enemy_def['font_awesome_icon'],
             hp=hp,
             max_hp=hp,
             attack=attack,

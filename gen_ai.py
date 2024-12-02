@@ -322,6 +322,11 @@ class GenAI:
         )
         return response.choices[0].message.content
 
+    def _validate_icons(self, data: dict, context: str = "default") -> dict:
+        """Validate any font-awesome icons in the data structure."""
+        from tools.fa_runtime import fa_runtime
+        return fa_runtime.process_game_data(data, context)
+
     # Upon setting the theme description, translate the basic system prompts
     def set_theme_description(
             self,
@@ -476,7 +481,10 @@ A universe where you can become the master of the universe by defeating other ma
         )
         # Convert the response to a list of dictionaries
         try:
-            return json.loads(extract_clean_data(response))
+            data = json.loads(extract_clean_data(response))
+            # Validate any font-awesome icons in the data
+            data = self._validate_icons(data)
+            return data
         except json.JSONDecodeError:
             # Fallback to the original list if the response is broken
             logger.error(f"Invalid JSON output: {response}")
