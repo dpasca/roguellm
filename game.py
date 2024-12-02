@@ -311,9 +311,8 @@ class Game:
 
     async def create_update(self, original_sentence: str):
         logger.info("## Translating sentence")
-        logger.info(f"- Original sentence: {original_sentence}")
         state_dict = self.state.dict()
-        logger.info(f"- State dict: {state_dict}\n")
+        #logger.info(f"- State dict: {state_dict}\n")
         return {
             'type': 'update',
             'state': state_dict,
@@ -322,7 +321,7 @@ class Game:
 
     async def create_update_room(self):
         logger.info("## Creating room description")
-        logger.info(f"- State dict: {self.state.dict()}\n")
+        #logger.info(f"- State dict: {self.state.dict()}\n")
         return {
             'type': 'update',
             'state': self.state.dict(),
