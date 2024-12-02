@@ -699,11 +699,12 @@ class Game:
                     self.state.current_enemy = None
                     self.state.in_combat = False
 
-                # Remove this enemy placement so it doesn't respawn
-                self.entity_placements = [
-                    p for p in self.entity_placements
-                    if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
-                ]
+                # Only remove enemy placement if it was defeated
+                if was_defeated:
+                    self.entity_placements = [
+                        p for p in self.entity_placements
+                        if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
+                    ]
 
                 if was_defeated:
                     return await self.create_update(
@@ -940,24 +941,8 @@ class Game:
                     self.state.in_combat = False
                     self.state.current_enemy = None
 
-                    # Update enemy status in both lists
-                    enemy_in_state['is_defeated'] = True
-                    logger.info(f"Set enemy {enemy_in_state['id']} to defeated")
-
-                    # Add to defeated_enemies if not already there
-                    if not any(de['id'] == enemy_in_state['id'] for de in self.state.defeated_enemies):
-                        self.state.defeated_enemies.append({
-                            'x': enemy_x,
-                            'y': enemy_y,
-                            'name': enemy_in_state['name'],
-                            'id': enemy_in_state['id'],
-                            'font_awesome_icon': enemy_in_state['font_awesome_icon'],
-                            'is_defeated': True
-                        })
-                        logger.info(f"Added enemy {enemy_in_state['id']} to defeated_enemies")
-
-                    #logger.info(f"Updated enemies: {self.state.enemies}")
-                    #logger.info(f"Updated defeated enemies: {self.state.defeated_enemies}")
+                    # Remove the code that marks enemy as defeated and adds to defeated_enemies list
+                    # The enemy should remain active for future encounters
 
                 # Process temporary effects when running
                 effects_log = await self.process_temporary_effects()
