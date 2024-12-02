@@ -1,17 +1,17 @@
 {
   "// Notes": "パラメータは {paramName} で示されます",
-  "// Translation Notes": "これはビデオゲーム用であることを考慮して、適切にローカライズしてください。例：イタリア語版では「Game Over」を翻訳しないでください。",
+  "// Translation Notes": "これはビデオゲーム用であることを考慮して適切にローカライズしてください。例：イタリア語版では「Game Over」を翻訳しないでください。",
   "// Main UI": "メインインターフェースの翻訳",
   "title": "RogueLLM",
-  "subtitle_with_author": "AIによって動かされる実験的なローグライクゲーム {author} による",
-  "// Theme Selection": "テーマ選択関連の翻訳",
+  "subtitle_with_author": "AIによって駆動される実験的なローグライクゲーム {author} による",
+  "// Theme Selection": "テーマ選択に関連する翻訳",
   "selectTheme": "テーマを選択",
   "fantasyTheme": "ファンタジーテーマ",
   "customTheme": "カスタムテーマ",
   "enterGameDescription": "ゲームの設定を説明してください。例：「野生のプログラマー」",
   "generatorTheme": "ジェネレーターテーマ",
   "improveGameDescription": "ウェブ検索でゲームの説明を改善",
-  "// Game Setup": "ゲーム設定と構成の翻訳",
+  "// Game Setup": "ゲームの設定と構成の翻訳",
   "useGameId": "ゲームIDを使用",
   "customThemeDescription": "カスタムテーマの説明を入力してください：",
   "generatorIdLabel": "ゲームIDを入力：",
@@ -33,7 +33,7 @@
     "stats": {
       "xpGained": "獲得XP: {xp}",
       "finalLevel": "最終レベル: {level}",
-      "tilesExplored": "探索したタイル: {tiles}"
+      "tilesExplored": "探索されたタイル: {tiles}"
     },
     "buttons": {
       "restart": "再開",
@@ -46,7 +46,7 @@
       "victory": "すべての敵を倒しました！",
       "xpGained": "獲得XP: {xp}",
       "finalLevel": "最終レベル: {level}",
-      "tilesExplored": "探索したタイル: {tiles}"
+      "tilesExplored": "探索されたタイル: {tiles}"
     },
     "buttons": {
       "playAgain": "もう一度プレイ",

@@ -22,7 +22,7 @@ pip install --upgrade pip
 pip install -r "$REPO_ROOT/requirements.txt"
 
 # Run the Python script with the correct paths
-python "$SCRIPT_DIR/update_locales.py" "$REPO_ROOT/static/translations" "it,ja"
+python "$SCRIPT_DIR/update_locales.py" "$REPO_ROOT/static/translations" "it,ja,es,zh-Hant"
 
 # Deactivate virtual environment
 deactivate

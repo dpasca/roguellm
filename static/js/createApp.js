@@ -597,6 +597,8 @@ const i18n = VueI18n.createI18n({
         en: {}, // Will be loaded dynamically
         it: {}, // Will be loaded dynamically
         ja: {}, // Will be loaded dynamically
+        es: {}, // Spanish
+        'zh-Hant': {} // Traditional Chinese
     }
 });
 
@@ -604,34 +606,40 @@ const i18n = VueI18n.createI18n({
 async function loadTranslations() {
     try {
         // First load all translations
-        const [enResponse, itResponse, jaResponse] = await Promise.all([
+        const [enResponse, itResponse, jaResponse, esResponse, zhHantResponse] = await Promise.all([
             fetch('/static/translations/en.json'),
             fetch('/static/translations/it.json'),
-            fetch('/static/translations/ja.json')
+            fetch('/static/translations/ja.json'),
+            fetch('/static/translations/es.json'),
+            fetch('/static/translations/zh-Hant.json')
         ]);
 
-        const [enMessages, itMessages, jaMessages] = await Promise.all([
+        const [enMessages, itMessages, jaMessages, esMessages, zhHantMessages] = await Promise.all([
             enResponse.json(),
             itResponse.json(),
-            jaResponse.json()
+            jaResponse.json(),
+            esResponse.json(),
+            zhHantResponse.json()
         ]);
 
         // Set all messages
         i18n.global.setLocaleMessage('en', enMessages);
         i18n.global.setLocaleMessage('it', itMessages);
         i18n.global.setLocaleMessage('ja', jaMessages);
+        i18n.global.setLocaleMessage('es', esMessages);
+        i18n.global.setLocaleMessage('zh-Hant', zhHantMessages);
 
         // Set the preferred language before mounting
         const urlParams = new URLSearchParams(window.location.search);
         const urlLang = urlParams.get('lang');
 
         // Use URL language or localStorage language
-        if (urlLang && ['en', 'it', 'ja'].includes(urlLang)) {
+        if (urlLang && ['en', 'it', 'ja', 'es', 'zh-Hant'].includes(urlLang)) {
             i18n.global.locale = urlLang;
             localStorage.setItem('preferredLanguage', urlLang);
         } else {
             const storedLang = localStorage.getItem('preferredLanguage');
-            if (storedLang && ['en', 'it', 'ja'].includes(storedLang)) {
+            if (storedLang && ['en', 'it', 'ja', 'es', 'zh-Hant'].includes(storedLang)) {
                 i18n.global.locale = storedLang;
             }
         }

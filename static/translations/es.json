@@ -1,0 +1,91 @@
+{
+  "// Notes": "Los parámetros se indican con {paramName}",
+  "// Translation Notes": "Localizar sensiblemente basándose en el hecho de que esto es para un videojuego. Por ejemplo, no traducir 'Game Over' para la versión italiana.",
+  "// Main UI": "Traducciones de la interfaz principal",
+  "title": "RogueLLM",
+  "subtitle_with_author": "Un juego roguelike experimental impulsado por IA por {author}",
+  "// Theme Selection": "Traducciones relacionadas con la selección de tema",
+  "selectTheme": "Selecciona tu tema",
+  "fantasyTheme": "Tema de fantasía",
+  "customTheme": "Tema personalizado",
+  "enterGameDescription": "Describe el escenario de tu juego. por ejemplo, 'Programadores en la naturaleza'",
+  "generatorTheme": "Tema del generador",
+  "improveGameDescription": "Mejorar la descripción del juego con búsqueda web",
+  "// Game Setup": "Traducciones de configuración y preparación del juego",
+  "useGameId": "Usar ID del juego",
+  "customThemeDescription": "Introduce una descripción para tu tema personalizado:",
+  "generatorIdLabel": "Introduce el ID del juego:",
+  "startGame": "Iniciar juego",
+  "createGame": "Crear juego",
+  "errorGameId": "Por favor, introduce un ID del juego",
+  "// Game Interface": "Traducciones de la interfaz del juego",
+  "menu": {
+    "share": "Compartir juego",
+    "restart": "Reiniciar juego",
+    "newGame": "Crear nuevo juego",
+    "debug": "Información de depuración"
+  },
+  "notifications": {
+    "gameCopied": "¡ID del juego copiado al portapapeles!"
+  },
+  "gameOver": {
+    "title": "¡Game Over!",
+    "stats": {
+      "xpGained": "XP Ganada: {xp}",
+      "finalLevel": "Nivel final: {level}",
+      "tilesExplored": "Casillas exploradas: {tiles}"
+    },
+    "buttons": {
+      "restart": "Reiniciar",
+      "newGame": "Nuevo juego"
+    }
+  },
+  "gameWin": {
+    "title": "¡Victoria!",
+    "stats": {
+      "victory": "¡Has derrotado a todos los enemigos!",
+      "xpGained": "XP Ganada: {xp}",
+      "finalLevel": "Nivel final: {level}",
+      "tilesExplored": "Casillas exploradas: {tiles}"
+    },
+    "buttons": {
+      "playAgain": "Jugar de nuevo",
+      "newGame": "Nuevo juego"
+    }
+  },
+  "combat": {
+    "stats": {
+      "hp": "HP",
+      "attack": "Ataque",
+      "defense": "Defensa"
+    },
+    "buttons": {
+      "attack": "Atacar",
+      "run": "Huir"
+    }
+  },
+  "player": {
+    "inventory": "Inventario",
+    "equipment": {
+      "weapon": "Arma",
+      "armor": "Armadura"
+    },
+    "stats": {
+      "hp": "HP",
+      "attack": "Ataque",
+      "defense": "Defensa",
+      "xp": "XP",
+      "location": "Ubicación"
+    }
+  },
+  "inventory": {
+    "use": "Usar",
+    "equip": "Equipar",
+    "unequip": "Desequipar"
+  },
+  "debug": {
+    "title": "Información de depuración",
+    "itemsOnMap": "Objetos en el mapa",
+    "enemiesOnMap": "Enemigos en el mapa"
+  }
+}

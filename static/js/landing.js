@@ -1,8 +1,10 @@
 // Language configuration
 const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
     { code: 'it', name: 'Italiano' },
     { code: 'ja', name: '日本語' },
+    { code: 'zh-Hant', name: '繁體中文' },
 ];
 
 // Configuration for external links and common values
@@ -56,30 +58,41 @@ const app = Vue.createApp({
     methods: {
         async loadTranslations(lang) {
             try {
+                console.log(`Loading translations for ${lang}...`);
                 const response = await fetch(`static/translations/${lang}.json`);
-                this.translations[lang] = await response.json();
-
-                // Load fallback language if it's not already loaded
-                if (lang !== CONFIG.fallbackLanguage && !this.translations[CONFIG.fallbackLanguage]) {
-                    const fallbackResponse = await fetch(`static/translations/${CONFIG.fallbackLanguage}.json`);
-                    this.translations[CONFIG.fallbackLanguage] = await fallbackResponse.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
+                const translations = await response.json();
+                console.log(`Successfully loaded translations for ${lang}:`, translations);
+                this.translations[lang] = translations;
             } catch (error) {
-                console.error('Error loading translations:', error);
+                console.error(`Error loading translations for ${lang}:`, error);
+                // If we failed to load a non-fallback language, try to use fallback
+                if (lang !== CONFIG.fallbackLanguage) {
+                    console.log(`Falling back to ${CONFIG.fallbackLanguage} translations`);
+                }
             }
         },
         t(key, params = {}) {
+            // Helper function to get nested value
+            const getNestedValue = (obj, path) => {
+                return path.split('.').reduce((current, part) => current?.[part], obj);
+            };
+
             // Try selected language first
-            let translation = this.translations[this.selectedLanguage]?.[key];
+            let translation = getNestedValue(this.translations[this.selectedLanguage], key);
 
             // Fall back to default language if translation is missing
             if (!translation && this.selectedLanguage !== CONFIG.fallbackLanguage) {
-                translation = this.translations[CONFIG.fallbackLanguage]?.[key];
+                translation = getNestedValue(this.translations[CONFIG.fallbackLanguage], key);
             }
 
             // Return key if no translation found
             if (!translation) {
-                console.warn(`Missing translation for key: ${key}`);
+                console.warn(`Missing translation for key: ${key} in language: ${this.selectedLanguage}`);
                 return key;
             }
 
@@ -145,11 +158,26 @@ const app = Vue.createApp({
             }
         },
         getDefaultLanguage() {
+            // Try to get language from URL first
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLang = urlParams.get('lang');
+            if (urlLang && SUPPORTED_LANGUAGES.some(lang => lang.code === urlLang)) {
+                return urlLang;
+            }
+
+            // Then try localStorage
+            const storedLang = localStorage.getItem('preferredLanguage');
+            if (storedLang && SUPPORTED_LANGUAGES.some(lang => lang.code === storedLang)) {
+                return storedLang;
+            }
+
+            // Finally, try browser language
             const browserLang = navigator.language || navigator.userLanguage;
 
             // Handle special cases for Chinese
             if (browserLang.startsWith('zh')) {
-                return browserLang.includes('TW') || browserLang.includes('HK') ? 'zh-TW' : 'zh-CN';
+                // For Traditional Chinese regions (TW, HK, MO), use zh-Hant
+                return browserLang.includes('TW') || browserLang.includes('HK') || browserLang.includes('MO') ? 'zh-Hant' : CONFIG.defaultLanguage;
             }
 
             // For other languages, just take the first part before the dash
@@ -166,7 +194,21 @@ const app = Vue.createApp({
             this.selectedTheme = 'generator';
             this.generatorId = generatorId;
         }
-        await this.loadTranslations(this.selectedLanguage);
+
+        // First load the fallback language (English)
+        await this.loadTranslations(CONFIG.fallbackLanguage);
+        
+        // Then load the selected language if different from fallback
+        if (this.selectedLanguage !== CONFIG.fallbackLanguage) {
+            await this.loadTranslations(this.selectedLanguage);
+            // Store the selected language preference
+            localStorage.setItem('preferredLanguage', this.selectedLanguage);
+        }
+
+        // Add a watch for selectedLanguage changes to store preference
+        this.$watch('selectedLanguage', (newLang) => {
+            localStorage.setItem('preferredLanguage', newLang);
+        });
     }
 });
 
