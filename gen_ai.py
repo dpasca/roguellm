@@ -15,9 +15,6 @@ DEF_TEMP = 0.7
 # Do bypass world generation (for testing)
 DO_BYPASS_WORLD_GEN = False
 
-MAX_TOKENS_FOR_ROOM_DESC = 200
-MAX_TOKENS_FOR_GENERIC_SENTENCE = 120
-
 MODEL_QUALITY_FOR_JSON = "low"
 MODEL_QUALITY_FOR_THEME_DESC = "low"
 MODEL_QUALITY_FOR_MAP = "low"
@@ -126,13 +123,11 @@ location description based on the Game Theme Description provided below.
 SYS_BETTER_DESC_PROMPT_MSG = """
 You generate game theme descriptions for interactive games.
 The user provides you with a rough theme description, possibly including web search
-results. Your task to generate a theme description that will be used to generate
-the details of the game, such as enemies, items, and locations.
-Your description will be used by a dedicated AI agent with a brain like yours,
-therefore you should generate something that would make sense to you as a creative.
-Your description is meant solely for another LLM instance to consume, human readability
-is not required, it's discouraged in favor of efficiency, because the time of generation
-of the game details, including this description is critical.
+results. Your task is to generate a theme description that will, in turn, be used
+to generate the details of the game, such as enemies, items, and locations.
+Your description will be used by an AI agent with a brain like yours to later create
+more game details. Your description is meant solely for another LLM instance to consume,
+the top priority is efficiency; human readability is not important, only efficiency is.
 
 # Response Format
 - The first line of the response must be the title of the game in plain text
@@ -167,6 +162,8 @@ SYS_GEN_GAME_ITEMS_JSON_MSG = """
 You are an expert game item generator. Your task is to generate a JSON object
 describing game items. The user will provide a sample JSON object of an existing
 game.
+Unleash your creativity. We want to impress and stimulate the imagination of the
+game player.
 
 # Effect Types and Patterns
 You must EXACTLY follow these patterns for effects:
@@ -195,6 +192,8 @@ You are an expert game enemy generator. Your task is to generate a JSON object
 describing game enemies. The user will provide a sample JSON object of an existing
 game. Make sure to select an appropriate font-awesome icon for the enemy.
 Include only free font-awesome icons, do not use any pro icons.
+Unleash your creativity. We want to impress and stimulate the imagination of the
+game player.
 
 # Response Format
 Reply with a new JSON object that contains up to 10 item definitions.
@@ -208,6 +207,8 @@ SYS_GEN_GAME_CELLTYPES_JSON_MSG = """
 You are an expert game map cell type generator. Your task is to generate a JSON object
 describing game map cell types. The user will provide a sample JSON object of an existing
 game.
+Unleash your creativity. We want to impress and stimulate the imagination of the
+game player.
 
 # Response Format
 Reply with a new JSON object that contains up to 5 item definitions.
@@ -684,8 +685,7 @@ Each placement should indicate whether it's an enemy or an item.
                     },
                     {"role": "user", "content": user_msg}
                 ],
-                temperature=DEF_TEMP,  # Add some variability but keep it coherent
-                max_tokens=max(MAX_TOKENS_FOR_GENERIC_SENTENCE, len(original_sentence)//4)
+                temperature=DEF_TEMP,
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -718,8 +718,7 @@ Each placement should indicate whether it's an enemy or an item.
                     },
                     {"role": "user", "content": user_msg}
                 ],
-                temperature=DEF_TEMP,  # Add some variability but keep it coherent
-                max_tokens=MAX_TOKENS_FOR_ROOM_DESC
+                temperature=DEF_TEMP,
             )
             return response.choices[0].message.content
         except Exception as e:
