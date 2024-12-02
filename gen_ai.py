@@ -179,7 +179,7 @@ You must EXACTLY follow these patterns for effects:
 - Do not add additional effect fields
 
 # Response Format
-Reply with a new JSON object that contains up to 10 item definitions.
+Reply with a new JSON object that contains up to 14 item definitions.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "potion" item
 with "med-kit" for another theme.
@@ -211,7 +211,7 @@ Unleash your creativity. We want to impress and stimulate the imagination of the
 game player.
 
 # Response Format
-Reply with a new JSON object that contains up to 5 item definitions.
+Reply with a new JSON object that contains up to 9 item definitions.
 The new item definitions must follow the same format as the sample item definitions,
 but they must use a new theme description. For example, replace a "grass" item
 with "desert" for a desert theme.
@@ -225,6 +225,8 @@ describing the game map. The user will provide a set of cell types, each with an
 
 Your job is to respond with a CSV map, where each cell is described by the "id" of
 the cell type. Generate a map that is coherent with the game theme.
+Only use half of the cell types available so that a coherent map is still possible, and
+so that other cell types can be used in other levels.
 
 # Response Format
 Return ONLY the CSV map, with no additional text or explanations.
@@ -232,12 +234,17 @@ Do not include any markdown formatting, including the triple backticks.
 """
 
 SYS_GEN_ENTITY_PLACEMENT_MSG = """
-You are an expert game level designer. Your task is to strategically place both enemies and items on a game map.
+You are an expert game level designer. Your task is to strategically place both
+enemies and items on a game map.
+Randomly choose which enemy and item types to include, so that the game does not
+show all enemies or all items available in the game all at once in this level.
+Place some items near the enemies, so that the player has a better chance of
+surviving the battle.
 
 For each placement, specify:
 1. The type ('enemy' or 'item')
-2. The x,y coordinates
-3. The entity_id (enemy_id for enemies, id for items)
+2. The entity_id
+3. The x,y coordinates
 
 Consider:
 - Terrain types and accessibility
@@ -250,9 +257,9 @@ Consider:
 Return a JSON array of placement objects. Each object should have:
 {
     "type": "enemy" or "item",
+    "entity_id": <id of the enemy or item>,
     "x": <x coordinate>,
-    "y": <y coordinate>,
-    "entity_id": <id of the enemy or item>
+    "y": <y coordinate>
 }
 """
 
