@@ -38,12 +38,12 @@ def generate_translation(translations: Dict, target_lang: str) -> Dict:
     """
     client = OpenAI()
 
-    system_prompt = """You are a professional translator for a technology and software development company.
-Your task is to translate website content accurately while maintaining technical accuracy and a professional tone.
+    system_prompt = """You are a professional language translator.
+Your task is to translate text accurately, adapting to the context and tone.
 Return ONLY the translated JSON without any markdown formatting or explanation."""
 
-    user_prompt = f"""Translate the following website content from English to {target_lang}.
-Maintain technical terms appropriately and ensure all JSON formatting remains intact.
+    user_prompt = f"""Translate the following content from English to {target_lang}.
+Ensure all JSON formatting remains intact.
 Content to translate:
 
 {json.dumps(translations, ensure_ascii=False, indent=2)}"""

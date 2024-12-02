@@ -1,16 +1,17 @@
 {
   "// Notes": "I parametri sono indicati con {paramName}",
+  "// Translation Notes": "Localizzare in modo sensato basandosi sul fatto che si tratta di un videogioco. Ad esempio, non tradurre 'Game Over' per la versione italiana.",
   "// Main UI": "Traduzioni dell'interfaccia principale",
   "title": "RogueLLM",
-  "subtitle_with_author": "Un gioco roguelike sperimentale alimentato da AI di {author}",
+  "subtitle_with_author": "Un gioco roguelike sperimentale alimentato dall'AI di {author}",
   "// Theme Selection": "Traduzioni relative alla selezione del tema",
   "selectTheme": "Seleziona il tuo tema",
   "fantasyTheme": "Tema Fantasy",
   "customTheme": "Tema Personalizzato",
-  "enterGameDescription": "Descrivi l'ambientazione del tuo gioco. ad es. 'Programmatori nella natura'",
+  "enterGameDescription": "Descrivi l'ambientazione del tuo gioco. Ad esempio, 'Programmers in the wild'",
   "generatorTheme": "Tema Generatore",
   "improveGameDescription": "Migliora la descrizione del gioco con la ricerca web",
-  "// Game Setup": "Traduzioni per configurazione e impostazione del gioco",
+  "// Game Setup": "Traduzioni per la configurazione e l'impostazione del gioco",
   "useGameId": "Usa ID Gioco",
   "customThemeDescription": "Inserisci una descrizione per il tuo tema personalizzato:",
   "generatorIdLabel": "Inserisci ID Gioco:",
@@ -20,22 +21,35 @@
   "// Game Interface": "Traduzioni dell'interfaccia di gioco",
   "menu": {
     "share": "Condividi Gioco",
-    "restart": "Riavvia Gioco",
+    "restart": "Ricomincia Gioco",
     "newGame": "Crea Nuovo Gioco",
-    "debug": "Info Debug"
+    "debug": "Informazioni di Debug"
   },
   "notifications": {
     "gameCopied": "ID Gioco copiato negli appunti!"
   },
   "gameOver": {
-    "title": "Gioco Finito!",
+    "title": "Game Over!",
     "stats": {
       "xpGained": "XP Guadagnati: {xp}",
       "finalLevel": "Livello Finale: {level}",
-      "tilesExplored": "Caselle Esplorate: {tiles}"
+      "tilesExplored": "Tessere Esplorate: {tiles}"
     },
     "buttons": {
-      "restart": "Riavvia",
+      "restart": "Ricomincia",
+      "newGame": "Nuovo Gioco"
+    }
+  },
+  "gameWin": {
+    "title": "Vittoria!",
+    "stats": {
+      "victory": "Hai sconfitto tutti i nemici!",
+      "xpGained": "XP Guadagnati: {xp}",
+      "finalLevel": "Livello Finale: {level}",
+      "tilesExplored": "Tessere Esplorate: {tiles}"
+    },
+    "buttons": {
+      "playAgain": "Gioca di Nuovo",
       "newGame": "Nuovo Gioco"
     }
   },
@@ -67,7 +81,7 @@
   "inventory": {
     "use": "Usa",
     "equip": "Equipaggia",
-    "unequip": "Desequipaggia"
+    "unequip": "Disequipaggia"
   },
   "debug": {
     "title": "Informazioni di Debug",

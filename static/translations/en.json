@@ -1,6 +1,9 @@
 {
     "// Notes": "Parameters are indicated with {paramName}",
 
+    "// Translation Notes":
+    "Localize sensibly based on the fact that this is for a video game. e.g. do not translate 'Game Over' for the Italian version.",
+
     "// Main UI": "Main interface translations",
     "title": "RogueLLM",
     "subtitle_with_author": "An experimental roguelike game powered by AI by {author}",
