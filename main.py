@@ -22,6 +22,7 @@ import uuid
 import zlib
 import base64
 from social_crawler import get_prerendered_content
+import asyncio
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
@@ -208,60 +209,73 @@ class TimeProfiler:
 # WebSocket endpoint for the game
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    logging.info("New WebSocket connection established")
-
-    session = websocket.session
-
-    # Retrieve session variables
-    generator_id = session.get("generator_id")
-    language = session.get("language", "en")
-    do_web_search = session.get("do_web_search", False)
-
-    # Decompress theme description
-    compressed_theme = session.get("theme_desc")
-    if compressed_theme:
-        theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
-    else:
-        theme_desc = "fantasy"
-
-    # Create a new Game instance
-    rand_seed = int(time.time())
-    game_instance = create_game_instance(
-        seed=rand_seed,
-        theme_desc=theme_desc,
-        language=language,
-        do_web_search=do_web_search,
-        generator_id=generator_id
-    )
-
     try:
-        game_instance.connected_clients.add(websocket)
+        await websocket.accept()
+        logging.info("New WebSocket connection established")
 
-        if game_instance.error_message:
-            logging.info(f"Sending error message: {game_instance.error_message}")
-            await websocket.send_json({
-                'type': 'error',
-                'message': game_instance.error_message
-            })
-        # Send initial state with generator ID
-        initial_response = {
-            'type': 'connection_established',
-            'generator_id': game_instance.generator_id
-        }
-        await websocket.send_json(initial_response)
-        while True:
-            message = await websocket.receive_json()
-            response = await game_instance.handle_message(message)
+        session = websocket.session
 
-            if game_instance.generator_id and isinstance(response, dict):
-                response['generator_id'] = game_instance.generator_id
+        # Retrieve session variables
+        generator_id = session.get("generator_id")
+        language = session.get("language", "en")
+        do_web_search = session.get("do_web_search", False)
 
-            await websocket.send_json(response)
+        # Decompress theme description
+        compressed_theme = session.get("theme_desc")
+        if compressed_theme:
+            theme_desc = zlib.decompress(base64.b64decode(compressed_theme)).decode()
+        else:
+            theme_desc = "fantasy"
+
+        # Create a new Game instance
+        rand_seed = int(time.time())
+        
+        # Create partial function for game creation
+        def create_game():
+            return Game(
+                seed=rand_seed,
+                theme_desc=theme_desc,
+                language=language,
+                do_web_search=do_web_search,
+                generator_id=generator_id
+            )
+
+        # Run game creation in thread
+        game_instance = await asyncio.to_thread(create_game)
+
+        try:
+            game_instance.connected_clients.add(websocket)
+
+            if game_instance.error_message:
+                logging.info(f"Sending error message: {game_instance.error_message}")
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': game_instance.error_message
+                })
+
+            initial_response = {
+                'type': 'connection_established',
+                'generator_id': game_instance.generator_id
+            }
+            await websocket.send_json(initial_response)
+
+            while True:
+                message = await websocket.receive_json()
+                response = await game_instance.handle_message(message)
+                
+                if game_instance.generator_id and isinstance(response, dict):
+                    response['generator_id'] = game_instance.generator_id
+                
+                await websocket.send_json(response)
+
+        except Exception as e:
+            logging.exception("Game loop error")
+            await websocket.close()
     except Exception as e:
-        logging.exception("Exception in WebSocket endpoint")
+        logging.exception("WebSocket connection error")
     finally:
-        game_instance.connected_clients.remove(websocket)
+        if hasattr(game_instance, 'connected_clients'):
+            game_instance.connected_clients.remove(websocket)
 
 if __name__ == "__main__":
     import uvicorn
