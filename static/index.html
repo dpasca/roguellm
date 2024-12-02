@@ -22,15 +22,26 @@
         [v-cloak] {
             display: none;
         }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-size: 1.5em;
+            color: white;
+        }
     </style>
 </head>
 <body style="background-color: #121212; color: white;">
     <div id="app" v-cloak>
-        <div class="landing-container">
+        <div v-if="isLoading" class="loading">
+            Loading...
+        </div>
+        <div v-else class="landing-container">
             <h1>{{ t('title') }}</h1>
             <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
             <div class="theme-selector">
-                <h2>{{ t('selectTheme') }}</h2>
+                <h2 v-text="t('selectTheme')"></h2>
                 <div class="theme-options">
                     <div class="theme-option">
                         <input type="radio" id="fantasy" name="theme" value="fantasy" v-model="selectedTheme">
