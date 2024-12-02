@@ -11,6 +11,7 @@ import concurrent.futures
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
 from db import db
+from tools.fa_runtime import fa_runtime
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -97,10 +98,10 @@ class Game:
                             logger.error(f"Failed to initialize {name}: {str(e)}")
 
             run_parallel_init()
-            logger.info(f"Generated Player defs: {self.player_defs}")
-            logger.info(f"Generated Item defs: {self.item_defs}")
-            logger.info(f"Generated Enemy defs: {self.enemy_defs}")
-            logger.info(f"Generated Celltype defs: {self.celltype_defs}")
+            logger.info(f"## Generated PLAYER defs:\n{self.player_defs}\n")
+            logger.info(f"## Generated ITEM defs:\n{self.item_defs}\n")
+            logger.info(f"## Generated ENEMY defs:\n{self.enemy_defs}\n")
+            logger.info(f"## Generated CELLTYPE defs:\n{self.celltype_defs}\n")
 
             # Save the generator if it was newly created
             try:
@@ -145,16 +146,30 @@ class Game:
         )["item_defs"]
 
     def initialize_enemy_defs(self):
-        self.enemy_defs = self.make_defs_from_json(
+        enemy_defs = self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
+        # Validate FontAwesome icons in enemy definitions
+        self.enemy_defs = fa_runtime.process_game_data(enemy_defs, "enemy")
 
     def initialize_celltype_defs(self):
         self.celltype_defs = self.make_defs_from_json(
             'game_celltypes.json',
             transform_fn=self.gen_ai.gen_game_celltypes_from_json_sample
         )["celltype_defs"]
+
+    def _load_game_data(self):
+        """Load all game data from JSON files."""
+        with open('game_celltypes.json', 'r') as f:
+            self.celltype_defs = json.load(f)
+            # Validate FontAwesome icons
+            self.celltype_defs = fa_runtime.process_game_data(self.celltype_defs)
+
+        with open('game_config.json', 'r') as f:
+            self.game_config = json.load(f)
+            # Validate FontAwesome icons
+            self.game_config = fa_runtime.process_game_data(self.game_config)
 
     def make_random_map(self):
         return [
@@ -185,7 +200,7 @@ class Game:
 
         # Initialize cell types
         if USE_RANDOM_MAP:
-            logger.info("Using random map")
+            logger.warning("Using random map")
             self.state.cell_types = self.make_random_map()
         else:
             try:
@@ -223,6 +238,7 @@ class Game:
                     if enemy_def:
                         self.enemy_sequence_cnt += 1
                         enemy_id = f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}"
+                        icon = fa_runtime.get_valid_icon(enemy_def['font_awesome_icon'], "enemy")
 
                         # Check if this enemy was previously defeated (by position)
                         was_defeated = any(
@@ -236,7 +252,7 @@ class Game:
                             'x': placement['x'],
                             'y': placement['y'],
                             'name': enemy_def['name'],
-                            'font_awesome_icon': enemy_def['font_awesome_icon'],
+                            'font_awesome_icon': icon,
                             'is_defeated': was_defeated
                         })
 
@@ -247,7 +263,7 @@ class Game:
                                 'y': placement['y'],
                                 'name': enemy_def['name'],
                                 'id': enemy_id,
-                                'font_awesome_icon': enemy_def['font_awesome_icon'],
+                                'font_awesome_icon': icon,
                                 'is_defeated': True
                             })
                 elif placement['type'] == 'item':
@@ -290,11 +306,10 @@ class Game:
         })
 
     async def create_update(self, original_sentence: str):
-        logger.info("Creating game state update")
-        logger.info(f"Current enemies: {self.state.enemies}")
-        logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
+        logger.info("## Translating sentence")
+        logger.info(f"- Original sentence: {original_sentence}")
         state_dict = self.state.dict()
-        logger.info(f"State dict enemies: {state_dict['enemies']}")
+        logger.info(f"- State dict: {state_dict}\n")
         return {
             'type': 'update',
             'state': state_dict,
@@ -302,6 +317,8 @@ class Game:
         }
 
     async def create_update_room(self):
+        logger.info("## Creating room description")
+        logger.info(f"- State dict: {self.state.dict()}\n")
         return {
             'type': 'update',
             'state': self.state.dict(),
@@ -510,6 +527,7 @@ class Game:
         }
 
     async def process_temporary_effects(self) -> str:
+        """Process temporary effects and return a log of what happened."""
         effects_log = []
         effects_to_remove = []
 
@@ -730,22 +748,25 @@ class Game:
 
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a specific enemy definition."""
+        # Validate FontAwesome icon before creating the enemy
+        icon = fa_runtime.get_valid_icon(enemy_def['font_awesome_icon'], "enemy")
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
-        self.enemy_sequence_cnt += 1
+        attack = self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max'])
+        defense = self.random.randint(enemy_def.get('defense', {}).get('min', 0),
+                                    enemy_def.get('defense', {}).get('max', 5))
 
+        self.enemy_sequence_cnt += 1
         enemy = Enemy(
             id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
             name=enemy_def['name'],
+            font_awesome_icon=icon,
             hp=hp,
             max_hp=hp,
-            attack=self.random.randint(
-                enemy_def['attack']['min'],
-                enemy_def['attack']['max']
-            ),
-            font_awesome_icon=enemy_def['font_awesome_icon']
+            attack=attack,
+            defense=defense
         )
         # Store XP value as a private attribute
-        enemy._xp_reward = enemy_def['xp']
+        enemy._xp_reward = enemy_def.get('xp', 10)
         return enemy
 
     def generate_item_from_def(self, item_def: dict) -> Item:
