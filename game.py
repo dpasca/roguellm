@@ -193,48 +193,8 @@ class Game:
             for _ in range(self.state.map_height)
         ]
 
-    async def initialize_game(self):
-        # Read config.json
-        with open('game_config.json', 'r') as f:
-            config = json.load(f)
-
-        self.state = GameState.from_config(config) # Initialize GameState with "config"
-        # Set player data with fallback to default
-        self.state.player = self.player_defs[0] if self.player_defs else {
-            "name": "Unknown Hero",
-            "class": "adventurer",
-            "font_awesome_icon": "fa-solid fa-user"
-        }
-        # Validate player icon if using default
-        if not self.player_defs:
-            self.state.player = fa_runtime.process_game_data(self.state.player, "player")
-
-        self.state.explored = [[False for _ in range(self.state.map_width)]
-                             for _ in range(self.state.map_height)]
-        self.state.inventory = []
-        self.state.equipment = Equipment()
-        self.state.game_over = False
-        self.state.game_won = False
-        self.state.game_title = self.get_game_title()
-        logging.info(f"Game title set to: {self.state.game_title}")
-
-        # Initialize cell types
-        if USE_RANDOM_MAP:
-            logger.warning("Using random map")
-            self.state.cell_types = self.make_random_map()
-        else:
-            try:
-                self.state.cell_types = self.gen_ai.gen_game_map_from_celltypes(
-                    self.celltype_defs,
-                    self.state.map_width,
-                    self.state.map_height
-                )
-
-            except ValueError as e:
-                logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
-                # Fallback to random map generation
-                self.state.cell_types = self.make_random_map()
-
+    @profile_func
+    async def initialize_game_placements(self):
         # Generate entity placements (both enemies and items)
         try:
             self.entity_placements = self.gen_ai.gen_entity_placements(
@@ -296,6 +256,52 @@ class Game:
             logger.error(f"Failed to generate entity placements: {str(e)}")
             self.entity_placements = []
             self.item_placements = []
+
+    @profile_func
+    async def initialize_game(self):
+        # Read config.json
+        with open('game_config.json', 'r') as f:
+            config = json.load(f)
+
+        self.state = GameState.from_config(config) # Initialize GameState with "config"
+        # Set player data with fallback to default
+        self.state.player = self.player_defs[0] if self.player_defs else {
+            "name": "Unknown Hero",
+            "class": "adventurer",
+            "font_awesome_icon": "fa-solid fa-user"
+        }
+        # Validate player icon if using default
+        if not self.player_defs:
+            self.state.player = fa_runtime.process_game_data(self.state.player, "player")
+
+        self.state.explored = [[False for _ in range(self.state.map_width)]
+                             for _ in range(self.state.map_height)]
+        self.state.inventory = []
+        self.state.equipment = Equipment()
+        self.state.game_over = False
+        self.state.game_won = False
+        self.state.game_title = self.get_game_title()
+        logging.info(f"Game title set to: {self.state.game_title}")
+
+        # Initialize cell types
+        if USE_RANDOM_MAP:
+            logger.warning("Using random map")
+            self.state.cell_types = self.make_random_map()
+        else:
+            try:
+                self.state.cell_types = self.gen_ai.gen_game_map_from_celltypes(
+                    self.celltype_defs,
+                    self.state.map_width,
+                    self.state.map_height
+                )
+
+            except ValueError as e:
+                logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
+                # Fallback to random map generation
+                self.state.cell_types = self.make_random_map()
+
+        # Initialize entity placements
+        await self.initialize_game_placements()
 
         if TEST_DUMMY_EQUIP_AND_ITEMS:
             self.state.inventory = [self.generate_random_item() for _ in range(5)]
