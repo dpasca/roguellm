@@ -243,7 +243,7 @@ const app = Vue.createApp({
                     console.warn("Received empty message, ignoring");
                     return;
                 }
-                console.log('Received message:', event.data);
+                //console.log('Received message:', event.data);
                 try {
                     const response = JSON.parse(event.data);
                     if (!response || !response.type) {
