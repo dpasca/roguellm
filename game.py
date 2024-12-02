@@ -1,6 +1,7 @@
 import json
 import random
 import time
+from functools import wraps
 
 import logging
 logger = logging.getLogger()
@@ -26,6 +27,19 @@ USE_RANDOM_MAP = False
 #_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
 _hi_model = GenAIModel(model_name="gpt-4o")
+
+# Decorator to profile function execution time
+def profile_func(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        function_name = func.__name__.replace('initialize_', '').replace('_defs', '').upper()
+        logger.info(f"BEGIN {function_name}")
+        start_time = time.time()
+        result = func(self, *args, **kwargs) # Actual function call
+        elapsed_time = time.time() - start_time
+        logger.info(f"END {function_name} (took {elapsed_time:.2f}s)")
+        return result
+    return wrapper
 
 class Game:
     def __init__(
@@ -133,26 +147,28 @@ class Game:
             self.log_error(f"Invalid JSON in {filename} file.")
             return {} if transform_fn else []
 
+    @profile_func
     def initialize_player_defs(self):
         self.player_defs = self.make_defs_from_json(
             'game_players.json',
             transform_fn=self.gen_ai.gen_players_from_json_sample
         )["player_defs"]
 
+    @profile_func
     def initialize_item_defs(self):
         self.item_defs = self.make_defs_from_json(
             'game_items.json',
             transform_fn=self.gen_ai.gen_game_items_from_json_sample
         )["item_defs"]
 
+    @profile_func
     def initialize_enemy_defs(self):
-        enemy_defs = self.make_defs_from_json(
+        self.enemy_defs = self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
-        # Icons are already validated by gen_ai
-        self.enemy_defs = enemy_defs
 
+    @profile_func
     def initialize_celltype_defs(self):
         self.celltype_defs = self.make_defs_from_json(
             'game_celltypes.json',
