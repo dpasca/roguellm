@@ -662,7 +662,7 @@ Each placement should indicate whether it's an enemy or an item.
             return []
 
     # Generator for generic sentences
-    def gen_adapt_sentence(
+    async def gen_adapt_sentence(
             self,
             game_state: GameState,
             event_history: List[dict],
@@ -700,7 +700,7 @@ Each placement should indicate whether it's an enemy or an item.
             return original_sentence
 
     # Generator for room descriptions
-    def gen_room_description(self, game_state: GameState, event_history: List[dict]) -> str:
+    async def gen_room_description(self, game_state: GameState, event_history: List[dict]) -> str:
         """Generate a room description based on game state and history."""
 
         context = self._create_context(game_state, event_history or [])

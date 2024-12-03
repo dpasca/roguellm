@@ -983,14 +983,14 @@ class Game:
 
     async def gen_adapt_sentence(self, original_sentence: str) -> str:
         try:
-            return self.gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
+            return await self.gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
         except Exception as e:
             logging.exception("Exception in gen_adapt_sentence")
             return original_sentence
 
     async def get_room_description(self) -> str:
         try:
-            return self.gen_ai.gen_room_description(self.state, self.event_history)
+            return await self.gen_ai.gen_room_description(self.state, self.event_history)
         except Exception as e:
             logging.exception("Exception in get_room_description")
             return "Error generating room description!"
