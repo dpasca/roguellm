@@ -30,13 +30,9 @@ class CombatManager:
         enemy._xp_reward = enemy_def.get('xp', 10)
         return enemy
 
-    async def handle_combat_action(self, game_state, action: str) -> dict:
+    async def handle_combat_action(self, game_state, action: str) -> str:
         if not game_state.in_combat or not game_state.current_enemy:
-            return {
-                'type': 'update',
-                'state': game_state.dict(),
-                'description_raw': "No enemy to fight!"
-            }
+            return "No enemy to fight!"
 
         if action == 'attack':
             # Player attacks
@@ -72,12 +68,7 @@ class CombatManager:
 
                 game_state.in_combat = False
                 game_state.current_enemy = None
-
-                return {
-                    'type': 'update',
-                    'state': game_state.dict(),
-                    'description_raw': f"{combat_log}\nYou defeated the enemy and gained {xp_gained} XP!"
-                }
+                return f"{combat_log}\nYou defeated the enemy and gained {xp_gained} XP!"
 
             # Enemy counter-attacks
             damage_taken = max(0, self.random.randint(
@@ -90,17 +81,9 @@ class CombatManager:
 
             if game_state.player_hp <= 0:
                 game_state.game_over = True
-                return {
-                    'type': 'update',
-                    'state': game_state.dict(),
-                    'description_raw': f"{combat_log}\nYou have been defeated!"
-                }
+                return f"{combat_log}\nYou have been defeated!"
 
-            return {
-                'type': 'update',
-                'state': game_state.dict(),
-                'description_raw': f"{combat_log}\nEnemy HP: {game_state.current_enemy.hp}/{game_state.current_enemy.max_hp}"
-            }
+            return f"{combat_log}\nEnemy HP: {game_state.current_enemy.hp}/{game_state.current_enemy.max_hp}"
 
         elif action == 'run':
             # 50% chance to escape
@@ -109,11 +92,7 @@ class CombatManager:
                 game_state.current_enemy = None
                 # Move player back to previous position
                 game_state.player_pos = game_state.player_pos_prev
-                return {
-                    'type': 'update',
-                    'state': game_state.dict(),
-                    'description_raw': "You managed to escape!"
-                }
+                return "You managed to escape!"
             else:
                 # Enemy gets a free attack
                 damage_taken = max(0, self.random.randint(
@@ -124,20 +103,8 @@ class CombatManager:
                 game_state.player_hp -= damage_taken
                 if game_state.player_hp <= 0:
                     game_state.game_over = True
-                    return {
-                        'type': 'update',
-                        'state': game_state.dict(),
-                        'description_raw': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!\nYou have been defeated!"
-                    }
+                    return f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!\nYou have been defeated!"
 
-                return {
-                    'type': 'update',
-                    'state': game_state.dict(),
-                    'description_raw': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!"
-                }
+                return f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!"
 
-        return {
-            'type': 'update',
-            'state': game_state.dict(),
-            'description_raw': "Invalid combat action!"
-        }
+        return "Invalid combat action!"

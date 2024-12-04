@@ -455,7 +455,7 @@ class Game:
         return self.combat_manager.generate_enemy_from_def(enemy_def)
 
     async def handle_combat_action(self, action: str) -> dict:
-        return await self.combat_manager.handle_combat_action(self.state, action)
+        return await self.create_message(await self.combat_manager.handle_combat_action(self.state, action))
 
     async def process_temporary_effects(self) -> str:
         """Process temporary effects and return a log of what happened."""
