@@ -609,12 +609,7 @@ class Game:
             }
 
     async def check_encounters(self) -> dict:
-        # Read config.json
-        with open('game_config.json', 'r') as f:
-            config = json.load(f)
-
         x, y = self.state.player_pos
-
         # Check if there's a pre-placed enemy at this location
         enemy_here = next(
             (p for p in self.entity_placements if p['x'] == x and p['y'] == y and p['type'] == 'enemy'),
