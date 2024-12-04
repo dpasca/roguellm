@@ -250,10 +250,9 @@ class Game:
                 await self.handle_equip_item(weapon.id)
                 await self.handle_equip_item(armor.id)
 
-        initial_update = await self.create_update(
+        initial_update = await self.create_message(
             f"You find yourself at the initial location of {self.get_game_title()}."
         )
-        self.state.explored[0][0] = True
 
         return initial_update
 
@@ -269,24 +268,33 @@ class Game:
             'event': event_dict
         })
 
-    async def create_update(self, original_sentence: str):
-        logger.info("## Translating sentence")
-        state_dict = self.state.dict()
-        #logger.info(f"- State dict: {state_dict}\n")
-        return {
-            'type': 'update',
-            'state': state_dict,
-            'description': await self.gen_adapt_sentence(original_sentence)
-        }
-
-    async def create_update_room(self):
-        logger.info("## Creating room description")
-        #logger.info(f"- State dict: {self.state.dict()}\n")
+    async def create_message(self, original_sentence: str):
         return {
             'type': 'update',
             'state': self.state.dict(),
-            'description': await self.get_room_description()
+            'description_raw': original_sentence
         }
+
+    async def create_message_room(self):
+        logger.info("## Creating room description")
+        #logger.info(f"- State dict: {self.state.dict()}\n")
+        desc = await self.get_room_description()
+        return {
+            'type': 'update',
+            'state': self.state.dict(),
+            'description_raw': desc,
+            'description': desc
+        }
+
+    async def create_message_description(self, message):
+        if 'description' not in message or message['description'] == "":
+            logger.info(f"Description not found, will generate one from: {message['description_raw']}")
+            message['description'] = await self.gen_adapt_sentence(message['description_raw'])
+            logger.info(f"Generated description: {message['description']}")
+        else:
+            logger.info(f"Description found: {message['description']}")
+
+        return message
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
@@ -306,28 +314,30 @@ class Game:
 
         # Only initialize if it's an initialize action or if state doesn't exist
         if action == 'initialize' or not hasattr(self, 'state'):
-            return await self.initialize_game()
+            return await self.create_message_description(await self.initialize_game())
 
         # Handle get_initial_state - just return current state without reinitializing
         if action == 'get_initial_state':
             return {
                 'type': 'update',
                 'state': self.state.dict(),
-                'description': ""
+                'description_raw': ""
             }
 
         if action == 'restart':
             self.events_reset()
-            return await self.initialize_game()
+            return await self.create_message_description(await self.initialize_game())
 
         # Check game over and win states before processing any other action
         if self.state.game_over:
-            result = await self.create_update("Game Over! Press Restart to play again.")
+            result = await self.create_message("Game Over! Press Restart to play again.")
+            result = await self.create_message_description(result)
             self.events_add('game_over', result)
             return result
 
         if self.state.game_won:
-            result = await self.create_update("Congratulations! You have won the game! Press Restart to play again.")
+            result = await self.create_message("Congratulations! You have won the game! Press Restart to play again.")
+            result = await self.create_message_description(result)
             self.events_add('game_won', result)
             return result
 
@@ -349,7 +359,8 @@ class Game:
             result = {
                 'type': 'update',
                 'state': self.state.dict(),
-                'description': ""
+                'description_raw': "",
+                "description": ""
             }
             return result
 
@@ -357,32 +368,27 @@ class Game:
             result = {
                 'type': 'update',
                 'state': self.state.dict(),
-                'description': f"Unknown action: {action}"
+                'description_raw': f"Unknown action: {action}",
+                'description': f"Unknown action: {action}" # No need to translate
             }
 
         # Skip adding the event if the description is empty
-        if action == 'move' and result.get('description') == "":
+        if action == 'move' and result.get('description_raw') == "":
             return result
 
+        # Create or fill 'description' field if not already present or if empty
+        result = await self.create_message_description(result)
         self.events_add(action, result) # Record the event
         return result
 
     async def handle_use_item(self, item_id: str) -> dict:
         if not item_id:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "No item specified!"
-            }
+            return await self.create_message("No item specified!")
 
         # Find the item in inventory
         item = next((item for item in self.state.inventory if item.id == item_id), None)
         if not item:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "Item not found in inventory!"
-            }
+            return await self.create_message("Item not found in inventory!")
 
         if item.type == 'consumable':
             # Remove the consumable immediately as it will be consumed
@@ -394,11 +400,7 @@ class Game:
                 self.state.player_hp = min(self.state.player_max_hp,
                                         self.state.player_hp + heal_amount)
                 actual_heal = self.state.player_hp - old_hp
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': f"Used {item.name} and restored {actual_heal} HP!"
-                }
+                return await self.create_message(f"Used {item.name} and restored {actual_heal} HP!")
             elif 'attack' in item.effect:
                 attack_boost = item.effect['attack']
                 duration = item.effect.get('duration', 3)  # Default to 3 turns if not specified
@@ -412,11 +414,7 @@ class Game:
 
                 # Apply the boost
                 self.state.player_attack += attack_boost
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': f"Used {item.name}! Attack increased by {attack_boost} for {duration} turns!"
-                }
+                return await self.create_message(f"Used {item.name}! Attack increased by {attack_boost} for {duration} turns!")
             elif 'defense' in item.effect:
                 defense_boost = item.effect['defense']
                 duration = item.effect.get('duration', 3)  # Default to 3 turns if not specified
@@ -430,34 +428,18 @@ class Game:
 
                 # Apply the boost
                 self.state.player_defense += defense_boost
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': f"Used {item.name}! Defense increased by {defense_boost} for {duration} turns!"
-                }
+                return await self.create_message(f"Used {item.name}! Defense increased by {defense_boost} for {duration} turns!")
 
-        return {
-            'type': 'update',
-            'state': self.state.dict(),
-            'description': f"Cannot use this type of item!"
-        }
+        return await self.create_message(f"Cannot use this type of item!")
 
     async def handle_equip_item(self, item_id: str) -> dict:
         if not item_id:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "No item specified!"
-            }
+            return await self.create_message("No item specified!")
 
         # Find the item in inventory
         item = next((item for item in self.state.inventory if item.id == item_id), None)
         if not item:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "Item not found in inventory!"
-            }
+            return await self.create_message("Item not found in inventory!")
 
         if item.type in ['weapon', 'armor']:
             # Unequip current item of same type if any
@@ -477,17 +459,9 @@ class Game:
                 self.state.player_defense += item.effect.get('defense', 0)
 
             item.is_equipped = True
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': f"Equipped {item.name}!"
-            }
+            return await self.create_message(f"Equipped {item.name}!")
 
-        return {
-            'type': 'update',
-            'state': self.state.dict(),
-            'description': f"This item cannot be equipped!"
-        }
+        return await self.create_message(f"This item cannot be equipped!")
 
     def generate_enemy(self) -> Enemy:
         return self.combat_manager.generate_enemy()
@@ -496,10 +470,7 @@ class Game:
         return self.combat_manager.generate_enemy_from_def(enemy_def)
 
     async def handle_combat_action(self, action: str) -> dict:
-        # Get the combat action and process the raw description into something better
-        res = await self.combat_manager.handle_combat_action(self.state, action)
-        res['description'] = await self.gen_adapt_sentence(res['description'])
-        return res
+        return await self.combat_manager.handle_combat_action(self.state, action)
 
     async def process_temporary_effects(self) -> str:
         """Process temporary effects and return a log of what happened."""
@@ -525,15 +496,17 @@ class Game:
 
     async def handle_move(self, direction: str) -> dict:
         if not direction:
-            return await self.create_update("No direction specified!")
+            return await self.create_message("No direction specified!")
 
         if self.state.game_won or self.state.game_over:
-            return await self.create_update("Game is over! Press Restart to play again.")
+            return await self.create_message("Game is over! Press Restart to play again.")
 
         # Save previous position
         self.state.player_pos_prev = self.state.player_pos
         # Get current position
         x, y = self.state.player_pos
+        # Set the current position as explored
+        self.state.explored[y][x] = True
         moved = True
         if direction == 'n' and y > 0:
             y -= 1
@@ -549,23 +522,17 @@ class Game:
         if moved:
             self.state.player_pos = (x, y)
             encounter_result = await self.check_encounters()
-            # Set after encounter check so that the room is not marked
-            # as explored from the first time
-            self.state.explored[y][x] = True
 
             # Process temporary effects
             effects_log = await self.process_temporary_effects()
             if effects_log:
-                encounter_result['description'] = effects_log + "\n" + encounter_result['description']
+                encounter_result['description_raw'] = effects_log + "\n" + encounter_result['description_raw']
 
             return encounter_result
         else:
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': "You can't move in that direction."
-            }
+            return await self.create_message("You can't move in that direction.")
 
+    # Check for encounters
     async def check_encounters(self) -> dict:
         x, y = self.state.player_pos
         # Check if there's a pre-placed enemy at this location
@@ -635,11 +602,11 @@ class Game:
                     ]
 
                 if was_defeated:
-                    return await self.create_update(
+                    return await self.create_message(
                         f"You see a defeated {enemy.name} here."
                     )
                 else:
-                    return await self.create_update(
+                    return await self.create_message(
                         f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
                     )
 
@@ -671,7 +638,7 @@ class Game:
                             p for p in self.entity_placements
                             if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                         ]
-                        return await self.create_update(
+                        return await self.create_message(
                             f"You found another {item.name}, but you already have one."
                         )
 
@@ -681,7 +648,7 @@ class Game:
                     p for p in self.entity_placements
                     if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                 ]
-                return await self.create_update(
+                return await self.create_message(
                     f"You found a {item.name}! {item.description}"
                 )
 
@@ -691,14 +658,10 @@ class Game:
         cur_ct = self.state.cell_types[py][px]
         if self.last_described_ct != cur_ct:
             self.last_described_ct = cur_ct
-            return await self.create_update_room()
+            return await self.create_message_room()
         else:
             # Return empty description if in same room type
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description': ""
-            }
+            return await self.create_message('')
 
     def generate_item_from_def(self, item_def: dict) -> Item:
         """Generate an item from a specific item definition."""

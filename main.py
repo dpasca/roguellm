@@ -106,7 +106,7 @@ async def read_landing(request: Request):
         # Read and pre-render the HTML content
         with open("static/index.html", "r", encoding="utf-8") as f:
             html_content = f.read()
-            
+
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
         return HTMLResponse(content=html_content)
@@ -143,7 +143,7 @@ async def read_game(request: Request):
         # Read and pre-render the HTML content
         with open("static/game.html", "r", encoding="utf-8") as f:
             html_content = f.read()
-            
+
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
         return HTMLResponse(content=html_content)
@@ -229,7 +229,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         # Create a new Game instance
         rand_seed = int(time.time())
-        
+
         # Create partial function for game creation
         def create_game():
             return Game(
@@ -262,10 +262,10 @@ async def websocket_endpoint(websocket: WebSocket):
             while True:
                 message = await websocket.receive_json()
                 response = await game_instance.handle_message(message)
-                
+
                 if game_instance.generator_id and isinstance(response, dict):
                     response['generator_id'] = game_instance.generator_id
-                
+
                 await websocket.send_json(response)
 
         except Exception as e:

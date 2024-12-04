@@ -84,24 +84,24 @@ const app = Vue.createApp({
             try {
                 console.log(`Loading translations for ${lang}...`);
                 const response = await fetch(`static/translations/${lang}.json`);
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const translations = await response.json();
                 console.log(`Raw translations loaded for ${lang}:`, translations);
-                
+
                 // Filter out comment keys (those starting with //)
                 const filteredTranslations = Object.fromEntries(
                     Object.entries(translations).filter(([key]) => !key.startsWith('//'))
                 );
-                
+
                 // Update translations object ensuring reactivity
                 const newTranslations = { ...this.rawTranslations };
                 newTranslations[lang] = filteredTranslations;
                 this.rawTranslations = newTranslations;
-                
+
                 return filteredTranslations;
             } catch (error) {
                 console.error(`Error loading translations for ${lang}:`, error);
@@ -116,9 +116,9 @@ const app = Vue.createApp({
 
             // Get translation from current language or fallback
             const translation = this.currentTranslations[key] || this.fallbackTranslations[key] || key;
-            
-            console.log(`Translation result for "${key}": "${translation}"`);
-            
+
+            //console.log(`Translation result for "${key}": "${translation}"`);
+
             if (!this.currentTranslations[key] && !this.fallbackTranslations[key]) {
                 console.warn(`Missing translation for key: ${key} in language: ${this.selectedLanguage}`);
             }
@@ -172,7 +172,7 @@ const app = Vue.createApp({
                     params.append('game_id', this.generatorId.trim());
                 }
                 params.append('lang', this.selectedLanguage);
-                
+
                 window.location.href = `/game${params.toString() ? '?' + params.toString() : ''}`;
             } catch (error) {
                 this.errorMessage = error.message || "Failed to start game. Please try again.";
@@ -185,17 +185,17 @@ const app = Vue.createApp({
                 console.log(`Loading fallback language: ${CONFIG.fallbackLanguage}`);
                 const fallbackResult = await this.loadTranslations(CONFIG.fallbackLanguage);
                 console.log('Fallback language loaded:', fallbackResult);
-                
+
                 // Set initial language
                 const initialLang = this.getDefaultLanguage();
                 console.log(`Initial language determined: ${initialLang}`);
-                
+
                 // Load selected language if different from fallback
                 if (initialLang !== CONFIG.fallbackLanguage) {
                     console.log(`Loading initial language: ${initialLang}`);
                     await this.loadTranslations(initialLang);
                 }
-                
+
                 this.selectedLanguage = initialLang;
                 console.log('Setting isLoading to false');
                 this.isLoading = false;
@@ -230,7 +230,7 @@ const app = Vue.createApp({
     },
     async mounted() {
         await this.initialize();
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         const generatorId = urlParams.get('generator');
         if (generatorId) {

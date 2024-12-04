@@ -51,7 +51,7 @@ class CombatManager:
             return {
                 'type': 'update',
                 'state': game_state.dict(),
-                'description': "No enemy to fight!"
+                'description_raw': "No enemy to fight!"
             }
 
         if action == 'attack':
@@ -92,7 +92,7 @@ class CombatManager:
                 return {
                     'type': 'update',
                     'state': game_state.dict(),
-                    'description': f"{combat_log}\nYou defeated the enemy and gained {xp_gained} XP!"
+                    'description_raw': f"{combat_log}\nYou defeated the enemy and gained {xp_gained} XP!"
                 }
 
             # Enemy counter-attacks
@@ -100,7 +100,7 @@ class CombatManager:
                 game_state.current_enemy.attack - 5,
                 game_state.current_enemy.attack + 5
             ) - game_state.player_defense)
-            
+
             game_state.player_hp -= damage_taken
             combat_log += f"\nThe {game_state.current_enemy.name} hits you for {damage_taken} damage!"
 
@@ -109,13 +109,13 @@ class CombatManager:
                 return {
                     'type': 'update',
                     'state': game_state.dict(),
-                    'description': f"{combat_log}\nYou have been defeated!"
+                    'description_raw': f"{combat_log}\nYou have been defeated!"
                 }
 
             return {
                 'type': 'update',
                 'state': game_state.dict(),
-                'description': f"{combat_log}\nEnemy HP: {game_state.current_enemy.hp}/{game_state.current_enemy.max_hp}"
+                'description_raw': f"{combat_log}\nEnemy HP: {game_state.current_enemy.hp}/{game_state.current_enemy.max_hp}"
             }
 
         elif action == 'run':
@@ -128,7 +128,7 @@ class CombatManager:
                 return {
                     'type': 'update',
                     'state': game_state.dict(),
-                    'description': "You managed to escape!"
+                    'description_raw': "You managed to escape!"
                 }
             else:
                 # Enemy gets a free attack
@@ -136,24 +136,24 @@ class CombatManager:
                     game_state.current_enemy.attack - 5,
                     game_state.current_enemy.attack + 5
                 ) - game_state.player_defense)
-                
+
                 game_state.player_hp -= damage_taken
                 if game_state.player_hp <= 0:
                     game_state.game_over = True
                     return {
                         'type': 'update',
                         'state': game_state.dict(),
-                        'description': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!\nYou have been defeated!"
+                        'description_raw': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!\nYou have been defeated!"
                     }
 
                 return {
                     'type': 'update',
                     'state': game_state.dict(),
-                    'description': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!"
+                    'description_raw': f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!"
                 }
 
         return {
             'type': 'update',
             'state': game_state.dict(),
-            'description': "Invalid combat action!"
+            'description_raw': "Invalid combat action!"
         }
