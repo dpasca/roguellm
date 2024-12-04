@@ -28,19 +28,6 @@ USE_RANDOM_MAP = False
 _lo_model = GenAIModel(model_name="gpt-4o-mini")
 _hi_model = GenAIModel(model_name="gpt-4o")
 
-# Decorator to profile function execution time
-def profile_func(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        function_name = func.__name__.replace('initialize_', '').replace('_defs', '').upper()
-        logger.info(f"BEGIN {function_name}")
-        start_time = time.time()
-        result = func(self, *args, **kwargs) # Actual function call
-        elapsed_time = time.time() - start_time
-        logger.info(f"END {function_name} (took {elapsed_time:.2f}s)")
-        return result
-    return wrapper
-
 class Game:
     def __init__(
             self,
@@ -147,28 +134,24 @@ class Game:
             self.log_error(f"Invalid JSON in {filename} file.")
             return {} if transform_fn else []
 
-    @profile_func
     def initialize_player_defs(self):
         self.player_defs = self.make_defs_from_json(
             'game_players.json',
             transform_fn=self.gen_ai.gen_players_from_json_sample
         )["player_defs"]
 
-    @profile_func
     def initialize_item_defs(self):
         self.item_defs = self.make_defs_from_json(
             'game_items.json',
             transform_fn=self.gen_ai.gen_game_items_from_json_sample
         )["item_defs"]
 
-    @profile_func
     def initialize_enemy_defs(self):
         self.enemy_defs = self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
 
-    @profile_func
     def initialize_celltype_defs(self):
         self.celltype_defs = self.make_defs_from_json(
             'game_celltypes.json',
@@ -193,7 +176,6 @@ class Game:
             for _ in range(self.state.map_height)
         ]
 
-    @profile_func
     async def initialize_game_placements(self):
         # Generate entity placements (both enemies and items)
         try:
@@ -257,7 +239,6 @@ class Game:
             self.entity_placements = []
             self.item_placements = []
 
-    @profile_func
     async def initialize_game(self):
         # Read config.json
         with open('game_config.json', 'r') as f:
