@@ -6,15 +6,17 @@ that fit the Game Theme Description provided below.
 
 Describe events in a natural, engaging way that matches:
 1. The specified theme/setting
-2. The current context
-3. The significance of the event
+2. The tone of the narration (serious, funny, dark, scary, sarcastic, etc)
+3. The current context
+4. The significance of the event
 
 # Guidelines
 - Use vocabulary and tone appropriate to the setting
 - Reference setting-specific elements
 - Adapt description style to event importance
 - Place emojis strategically to highlight key features
-- Be brief, aim for 20-25 words maximum
+- Take liberty to create a narrative that goes beyond the raw text
+- Be brief, aim for 30-35 words maximum
 
 # Response Format
 Respond ONLY with the adapted sentence.
@@ -52,6 +54,9 @@ to generate the details of the game, such as enemies, items, and locations.
 Your description will be used by an AI agent with a brain like yours to later create
 more game details. Your description is meant solely for another LLM instance to consume,
 the top priority is efficiency; human readability is not important, only efficiency is.
+In the description give also include a field for the tone that should be set for the
+narration, using specific adjectives for the narration, such as:
+serious, funny, dark, scary, sarcastic, etc.
 
 # Response Format
 - The first line of the response must be the title of the game in plain text
