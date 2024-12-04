@@ -109,10 +109,10 @@ const app = Vue.createApp({
             }
         },
         t(key, params = {}) {
-            console.log(`Translation requested for key: "${key}"`);
-            console.log(`Current language: ${this.selectedLanguage}`);
-            console.log(`Current translations:`, this.currentTranslations);
-            console.log(`Fallback translations:`, this.fallbackTranslations);
+            //console.log(`Translation requested for key: "${key}"`);
+            //console.log(`Current language: ${this.selectedLanguage}`);
+            //console.log(`Current translations:`, this.currentTranslations);
+            //console.log(`Fallback translations:`, this.fallbackTranslations);
 
             // Get translation from current language or fallback
             const translation = this.currentTranslations[key] || this.fallbackTranslations[key] || key;
