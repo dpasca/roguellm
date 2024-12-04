@@ -268,17 +268,18 @@ class Game:
             'event': event_dict
         })
 
-    async def create_message(self, original_sentence: str):
+    async def create_message(self, description_raw: str, description: str = ""):
         return {
             'type': 'update',
             'state': self.state.dict(),
-            'description_raw': original_sentence
+            'description_raw': description_raw,
+            'description': description
         }
 
     async def create_message_room(self):
         logger.info("## Creating room description")
         #logger.info(f"- State dict: {self.state.dict()}\n")
-        desc = await self.get_room_description()
+        desc = await self._gen_room_description()
         return {
             'type': 'update',
             'state': self.state.dict(),
@@ -289,7 +290,7 @@ class Game:
     async def create_message_description(self, message):
         if 'description' not in message or message['description'] == "":
             logger.info(f"Description not found, will generate one from: {message['description_raw']}")
-            message['description'] = await self.gen_adapt_sentence(message['description_raw'])
+            message['description'] = await self._gen_adapt_sentence(message['description_raw'])
             logger.info(f"Generated description: {message['description']}")
         else:
             logger.info(f"Description found: {message['description']}")
@@ -318,11 +319,7 @@ class Game:
 
         # Handle get_initial_state - just return current state without reinitializing
         if action == 'get_initial_state':
-            return {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description_raw': ""
-            }
+            return await self.create_message("")
 
         if action == 'restart':
             self.events_reset()
@@ -356,21 +353,12 @@ class Game:
             result = await self.initialize_game()
         elif action == 'get_initial_state':
             # This is used just to get the map initialized
-            result = {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description_raw': "",
-                "description": ""
-            }
-            return result
+            return await self.create_message("")
 
+        # Create a generic message if result is still None
         if result is None:
-            result = {
-                'type': 'update',
-                'state': self.state.dict(),
-                'description_raw': f"Unknown action: {action}",
-                'description': f"Unknown action: {action}" # No need to translate
-            }
+            desc = f"Unknown action: {action}"
+            result = await self.create_message(description=desc, description_raw=desc)
 
         # Skip adding the event if the description is empty
         if action == 'move' and result.get('description_raw') == "":
@@ -675,22 +663,22 @@ class Game:
             description=item_def['description']
         )
 
-    async def gen_adapt_sentence(self, original_sentence: str) -> str:
+    async def _gen_adapt_sentence(self, original_sentence: str) -> str:
         try:
             return await self.gen_ai.gen_adapt_sentence(self.state, self.event_history, original_sentence)
         except Exception as e:
-            logging.exception("Exception in gen_adapt_sentence")
+            self.log_error(f"Exception in _gen_adapt_sentence: {str(e)}")
             return original_sentence
 
-    async def get_room_description(self) -> str:
+    async def _gen_room_description(self) -> str:
         try:
             return await self.gen_ai.gen_room_description(self.state, self.event_history)
         except Exception as e:
-            logging.exception("Exception in get_room_description")
+            self.log_error(f"Exception in _gen_room_description: {str(e)}")
             return "Error generating room description!"
 
     def log_error(self, error_message):
-        print(f"Error: {error_message}")
+        logger.error(error_message)
         self.error_message = error_message  # Store the error message
 
     def count_explored_tiles(self) -> int:
