@@ -13,6 +13,7 @@ from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
 from db import db
 from tools.fa_runtime import fa_runtime
+from game_definitions import GameDefinitionsManager
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -44,28 +45,22 @@ class Game:
         self.connected_clients = set()
         self.event_history = []
         self.language = language
-        self.generator_id = generator_id
         self.last_described_ct = None  # Add this line to track previous cell type
-
-        # Initialize attributes with defaults in case of failure
-        self.player_defs = []
-        self.item_defs = []
-        self.enemy_defs = []
-        self.celltype_defs = []
 
         # GenAI instance, with low and high spec models
         self.gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
 
+        # Initialize the definitions manager
+        self.definitions = GameDefinitionsManager(self.gen_ai, language)
+
         theme_desc_better = None
         if generator_id:
             # Load from existing generator
+            if not self.definitions.load_from_generator(generator_id):
+                raise ValueError(f"Generator with ID {generator_id} not found")
             generator_data = db.get_generator(generator_id)
             if generator_data:
                 logger.info(f"Loaded generator with ID: {generator_id}")
-                self.player_defs = generator_data['player_defs']
-                self.item_defs = generator_data['item_defs']
-                self.enemy_defs = generator_data['enemy_defs']
-                self.celltype_defs = generator_data['celltype_defs']
                 theme_desc = generator_data['theme_desc']
                 theme_desc_better = generator_data['theme_desc_better']
                 language = generator_data['language']
@@ -86,10 +81,10 @@ class Game:
             def run_parallel_init():
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     futures = {
-                        'players': executor.submit(self.initialize_player_defs),
-                        'items': executor.submit(self.initialize_item_defs),
-                        'enemies': executor.submit(self.initialize_enemy_defs),
-                        'celltypes': executor.submit(self.initialize_celltype_defs)
+                        'players': executor.submit(self.definitions.initialize_player_defs),
+                        'items': executor.submit(self.definitions.initialize_item_defs),
+                        'enemies': executor.submit(self.definitions.initialize_enemy_defs),
+                        'celltypes': executor.submit(self.definitions.initialize_celltype_defs)
                     }
 
                     for name, future in futures.items():
@@ -99,25 +94,23 @@ class Game:
                             logger.error(f"Failed to initialize {name}: {str(e)}")
 
             run_parallel_init()
-            logger.info(f"## Generated PLAYER defs:\n{self.player_defs}\n")
-            logger.info(f"## Generated ITEM defs:\n{self.item_defs}\n")
-            logger.info(f"## Generated ENEMY defs:\n{self.enemy_defs}\n")
-            logger.info(f"## Generated CELLTYPE defs:\n{self.celltype_defs}\n")
+            logger.info(f"## Generated PLAYER defs:\n{self.definitions.player_defs}\n")
+            logger.info(f"## Generated ITEM defs:\n{self.definitions.item_defs}\n")
+            logger.info(f"## Generated ENEMY defs:\n{self.definitions.enemy_defs}\n")
+            logger.info(f"## Generated CELLTYPE defs:\n{self.definitions.celltype_defs}\n")
 
             # Save the generator if it was newly created
-            try:
-                self.generator_id = db.save_generator(
-                    theme_desc=theme_desc,
-                    theme_desc_better=theme_desc_better,
-                    language=self.language,
-                    player_defs=self.player_defs,
-                    item_defs=self.item_defs,
-                    enemy_defs=self.enemy_defs,
-                    celltype_defs=self.celltype_defs
-                )
-                logger.info(f"Saved generator with ID: {self.generator_id}")
-            except Exception as e:
-                logger.error(f"Failed to save generator: {str(e)}")
+            self.definitions.save_generator(theme_desc, theme_desc_better)
+            self.generator_id = db.save_generator(
+                theme_desc=theme_desc,
+                theme_desc_better=theme_desc_better,
+                language=self.language,
+                player_defs=self.definitions.player_defs,
+                item_defs=self.definitions.item_defs,
+                enemy_defs=self.definitions.enemy_defs,
+                celltype_defs=self.definitions.celltype_defs
+            )
+            logger.info(f"Saved generator with ID: {self.generator_id}")
 
     def get_game_title(self):
         return self.gen_ai.game_title
@@ -135,25 +128,25 @@ class Game:
             return {} if transform_fn else []
 
     def initialize_player_defs(self):
-        self.player_defs = self.make_defs_from_json(
+        self.definitions.player_defs = self.make_defs_from_json(
             'game_players.json',
             transform_fn=self.gen_ai.gen_players_from_json_sample
         )["player_defs"]
 
     def initialize_item_defs(self):
-        self.item_defs = self.make_defs_from_json(
+        self.definitions.item_defs = self.make_defs_from_json(
             'game_items.json',
             transform_fn=self.gen_ai.gen_game_items_from_json_sample
         )["item_defs"]
 
     def initialize_enemy_defs(self):
-        self.enemy_defs = self.make_defs_from_json(
+        self.definitions.enemy_defs = self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
         )["enemy_defs"]
 
     def initialize_celltype_defs(self):
-        self.celltype_defs = self.make_defs_from_json(
+        self.definitions.celltype_defs = self.make_defs_from_json(
             'game_celltypes.json',
             transform_fn=self.gen_ai.gen_game_celltypes_from_json_sample
         )["celltype_defs"]
@@ -161,9 +154,9 @@ class Game:
     def _load_game_data(self):
         """Load all game data from JSON files."""
         with open('game_celltypes.json', 'r') as f:
-            self.celltype_defs = json.load(f)
+            celltype_defs = json.load(f)
             # Icons are already validated by gen_ai
-            self.celltype_defs = self.gen_ai.gen_game_celltypes_from_json_sample(json.dumps(self.celltype_defs))
+            self.definitions.celltype_defs = self.gen_ai.gen_game_celltypes_from_json_sample(json.dumps(celltype_defs))
 
         with open('game_config.json', 'r') as f:
             self.game_config = json.load(f)
@@ -172,7 +165,7 @@ class Game:
 
     def make_random_map(self):
         return [
-            [self.random.choice(self.celltype_defs) for _ in range(self.state.map_width)]
+            [self.random.choice(self.definitions.celltype_defs) for _ in range(self.state.map_width)]
             for _ in range(self.state.map_height)
         ]
 
@@ -181,8 +174,8 @@ class Game:
         try:
             self.entity_placements = self.gen_ai.gen_entity_placements(
                 self.state.cell_types,
-                self.enemy_defs,
-                self.item_defs,
+                self.definitions.enemy_defs,
+                self.definitions.item_defs,
                 self.state.map_width,
                 self.state.map_height
             )
@@ -196,7 +189,7 @@ class Game:
             # Process each entity placement
             for placement in self.entity_placements:
                 if placement['type'] == 'enemy':
-                    enemy_def = next((e for e in self.enemy_defs if e['enemy_id'] == placement['entity_id']), None)
+                    enemy_def = next((e for e in self.definitions.enemy_defs if e['enemy_id'] == placement['entity_id']), None)
                     if enemy_def:
                         self.enemy_sequence_cnt += 1
                         enemy_id = f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}"
@@ -246,13 +239,13 @@ class Game:
 
         self.state = GameState.from_config(config) # Initialize GameState with "config"
         # Set player data with fallback to default
-        self.state.player = self.player_defs[0] if self.player_defs else {
+        self.state.player = self.definitions.player_defs[0] if self.definitions.player_defs else {
             "name": "Unknown Hero",
             "class": "adventurer",
             "font_awesome_icon": "fa-solid fa-user"
         }
         # Validate player icon if using default
-        if not self.player_defs:
+        if not self.definitions.player_defs:
             self.state.player = fa_runtime.process_game_data(self.state.player, "player")
 
         self.state.explored = [[False for _ in range(self.state.map_width)]
@@ -271,7 +264,7 @@ class Game:
         else:
             try:
                 self.state.cell_types = self.gen_ai.gen_game_map_from_celltypes(
-                    self.celltype_defs,
+                    self.definitions.celltype_defs,
                     self.state.map_width,
                     self.state.map_height
                 )
@@ -333,7 +326,7 @@ class Game:
 
     # Generate a random item from the item templates
     def generate_random_item(self) -> Item:
-        defn = self.random.choice(self.item_defs)
+        defn = self.random.choice(self.definitions.item_defs)
         self.item_sequence_cnt += 1
         return Item(
             id=f"{defn['id']}_{self.item_sequence_cnt}",
@@ -598,7 +591,7 @@ class Game:
             }
 
     def generate_enemy(self) -> Enemy:
-        enemy_def = self.random.choice(self.enemy_defs)
+        enemy_def = self.random.choice(self.definitions.enemy_defs)
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
         self.enemy_sequence_cnt += 1
 
@@ -630,7 +623,7 @@ class Game:
         if enemy_here:
             # Find the enemy definition
             enemy_def = next(
-                (e for e in self.enemy_defs if e['enemy_id'] == enemy_here['entity_id']),
+                (e for e in self.definitions.enemy_defs if e['enemy_id'] == enemy_here['entity_id']),
                 None
             )
             if enemy_def:
@@ -705,7 +698,7 @@ class Game:
         if item_here:
             # Find the item definition
             item_def = next(
-                (i for i in self.item_defs if i['id'] == item_here['entity_id']),
+                (i for i in self.definitions.item_defs if i['id'] == item_here['entity_id']),
                 None
             )
             if item_def:
