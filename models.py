@@ -40,6 +40,7 @@ class GameState(BaseModel):
     current_enemy: Optional[Enemy] = None
     enemies: List[Dict[str, Union[int, str, bool]]] = []  # Updated to include boolean for is_defeated
     defeated_enemies: List[Dict[str, Union[int, str]]] = []  # Add list of defeated enemies
+    item_placements: List[Dict[str, Union[int, str, bool]]] = []  # Add list of item placements
     game_over: bool = False
     game_won: bool = False  # Add new state flag for win condition
     temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}

@@ -15,6 +15,7 @@ from db import db
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from combat_manager import CombatManager
+from entity_placement_manager import EntityPlacementManager
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -56,6 +57,9 @@ class Game:
 
         # Initialize the combat manager
         self.combat_manager = CombatManager(self.random, self.definitions)
+
+        # Initialize the entity placement manager
+        self.entity_manager = EntityPlacementManager(self.random, self.definitions, self.gen_ai)
 
         theme_desc_better = None
         self.generator_id = None  # Initialize generator_id
@@ -178,65 +182,19 @@ class Game:
     async def initialize_game_placements(self):
         # Generate entity placements (both enemies and items)
         try:
-            self.entity_placements = self.gen_ai.gen_entity_placements(
+            self.entity_placements = self.entity_manager.generate_placements(
                 self.state.cell_types,
-                self.definitions.enemy_defs,
-                self.definitions.item_defs,
                 self.state.map_width,
                 self.state.map_height
             )
-            logger.info(f"Generated entity placements: {self.entity_placements}")
 
-            # Initialize lists
-            self.state.enemies = []
-            self.state.defeated_enemies = []  # Track defeated enemies
-            self.item_placements = []
-
-            # Process each entity placement
-            for placement in self.entity_placements:
-                if placement['type'] == 'enemy':
-                    enemy_def = next((e for e in self.definitions.enemy_defs if e['enemy_id'] == placement['entity_id']), None)
-                    if enemy_def:
-                        self.enemy_sequence_cnt += 1
-                        enemy_id = f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}"
-                        icon = fa_runtime.get_valid_icon(enemy_def['font_awesome_icon'], "enemy")
-
-                        # Check if this enemy was previously defeated (by position)
-                        was_defeated = any(
-                            de['x'] == placement['x'] and de['y'] == placement['y']
-                            for de in self.state.defeated_enemies
-                        )
-
-                        # Add to enemies list with proper defeated state
-                        self.state.enemies.append({
-                            'id': enemy_id,
-                            'x': placement['x'],
-                            'y': placement['y'],
-                            'name': enemy_def['name'],
-                            'font_awesome_icon': icon,
-                            'is_defeated': was_defeated
-                        })
-
-                        # If it was defeated, add to defeated_enemies if not already there
-                        if was_defeated and not any(de['id'] == enemy_id for de in self.state.defeated_enemies):
-                            self.state.defeated_enemies.append({
-                                'x': placement['x'],
-                                'y': placement['y'],
-                                'name': enemy_def['name'],
-                                'id': enemy_id,
-                                'font_awesome_icon': icon,
-                                'is_defeated': True
-                            })
-                elif placement['type'] == 'item':
-                    self.item_placements.append({
-                        'x': placement['x'],
-                        'y': placement['y'],
-                        'id': placement['entity_id']
-                    })
+            # Process the placements
+            self.entity_manager.process_placements(self.state)
         except Exception as e:
             logger.error(f"Failed to generate entity placements: {str(e)}")
             self.entity_placements = []
-            self.item_placements = []
+            self.state.enemies = []
+            self.state.defeated_enemies = []
 
     async def initialize_game(self):
         # Read config.json
