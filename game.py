@@ -14,7 +14,7 @@ from models import GameState, Enemy, Item, Equipment
 from db import db
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
-from combat import CombatManager
+from combat_manager import CombatManager
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
