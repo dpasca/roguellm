@@ -14,6 +14,7 @@ from models import GameState, Enemy, Item, Equipment
 from db import db
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
+from combat import CombatManager
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -53,7 +54,11 @@ class Game:
         # Initialize the definitions manager
         self.definitions = GameDefinitionsManager(self.gen_ai, language)
 
+        # Initialize the combat manager
+        self.combat_manager = CombatManager(self.random, self.definitions)
+
         theme_desc_better = None
+        self.generator_id = None  # Initialize generator_id
         if generator_id:
             # Load from existing generator
             if not self.definitions.load_from_generator(generator_id):
@@ -64,6 +69,7 @@ class Game:
                 theme_desc = generator_data['theme_desc']
                 theme_desc_better = generator_data['theme_desc_better']
                 language = generator_data['language']
+                self.generator_id = generator_id  # Set generator_id when loading existing
             else:
                 raise ValueError(f"Generator with ID {generator_id} not found")
 
@@ -525,6 +531,18 @@ class Game:
             'description': f"This item cannot be equipped!"
         }
 
+    def generate_enemy(self) -> Enemy:
+        return self.combat_manager.generate_enemy()
+
+    def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
+        return self.combat_manager.generate_enemy_from_def(enemy_def)
+
+    async def handle_combat_action(self, action: str) -> dict:
+        # Get the combat action and process the raw description into something better
+        res = await self.combat_manager.handle_combat_action(self.state, action)
+        res['description'] = await self.gen_adapt_sentence(res['description'])
+        return res
+
     async def process_temporary_effects(self) -> str:
         """Process temporary effects and return a log of what happened."""
         effects_log = []
@@ -589,23 +607,6 @@ class Game:
                 'state': self.state.dict(),
                 'description': "You can't move in that direction."
             }
-
-    def generate_enemy(self) -> Enemy:
-        enemy_def = self.random.choice(self.definitions.enemy_defs)
-        hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
-        self.enemy_sequence_cnt += 1
-
-        enemy = Enemy(
-            id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
-            name=enemy_def['name'],
-            hp=hp,
-            max_hp=hp,
-            attack=self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max']),
-            font_awesome_icon=enemy_def['font_awesome_icon']
-        )
-        # Store XP value as a private attribute
-        enemy._xp_reward = enemy_def['xp']
-        return enemy
 
     async def check_encounters(self) -> dict:
         # Read config.json
@@ -746,28 +747,6 @@ class Game:
                 'description': ""
             }
 
-    def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
-        """Generate an enemy from a specific enemy definition."""
-        # Icons are already validated by gen_ai
-        hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
-        attack = self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max'])
-        defense = self.random.randint(enemy_def.get('defense', {}).get('min', 0),
-                                enemy_def.get('defense', {}).get('max', 5))
-
-        self.enemy_sequence_cnt += 1
-        enemy = Enemy(
-            id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
-            name=enemy_def['name'],
-            font_awesome_icon=enemy_def['font_awesome_icon'],
-            hp=hp,
-            max_hp=hp,
-            attack=attack,
-            defense=defense
-        )
-        # Store XP value as a private attribute
-        enemy._xp_reward = enemy_def.get('xp', 10)
-        return enemy
-
     def generate_item_from_def(self, item_def: dict) -> Item:
         """Generate an item from a specific item definition."""
         self.item_sequence_cnt += 1
@@ -779,181 +758,6 @@ class Game:
             effect=item_def['effect'],
             description=item_def['description']
         )
-
-    async def handle_combat_action(self, action: str) -> dict:
-        if not self.state.in_combat or not self.state.current_enemy:
-            return await self.create_update("No enemy to fight!")
-
-        if action == 'attack':
-            # Player attacks
-            damage_dealt = self.random.randint(
-                self.state.player_attack - 5,
-                self.state.player_attack + 5
-            )
-            self.state.current_enemy.hp -= damage_dealt
-            combat_log = f"You deal {damage_dealt} damage to the {self.state.current_enemy.name}!"
-
-            # Check if enemy is defeated
-            if self.state.current_enemy.hp <= 0:
-                # Award XP for defeating the enemy
-                xp_gained = getattr(self.state.current_enemy, '_xp_reward', 20)  # Default 20 XP if not set
-                self.state.player_xp += xp_gained
-
-                # Restore some HP (25% of max HP)
-                hp_restored = max(1, int(self.state.player_max_hp * 0.25))
-                old_hp = self.state.player_hp
-                self.state.player_hp = min(self.state.player_max_hp, self.state.player_hp + hp_restored)
-                actual_restore = self.state.player_hp - old_hp
-
-                # Find the enemy in the state's list to get its position
-                enemy_in_state = next(
-                    (e for e in self.state.enemies
-                     if e['id'] == self.state.current_enemy.id),  # Remove not is_defeated check to find the enemy
-                    None
-                )
-
-                logger.info(f"Enemy in state: {enemy_in_state}")
-                logger.info(f"Current enemies: {self.state.enemies}")
-                logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
-
-                if enemy_in_state:
-                    enemy_x = enemy_in_state['x']
-                    enemy_y = enemy_in_state['y']
-
-                    # Clear combat state
-                    self.state.in_combat = False
-                    self.state.current_enemy = None
-
-                    # Update enemy status
-                    enemy_in_state['is_defeated'] = True
-                    logger.info(f"Set enemy {enemy_in_state['id']} to defeated")
-
-                    # Check if all enemies are defeated
-                    all_enemies_defeated = all(e['is_defeated'] for e in self.state.enemies)
-                    if all_enemies_defeated:
-                        # Clear all game states
-                        self.state.game_won = True
-                        self.state.in_combat = False
-                        self.state.current_enemy = None
-                        # Return to previous position to prevent movement
-                        self.state.player_pos = self.state.player_pos_prev
-                        game_state = self.state.dict()
-                        game_state['explored_tiles'] = self.count_explored_tiles()
-                        return {
-                            'type': 'update',
-                            'state': game_state,
-                            'description': f"{combat_log}\nCongratulations! You have defeated all enemies and won the game!"
-                        }
-
-                    # Add to defeated_enemies if not already there
-                    if not any(de['id'] == enemy_in_state['id'] for de in self.state.defeated_enemies):
-                        self.state.defeated_enemies.append({
-                            'x': enemy_x,
-                            'y': enemy_y,
-                            'name': enemy_in_state['name'],
-                            'id': enemy_in_state['id'],
-                            'font_awesome_icon': enemy_in_state['font_awesome_icon'],
-                            'is_defeated': True
-                        })
-                        logger.info(f"Added enemy {enemy_in_state['id']} to defeated_enemies")
-
-                    #logger.info(f"Updated enemies: {self.state.enemies}")
-                    #logger.info(f"Updated defeated enemies: {self.state.defeated_enemies}")
-
-                # Append enemy defeat to the combat log
-                combat_log += f"\nYou have defeated the enemy. Gained XP: {xp_gained}. Restored HP: {actual_restore}"
-                # Append temporary effects log
-                if effects_log := await self.process_temporary_effects():
-                    combat_log += f"\n{effects_log}"
-
-                return await self.create_update(combat_log)
-
-            # Enemy attacks back
-            base_damage = self.random.randint(
-                self.state.current_enemy.attack - 3,
-                self.state.current_enemy.attack + 3
-            )
-            # Apply defense reduction
-            actual_damage = max(1, base_damage - self.state.player_defense)
-            self.state.player_hp -= actual_damage
-            combat_log += f"\nThe {self.state.current_enemy.name} deals {actual_damage} damage to you!"
-
-            # Check if player is defeated
-            if self.state.player_hp <= 0:
-                self.state.player_hp = 0
-                self.state.game_over = True
-                self.state.in_combat = False
-                return await self.create_update(
-                    f"{combat_log}\nYou have been defeated! Game Over!")
-
-            # Process temporary effects
-            effects_log = await self.process_temporary_effects()
-            if effects_log:
-                combat_log += f"\n{effects_log}"
-
-            return await self.create_update(combat_log)
-
-        elif action == 'run':
-            if self.random.random() < 0.6:  # 60% chance to escape
-                # Find the enemy in the state's list to get its position
-                enemy_in_state = next(
-                    (e for e in self.state.enemies
-                     if e['id'] == self.state.current_enemy.id),  # Remove not is_defeated check to find the enemy
-                    None
-                )
-
-                #logger.info(f"Running from enemy: {self.state.current_enemy.id}")
-                #logger.info(f"Found enemy in state: {enemy_in_state}")
-                #logger.info(f"Current enemies: {self.state.enemies}")
-                #logger.info(f"Defeated enemies: {self.state.defeated_enemies}")
-
-                if enemy_in_state:
-                    enemy_x = enemy_in_state['x']
-                    enemy_y = enemy_in_state['y']
-
-                    # Clear combat state
-                    self.state.in_combat = False
-                    self.state.current_enemy = None
-
-                    # Remove the code that marks enemy as defeated and adds to defeated_enemies list
-                    # The enemy should remain active for future encounters
-
-                # Process temporary effects when running
-                effects_log = await self.process_temporary_effects()
-                description = "You successfully flee from battle!"
-                if effects_log:
-                    description += f"\n{effects_log}"
-
-                return {
-                    'type': 'update',
-                    'state': self.state.dict(),
-                    'description': description
-                }
-            else:
-                # Failed to escape, enemy gets a free attack
-                damage = self.random.randint(
-                    self.state.current_enemy.attack - 3,
-                    self.state.current_enemy.attack + 3
-                )
-                actual_damage = max(1, damage - self.state.player_defense)
-                self.state.player_hp -= actual_damage
-
-                # Check if player is defeated
-                if self.state.player_hp <= 0:
-                    self.state.player_hp = 0
-                    self.state.game_over = True
-                    self.state.in_combat = False
-                    return await self.create_update(
-                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\nYou have been defeated! Game Over!")
-
-                # Process temporary effects after failed escape
-                effects_log = await self.process_temporary_effects()
-                if effects_log:
-                    return await self.create_update(
-                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!\n{effects_log}")
-                else:
-                    return await self.create_update(
-                        f"Failed to escape! The {self.state.current_enemy.name} deals {actual_damage} damage to you!")
 
     async def gen_adapt_sentence(self, original_sentence: str) -> str:
         try:
