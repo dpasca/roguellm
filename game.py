@@ -451,9 +451,6 @@ class Game:
 
         return await self.create_message(f"This item cannot be equipped!")
 
-    def generate_enemy(self) -> Enemy:
-        return self.combat_manager.generate_enemy()
-
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         return self.combat_manager.generate_enemy_from_def(enemy_def)
 

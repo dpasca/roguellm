@@ -10,22 +10,6 @@ class CombatManager:
         self.definitions = definitions
         self.enemy_sequence_cnt = 0
 
-    def generate_enemy(self) -> Enemy:
-        enemy_def = self.random.choice(self.definitions.enemy_defs)
-        hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
-        self.enemy_sequence_cnt += 1
-
-        enemy = Enemy(
-            id=f"{enemy_def['enemy_id']}_{self.enemy_sequence_cnt}",
-            name=enemy_def['name'],
-            hp=hp,
-            max_hp=hp,
-            attack=self.random.randint(enemy_def['attack']['min'], enemy_def['attack']['max']),
-            font_awesome_icon=enemy_def['font_awesome_icon']
-        )
-        enemy._xp_reward = enemy_def['xp']
-        return enemy
-
     def generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a specific enemy definition."""
         hp = self.random.randint(enemy_def['hp']['min'], enemy_def['hp']['max'])
