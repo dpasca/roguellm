@@ -28,6 +28,7 @@ class CombatManager:
             defense=defense
         )
         enemy._xp_reward = enemy_def.get('xp', 10)
+        enemy._hp_reward = int(enemy._xp_reward * 1.0)
         return enemy
 
     async def handle_combat_action(self, game_state, action: str) -> str:
@@ -49,6 +50,10 @@ class CombatManager:
                 xp_gained = getattr(game_state.current_enemy, '_xp_reward', 20)
                 game_state.player_xp += xp_gained
 
+                # Award HP for defeating the enemy
+                hp_gained = getattr(game_state.current_enemy, '_hp_reward', 0)
+                game_state.player_hp += hp_gained
+
                 # Mark enemy as defeated
                 x, y = game_state.player_pos
                 game_state.defeated_enemies.append({
@@ -68,7 +73,7 @@ class CombatManager:
 
                 game_state.in_combat = False
                 game_state.current_enemy = None
-                return f"{combat_log}\nYou defeated the enemy and gained {xp_gained} XP!"
+                return f"{combat_log}\nYou defeated the enemy, gained {xp_gained} XP and {hp_gained} HP"
 
             # Enemy counter-attacks
             damage_taken = max(0, self.random.randint(
