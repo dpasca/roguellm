@@ -114,7 +114,7 @@ A universe where you can become the master of the universe by defeating other ma
         else:
             research_result = ""
             if self.do_web_search:
-                research_result = make_query_and_web_search(
+                research_result = await make_query_and_web_search(
                     self.lo_model.client,
                     self.lo_model.model_name,
                     self.theme_desc,

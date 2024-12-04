@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 from web_search import web_search
 
 import logging
@@ -26,8 +26,8 @@ def extract_clean_data(data_str: str) -> str:
     return data_str.strip()
 
 # Given a theme description, generate a web search query and return the results
-def make_query_and_web_search(
-        oai_client: OpenAI,
+async def make_query_and_web_search(
+        oai_client: AsyncOpenAI,
         model_name: str,
         subject_input: str,
         language: str) -> str:
@@ -42,7 +42,7 @@ Return ONLY the query, no additional text or explanations.
 The language of the response must be: {language}
 """
     logger.info(f"Requesting web search query: {user_msg}")
-    response = oai_client.chat.completions.create(
+    response = await oai_client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": "You are an expert web search query generator."},
