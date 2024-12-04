@@ -230,18 +230,14 @@ async def websocket_endpoint(websocket: WebSocket):
         # Create a new Game instance
         rand_seed = int(time.time())
 
-        # Create partial function for game creation
-        def create_game():
-            return Game(
-                seed=rand_seed,
-                theme_desc=theme_desc,
-                language=language,
-                do_web_search=do_web_search,
-                generator_id=generator_id
-            )
-
-        # Run game creation in thread
-        game_instance = await asyncio.to_thread(create_game)
+        # Create game instance using the factory method
+        game_instance = await Game.create(
+            seed=rand_seed,
+            theme_desc=theme_desc,
+            language=language,
+            do_web_search=do_web_search,
+            generator_id=generator_id
+        )
 
         try:
             game_instance.connected_clients.add(websocket)

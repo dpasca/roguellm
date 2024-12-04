@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 import random
 from typing import List
 from models import GameState
@@ -30,7 +30,7 @@ class GenAIModel:
         self.api_key = api_key
         self.model_name = model_name
 
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
         )
@@ -56,7 +56,7 @@ class GenAI:
         logger.info(f"Low spec model: {self.lo_model.model_name}")
         logger.info(f"High spec model: {self.hi_model.model_name}")
 
-    def _quick_completion(
+    async def _quick_completion(
             self,
             system_msg: str,
             user_msg: str,
@@ -64,7 +64,7 @@ class GenAI:
             temp: float = DEF_TEMP
     ) -> str:
         use_model = self.lo_model if quality == "low" else self.hi_model
-        response = use_model.client.chat.completions.create(
+        response = await use_model.client.chat.completions.create(
             model=use_model.model_name,
             messages=[
                 {"role": "system", "content": system_msg},
@@ -80,7 +80,7 @@ class GenAI:
         return fa_runtime.process_game_data(data, context)
 
     # Upon setting the theme description, translate the basic system prompts
-    def set_theme_description(
+    async def set_theme_description(
             self,
             theme_desc: str,
             theme_desc_better: str,
@@ -94,7 +94,7 @@ class GenAI:
 
         if not self.theme_desc_better:
             logger.info("Generating theme description 'better'")
-            self.gen_theme_desc_better()
+            await self.gen_theme_desc_better()
 
         # Extract the game title from the theme description
         self.game_title = self.theme_desc_better.split("\n")[0]
@@ -103,7 +103,7 @@ class GenAI:
         return self.theme_desc_better
 
     # Generate a better/extended theme description
-    def gen_theme_desc_better(self):
+    async def gen_theme_desc_better(self):
         if DO_BYPASS_WORLD_GEN: # Quick version for testing
             self.theme_desc_better = f"""
 Generic Game (TEST)
@@ -124,7 +124,7 @@ A universe where you can become the master of the universe by defeating other ma
             if research_result:
                 self.theme_desc += f"\n\n# Web Search Results\n{research_result}"
 
-            self.theme_desc_better = self._quick_completion(
+            self.theme_desc_better = await self._quick_completion(
                 system_msg=(
                     SYS_BETTER_DESC_PROMPT_MSG +
                     f"\n- The language of the response must be {self.language}"),
@@ -203,7 +203,7 @@ A universe where you can become the master of the universe by defeating other ma
         return "\n".join(context)
 
     # Generate a list of game elements from a JSON samples + system prompt
-    def _gen_game_elems_from_json_sample(
+    async def _gen_game_elems_from_json_sample(
             self,
             json_template: str,
             system_msg: str
@@ -226,7 +226,7 @@ A universe where you can become the master of the universe by defeating other ma
             raise ValueError("Invalid JSON input")
 
         # Generate a new list of items
-        response = self._quick_completion(
+        response = await self._quick_completion(
             system_msg=system_msg,
             user_msg=json_template,
             quality=MODEL_QUALITY_FOR_JSON
@@ -242,19 +242,19 @@ A universe where you can become the master of the universe by defeating other ma
             logger.error(f"Invalid JSON output: {response}")
             return template_list
 
-    def gen_players_from_json_sample(self, player_defs: str) -> dict:
-        return self._gen_game_elems_from_json_sample(player_defs, SYS_GEN_PLAYER_JSON_MSG)
+    async def gen_players_from_json_sample(self, player_defs: str) -> dict:
+        return await self._gen_game_elems_from_json_sample(player_defs, SYS_GEN_PLAYER_JSON_MSG)
 
-    def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
+    async def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
+        return await self._gen_game_elems_from_json_sample(item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
 
-    def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
+    async def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
+        return await self._gen_game_elems_from_json_sample(enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
 
-    def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
-        return self._gen_game_elems_from_json_sample(celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
+    async def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
+        return await self._gen_game_elems_from_json_sample(celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
 
-    def gen_game_map_from_celltypes(
+    async def gen_game_map_from_celltypes(
             self,
             celltype_defs: List[dict],
             map_width: int,
@@ -272,7 +272,7 @@ A universe where you can become the master of the universe by defeating other ma
         logger.info(f"gen_game_map_from_celltypes: User message: {use_msg}")
 
         # Get CSV response
-        result_csv = self._quick_completion(
+        result_csv = await self._quick_completion(
             system_msg=append_desc_to_prompt(
                 SYS_GEN_MAP_CSV_MSG,
                 self.theme_desc_better
@@ -310,7 +310,7 @@ A universe where you can become the master of the universe by defeating other ma
         return out_map
 
     # Generate strategic entity placements (both enemies and items)
-    def gen_entity_placements(
+    async def gen_entity_placements(
             self,
             cell_types: List[List[dict]],
             enemy_defs: List[dict],
@@ -371,7 +371,7 @@ Each placement should indicate whether it's an enemy or an item.
         if DO_BYPASS_WORLD_GEN:
             placements_json = DUMMY_PLACEMENTS
         else:
-            response = self._quick_completion(
+            response = await self._quick_completion(
                 system_msg=append_desc_to_prompt(
                     SYS_GEN_ENTITY_PLACEMENT_MSG,
                     self.theme_desc_better),
@@ -411,7 +411,7 @@ Each placement should indicate whether it's an enemy or an item.
         logger.info(f"gen_adapt_sentence: User message: {user_msg}")
 
         try:
-            response = self.lo_model.client.chat.completions.create(
+            response = await self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
                     {"role": "system", "content":
@@ -442,7 +442,7 @@ Each placement should indicate whether it's an enemy or an item.
         logger.info(f"gen_room_description: User message: {user_msg}")
 
         try:
-            response = self.lo_model.client.chat.completions.create(
+            response = await self.lo_model.client.chat.completions.create(
                 model=self.lo_model.model_name,
                 messages=[
                     {"role": "system", "content":

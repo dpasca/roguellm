@@ -26,9 +26,9 @@ class EntityPlacementManager:
         icon = item_def.get('font_awesome_icon', self.default_item_icon)
         return fa_runtime.get_valid_icon(icon, "item") or self.default_item_icon
 
-    def generate_placements(self, cell_types: List[List[Dict]], map_width: int, map_height: int):
+    async def generate_placements(self, cell_types: List[List[Dict]], map_width: int, map_height: int):
         """Generate entity placements for both enemies and items."""
-        self.entity_placements = self.gen_ai.gen_entity_placements(
+        self.entity_placements = await self.gen_ai.gen_entity_placements(
             cell_types,
             self.definitions.enemy_defs,
             self.definitions.item_defs,

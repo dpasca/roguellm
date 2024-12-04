@@ -8,6 +8,7 @@ logger = logging.getLogger()
 
 from typing import Dict, List, Optional, Union
 import concurrent.futures
+import asyncio
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
@@ -61,66 +62,78 @@ class Game:
         # Initialize the entity placement manager
         self.entity_manager = EntityPlacementManager(self.random, self.definitions, self.gen_ai)
 
-        theme_desc_better = None
         self.generator_id = None  # Initialize generator_id
+        self.theme_desc = theme_desc
+        self.theme_desc_better = None
+        self.do_web_search = do_web_search
+        self.generator_id = generator_id
+
+    @classmethod
+    async def create(
+            cls,
+            seed : int,
+            theme_desc : str,
+            do_web_search: bool = False,
+            language : str = "en",
+            generator_id: Optional[str] = None
+    ):
+        game = cls(seed, theme_desc, do_web_search, language, generator_id)
+        
         if generator_id:
             # Load from existing generator
-            if not self.definitions.load_from_generator(generator_id):
+            if not game.definitions.load_from_generator(generator_id):
                 raise ValueError(f"Generator with ID {generator_id} not found")
             generator_data = db.get_generator(generator_id)
             if generator_data:
                 logger.info(f"Loaded generator with ID: {generator_id}")
-                theme_desc = generator_data['theme_desc']
-                theme_desc_better = generator_data['theme_desc_better']
-                language = generator_data['language']
-                self.generator_id = generator_id  # Set generator_id when loading existing
+                game.theme_desc = generator_data['theme_desc']
+                game.theme_desc_better = generator_data['theme_desc_better']
+                game.language = generator_data['language']
+                game.generator_id = generator_id  # Set generator_id when loading existing
             else:
                 raise ValueError(f"Generator with ID {generator_id} not found")
 
         # Set the theme description and language
         logger.info(f"Setting theme description: {theme_desc} with language: {language}")
-        theme_desc_better = self.gen_ai.set_theme_description(
+        game.theme_desc_better = await game.gen_ai.set_theme_description(
             theme_desc=theme_desc,
-            theme_desc_better=theme_desc_better,
+            theme_desc_better=game.theme_desc_better,
             do_web_search=do_web_search,
             language=language
         )
 
         # Initialize these after setting the theme description
         if not generator_id:
-            def run_parallel_init():
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = {
-                        'players': executor.submit(self.definitions.initialize_player_defs),
-                        'items': executor.submit(self.definitions.initialize_item_defs),
-                        'enemies': executor.submit(self.definitions.initialize_enemy_defs),
-                        'celltypes': executor.submit(self.definitions.initialize_celltype_defs)
-                    }
+            async def run_parallel_init():
+                # Run all initializations concurrently
+                await asyncio.gather(
+                    game.definitions.initialize_player_defs(),
+                    game.definitions.initialize_item_defs(),
+                    game.definitions.initialize_enemy_defs(),
+                    game.definitions.initialize_celltype_defs()
+                )
 
-                    for name, future in futures.items():
-                        try:
-                            future.result()  # This will raise any exceptions that occurred
-                        except Exception as e:
-                            logger.error(f"Failed to initialize {name}: {str(e)}")
-
-            run_parallel_init()
-            logger.info(f"## Generated PLAYER defs:\n{self.definitions.player_defs}\n")
-            logger.info(f"## Generated ITEM defs:\n{self.definitions.item_defs}\n")
-            logger.info(f"## Generated ENEMY defs:\n{self.definitions.enemy_defs}\n")
-            logger.info(f"## Generated CELLTYPE defs:\n{self.definitions.celltype_defs}\n")
+            await run_parallel_init()
+            
+            logger.info(f"## Generated PLAYER defs:\n{game.definitions.player_defs}\n")
+            logger.info(f"## Generated ITEM defs:\n{game.definitions.item_defs}\n")
+            logger.info(f"## Generated ENEMY defs:\n{game.definitions.enemy_defs}\n")
+            logger.info(f"## Generated CELLTYPE defs:\n{game.definitions.celltype_defs}\n")
 
             # Save the generator if it was newly created
-            self.definitions.save_generator(theme_desc, theme_desc_better)
-            self.generator_id = db.save_generator(
+            game.definitions.save_generator(theme_desc, game.theme_desc_better)
+            game.generator_id = db.save_generator(
                 theme_desc=theme_desc,
-                theme_desc_better=theme_desc_better,
-                language=self.language,
-                player_defs=self.definitions.player_defs,
-                item_defs=self.definitions.item_defs,
-                enemy_defs=self.definitions.enemy_defs,
-                celltype_defs=self.definitions.celltype_defs
+                theme_desc_better=game.theme_desc_better,
+                language=game.language,
+                player_defs=game.definitions.player_defs,
+                item_defs=game.definitions.item_defs,
+                enemy_defs=game.definitions.enemy_defs,
+                celltype_defs=game.definitions.celltype_defs
             )
-            logger.info(f"Saved generator with ID: {self.generator_id}")
+            logger.info(f"Saved generator with ID: {game.generator_id}")
+        
+        return game
 
     def get_game_title(self):
         return self.gen_ai.game_title
@@ -182,7 +195,7 @@ class Game:
     async def initialize_game_placements(self):
         # Generate entity placements (both enemies and items)
         try:
-            self.entity_placements = self.entity_manager.generate_placements(
+            self.entity_placements = await self.entity_manager.generate_placements(
                 self.state.cell_types,
                 self.state.map_width,
                 self.state.map_height
@@ -227,7 +240,7 @@ class Game:
             self.state.cell_types = self.make_random_map()
         else:
             try:
-                self.state.cell_types = self.gen_ai.gen_game_map_from_celltypes(
+                self.state.cell_types = await self.gen_ai.gen_game_map_from_celltypes(
                     self.definitions.celltype_defs,
                     self.state.map_width,
                     self.state.map_height

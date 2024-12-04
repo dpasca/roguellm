@@ -19,11 +19,11 @@ class GameDefinitionsManager:
         self.enemy_defs = []
         self.celltype_defs = []
         
-    def make_defs_from_json(self, filename: str, transform_fn=None):
+    async def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
             with open(filename, 'r') as f:
                 data = f.read()
-                return transform_fn(data) if transform_fn else json.loads(data)
+                return await transform_fn(data) if transform_fn else json.loads(data)
         except FileNotFoundError:
             logger.error(f"{filename} file not found.")
             return {} if transform_fn else []
@@ -31,29 +31,29 @@ class GameDefinitionsManager:
             logger.error(f"Invalid JSON in {filename} file.")
             return {} if transform_fn else []
 
-    def initialize_player_defs(self):
-        self.player_defs = self.make_defs_from_json(
+    async def initialize_player_defs(self):
+        self.player_defs = (await self.make_defs_from_json(
             'game_players.json',
             transform_fn=self.gen_ai.gen_players_from_json_sample
-        )["player_defs"]
+        ))["player_defs"]
 
-    def initialize_item_defs(self):
-        self.item_defs = self.make_defs_from_json(
+    async def initialize_item_defs(self):
+        self.item_defs = (await self.make_defs_from_json(
             'game_items.json',
             transform_fn=self.gen_ai.gen_game_items_from_json_sample
-        )["item_defs"]
+        ))["item_defs"]
 
-    def initialize_enemy_defs(self):
-        self.enemy_defs = self.make_defs_from_json(
+    async def initialize_enemy_defs(self):
+        self.enemy_defs = (await self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
-        )["enemy_defs"]
+        ))["enemy_defs"]
 
-    def initialize_celltype_defs(self):
-        self.celltype_defs = self.make_defs_from_json(
+    async def initialize_celltype_defs(self):
+        self.celltype_defs = (await self.make_defs_from_json(
             'game_celltypes.json',
             transform_fn=self.gen_ai.gen_game_celltypes_from_json_sample
-        )["celltype_defs"]
+        ))["celltype_defs"]
 
     def load_from_generator(self, generator_id: str) -> bool:
         generator_data = db.get_generator(generator_id)
