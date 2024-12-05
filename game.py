@@ -78,7 +78,7 @@ class Game:
             generator_id: Optional[str] = None
     ):
         game = cls(seed, theme_desc, do_web_search, language, generator_id)
-        
+
         if generator_id:
             # Load from existing generator
             if not game.definitions.load_from_generator(generator_id):
@@ -114,7 +114,7 @@ class Game:
                 )
 
             await run_parallel_init()
-            
+
             logger.info(f"## Generated PLAYER defs:\n{game.definitions.player_defs}\n")
             logger.info(f"## Generated ITEM defs:\n{game.definitions.item_defs}\n")
             logger.info(f"## Generated ENEMY defs:\n{game.definitions.enemy_defs}\n")
@@ -132,7 +132,7 @@ class Game:
                 celltype_defs=game.definitions.celltype_defs
             )
             logger.info(f"Saved generator with ID: {game.generator_id}")
-        
+
         return game
 
     def get_game_title(self):
@@ -374,7 +374,7 @@ class Game:
             result = await self.create_message(description=desc, description_raw=desc)
 
         # Skip adding the event if the description is empty
-        if action == 'move' and result.get('description_raw') == "":
+        if result.get('description_raw') == "":
             return result
 
         # Create or fill 'description' field if not already present or if empty
@@ -443,6 +443,9 @@ class Game:
             return await self.create_message("Item not found in inventory!")
 
         if item.type in ['weapon', 'armor']:
+            if item.is_equipped:
+                return await self.create_message("") # Empty message if already equipped
+
             # Unequip current item of same type if any
             if item.type == 'weapon':
                 if self.state.equipment.weapon:
