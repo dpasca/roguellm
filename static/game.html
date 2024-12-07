@@ -200,10 +200,10 @@
                             </div>
                         </div>
                         <div class="controls" v-if="gameState && !gameState.in_combat">
-                            <button @click="move('n')" data-dir="n" :disabled="!canMove('n')">↑</button>
-                            <button @click="move('s')" data-dir="s" :disabled="!canMove('s')">↓</button>
-                            <button @click="move('w')" data-dir="w" :disabled="!canMove('w')">←</button>
-                            <button @click="move('e')" data-dir="e" :disabled="!canMove('e')">→</button>
+                            <button @click="move('n')" data-dir="n" :disabled="!canMove('n')"></button>
+                            <button @click="move('s')" data-dir="s" :disabled="!canMove('s')"></button>
+                            <button @click="move('w')" data-dir="w" :disabled="!canMove('w')"></button>
+                            <button @click="move('e')" data-dir="e" :disabled="!canMove('e')"></button>
                         </div>
                         <!-- Move the player icon inside the game-map container -->
                         <div id="player-icon" class="player-icon">

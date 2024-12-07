@@ -20,7 +20,37 @@
     font-size: 20px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.6);
-    transform: none; /* Remove existing transforms */
+    transform: none;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Custom triangle arrows */
+.controls button::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.controls button[data-dir="n"]::after {
+    border-width: 0 10px 15px 10px;
+    border-color: transparent transparent rgba(255, 255, 255, 0.9) transparent;
+}
+
+.controls button[data-dir="s"]::after {
+    border-width: 15px 10px 0 10px;
+    border-color: rgba(255, 255, 255, 0.9) transparent transparent transparent;
+}
+
+.controls button[data-dir="w"]::after {
+    border-width: 10px 15px 10px 0;
+    border-color: transparent rgba(255, 255, 255, 0.9) transparent transparent;
+}
+
+.controls button[data-dir="e"]::after {
+    border-width: 10px 0 10px 15px;
+    border-color: transparent transparent transparent rgba(255, 255, 255, 0.9);
 }
 
 /* Remove the positional styles */
@@ -41,9 +71,17 @@
 .controls button[data-dir="s"] { order: 3; }
 .controls button[data-dir="e"] { order: 4; }
 
+.controls button:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
 @media screen and (max-width: 180mm) {
     .controls button {
         width: 35px;
         height: 35px;
+    }
+    
+    .controls button::after {
+        transform: scale(0.9);
     }
 }
