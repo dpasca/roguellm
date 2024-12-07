@@ -89,10 +89,11 @@
     <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
-                <h1 data-initial-title="{{ gameTitle }}" v-text="gameState.game_title || gameTitle"></h1>
+                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle" v-text="gameState.game_title || gameTitle"></h1>
                 <div class="menu-icon" @click="toggleMenu">
                     <i class="fas fa-bars"></i>
                 </div>
+                <div class="popup-overlay" :class="{ active: isMenuOpen }" @click="toggleMenu"></div>
                 <div class="popup-menu" :class="{ active: isMenuOpen }">
                     <button @click="shareGame" v-if="generatorId">
                         <i class="fas fa-share-alt fa-fw popup-menu-item-icon"></i>{{ $t('menu.share') }}

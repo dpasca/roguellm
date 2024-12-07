@@ -211,8 +211,11 @@ const app = Vue.createApp({
         closeMenuIfClickedOutside(event) {
             const menu = document.querySelector('.popup-menu');
             const menuIcon = document.querySelector('.menu-icon');
+            const title = document.querySelector('h1');
 
-            if (!menu.contains(event.target) && !menuIcon.contains(event.target)) {
+            if (!menu.contains(event.target) && 
+                !menuIcon.contains(event.target) && 
+                !title.contains(event.target)) {
                 this.isMenuOpen = false;
             }
         },
