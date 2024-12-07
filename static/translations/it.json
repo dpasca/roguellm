@@ -26,7 +26,8 @@
     "debug": "Info Debug"
   },
   "notifications": {
-    "gameCopied": "ID Gioco copiato negli appunti!"
+    "gameCopied": "ID Gioco copiato negli appunti!",
+    "loading": "Caricamento..."
   },
   "gameOver": {
     "title": "Game Over!",

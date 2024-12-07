@@ -1,0 +1,97 @@
+{
+  "// Notes": "参数用 {paramName} 表示",
+  "// Translation Notes": "根据这是一个电子游戏的事实进行合理本地化。例如，不要将意大利语版本的 'Game Over' 翻译。",
+  "// Main UI": "主界面翻译",
+  "title": "RogueLLM",
+  "subtitle_with_author": "由 {author} 开发的 AI 驱动实验性 Roguelike 游戏",
+  "// Theme Selection": "主题选择相关翻译",
+  "selectTheme": "选择你的主题",
+  "fantasyTheme": "幻想主题",
+  "customTheme": "自定义主题",
+  "enterGameDescription": "描述你的游戏背景。例如：'野外的程序员'",
+  "generatorTheme": "生成器主题",
+  "improveGameDescription": "通过网络搜索改进游戏描述",
+  "// Game Setup": "游戏设置和配置翻译",
+  "useGameId": "使用游戏 ID",
+  "customThemeDescription": "输入自定义主题的描述：",
+  "generatorIdLabel": "输入游戏 ID：",
+  "startGame": "开始游戏",
+  "createGame": "创建游戏",
+  "errorGameId": "请输入游戏 ID",
+  "// Game Interface": "游戏内界面翻译",
+  "menu": {
+    "share": "分享游戏",
+    "restart": "重新开始游戏",
+    "newGame": "创建新游戏",
+    "debug": "调试信息"
+  },
+  "notifications": {
+    "gameCopied": "游戏 ID 已复制到剪贴板！",
+    "loading": "加载中..."
+  },
+  "gameOver": {
+    "title": "游戏结束！",
+    "stats": {
+      "xpGained": "获得的经验值：{xp}",
+      "finalLevel": "最终等级：{level}",
+      "tilesExplored": "探索的区域：{tiles}"
+    },
+    "buttons": {
+      "restart": "重新开始",
+      "newGame": "新游戏"
+    }
+  },
+  "gameWin": {
+    "title": "胜利！",
+    "stats": {
+      "victory": "你已击败所有敌人！",
+      "xpGained": "获得的经验值：{xp}",
+      "finalLevel": "最终等级：{level}",
+      "tilesExplored": "探索的区域：{tiles}"
+    },
+    "buttons": {
+      "playAgain": "再玩一次",
+      "newGame": "新游戏"
+    }
+  },
+  "combat": {
+    "stats": {
+      "hp": "生命值",
+      "attack": "攻击",
+      "defense": "防御"
+    },
+    "buttons": {
+      "attack": "攻击",
+      "run": "逃跑"
+    }
+  },
+  "player": {
+    "inventory": "物品栏",
+    "equipment": {
+      "weapon": "武器",
+      "armor": "护甲"
+    },
+    "stats": {
+      "hp": "生命值",
+      "attack": "攻击",
+      "defense": "防御",
+      "xp": "经验值",
+      "location": "位置"
+    }
+  },
+  "inventory": {
+    "use": "使用",
+    "equip": "装备",
+    "unequip": "卸下"
+  },
+  "debug": {
+    "title": "调试信息",
+    "itemsOnMap": "地图上的物品",
+    "enemiesOnMap": "地图上的敌人",
+    "close": "关闭"
+  },
+  "errors": {
+    "failedToStart": "无法开始游戏，请重试。",
+    "failedToCreate": "无法创建游戏"
+  }
+}

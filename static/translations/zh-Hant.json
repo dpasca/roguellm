@@ -26,7 +26,8 @@
     "debug": "調試信息"
   },
   "notifications": {
-    "gameCopied": "遊戲 ID 已複製到剪貼板！"
+    "gameCopied": "遊戲 ID 已複製到剪貼板！",
+    "loading": "載入中..."
   },
   "gameOver": {
     "title": "遊戲結束！",

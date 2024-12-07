@@ -26,7 +26,8 @@
     "debug": "Información de depuración"
   },
   "notifications": {
-    "gameCopied": "¡ID del juego copiado al portapapeles!"
+    "gameCopied": "¡ID del juego copiado al portapapeles!",
+    "loading": "Cargando..."
   },
   "gameOver": {
     "title": "¡Game Over!",

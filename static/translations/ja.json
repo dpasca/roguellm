@@ -26,7 +26,8 @@
     "debug": "デバッグ情報"
   },
   "notifications": {
-    "gameCopied": "ゲームIDがクリップボードにコピーされました！"
+    "gameCopied": "ゲームIDがクリップボードにコピーされました！",
+    "loading": "読み込み中..."
   },
   "gameOver": {
     "title": "ゲームオーバー！",
