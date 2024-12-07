@@ -169,6 +169,9 @@
     display: flex;
     flex-direction: row; /* Keep map/combat and status side by side */
     gap: 10px;
+    align-items: start; /* Align items to top */
+    min-height: min-content; /* This is to prevent excess height */
+    height: fit-content;
 }
 
 /* Ensure map/combat box and player status have fixed positions */
@@ -182,6 +185,7 @@
     flex-grow: 1; /* Allow to grow */
     min-width: 250px;
     max-width: 400px;
+    /* Remove min-height completely since we don't need to force height */
 }
 
 /* Inventory stays below .game-content */
@@ -245,7 +249,10 @@
     flex-shrink: 0; /* Prevent shrinking */
     position: relative; /* Ensure relative positioning for absolute children */
     margin: 0;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px; /* Space between map and controls */
     transition: all 0.3s ease;
 }
 

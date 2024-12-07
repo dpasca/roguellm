@@ -1,15 +1,15 @@
 /* Control overlay styling */
 .controls {
-    top: 0;
-    left: 0;
-    margin: 0;
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    width: 100%;
     padding: 0;
+    margin: 0;
 }
 
 .controls button {
-    position: absolute;
-    margin: 0;
-    padding: 0;
+    position: relative;
     width: 40px;
     height: 40px;
     pointer-events: auto;
@@ -20,15 +20,30 @@
     font-size: 20px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.6);
+    transform: none; /* Remove existing transforms */
 }
 
-/* Precise positioning relative to map edges */
-.controls button[data-dir="n"] { top: 0; left: 50%; transform: translateX(-50%); }
-.controls button[data-dir="s"] { bottom: 0; left: 50%; transform: translateX(-50%) translateY(-50%) translateY(-6px); }
-.controls button[data-dir="w"] { left: 0; top: 50%; transform: translateY(-100%) translateY(8px); }
-.controls button[data-dir="e"] { right: 0; top: 50%; transform: translateY(-100%) translateY(8px); }
+/* Remove the positional styles */
+.controls button[data-dir="n"],
+.controls button[data-dir="s"],
+.controls button[data-dir="w"],
+.controls button[data-dir="e"] {
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    transform: none;
+}
 
+/* Order the buttons */
+.controls button[data-dir="w"] { order: 1; }
+.controls button[data-dir="n"] { order: 2; }
+.controls button[data-dir="s"] { order: 3; }
+.controls button[data-dir="e"] { order: 4; }
 
 @media screen and (max-width: 180mm) {
-    .controls button[data-dir="s"] { bottom: 0; left: 50%; transform: translateX(-50%) translateY(-50%) translateY(10px); }
+    .controls button {
+        width: 35px;
+        height: 35px;
+    }
 }
