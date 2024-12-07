@@ -4,6 +4,7 @@ const SUPPORTED_LANGUAGES = [
     { code: 'es', name: 'Español' },
     { code: 'it', name: 'Italiano' },
     { code: 'ja', name: '日本語' },
+    { code: 'zh-Hans', name: '简体中文' },
     { code: 'zh-Hant', name: '繁體中文' },
 ];
 

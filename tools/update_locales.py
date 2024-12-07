@@ -2,7 +2,7 @@ import json
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from typing import Dict
+from typing import Dict, Literal
 import logging
 import re
 import argparse
@@ -25,17 +25,11 @@ def clean_json_response(response: str) -> str:
         response = match.group(1)
     return response.strip()
 
-def generate_translation(translations: Dict, target_lang: str) -> Dict:
-    """
-    Generate translations for a specific language using OpenAI's API.
-    
-    Args:
-        translations: Dictionary containing the English translations
-        target_lang: Target language code (e.g., 'it', 'ja')
-    
-    Returns:
-        Dictionary containing the translated content
-    """
+def generate_translation(
+    translations: Dict,
+    target_lang: str,
+    model: Literal["gpt", "claude"] = "claude") -> Dict:
+
     client = OpenAI()
 
     system_prompt = """You are a professional language translator.
@@ -49,8 +43,9 @@ Content to translate:
 {json.dumps(translations, ensure_ascii=False, indent=2)}"""
 
     try:
+        model_name = "claude-3-5-sonnet-latest" if model == "claude" else "chatgpt-4o-latest"
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -79,6 +74,7 @@ def main():
     parser = argparse.ArgumentParser(description='Generate translations for multiple languages')
     parser.add_argument('base_path', help='Base path where en.json is located')
     parser.add_argument('target_langs', help='Comma-separated list of target languages (e.g., it,ja)')
+    parser.add_argument('--model', choices=['gpt', 'claude'], default='gpt', help='Model to use for translation (default: claude)')
     args = parser.parse_args()
 
     # Load environment variables
@@ -105,7 +101,7 @@ def main():
     for lang in target_languages:
         try:
             logger.info(f"Starting translation for {lang}")
-            translations = generate_translation(data, lang)
+            translations = generate_translation(data, lang, args.model)
 
             # Save translations to file
             output_path = os.path.join(args.base_path, f"{lang}.json")
