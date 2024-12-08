@@ -179,6 +179,14 @@ const app = Vue.createApp({
                 this.errorMessage = error.message || "Failed to start game. Please try again.";
             }
         },
+        handleKeyDown(event) {
+            if (event.key === 'Enter') {
+                if (!event.shiftKey) {
+                    event.preventDefault();
+                    this.launchGame();
+                }
+            }
+        },
         async initialize() {
             console.log('Starting initialization...');
             try {
