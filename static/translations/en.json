@@ -8,6 +8,11 @@
     "title": "RogueLLM",
     "subtitle_with_author": "An experimental roguelike game powered by AI by {author}",
 
+    "// Navigation": "Navigation related messages",
+    "navigation": {
+        "leaveWarning": "Are you sure you want to leave the game?"
+    },
+
     "// Theme Selection": "Theme selection related translations",
     "selectTheme": "Select Your Theme",
     "fantasyTheme": "Fantasy Theme",
