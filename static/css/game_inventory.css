@@ -1,11 +1,18 @@
 /* Inventory UI */
 .inventory-ui {
     background-color: #2a2a2a;
-    padding: 15px;
+    padding: 10px;
     border-radius: 5px;
     margin: 0;
     width: 100%;
+    max-width: 100%;
     display: block;
+    box-sizing: border-box;
+}
+
+.inventory-ui h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
 }
 
 .inventory-grid {
@@ -13,6 +20,7 @@
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 6px;
     margin-top: 6px;
+    width: 100%;
 }
 
 /* Item Cards */
@@ -215,5 +223,14 @@
 
     .inventory-ui {
         padding: 6px;
+    }
+
+    .inventory-ui h3 {
+        margin: 0 0 4px 0;
+        font-size: 1em;
+    }
+
+    .inventory-grid {
+        width: 100%;
     }
 } 

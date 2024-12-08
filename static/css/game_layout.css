@@ -2,6 +2,10 @@
 .game-container {
     display: block;
     margin: 20px 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 20px;
 }
 
 .game-content {
@@ -11,6 +15,9 @@
     align-items: start;
     min-height: min-content;
     height: fit-content;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .game-map, .combat-ui {
@@ -28,6 +35,14 @@
 .game-sidebar {
     margin-top: 10px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .header-bar {
@@ -49,6 +64,8 @@
 @media screen and (max-width: 180mm) {
     .game-content {
         flex-direction: row;
+        width: 100%;
+        max-width: 100%;
     }
 
     .game-map, .combat-ui, .player-status {
@@ -70,6 +87,9 @@
     .game-container {
         gap: 10px;
         margin: 4px 0;
+        width: 100%;
+        max-width: 100%;
+        padding: 0 6px;
     }
 
     .game-left-column {
@@ -79,5 +99,6 @@
     .game-left-column,
     .game-sidebar {
         min-width: 100%;
+        max-width: 100%;
     }
 } 

@@ -92,9 +92,12 @@
     background-color: #1a1a1a;
     border: 1px solid #333;
     border-radius: 5px;
-    margin-top: 10px;
+    margin: 10px 20px;
     min-height: 150px;
     max-height: 150px;
+    width: calc(100% - 40px);
+    max-width: calc(100% - 40px);
+    box-sizing: border-box;
 }
 
 .game-log div {
@@ -115,6 +118,12 @@
 
     .player-header i, .enemy-header i {
         font-size: 1.2em;
+    }
+
+    .game-log {
+        margin: 10px 6px;
+        width: calc(100% - 12px);
+        max-width: calc(100% - 12px);
     }
 
     .game-log div {
