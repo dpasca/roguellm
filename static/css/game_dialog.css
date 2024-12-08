@@ -23,7 +23,7 @@
 }
 
 .new-game-button {
-    background-color: #2196F3;
+    background-color: #FF9800;
     color: white;
     border: none;
     padding: 12px 20px;
@@ -35,7 +35,7 @@
 }
 
 .new-game-button:hover {
-    background-color: #1976D2;
+    background-color: #F57C00;
 }
 
 .buttons-container button i {

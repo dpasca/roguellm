@@ -103,7 +103,7 @@
 }
 
 .game-over .restart-button {
-    background-color: #2196F3;
+    background-color: #4CAF50;  /* Green */
     color: white;
     padding: 12px 24px;
     font-size: 18px;
@@ -117,12 +117,12 @@
 }
 
 .game-over .restart-button:hover {
-    background-color: #1976D2;
+    background-color: #45a049;
     transform: translateY(-2px);
 }
 
 .game-over .new-game-button {
-    background-color: #4CAF50;
+    background-color: #FF9800;  /* Orange */
     color: white;
     padding: 12px 24px;
     font-size: 18px;
@@ -136,7 +136,7 @@
 }
 
 .game-over .new-game-button:hover {
-    background-color: #45a049;
+    background-color: #F57C00;
     transform: translateY(-2px);
 }
 
@@ -230,12 +230,12 @@
 }
 
 .game-win .restart-button {
-    background-color: #2196F3;  /* Match game over screen button style */
+    background-color: #4CAF50;  /* Green */
     color: white;
 }
 
 .game-win .new-game-button {
-    background-color: #4cd137;
+    background-color: #FF9800;  /* Orange */
     color: white;
 }
 
@@ -245,11 +245,11 @@
 }
 
 .game-win .restart-button:hover {
-    background-color: #1976D2;
+    background-color: #45a049;
 }
 
 .game-win .new-game-button:hover {
-    background-color: #45a049;
+    background-color: #F57C00;
 }
 
 .game-win button i {
