@@ -69,6 +69,7 @@
         flex-direction: row;
         width: 100%;
         max-width: 100%;
+        gap: 10px;
     }
 
     .game-map, .combat-ui, .player-status {

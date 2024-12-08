@@ -135,4 +135,8 @@
     .combat-ui {
         padding: 6px;
     }
+
+    .combat-buttons {
+        gap: 6px;
+    }
 } 
