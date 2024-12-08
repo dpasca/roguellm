@@ -1,0 +1,83 @@
+/* Base layout styles */
+.game-container {
+    display: block;
+    margin: 20px 0;
+}
+
+.game-content {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: start;
+    min-height: min-content;
+    height: fit-content;
+}
+
+.game-map, .combat-ui {
+    width: 300px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.player-status {
+    flex-grow: 1;
+    min-width: 250px;
+    max-width: 400px;
+}
+
+.game-sidebar {
+    margin-top: 10px;
+    width: 100%;
+}
+
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333;
+    margin: 0;
+}
+
+.header-bar h1 {
+    margin: 0;
+    padding: 10px 0;
+}
+
+/* Responsive layout */
+@media screen and (max-width: 180mm) {
+    .game-content {
+        flex-direction: row;
+    }
+
+    .game-map, .combat-ui, .player-status {
+        width: auto;
+    }
+
+    .header-bar h1 {
+        font-size: 1.0em;
+        padding: 4px 0;
+        padding-top: 0px;
+    }
+
+    .header-bar {
+        padding: 4px 10px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+
+    .game-container {
+        gap: 10px;
+        margin: 4px 0;
+    }
+
+    .game-left-column {
+        width: 100%;
+    }
+
+    .game-left-column,
+    .game-sidebar {
+        min-width: 100%;
+    }
+} 

@@ -1,0 +1,219 @@
+/* Inventory UI */
+.inventory-ui {
+    background-color: #2a2a2a;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 0;
+    width: 100%;
+    display: block;
+}
+
+.inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+}
+
+/* Item Cards */
+.item-card {
+    background-color: #333;
+    padding: 6px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.item-card.equipped {
+    border-color: #4CAF50;
+}
+
+.item-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-card h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 0.85em;
+    flex: 1;
+}
+
+.item-card p {
+    margin: 0;
+    font-size: 0.75em;
+    color: #aaa;
+    line-height: 1.1;
+}
+
+/* Item Actions */
+.item-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.item-actions button {
+    padding: 2px 6px;
+    font-size: 0.9em;
+    min-width: 28px;
+    height: 22px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.item-actions button:not(.equipped-button):not(.use-button) {
+    background-color: #2c3e50;
+    color: #95a5a6;
+    border: 1px solid #34495e;
+}
+
+.item-actions button:not(.equipped-button):not(.use-button):hover {
+    background-color: #34495e;
+    color: white;
+}
+
+.equipped-button {
+    background-color: #27ae60;
+    color: white;
+    border: 1px solid #2ecc71;
+}
+
+.equipped-button:hover {
+    background-color: #2ecc71;
+}
+
+.use-button {
+    background-color: #8e44ad;
+    color: white;
+    font-size: 0.8em;
+    min-width: 50px;
+    border: 1px solid #9b59b6;
+}
+
+.use-button:hover {
+    background-color: #9b59b6;
+}
+
+/* Equipment Slots */
+.equipment-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.equipment-slot {
+    background-color: #333;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #444;
+}
+
+.equipment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.equipment-slot h4 {
+    margin: 0;
+    font-weight: bold;
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.equipment-status {
+    font-size: 1.2em;
+    color: #27ae60;
+}
+
+.empty-slot {
+    margin: 0;
+    font-size: 0.8em;
+    color: #666;
+    font-style: italic;
+}
+
+.equipment-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.equipment-name {
+    font-size: 0.8em;
+    color: #aaa;
+    flex: 1;
+}
+
+.equipment-stat {
+    font-size: 0.8em;
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+/* Status Items */
+.status-item {
+    display: grid;
+    grid-template-columns: 100px auto;
+    align-items: center;
+    margin: 8px 0;
+    gap: 10px;
+}
+
+.status-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-value {
+    display: flex;
+    align-items: center;
+}
+
+.status-item span:last-child {
+    color: #cacaca;
+    font-weight: 500;
+}
+
+.status-item span:last-child:empty::after,
+.status-item span:last-child:contains('None') {
+    color: #666;
+    font-style: italic;
+}
+
+/* Responsive Inventory */
+@media screen and (max-width: 180mm) {
+    .label-text {
+        display: none;
+    }
+
+    .status-item {
+        grid-template-columns: 30px auto;
+        margin: 4px 0;
+        gap: 5px;
+    }
+
+    .status-label {
+        justify-content: center;
+        width: 30px;
+    }
+
+    .status-label i {
+        margin: 0;
+    }
+
+    .inventory-ui {
+        padding: 6px;
+    }
+} 

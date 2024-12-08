@@ -1,0 +1,129 @@
+/* Combat UI */
+.combat-ui {
+    background-color: #2a2a2a;
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 0;
+    width: 100%;
+}
+
+.combat-ui p {
+    margin: 8px 0;
+}
+
+.combat-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.attack-button { background-color: #f44336; }
+.run-button { background-color: #2196F3; }
+
+/* Health Bar */
+.health-bar-container {
+    position: relative;
+    width: 90px;
+}
+
+.health-bar {
+    height: 20px;
+    background: #444;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.health-bar-fill {
+    height: 100%;
+    background: #5f8313;
+    transition: width 0.3s ease;
+}
+
+.health-text {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+/* Combat Headers */
+.player-header, .enemy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    position: relative;
+    width: 100%;
+}
+
+.player-header h3, .enemy-header h3 {
+    margin: 0;
+    color: #4CAF50;
+    font-size: 1.4em;
+    font-weight: 600;
+    flex: 1;
+}
+
+.enemy-header h3 {
+    color: #f44336;
+}
+
+.player-header i, .enemy-header i {
+    font-size: 1.4em;
+    color: #4CAF50;
+    margin-left: 10px;
+    display: block;
+}
+
+.enemy-header i {
+    color: #f44336;
+}
+
+/* Game Log */
+.game-log {
+    overflow-y: auto;
+    font-size: 18px !important;
+    line-height: 1.2;
+    padding: 10px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 5px;
+    margin-top: 10px;
+    min-height: 150px;
+    max-height: 150px;
+}
+
+.game-log div {
+    animation: fadeIn 0.3s ease-in;
+    font-size: 18px !important;
+    text-size-adjust: none;
+    -webkit-text-size-adjust: none;
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #333;
+}
+
+/* Responsive Combat UI */
+@media screen and (max-width: 180mm) {
+    .player-header h3, .enemy-header h3 {
+        font-size: 1.2em;
+    }
+
+    .player-header i, .enemy-header i {
+        font-size: 1.2em;
+    }
+
+    .game-log div {
+        font-size: 14px !important;
+        margin: 0px 0;
+        padding: 4px 0;
+    }
+
+    .combat-ui {
+        padding: 6px;
+    }
+} 

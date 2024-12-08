@@ -1,0 +1,65 @@
+/* Map Grid */
+.cell {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.cell i {
+    color: inherit;
+}
+
+.row { 
+    display: flex; 
+}
+
+/* Map Container */
+.game-map {
+    width: fit-content;
+    margin: 0;
+    display: inline-block;
+    position: relative;
+}
+
+.game-map.in-combat {
+    display: none;
+}
+
+/* Player Icon */
+.player-icon {
+    position: absolute;
+    background-color: rgba(0,0,0,0.25);
+    border-radius: 50%;
+    transition: left 0.5s ease, top 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+/* Enemy Icons */
+.cell i.enemy-icon {
+    color: white !important;
+    text-shadow:
+        3px 4px 3px #000000,
+        -2px 0 2px #000000,
+        0 2px 2px #000000,
+        0 -2px 2px #000000;
+}
+
+.cell i.enemy-icon.defeated {
+    color: #888888 !important;
+    text-shadow: none;
+}
+
+/* Responsive Map */
+@media screen and (max-width: 180mm) {
+    .cell {
+        width: 22px;
+        height: 26px;
+    }
+} 
