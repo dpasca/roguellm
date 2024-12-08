@@ -1,38 +1,42 @@
 {
   "// Notes": "參數以 {paramName} 表示",
-  "// Translation Notes": "根據這是一個電子遊戲的事實進行合理本地化。例如，不要翻譯意大利版本的 'Game Over'。",
-  "// Main UI": "主界面翻譯",
+  "// Translation Notes": "基於這是一款電子遊戲進行合理本地化。例如，不要將 'Game Over' 翻譯為義大利語版本。",
+  "// Main UI": "主介面翻譯",
   "title": "RogueLLM",
-  "subtitle_with_author": "由 {author} 提供 AI 驅動的實驗性 Roguelike 遊戲",
+  "subtitle_with_author": "由 {author} 開發的實驗性 AI 驅動的 Roguelike 遊戲",
+  "// Navigation": "導航相關訊息",
+  "navigation": {
+    "leaveWarning": "您確定要離開遊戲嗎？"
+  },
   "// Theme Selection": "主題選擇相關翻譯",
   "selectTheme": "選擇您的主題",
-  "fantasyTheme": "幻想主題",
+  "fantasyTheme": "奇幻主題",
   "customTheme": "自訂主題",
-  "enterGameDescription": "描述您的遊戲設置。例如：'野外的程序員'",
+  "enterGameDescription": "描述您的遊戲設定。例如：'程式員在野外'",
   "generatorTheme": "生成器主題",
-  "improveGameDescription": "使用網絡搜索改進遊戲描述",
+  "improveGameDescription": "使用網路搜尋改進遊戲描述",
   "// Game Setup": "遊戲設置和配置翻譯",
   "useGameId": "使用遊戲 ID",
-  "customThemeDescription": "輸入自訂主題的描述：",
+  "customThemeDescription": "輸入您的自訂主題描述：",
   "generatorIdLabel": "輸入遊戲 ID：",
   "startGame": "開始遊戲",
   "createGame": "創建遊戲",
   "errorGameId": "請輸入遊戲 ID",
-  "// Game Interface": "遊戲內界面翻譯",
+  "// Game Interface": "遊戲內介面翻譯",
   "menu": {
     "share": "分享遊戲",
     "restart": "重新開始遊戲",
     "newGame": "創建新遊戲",
-    "debug": "調試信息"
+    "debug": "除錯資訊"
   },
   "notifications": {
-    "gameCopied": "遊戲 ID 已複製到剪貼板！",
-    "loading": "載入中..."
+    "gameCopied": "遊戲 ID 已複製到剪貼簿！",
+    "loading": "加載中..."
   },
   "gameOver": {
     "title": "遊戲結束！",
     "stats": {
-      "xpGained": "獲得的經驗值：{xp}",
+      "xpGained": "獲得經驗值：{xp}",
       "finalLevel": "最終等級：{level}",
       "tilesExplored": "探索的區域：{tiles}"
     },
@@ -44,21 +48,21 @@
   "gameWin": {
     "title": "勝利！",
     "stats": {
-      "victory": "你已擊敗所有敵人！",
-      "xpGained": "獲得的經驗值：{xp}",
+      "victory": "您已擊敗所有敵人！",
+      "xpGained": "獲得經驗值：{xp}",
       "finalLevel": "最終等級：{level}",
       "tilesExplored": "探索的區域：{tiles}"
     },
     "buttons": {
-      "playAgain": "再次遊玩",
+      "playAgain": "再玩一次",
       "newGame": "新遊戲"
     }
   },
   "combat": {
     "stats": {
       "hp": "生命值",
-      "attack": "攻擊",
-      "defense": "防禦"
+      "attack": "攻擊力",
+      "defense": "防禦力"
     },
     "buttons": {
       "attack": "攻擊",
@@ -73,8 +77,8 @@
     },
     "stats": {
       "hp": "生命值",
-      "attack": "攻擊",
-      "defense": "防禦",
+      "attack": "攻擊力",
+      "defense": "防禦力",
       "xp": "經驗值",
       "location": "位置"
     }
@@ -85,8 +89,13 @@
     "unequip": "卸下裝備"
   },
   "debug": {
-    "title": "調試信息",
+    "title": "除錯資訊",
     "itemsOnMap": "地圖上的物品",
-    "enemiesOnMap": "地圖上的敵人"
+    "enemiesOnMap": "地圖上的敵人",
+    "close": "關閉"
+  },
+  "errors": {
+    "failedToStart": "無法開始遊戲。請再試一次。",
+    "failedToCreate": "無法創建遊戲"
   }
 }

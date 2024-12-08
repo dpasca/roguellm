@@ -1,22 +1,26 @@
 {
-  "// Notes": "パラメータは {paramName} で示されます",
-  "// Translation Notes": "これはビデオゲーム用であることを考慮して適切にローカライズしてください。例：イタリア語版では「Game Over」を翻訳しないでください。",
+  "// Notes": "パラメーターは {paramName} で示されています",
+  "// Translation Notes": "これはビデオゲーム用であることを考慮して適切にローカライズしてください。例えば、イタリア語版では「Game Over」を翻訳しないでください。",
   "// Main UI": "メインインターフェースの翻訳",
   "title": "RogueLLM",
-  "subtitle_with_author": "AIによって駆動される実験的なローグライクゲーム {author} による",
-  "// Theme Selection": "テーマ選択に関連する翻訳",
-  "selectTheme": "テーマを選択",
+  "subtitle_with_author": "AIによって動作する実験的なローグライクゲーム 作成者: {author}",
+  "// Navigation": "ナビゲーション関連のメッセージ",
+  "navigation": {
+    "leaveWarning": "ゲームを終了してもよろしいですか？"
+  },
+  "// Theme Selection": "テーマ選択関連の翻訳",
+  "selectTheme": "テーマを選択してください",
   "fantasyTheme": "ファンタジーテーマ",
   "customTheme": "カスタムテーマ",
-  "enterGameDescription": "ゲームの設定を説明してください。例：「野生のプログラマー」",
+  "enterGameDescription": "ゲームの設定を記述してください。例:「野生のプログラマー」",
   "generatorTheme": "ジェネレーターテーマ",
-  "improveGameDescription": "ウェブ検索でゲームの説明を改善",
-  "// Game Setup": "ゲームの設定と構成の翻訳",
-  "useGameId": "ゲームIDを使用",
-  "customThemeDescription": "カスタムテーマの説明を入力してください：",
-  "generatorIdLabel": "ゲームIDを入力：",
-  "startGame": "ゲーム開始",
-  "createGame": "ゲーム作成",
+  "improveGameDescription": "ウェブ検索でゲームの説明を改善する",
+  "// Game Setup": "ゲーム設定および構成の翻訳",
+  "useGameId": "ゲームIDを使用する",
+  "customThemeDescription": "カスタムテーマの説明を入力してください:",
+  "generatorIdLabel": "ゲームIDを入力してください:",
+  "startGame": "ゲームを開始",
+  "createGame": "ゲームを作成",
   "errorGameId": "ゲームIDを入力してください",
   "// Game Interface": "ゲーム内インターフェースの翻訳",
   "menu": {
@@ -34,7 +38,7 @@
     "stats": {
       "xpGained": "獲得XP: {xp}",
       "finalLevel": "最終レベル: {level}",
-      "tilesExplored": "探索されたタイル: {tiles}"
+      "tilesExplored": "探索したタイル: {tiles}"
     },
     "buttons": {
       "restart": "再開",
@@ -47,7 +51,7 @@
       "victory": "すべての敵を倒しました！",
       "xpGained": "獲得XP: {xp}",
       "finalLevel": "最終レベル: {level}",
-      "tilesExplored": "探索されたタイル: {tiles}"
+      "tilesExplored": "探索したタイル: {tiles}"
     },
     "buttons": {
       "playAgain": "もう一度プレイ",
@@ -87,6 +91,11 @@
   "debug": {
     "title": "デバッグ情報",
     "itemsOnMap": "マップ上のアイテム",
-    "enemiesOnMap": "マップ上の敵"
+    "enemiesOnMap": "マップ上の敵",
+    "close": "閉じる"
+  },
+  "errors": {
+    "failedToStart": "ゲームの開始に失敗しました。もう一度お試しください。",
+    "failedToCreate": "ゲームの作成に失敗しました"
   }
 }

@@ -4,11 +4,15 @@
   "// Main UI": "主界面翻译",
   "title": "RogueLLM",
   "subtitle_with_author": "由 {author} 开发的 AI 驱动实验性 Roguelike 游戏",
+  "// Navigation": "与导航相关的消息",
+  "navigation": {
+    "leaveWarning": "确定要离开游戏吗？"
+  },
   "// Theme Selection": "主题选择相关翻译",
-  "selectTheme": "选择你的主题",
-  "fantasyTheme": "幻想主题",
+  "selectTheme": "选择您的主题",
+  "fantasyTheme": "奇幻主题",
   "customTheme": "自定义主题",
-  "enterGameDescription": "描述你的游戏背景。例如：'野外的程序员'",
+  "enterGameDescription": "描述您的游戏设定。例如：'程序员的荒野探险'",
   "generatorTheme": "生成器主题",
   "improveGameDescription": "通过网络搜索改进游戏描述",
   "// Game Setup": "游戏设置和配置翻译",
@@ -32,7 +36,7 @@
   "gameOver": {
     "title": "游戏结束！",
     "stats": {
-      "xpGained": "获得的经验值：{xp}",
+      "xpGained": "获得经验值：{xp}",
       "finalLevel": "最终等级：{level}",
       "tilesExplored": "探索的区域：{tiles}"
     },
@@ -45,7 +49,7 @@
     "title": "胜利！",
     "stats": {
       "victory": "你已击败所有敌人！",
-      "xpGained": "获得的经验值：{xp}",
+      "xpGained": "获得经验值：{xp}",
       "finalLevel": "最终等级：{level}",
       "tilesExplored": "探索的区域：{tiles}"
     },
@@ -66,7 +70,7 @@
     }
   },
   "player": {
-    "inventory": "物品栏",
+    "inventory": "背包",
     "equipment": {
       "weapon": "武器",
       "armor": "护甲"
@@ -82,7 +86,7 @@
   "inventory": {
     "use": "使用",
     "equip": "装备",
-    "unequip": "卸下"
+    "unequip": "卸下装备"
   },
   "debug": {
     "title": "调试信息",
@@ -91,7 +95,7 @@
     "close": "关闭"
   },
   "errors": {
-    "failedToStart": "无法开始游戏，请重试。",
-    "failedToCreate": "无法创建游戏"
+    "failedToStart": "启动游戏失败，请重试。",
+    "failedToCreate": "创建游戏失败"
   }
 }

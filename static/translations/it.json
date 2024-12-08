@@ -1,33 +1,37 @@
 {
   "// Notes": "I parametri sono indicati con {paramName}",
-  "// Translation Notes": "Localizzare in modo sensato basandosi sul fatto che si tratta di un videogioco. Ad esempio, non tradurre 'Game Over' per la versione italiana.",
+  "// Translation Notes": "Localizzare in modo sensato considerando che si tratta di un videogioco. Ad esempio, non tradurre 'Game Over' per la versione italiana.",
   "// Main UI": "Traduzioni dell'interfaccia principale",
   "title": "RogueLLM",
   "subtitle_with_author": "Un gioco roguelike sperimentale alimentato dall'IA di {author}",
+  "// Navigation": "Messaggi relativi alla navigazione",
+  "navigation": {
+    "leaveWarning": "Sei sicuro di voler uscire dal gioco?"
+  },
   "// Theme Selection": "Traduzioni relative alla selezione del tema",
   "selectTheme": "Seleziona il tuo tema",
   "fantasyTheme": "Tema Fantasy",
   "customTheme": "Tema Personalizzato",
   "enterGameDescription": "Descrivi l'ambientazione del tuo gioco. Ad esempio, 'Programmers in the wild'",
   "generatorTheme": "Tema Generatore",
-  "improveGameDescription": "Migliora la descrizione del gioco con la ricerca sul web",
-  "// Game Setup": "Traduzioni per l'impostazione e la configurazione del gioco",
+  "improveGameDescription": "Migliora la descrizione del gioco con una ricerca sul web",
+  "// Game Setup": "Traduzioni relative alla configurazione del gioco",
   "useGameId": "Usa ID Gioco",
   "customThemeDescription": "Inserisci una descrizione per il tuo tema personalizzato:",
   "generatorIdLabel": "Inserisci ID Gioco:",
-  "startGame": "Inizia Gioco",
+  "startGame": "Avvia Gioco",
   "createGame": "Crea Gioco",
-  "errorGameId": "Per favore, inserisci un ID Gioco",
+  "errorGameId": "Inserisci un ID Gioco",
   "// Game Interface": "Traduzioni dell'interfaccia di gioco",
   "menu": {
     "share": "Condividi Gioco",
-    "restart": "Ricomincia Gioco",
+    "restart": "Riavvia Gioco",
     "newGame": "Crea Nuovo Gioco",
     "debug": "Info Debug"
   },
   "notifications": {
     "gameCopied": "ID Gioco copiato negli appunti!",
-    "loading": "Caricamento..."
+    "loading": "Caricamento in corso..."
   },
   "gameOver": {
     "title": "Game Over!",
@@ -37,7 +41,7 @@
       "tilesExplored": "Caselle Esplorate: {tiles}"
     },
     "buttons": {
-      "restart": "Ricomincia",
+      "restart": "Riavvia",
       "newGame": "Nuovo Gioco"
     }
   },
@@ -82,11 +86,16 @@
   "inventory": {
     "use": "Usa",
     "equip": "Equipaggia",
-    "unequip": "Desequipaggia"
+    "unequip": "Rimuovi"
   },
   "debug": {
     "title": "Informazioni di Debug",
     "itemsOnMap": "Oggetti sulla Mappa",
-    "enemiesOnMap": "Nemici sulla Mappa"
+    "enemiesOnMap": "Nemici sulla Mappa",
+    "close": "Chiudi"
+  },
+  "errors": {
+    "failedToStart": "Impossibile avviare il gioco. Riprova.",
+    "failedToCreate": "Impossibile creare il gioco"
   }
 }

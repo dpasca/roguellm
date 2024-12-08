@@ -1,16 +1,20 @@
 {
   "// Notes": "Los parámetros se indican con {paramName}",
-  "// Translation Notes": "Localizar sensiblemente basándose en el hecho de que esto es para un videojuego. Por ejemplo, no traducir 'Game Over' para la versión italiana.",
+  "// Translation Notes": "Localizar de manera sensata teniendo en cuenta que esto es para un videojuego. Por ejemplo, no traducir 'Game Over' para la versión italiana.",
   "// Main UI": "Traducciones de la interfaz principal",
   "title": "RogueLLM",
   "subtitle_with_author": "Un juego roguelike experimental impulsado por IA por {author}",
+  "// Navigation": "Mensajes relacionados con la navegación",
+  "navigation": {
+    "leaveWarning": "¿Estás seguro de que quieres salir del juego?"
+  },
   "// Theme Selection": "Traducciones relacionadas con la selección de tema",
   "selectTheme": "Selecciona tu tema",
   "fantasyTheme": "Tema de fantasía",
   "customTheme": "Tema personalizado",
-  "enterGameDescription": "Describe el escenario de tu juego. por ejemplo, 'Programadores en la naturaleza'",
-  "generatorTheme": "Tema del generador",
-  "improveGameDescription": "Mejorar la descripción del juego con búsqueda web",
+  "enterGameDescription": "Describe el escenario de tu juego. Por ejemplo, 'Programadores en la naturaleza'",
+  "generatorTheme": "Tema generador",
+  "improveGameDescription": "Mejorar la descripción del juego con búsqueda en la web",
   "// Game Setup": "Traducciones de configuración y preparación del juego",
   "useGameId": "Usar ID del juego",
   "customThemeDescription": "Introduce una descripción para tu tema personalizado:",
@@ -87,6 +91,11 @@
   "debug": {
     "title": "Información de depuración",
     "itemsOnMap": "Objetos en el mapa",
-    "enemiesOnMap": "Enemigos en el mapa"
+    "enemiesOnMap": "Enemigos en el mapa",
+    "close": "Cerrar"
+  },
+  "errors": {
+    "failedToStart": "No se pudo iniciar el juego. Por favor, inténtalo de nuevo.",
+    "failedToCreate": "No se pudo crear el juego"
   }
 }

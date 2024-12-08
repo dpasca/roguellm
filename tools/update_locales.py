@@ -28,7 +28,7 @@ def clean_json_response(response: str) -> str:
 def generate_translation(
     translations: Dict,
     target_lang: str,
-    model: Literal["gpt", "claude"] = "claude") -> Dict:
+    model: Literal["gpt", "claude"]) -> Dict:
 
     client = OpenAI()
 
@@ -44,6 +44,7 @@ Content to translate:
 
     try:
         model_name = "claude-3-5-sonnet-latest" if model == "claude" else "chatgpt-4o-latest"
+        logger.info(f"Using model: {model_name} for translation")
         response = client.chat.completions.create(
             model=model_name,
             messages=[
@@ -74,7 +75,14 @@ def main():
     parser = argparse.ArgumentParser(description='Generate translations for multiple languages')
     parser.add_argument('base_path', help='Base path where en.json is located')
     parser.add_argument('target_langs', help='Comma-separated list of target languages (e.g., it,ja)')
-    parser.add_argument('--model', choices=['gpt', 'claude'], default='gpt', help='Model to use for translation (default: claude)')
+
+    default = "gpt"
+    parser.add_argument(
+        '--model',
+        choices=['gpt', 'claude'],
+        default=default,
+        help=f'Model to use for translation (default: {default})')
+
     args = parser.parse_args()
 
     # Load environment variables
