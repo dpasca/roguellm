@@ -97,6 +97,7 @@ const app = Vue.createApp({
             isGameInitialized: false,
             isLoading: true,
             isMoveInProgress: false,
+            preventNavigation: true,
             gameState: {
                 player: {
                     name: 'Player',
@@ -153,8 +154,35 @@ const app = Vue.createApp({
         }
     },
     methods: {
+        setupNavigationPrevention() {
+            // Handle beforeunload event
+            window.addEventListener('beforeunload', (e) => {
+                if (this.preventNavigation && !this.gameState.game_over) {
+                    e.preventDefault();
+                    e.returnValue = 'Are you sure you want to leave the game?';
+                    return e.returnValue;
+                }
+            });
+
+            // Handle popstate event for mobile back gesture and browser back button
+            window.addEventListener('popstate', (e) => {
+                if (this.preventNavigation && !this.gameState.game_over) {
+                    e.preventDefault();
+                    // Push two states to ensure back button works consistently
+                    history.pushState(null, '', window.location.href);
+                    history.pushState(null, '', window.location.href);
+                    return false;
+                }
+            });
+
+            // Add initial history entries
+            history.pushState(null, '', window.location.href);
+            history.pushState(null, '', window.location.href);
+        },
         async initializeGame(generatorId) {
             try {
+                this.setupNavigationPrevention();
+                
                 const response = await fetch('/api/create_game', {
                     method: 'POST',
                     headers: {
@@ -591,6 +619,11 @@ const app = Vue.createApp({
                 });
                 // Hide loading when game is initialized
                 hideLoading();
+            }
+        },
+        'gameState.game_over'(newValue) {
+            if (newValue === true) {
+                this.preventNavigation = false;
             }
         }
     }
