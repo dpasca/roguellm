@@ -57,3 +57,37 @@ See `game_config.json` and `game_items.json` for more details.
 ```bash
 python tools/generate_icons.py square_icon.png wide-promotional-image.png
 ```
+
+## Firebase Analytics Integration (Optional)
+
+The game includes optional Firebase Analytics integration to track basic usage statistics. This is completely optional and the game works perfectly without it.
+
+### Setup
+
+1. Create a project in [Firebase Console](https://console.firebase.google.com/)
+2. Add a web app to your project
+3. Get your Firebase configuration from the project settings
+4. Add the following variables to your `.env.prod` (and `.env.dev` if needed):
+
+```env
+# Firebase Configuration (Optional)
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
+```
+
+### What's Being Tracked
+
+When Firebase Analytics is configured, the following events are tracked:
+- Page views (landing and game pages)
+- Game start events with selected theme and language
+- Combat events
+- Game completion events with basic stats
+
+### Development
+
+Firebase Analytics doesn't track events from localhost by default, but debug mode is automatically enabled in development environments. Check your browser's console to see if events are being tracked correctly.

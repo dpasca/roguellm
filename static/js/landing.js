@@ -143,6 +143,15 @@ const app = Vue.createApp({
                 return;
             }
 
+            // Track game launch
+            if (window.analytics) {
+                analytics.logEvent('game_started', {
+                    theme: this.selectedTheme,
+                    language: this.selectedLanguage,
+                    do_web_search: this.doWebSearch
+                });
+            }
+
             try {
                 const response = await fetch('/api/create_game', {
                     method: 'POST',
@@ -245,6 +254,15 @@ const app = Vue.createApp({
         if (generatorId) {
             this.selectedTheme = 'generator';
             this.generatorId = generatorId;
+        }
+
+        // Track page view
+        if (window.analytics) {
+            analytics.logEvent('page_view', {
+                page_title: 'Landing Page',
+                page_location: window.location.href,
+                page_path: window.location.pathname
+            });
         }
     }
 });

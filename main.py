@@ -90,6 +90,17 @@ async def read_landing(request: Request):
         # Create new session
         request.session["game_session"] = str(uuid.uuid4())
 
+        # Get Firebase configuration from environment variables
+        firebase_config = {
+            "apiKey": os.getenv("FIREBASE_API_KEY"),
+            "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
+            "projectId": os.getenv("FIREBASE_PROJECT_ID"),
+            "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
+            "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
+            "appId": os.getenv("FIREBASE_APP_ID"),
+            "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+        }
+
         # Check if there's a generator ID in the query params
         generator_id = request.query_params.get("generator")
         if generator_id:
@@ -109,6 +120,13 @@ async def read_landing(request: Request):
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
+        
+        # Replace Firebase configuration placeholder
+        html_content = html_content.replace(
+            "{{ firebase_config | safe }}", 
+            json.dumps(firebase_config)
+        )
+        
         return HTMLResponse(content=html_content)
     except Exception as e:
         logging.error(f"Error reading landing page: {e}")

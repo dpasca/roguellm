@@ -18,6 +18,26 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>
+    <script>
+        // Firebase configuration is provided by the server
+        const firebaseConfig = JSON.parse('{{ firebase_config | safe }}');
+
+        // Only initialize Firebase if configuration is complete
+        if (firebaseConfig.apiKey) {
+            firebase.initializeApp(firebaseConfig);
+            const analytics = firebase.analytics();
+
+            // Enable analytics debug mode in development
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                window.localStorage.setItem('debug', '*');
+                analytics.setAnalyticsCollectionEnabled(true);
+                console.log('Firebase Analytics debug mode enabled');
+            }
+        }
+    </script>
     <style>
         [v-cloak] {
             display: none;

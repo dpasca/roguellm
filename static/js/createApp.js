@@ -513,6 +513,23 @@ const app = Vue.createApp({
                 if (response.explored_tiles !== undefined) {
                     this.gameState.explored_tiles = response.explored_tiles;
                 }
+
+                // Track game state changes
+                if (window.analytics) {
+                    // Track when game is over
+                    if (response.state.game_over) {
+                        analytics.logEvent('game_over', {
+                            title: this.gameTitle,
+                            explored_tiles: this.gameState.explored_tiles
+                        });
+                    }
+                    // Track combat events
+                    if (response.state.in_combat && !this.gameState.in_combat) {
+                        analytics.logEvent('combat_started', {
+                            enemy: response.state.current_enemy?.name
+                        });
+                    }
+                }
             }
             // ...rest of the method
         }
@@ -520,6 +537,15 @@ const app = Vue.createApp({
     mounted() {
         // Show loading screen
         showLoading();
+
+        // Track game page view
+        if (window.analytics) {
+            analytics.logEvent('game_page_view', {
+                page_title: this.gameTitle,
+                page_location: window.location.href,
+                page_path: window.location.pathname
+            });
+        }
 
         // Rest of mounted logic
         const urlParams = new URLSearchParams(window.location.search);
