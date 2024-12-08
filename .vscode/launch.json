@@ -13,7 +13,10 @@
                 "main:app",
                 "--reload"
             ],
-            "jinja": true
+            "jinja": true,
+            "env": {
+                "ENVIRONMENT": "development"
+            }
         }
     ]
 }
