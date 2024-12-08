@@ -27,19 +27,71 @@
     width: 100%;
     padding: 12px 16px;
     margin: 8px 0;
-    background-color: #2a2a2a;
-    border: 1px solid #444;
-    color: white;
+    border: none;
     text-align: left;
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.2s ease;
 }
 
-.popup-menu button:hover {
-    background-color: #333;
+/* Style for the restart button */
+.popup-menu button:nth-child(2) {  /* Restart game button */
+    background-color: #4CAF50;  /* Green */
+    color: black;
+}
+
+.popup-menu button:nth-child(2):hover {
+    background-color: #45a049;
+}
+
+.popup-menu button:nth-child(2) .popup-menu-item-icon {
+    color: black;
+}
+
+/* Style for the new game button */
+.popup-menu button:nth-child(3) {  /* New game button */
+    background-color: #FF9800;  /* Orange */
+    color: black;
+}
+
+.popup-menu button:nth-child(3):hover {
+    background-color: #F57C00;
+}
+
+.popup-menu button:nth-child(3) .popup-menu-item-icon {
+    color: black;
+}
+
+/* Style for the share button */
+.popup-menu button:nth-child(1) {  /* Share game button */
+    background-color: #64B5F6;  /* Light blue */
+    border: none;
+    color: black;
+}
+
+.popup-menu button:nth-child(1):hover {
+    background-color: #42A5F5;
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.popup-menu button:nth-child(1) .popup-menu-item-icon {
+    color: black;
+}
+
+/* Style for the debug button */
+.popup-menu button:nth-child(4) {  /* Debug button */
+    background-color: #E0E0E0;  /* Light gray */
+    border: none;
+    color: black;
+}
+
+.popup-menu button:nth-child(4):hover {
+    background-color: #BDBDBD;
+    transform: translateY(-1px);
+}
+
+.popup-menu button:nth-child(4) .popup-menu-item-icon {
+    color: black;
 }
 
 .popup-menu-item-icon {
@@ -47,7 +99,6 @@
     width: 20px;
     display: inline-block;
     text-align: center;
-    color: #888;
 }
 
 .header-bar {
