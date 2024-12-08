@@ -53,7 +53,7 @@
 /* Combat Headers */
 .player-header, .enemy-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 15px;
     position: relative;
@@ -65,7 +65,7 @@
     color: #4CAF50;
     font-size: 1.4em;
     font-weight: 600;
-    flex: 1;
+    margin-right: 10px;
 }
 
 .enemy-header h3 {
@@ -75,7 +75,6 @@
 .player-header i, .enemy-header i {
     font-size: 1.4em;
     color: #4CAF50;
-    margin-left: 10px;
     display: block;
 }
 
