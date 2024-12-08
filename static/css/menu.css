@@ -131,3 +131,23 @@
     opacity: 1;
     pointer-events: auto;
 }
+
+.menu-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #333;
+    text-align: center;
+    font-size: 0.9em;
+    color: #888;
+}
+
+.menu-footer a {
+    color: #4CAF50;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.menu-footer a:hover {
+    color: #45a049;
+    text-decoration: underline;
+}
