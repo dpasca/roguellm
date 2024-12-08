@@ -1,0 +1,43 @@
+/* Game dialog styles */
+.buttons-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.restart-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.restart-button:hover {
+    background-color: #45a049;
+}
+
+.new-game-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.new-game-button:hover {
+    background-color: #1976D2;
+}
+
+.buttons-container button i {
+    margin-right: 8px;
+}

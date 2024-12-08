@@ -16,8 +16,9 @@
     <link rel="stylesheet" href="static/css/game_controls.css">
     <link rel="stylesheet" href="static/css/notifications.css">
     <link rel="stylesheet" href="static/css/generator.css">
+    <link rel="stylesheet" href="static/css/game_dialog.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="static/css/popup.css">
+    <link rel="stylesheet" href="static/css/menu.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -101,7 +102,7 @@
                     <button @click="restartGame">
                         <i class="fas fa-redo fa-fw popup-menu-item-icon"></i>{{ $t('menu.restart') }}
                     </button>
-                    <button @click="newGame">
+                    <button @click="newGame(true)" target="_blank">
                         <i class="fas fa-plus fa-fw popup-menu-item-icon"></i>{{ $t('menu.newGame') }}
                     </button>
                     <!-- Debug button - only visible during development -->
@@ -138,7 +139,7 @@
                         <i class="fas fa-redo"></i>
                         {{ $t('gameOver.buttons.restart') }}
                     </button>
-                    <button @click="newGame" class="new-game-button">
+                    <button @click="newGame(true)" class="new-game-button">
                         <i class="fas fa-plus"></i>
                         {{ $t('gameOver.buttons.newGame') }}
                     </button>
@@ -171,7 +172,7 @@
                         <i class="fas fa-redo"></i>
                         {{ $t('gameWin.buttons.playAgain') }}
                     </button>
-                    <button @click="newGame" class="new-game-button">
+                    <button @click="newGame(true)" class="new-game-button">
                         <i class="fas fa-plus"></i>
                         {{ $t('gameWin.buttons.newGame') }}
                     </button>

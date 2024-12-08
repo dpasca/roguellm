@@ -466,7 +466,7 @@ const app = Vue.createApp({
                 }));
             }
         },
-        newGame() {
+        newGame(openInNewTab = false) {
             // Send a POST request to the server to clear the session
             fetch('/logout', {
                 method: 'POST',
@@ -475,14 +475,18 @@ const app = Vue.createApp({
             .then(response => {
                 if (response.redirected) {
                     // Redirect to the landing page
-                    window.location.href = response.url;
+                    if (openInNewTab) {
+                        window.open(response.url, '_blank');
+                    } else {
+                        window.location.href = response.url;
+                    }
                 } else {
                     // Handle error if logout was not successful
                     console.error('Failed to start a new game.');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Error starting new game:', error);
             });
         },
         handleWindowResize() {
