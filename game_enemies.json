@@ -7,7 +7,8 @@
         "hp": {"min": 30, "max": 50},
         "attack": {"min": 8, "max": 12},
         "defense": {"min": 2, "max": 4},
-        "xp": 10
+        "xp": 10,
+        "weapons": ["Rusty Dagger", "Club"]
     },
     {
         "enemy_id": "skeleton",
@@ -16,7 +17,8 @@
         "hp": {"min": 40, "max": 60},
         "attack": {"min": 10, "max": 15},
         "defense": {"min": 3, "max": 5},
-        "xp": 15
+        "xp": 15,
+        "weapons": ["Bone Sword", "Ancient Bow"]
     },
     {
         "enemy_id": "orc",
@@ -25,7 +27,8 @@
         "hp": {"min": 50, "max": 70},
         "attack": {"min": 12, "max": 18},
         "defense": {"min": 4, "max": 6},
-        "xp": 20
+        "xp": 20,
+        "weapons": ["Battle Axe", "Spiked Club"]
     },
     {
         "enemy_id": "dark_elf",
@@ -34,7 +37,8 @@
         "hp": {"min": 45, "max": 65},
         "attack": {"min": 15, "max": 20},
         "defense": {"min": 3, "max": 5},
-        "xp": 25
+        "xp": 25,
+        "weapons": ["Short Sword", "Shortbow"]
     },
     {
         "enemy_id": "troll",
@@ -43,7 +47,8 @@
         "hp": {"min": 70, "max": 90},
         "attack": {"min": 15, "max": 25},
         "defense": {"min": 5, "max": 8},
-        "xp": 35
+        "xp": 35,
+        "weapons": ["Giant Club", "Rock"]
     }
     ]
 }

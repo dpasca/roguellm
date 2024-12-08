@@ -25,7 +25,8 @@ class CombatManager:
             hp=hp,
             max_hp=hp,
             attack=attack,
-            defense=defense
+            defense=defense,
+            weapons=enemy_def.get('weapons', [])  # Add default empty list if weapons not present
         )
         enemy._xp_reward = enemy_def.get('xp', 10)
         enemy._hp_reward = int(enemy._xp_reward * 1.0)

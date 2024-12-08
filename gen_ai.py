@@ -190,6 +190,8 @@ A universe where you can become the master of the universe by defeating other ma
             enemy = gstate.current_enemy
             enemy_health_pct = int(enemy.hp / enemy.max_hp * 100.0)
             context.append(f"In combat with {enemy.name} (HP {enemy_health_pct}%)")
+            if enemy.weapons:
+                context.append(f"Enemy is armed with: {', '.join(enemy.weapons)}")
 
         # Add recent events (limited to prevent context exploitation)
         formatted_events = self._make_formatted_events(event_history)

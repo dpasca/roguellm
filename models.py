@@ -8,6 +8,7 @@ class Enemy(BaseModel):
     max_hp: int
     attack: int
     font_awesome_icon: str
+    weapons: List[str]
 
 class Item(BaseModel):
     id: str
