@@ -43,7 +43,9 @@ class CreateGameRequest(BaseModel):
 app = FastAPI()
 
 # Load the appropriate .env file
-load_dotenv(".env.dev" if os.getenv("ENVIRONMENT") == "development" else ".env.prod")
+env_fname = ".env.dev" if os.getenv("ENVIRONMENT") == "development" else ".env.prod"
+logging.info(f"Loading environment variables from {env_fname}")
+load_dotenv(env_fname)
 
 # Session middleware
 app.add_middleware(
@@ -120,13 +122,13 @@ async def read_landing(request: Request):
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
-        
+
         # Replace Firebase configuration placeholder
         html_content = html_content.replace(
-            "{{ firebase_config | safe }}", 
+            "{{ firebase_config | safe }}",
             json.dumps(firebase_config)
         )
-        
+
         return HTMLResponse(content=html_content)
     except Exception as e:
         logging.error(f"Error reading landing page: {e}")

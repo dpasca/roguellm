@@ -25,10 +25,10 @@ MODEL_QUALITY_FOR_MAP = "low"
 # GenAI
 #==================================================================
 class GenAIModel:
-    def __init__(self, base_url = None, api_key = None, model_name = None):
+    def __init__(self, model_name=None, base_url=None, api_key=None):
+        self.model_name = model_name
         self.base_url = base_url
         self.api_key = api_key
-        self.model_name = model_name
 
         self.client = AsyncOpenAI(
             api_key=self.api_key,

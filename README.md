@@ -46,6 +46,19 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+## Model Configuration
+RogueLLM uses `gpt-4o-mini` by default, but supports any OpenAI-compatible model. Model settings can be configured in the `.env` file. For example:
+
+```env
+# Model configuration (optional)
+LOW_SPEC_MODEL_NAME=gemini-1.5-flash-latest
+HIGH_SPEC_MODEL_NAME=gemini-1.5-flash-latest
+LOW_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
+HIGH_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
+LOW_SPEC_MODEL_API_KEY=...
+HIGH_SPEC_MODEL_API_KEY=...
+```
+
 ## Running the Game
 1. Launch with `./run.sh` for MacOS/Linux or `run.bat` for Windows.
 2. Open browser and navigate to `http://127.0.0.1:8000/`.

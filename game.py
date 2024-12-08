@@ -1,6 +1,7 @@
 import json
 import random
 import time
+import os
 from functools import wraps
 
 import logging
@@ -27,11 +28,6 @@ TEST_DUMMY_EQUIP_AND_ITEMS = False
 # Use random map (for testing)
 USE_RANDOM_MAP = False
 
-# Model definitions
-#_lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
-_lo_model = GenAIModel(model_name="gpt-4o-mini")
-_hi_model = GenAIModel(model_name="gpt-4o")
-
 class Game:
     def __init__(
             self,
@@ -50,8 +46,21 @@ class Game:
         self.language = language
         self.last_described_ct = None  # Add this line to track previous cell type
 
+        # Model definitions
+        #lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
+        lo_model = GenAIModel(
+            model_name=os.getenv("LOW_SPEC_MODEL_NAME", "gpt-4o-mini"),
+            base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
+            api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
+        )
+        hi_model = GenAIModel(
+            model_name=os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4o-mini"),
+            base_url=os.getenv("HIGH_SPEC_MODEL_BASE_URL"),
+            api_key=os.getenv("HIGH_SPEC_MODEL_API_KEY"),
+        )
+
         # GenAI instance, with low and high spec models
-        self.gen_ai = GenAI(lo_model=_lo_model, hi_model=_hi_model)
+        self.gen_ai = GenAI(lo_model=lo_model, hi_model=hi_model)
 
         # Initialize the definitions manager
         self.definitions = GameDefinitionsManager(self.gen_ai, language)

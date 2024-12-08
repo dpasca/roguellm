@@ -39,6 +39,7 @@ Generate web search query to research on the following subject:
 
 # Response Format
 Return ONLY the query, no additional text or explanations.
+Do NOT wrap the query in quotes.
 The language of the response must be: {language}
 """
     logger.info(f"Requesting web search query: {user_msg}")
