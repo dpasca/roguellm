@@ -170,6 +170,8 @@ You are an expert game level designer. Your task is to strategically place both
 enemies and items on a game map.
 Randomly choose which enemy and item types to include, so that the game does not
 show all enemies or all items available in the game all at once in this level.
+Place a minimum of 6 enemies. It's ok to place more than one of the same enemy
+type.
 Place some items near the enemies, so that the player has a better chance of
 surviving the battle.
 
