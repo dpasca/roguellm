@@ -48,8 +48,8 @@ class GenAIModel:
         self.client = AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
-            max_retries=0,  # Disable automatic retries
-            timeout=timeout
+            #max_retries=0,  # Disable automatic retries
+            #timeout=timeout
         )
 
 # GenAI
