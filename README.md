@@ -51,8 +51,8 @@ RogueLLM uses `gpt-4o-mini` by default, but supports any OpenAI-compatible model
 
 ```env
 # Model configuration (optional)
-LOW_SPEC_MODEL_NAME=gemini-1.5-flash-latest
-HIGH_SPEC_MODEL_NAME=gemini-1.5-flash-latest
+LOW_SPEC_MODEL_NAME=gemini-2.0-flash-exp
+HIGH_SPEC_MODEL_NAME=gemini-2.0-flash-exp
 LOW_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
 HIGH_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
 LOW_SPEC_MODEL_API_KEY=...
