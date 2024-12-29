@@ -74,17 +74,6 @@ async def startup_event():
     # Initialize database
     db.init_db()
 
-# Helper function to create a game instance
-def create_game_instance(seed: int, theme_desc: str, language: str, do_web_search: bool, generator_id: Optional[str] = None) -> Game:
-    game_instance = Game(
-        seed=seed,
-        theme_desc=theme_desc,
-        do_web_search=do_web_search,
-        language=language,
-        generator_id=generator_id
-    )
-    return game_instance
-
 # Landing page
 @app.get("/")
 async def read_landing(request: Request):
