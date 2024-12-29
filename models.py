@@ -46,6 +46,7 @@ class GameState(BaseModel):
     game_won: bool = False  # Add new state flag for win condition
     temporary_effects: Dict[str, Dict[str, Union[int, int]]] = {}
     game_title: str = "Unknown Game"
+    model_name: str = "Unknown Model"
 
     @classmethod
     def from_config(cls, config):

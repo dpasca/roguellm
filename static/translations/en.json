@@ -34,7 +34,8 @@
         "share": "Share Game",
         "restart": "Restart Game",
         "newGame": "Create New Game",
-        "debug": "Debug Info"
+        "debug": "Debug Info",
+        "modelInfo": "AI Model: {model}"
     },
     "notifications": {
         "gameCopied": "Game ID copied to clipboard!",

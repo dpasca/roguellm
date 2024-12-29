@@ -38,10 +38,10 @@ class GenAIModel:
 
         # Custom timeout and retry settings for non-OpenAI models
         timeout = Timeout(
-            connect=2.0,  # How long to wait for a connection
-            read=10.0,    # How long to wait for data
-            write=2.0,    # How long to wait to send data
-            pool=2.0,     # How long to wait for a connection from the pool
+            connect=5.0,    # How long to wait for a connection
+            read=15.0,      # How long to wait for data
+            write=5.0,      # How long to wait to send data
+            pool=5.0,       # How long to wait for a connection from the pool
         )
 
         # Disable built-in retries since we handle them at a higher level
@@ -465,7 +465,7 @@ Each placement should indicate whether it's an enemy or an item.
                     ],
                     temperature=DEF_TEMP,
                 )
-            
+
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
             logger.info(f"Generated description: {result}")
@@ -501,7 +501,7 @@ Each placement should indicate whether it's an enemy or an item.
                     ],
                     temperature=DEF_TEMP
                 )
-            
+
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
             logger.info(f"Generated description: {result}")

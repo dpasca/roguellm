@@ -4,6 +4,8 @@ import asyncio
 from openai import RateLimitError
 import random
 import logging
+import httpx
+import httpx
 logger = logging.getLogger()
 
 # Mapping of locale codes to full language names
@@ -46,7 +48,7 @@ def extract_clean_data(data_str: str) -> str:
     return data_str.strip()
 
 async def with_exponential_backoff(func, max_retries=5, base_delay=2):
-    """Execute a function with exponential backoff retry logic for rate limits.
+    """Execute a function with exponential backoff retry logic for rate limits and timeouts.
     
     Args:
         func: Async function to execute
@@ -63,7 +65,7 @@ async def with_exponential_backoff(func, max_retries=5, base_delay=2):
     for attempt in range(max_retries):
         try:
             return await func()
-        except RateLimitError as e:
+        except (RateLimitError, httpx.ReadTimeout) as e:
             if attempt == max_retries - 1:
                 raise  # Re-raise the exception if we've exhausted all retries
             
@@ -72,8 +74,9 @@ async def with_exponential_backoff(func, max_retries=5, base_delay=2):
             jitter = delay * 0.5 * random.random()  # Up to 50% additional delay
             total_delay = delay + jitter
             
+            error_type = "rate limit" if isinstance(e, RateLimitError) else "timeout"
             logger.warning(
-                f"Rate limit hit, retrying in {total_delay:.1f} seconds... "
+                f"API {error_type} error, retrying in {total_delay:.1f} seconds... "
                 f"(attempt {attempt + 1}/{max_retries})"
             )
             await asyncio.sleep(total_delay)
