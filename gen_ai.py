@@ -4,22 +4,28 @@ from typing import List
 from models import GameState
 import json
 import pprint
+from openai._types import NOT_GIVEN, NotGiven
+from openai._client import Timeout, Transport
+from openai._base_client import DEFAULT_MAX_RETRIES
 
 from gen_ai_prompts import *
-from gen_ai_utils import extract_clean_data, make_query_and_web_search
+from gen_ai_utils import extract_clean_data, make_query_and_web_search, get_language_name, with_exponential_backoff
 
 import logging
 logger = logging.getLogger()
 
-# Default temperature for completions
+# Constants
+DO_BYPASS_WORLD_GEN = False
 DEF_TEMP = 0.7
 
-# Do bypass world generation (for testing)
-DO_BYPASS_WORLD_GEN = False
+# Model quality levels
+MODEL_QUALITY_LOW = "low"
+MODEL_QUALITY_HIGH = "high"
 
-MODEL_QUALITY_FOR_JSON = "low"
-MODEL_QUALITY_FOR_THEME_DESC = "low"
-MODEL_QUALITY_FOR_MAP = "low"
+# Model quality settings for different tasks
+MODEL_QUALITY_FOR_JSON = MODEL_QUALITY_LOW
+MODEL_QUALITY_FOR_THEME_DESC = MODEL_QUALITY_LOW
+MODEL_QUALITY_FOR_MAP = MODEL_QUALITY_LOW
 
 #==================================================================
 # GenAI
@@ -30,9 +36,20 @@ class GenAIModel:
         self.base_url = base_url
         self.api_key = api_key
 
+        # Custom timeout and retry settings for non-OpenAI models
+        timeout = Timeout(
+            connect=2.0,  # How long to wait for a connection
+            read=10.0,    # How long to wait for data
+            write=2.0,    # How long to wait to send data
+            pool=2.0,     # How long to wait for a connection from the pool
+        )
+
+        # Disable built-in retries since we handle them at a higher level
         self.client = AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
+            max_retries=0,  # Disable automatic retries
+            timeout=timeout
         )
 
 # GenAI
@@ -62,17 +79,30 @@ class GenAI:
             user_msg: str,
             quality: str,
             temp: float = DEF_TEMP
-    ) -> str:
-        use_model = self.lo_model if quality == "low" else self.hi_model
-        response = await use_model.client.chat.completions.create(
-            model=use_model.model_name,
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg}
-            ],
-            temperature=temp,  # Add some variability but keep it coherent
-        )
-        return response.choices[0].message.content
+    ):
+        use_model = self.hi_model if quality == MODEL_QUALITY_HIGH else self.lo_model
+        logger.info(f"Requesting completion with model {use_model.model_name}")
+        logger.info(f"System message: {system_msg}")
+        logger.info(f"User message: {user_msg}")
+
+        try:
+            async def get_completion():
+                return await use_model.client.chat.completions.create(
+                    model=use_model.model_name,
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg}
+                    ],
+                    temperature=temp
+                )
+
+            response = await with_exponential_backoff(get_completion)
+            result = response.choices[0].message.content
+            logger.info(f"Obtained completion: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"Error in _quick_completion: {e}")
+            raise  # Re-raise the exception to let the caller handle it
 
     # Validate any font-awesome icons in the data structure.
     def _validate_icons(self, data: dict, context: str = "default") -> dict:
@@ -109,7 +139,7 @@ class GenAI:
 Generic Game (TEST)
 A universe where you can become the master of the universe by defeating other masters.
 - Locations: dungeon, castle, village, forest, mountain, desert, space station, alien planet
-- The language of the response must be {self.language}
+- The language of the response must be: {get_language_name(self.language)}
 """
         else:
             research_result = ""
@@ -127,10 +157,11 @@ A universe where you can become the master of the universe by defeating other ma
             self.theme_desc_better = await self._quick_completion(
                 system_msg=(
                     SYS_BETTER_DESC_PROMPT_MSG +
-                    f"\n- The language of the response must be {self.language}"),
+                    f"\n- The language of the response must be: {get_language_name(self.language)}"
+                ),
                 user_msg=self.theme_desc,
                 quality=MODEL_QUALITY_FOR_THEME_DESC
-        )
+            )
         logger.info(f"Theme description 'better': {self.theme_desc_better}")
 
     @staticmethod
@@ -419,23 +450,29 @@ Each placement should indicate whether it's an enemy or an item.
         logger.info(f"gen_adapt_sentence: User message: {user_msg}")
 
         try:
-            response = await self.lo_model.client.chat.completions.create(
-                model=self.lo_model.model_name,
-                messages=[
-                    {"role": "system", "content":
-                        append_language_and_desc_to_prompt(
-                            ADAPT_SENTENCE_SYSTEM_MSG,
-                            self.language,
-                            self.theme_desc_better
-                      )
-                    },
-                    {"role": "user", "content": user_msg}
-                ],
-                temperature=DEF_TEMP,
-            )
-            return response.choices[0].message.content
+            async def get_completion():
+                return await self.lo_model.client.chat.completions.create(
+                    model=self.lo_model.model_name,
+                    messages=[
+                        {"role": "system", "content":
+                            append_language_and_desc_to_prompt(
+                                ADAPT_SENTENCE_SYSTEM_MSG,
+                                self.language,
+                                self.theme_desc_better
+                          )
+                        },
+                        {"role": "user", "content": user_msg}
+                    ],
+                    temperature=DEF_TEMP,
+                )
+            
+            response = await with_exponential_backoff(get_completion)
+            result = response.choices[0].message.content
+            logger.info(f"Generated description: {result}")
+            return result
+
         except Exception as e:
-            logger.error(f"Error generating room description: {e}")
+            logger.error(f"Error generating description: {e}")
             return original_sentence
 
     # Generate a room description based on game state and history.
@@ -446,25 +483,30 @@ Each placement should indicate whether it's an enemy or an item.
 # Current Game Context
 {context}
 """
-
         logger.info(f"gen_room_description: User message: {user_msg}")
 
         try:
-            response = await self.lo_model.client.chat.completions.create(
-                model=self.lo_model.model_name,
-                messages=[
-                    {"role": "system", "content":
-                      append_language_and_desc_to_prompt(
-                          ROOM_DESC_SYSTEM_MSG,
-                          self.language,
-                          self.theme_desc_better
-                      )
-                    },
-                    {"role": "user", "content": user_msg}
-                ],
-                temperature=DEF_TEMP,
-            )
-            return response.choices[0].message.content
+            async def get_completion():
+                return await self.lo_model.client.chat.completions.create(
+                    model=self.lo_model.model_name,
+                    messages=[
+                        {"role": "system", "content":
+                            append_language_and_desc_to_prompt(
+                                ROOM_DESC_SYSTEM_MSG,
+                                self.language,
+                                self.theme_desc_better
+                            )
+                        },
+                        {"role": "user", "content": user_msg}
+                    ],
+                    temperature=DEF_TEMP
+                )
+            
+            response = await with_exponential_backoff(get_completion)
+            result = response.choices[0].message.content
+            logger.info(f"Generated description: {result}")
+            return result
+
         except Exception as e:
             logger.error(f"Error generating room description: {e}")
             return "You enter a mysterious location. [FALLBACK]"

@@ -212,11 +212,13 @@ DUMMY_PLACEMENTS = """[
   {"entity_id": "dark_elf", "type": "enemy", "x": 8, "y": 4}
 ]"""
 
+from gen_ai_utils import get_language_name
+
 # Given a prompt, append the language requirement and theme description
 def append_language_and_desc_to_prompt(prompt: str, language: str, desc: str) -> str:
     return f"""{prompt}
 
-The language of the response must be {language}
+The language of the response must be: {get_language_name(language)}
 
 # Game Theme Description
 {desc}
@@ -229,5 +231,3 @@ def append_desc_to_prompt(prompt: str, desc: str) -> str:
 # Game Theme Description
 {desc}
 """
-
-
