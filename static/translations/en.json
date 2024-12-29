@@ -6,7 +6,7 @@
 
     "// Main UI": "Main interface translations",
     "title": "RogueLLM",
-    "subtitle_with_author": "An experimental roguelike game powered by AI by {author}",
+    "subtitle_with_author": "An experimental AI-driven roguelike game by {author}",
 
     "// Navigation": "Navigation related messages",
     "navigation": {

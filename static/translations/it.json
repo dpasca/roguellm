@@ -3,7 +3,7 @@
   "// Translation Notes": "Localizzare in modo sensato considerando che si tratta di un videogioco. Ad esempio, non tradurre 'Game Over' per la versione italiana.",
   "// Main UI": "Traduzioni dell'interfaccia principale",
   "title": "RogueLLM",
-  "subtitle_with_author": "Un gioco roguelike sperimentale alimentato dall'IA di {author}",
+  "subtitle_with_author": "Un gioco AI roguelike sperimentale di {author}",
   "// Navigation": "Messaggi relativi alla navigazione",
   "navigation": {
     "leaveWarning": "Sei sicuro di voler uscire dal gioco?"
