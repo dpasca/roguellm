@@ -42,10 +42,9 @@ class CreateGameRequest(BaseModel):
 #==================================================================
 app = FastAPI()
 
-# Load the appropriate .env file
-env_fname = ".env.dev" if os.getenv("ENVIRONMENT") == "development" else ".env.prod"
-logging.info(f"Loading environment variables from {env_fname}")
-load_dotenv(env_fname)
+# Load environment variables
+logging.info("Loading environment variables from .env")
+load_dotenv()
 
 # Session middleware
 app.add_middleware(

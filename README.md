@@ -80,7 +80,7 @@ The game includes optional Firebase Analytics integration to track basic usage s
 1. Create a project in [Firebase Console](https://console.firebase.google.com/)
 2. Add a web app to your project
 3. Get your Firebase configuration from the project settings
-4. Add the following variables to your `.env.prod` (and `.env.dev` if needed):
+4. Add the following variables to your `.env`:
 
 ```env
 # Firebase Configuration (Optional)
