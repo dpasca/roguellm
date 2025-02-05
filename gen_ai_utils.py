@@ -5,7 +5,7 @@ from openai import RateLimitError
 import random
 import logging
 import httpx
-import httpx
+import os
 logger = logging.getLogger()
 
 # Mapping of locale codes to full language names
@@ -68,19 +68,19 @@ async def with_exponential_backoff(func, max_retries=5, base_delay=2):
         except (RateLimitError, httpx.ReadTimeout) as e:
             if attempt == max_retries - 1:
                 raise  # Re-raise the exception if we've exhausted all retries
-            
+
             # Calculate delay with jitter (±25% randomness)
             delay = base_delay * (2 ** attempt)
             jitter = delay * 0.5 * random.random()  # Up to 50% additional delay
             total_delay = delay + jitter
-            
+
             error_type = "rate limit" if isinstance(e, RateLimitError) else "timeout"
             logger.warning(
                 f"API {error_type} error, retrying in {total_delay:.1f} seconds... "
                 f"(attempt {attempt + 1}/{max_retries})"
             )
             await asyncio.sleep(total_delay)
-    
+
     raise Exception(f"Failed after {max_retries} retries")
 
 # Given a theme description, generate a web search query and return the results
@@ -101,7 +101,7 @@ Do NOT wrap the query in quotes.
 The language of the response must be: {get_language_name(language)}
 """
     logger.info(f"Requesting web search query: {user_msg}")
-    
+
     async def get_completion():
         return await oai_client.chat.completions.create(
             model=model_name,
@@ -111,10 +111,11 @@ The language of the response must be: {get_language_name(language)}
             ],
             temperature=0.7
         )
-    
+
     response = await with_exponential_backoff(get_completion)
     query = response.choices[0].message.content
     logger.info(f"Obtained web search query: {query}")
-    query_result = web_search(query)
-    logger.info(f"Web search results: {query_result}")
+    provider = os.getenv("SEARCH_PROVIDER", "duckduckgo")
+    query_result = web_search(query=query, provider=provider)
+    logger.info(f"Web search results (using {provider}): {query_result}")
     return query_result

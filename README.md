@@ -47,17 +47,32 @@ pip install -r requirements.txt
 ```
 
 ## Model Configuration
-RogueLLM uses `gpt-4o-mini` by default, but supports any OpenAI-compatible model. Model settings can be configured in the `.env` file. For example:
+RogueLLM uses `gpt-4o-mini` by default, but supports any OpenAI-compatible model. Model settings can be set as environment variables (also in `.env`).
+Example:
 
-```env
+```bash
 # Model configuration (optional)
 LOW_SPEC_MODEL_NAME=gemini-2.0-flash-exp
 HIGH_SPEC_MODEL_NAME=gemini-2.0-flash-exp
 LOW_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
 HIGH_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
-LOW_SPEC_MODEL_API_KEY=...
-HIGH_SPEC_MODEL_API_KEY=...
+LOW_SPEC_MODEL_API_KEY=<your_api_key>
+HIGH_SPEC_MODEL_API_KEY=<your_api_key>
 ```
+
+## Search Provider Configuration
+
+*RogueLLM* can use web search to improve the game description.
+Sample setup (env variables or `.env` file):
+
+```bash
+# Possible providers: duckduckgo, serpapi
+SEARCH_PROVIDER=serpapi
+# SerpApi key if using SerpApi provider
+SERPAPI_KEY=<your_api_key>
+```
+
+Notice that *DuckDuckGo* does not require an API key, but it may rate-limit and fail.
 
 ## Running the Game
 1. Launch with `./run.sh` for MacOS/Linux or `run.bat` for Windows.
