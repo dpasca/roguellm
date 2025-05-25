@@ -7,6 +7,7 @@ logging.basicConfig(
     stream=sys.stdout
 )
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, Request, Response, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
@@ -40,11 +41,18 @@ class CreateGameRequest(BaseModel):
 #==================================================================
 # FastAPI
 #==================================================================
-app = FastAPI()
 
-# Load environment variables
-logging.info("Loading environment variables from .env")
-load_dotenv()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logging.info("Loading environment variables from .env")
+    load_dotenv()
+    # Initialize database
+    db.init_db()
+    yield
+    # Shutdown (if needed)
+
+app = FastAPI(lifespan=lifespan)
 
 # Session middleware
 app.add_middleware(
@@ -67,11 +75,6 @@ class AddHeadersMiddleware(BaseHTTPMiddleware):
 
 # Add the middleware to your FastAPI app
 app.add_middleware(AddHeadersMiddleware)
-
-@app.on_event("startup")
-async def startup_event():
-    # Initialize database
-    db.init_db()
 
 # Landing page
 @app.get("/")

@@ -27,23 +27,70 @@ The game features:
 - Python 3.10 or higher
 - pip package manager
 
-### Setting up Virtual Environment
+### Quick Setup (Recommended)
 
-#### For MacOS/Linux:
+For new developers, use the automated setup script:
+
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+# Clone the repository and navigate to it
+git clone <repository-url>
+cd roguellm
+
+# Run the setup script
+./setup_dev.sh
 ```
 
-#### For Windows:
+This script will:
+- Check Python version compatibility
+- Create a virtual environment
+- Install all dependencies
+- Provide activation instructions
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+#### 1. Create Virtual Environment
+
 ```bash
-python -m venv venv
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it (MacOS/Linux)
+source venv/bin/activate
+
+# Or on Windows
 venv\Scripts\activate
 ```
 
-### Installing Dependencies
+#### 2. Install Dependencies
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+### Development Environment
+
+#### VS Code/Cursor Integration
+The project includes VS Code settings that will automatically:
+- Detect the virtual environment
+- Set the correct Python interpreter
+- Enable code formatting and linting
+
+#### Activating the Environment
+After initial setup, activate the environment using:
+
+```bash
+# Standard activation
+source venv/bin/activate
+
+# Or use the convenience script
+source activate.sh
+```
+
+#### Deactivating
+```bash
+deactivate
 ```
 
 ## Model Configuration
