@@ -49,12 +49,12 @@ class Game:
         # Model definitions
         #lo_model = GenAIModel(base_url=OLLAMA_BASE_URL + "/v1", api_key=OLLAMA_API_KEY, model_name="llama3.1")
         lo_model = GenAIModel(
-            model_name=os.getenv("LOW_SPEC_MODEL_NAME", "gpt-4o-mini"),
+            model_name=os.getenv("LOW_SPEC_MODEL_NAME", "gpt-4.1-mini"),
             base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
         )
         hi_model = GenAIModel(
-            model_name=os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4o-mini"),
+            model_name=os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4.1-mini"),
             base_url=os.getenv("HIGH_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("HIGH_SPEC_MODEL_API_KEY"),
         )
@@ -241,7 +241,7 @@ class Game:
         self.state.game_over = False
         self.state.game_won = False
         self.state.game_title = self.get_game_title()
-        self.state.model_name = os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4o-mini")
+        self.state.model_name = os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4.1-mini")
         logging.info(f"Game title set to: {self.state.game_title}")
 
         # Initialize cell types

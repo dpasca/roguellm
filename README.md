@@ -47,13 +47,13 @@ pip install -r requirements.txt
 ```
 
 ## Model Configuration
-RogueLLM uses `gpt-4o-mini` by default, but supports any OpenAI-compatible model. Model settings can be set as environment variables (also in `.env`).
+RogueLLM uses `gpt-4.1-mini` by default, but supports any OpenAI-compatible model. Model settings can be set as environment variables (also in `.env`).
 Example:
 
 ```bash
 # Model configuration (optional)
-LOW_SPEC_MODEL_NAME=gemini-2.0-flash-exp
-HIGH_SPEC_MODEL_NAME=gemini-2.0-flash-exp
+LOW_SPEC_MODEL_NAME=gemini-2.5-flash-preview-05-20
+HIGH_SPEC_MODEL_NAME=gemini-2.5-flash-preview-05-20
 LOW_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
 HIGH_SPEC_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/
 LOW_SPEC_MODEL_API_KEY=<your_api_key>
