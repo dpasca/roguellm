@@ -220,6 +220,7 @@ class TimeProfiler:
 # WebSocket endpoint for the game
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
+    game_instance = None
     try:
         await websocket.accept()
         logging.info("New WebSocket connection established")
@@ -280,8 +281,17 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
     except Exception as e:
         logging.exception("WebSocket connection error")
+        # Send error message to client if possible
+        try:
+            await websocket.send_json({
+                'type': 'error',
+                'message': f'Failed to initialize game: {str(e)}'
+            })
+        except:
+            pass  # Connection might already be closed
+        await websocket.close()
     finally:
-        if hasattr(game_instance, 'connected_clients'):
+        if game_instance and hasattr(game_instance, 'connected_clients'):
             game_instance.connected_clients.remove(websocket)
 
 if __name__ == "__main__":

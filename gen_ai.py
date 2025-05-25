@@ -36,6 +36,16 @@ class GenAIModel:
         self.base_url = base_url
         self.api_key = api_key
 
+        # Validate API key
+        if not self.api_key:
+            raise ValueError(
+                "API key is required but not provided. Please set the appropriate environment variables:\n"
+                "- LOW_SPEC_MODEL_API_KEY for low-spec model\n"
+                "- HIGH_SPEC_MODEL_API_KEY for high-spec model\n"
+                "You can get an OpenAI API key from: https://platform.openai.com/api-keys\n"
+                "Create a .env file with your API keys (see _env.example for an example)"
+            )
+
         # Custom timeout and retry settings for non-OpenAI models
         timeout = Timeout(
             connect=5.0,    # How long to wait for a connection

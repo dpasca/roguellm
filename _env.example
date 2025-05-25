@@ -1,0 +1,34 @@
+# Environment Variables Template
+# Copy this content to a .env file and fill in your actual API keys
+
+# OpenAI API Configuration
+# Get your API key from: https://platform.openai.com/api-keys
+
+# For OpenAI models (default configuration)
+LOW_SPEC_MODEL_NAME=gpt-4.1-mini
+HIGH_SPEC_MODEL_NAME=gpt-4.1-mini
+LOW_SPEC_MODEL_API_KEY=your_openai_api_key_here
+HIGH_SPEC_MODEL_API_KEY=your_openai_api_key_here
+
+# Alternative: Use different models for low and high spec
+# LOW_SPEC_MODEL_NAME=gpt-4.1-mini
+# HIGH_SPEC_MODEL_NAME=gpt-4.1
+
+# For custom OpenAI-compatible endpoints (optional)
+# LOW_SPEC_MODEL_BASE_URL=https://api.openai.com/v1
+# HIGH_SPEC_MODEL_BASE_URL=https://api.openai.com/v1
+
+# Search Provider Configuration (optional)
+# Possible providers: duckduckgo, serpapi
+SEARCH_PROVIDER=duckduckgo
+# SerpApi key if using SerpApi provider (optional)
+# SERPAPI_KEY=your_serpapi_key_here
+
+# Firebase Configuration (Optional)
+# FIREBASE_API_KEY=
+# FIREBASE_AUTH_DOMAIN=
+# FIREBASE_PROJECT_ID=
+# FIREBASE_STORAGE_BUCKET=
+# FIREBASE_MESSAGING_SENDER_ID=
+# FIREBASE_APP_ID=
+# FIREBASE_MEASUREMENT_ID=

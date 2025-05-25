@@ -94,8 +94,33 @@ deactivate
 ```
 
 ## Model Configuration
-RogueLLM uses `gpt-4.1-mini` by default, but supports any OpenAI-compatible model. Model settings can be set as environment variables (also in `.env`).
-Example:
+
+**⚠️ IMPORTANT**: RogueLLM requires API keys to function. You must configure these before running the application.
+
+### Required Setup
+
+1. **Create a `.env` file** in the project root directory
+2. **Copy the template** from `_env.example` to `.env`
+3. **Add your API keys** to the `.env` file
+
+### Getting API Keys
+
+- **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Other providers**: Check their respective documentation
+
+### Basic Configuration
+
+RogueLLM uses `gpt-4o-mini` by default. Minimum required configuration in `.env`:
+
+```bash
+# Required: OpenAI API keys
+LOW_SPEC_MODEL_API_KEY=your_openai_api_key_here
+HIGH_SPEC_MODEL_API_KEY=your_openai_api_key_here
+```
+
+### Advanced Configuration
+
+For custom models or providers:
 
 ```bash
 # Model configuration (optional)

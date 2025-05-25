@@ -116,6 +116,6 @@ The language of the response must be: {get_language_name(language)}
     query = response.choices[0].message.content
     logger.info(f"Obtained web search query: {query}")
     provider = os.getenv("SEARCH_PROVIDER", "duckduckgo")
-    query_result = web_search(query=query, provider=provider)
+    query_result = web_search(query=query, providers=[provider])
     logger.info(f"Web search results (using {provider}): {query_result}")
     return query_result
