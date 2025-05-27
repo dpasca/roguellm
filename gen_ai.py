@@ -8,7 +8,21 @@ from openai._types import NOT_GIVEN, NotGiven
 from openai._client import Timeout, Transport
 from openai._base_client import DEFAULT_MAX_RETRIES
 
-from gen_ai_prompts import *
+from gen_ai_prompts import (
+    SYS_BETTER_DESC_PROMPT_MSG,
+    SYS_GENERAL_JSON_RULES_MSG,
+    SYS_GEN_PLAYER_JSON_MSG,
+    SYS_GEN_GAME_ITEMS_JSON_MSG,
+    SYS_GEN_GAME_ENEMIES_JSON_MSG,
+    SYS_GEN_GAME_CELLTYPES_JSON_MSG,
+    SYS_GEN_MAP_CSV_MSG,
+    SYS_GEN_ENTITY_PLACEMENT_MSG,
+    ADAPT_SENTENCE_SYSTEM_MSG,
+    ROOM_DESC_SYSTEM_MSG,
+    DUMMY_PLACEMENTS,
+    append_language_and_desc_to_prompt,
+    append_desc_to_prompt
+)
 from gen_ai_utils import extract_clean_data, make_query_and_web_search, get_language_name, with_exponential_backoff
 
 import logging
