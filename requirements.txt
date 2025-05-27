@@ -10,3 +10,4 @@ google-search-results  # SerpApi client
 boto3
 Pillow
 bs4
+aiofiles

@@ -4,6 +4,7 @@ from fastapi import Request
 from bs4 import BeautifulSoup
 import json
 import os
+import aiofiles
 
 SOCIAL_MEDIA_AGENTS = [
     'facebookexternalhit',
@@ -19,17 +20,19 @@ def is_social_crawler(request: Request) -> bool:
     user_agent = request.headers.get('user-agent', '').lower()
     return any(bot in user_agent for bot in SOCIAL_MEDIA_AGENTS)
 
-def load_translations(language: str = 'en') -> Dict:
+async def load_translations(language: str = 'en') -> Dict:
     try:
-        with open(f'static/translations/{language}.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
+        async with aiofiles.open(f'static/translations/{language}.json', 'r', encoding='utf-8') as f:
+            content = await f.read()
+            return json.loads(content)
     except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as e:
         # Fallback to English if translation not found or invalid
         import logging
         logging.warning(f"Could not load translations for language '{language}': {e}. Falling back to English.")
         try:
-            with open('static/translations/en.json', 'r', encoding='utf-8') as f:
-                return json.load(f)
+            async with aiofiles.open('static/translations/en.json', 'r', encoding='utf-8') as f:
+                content = await f.read()
+                return json.loads(content)
         except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as fallback_error:
             logging.error(f"Could not load English fallback translations: {fallback_error}")
             return {}  # Return empty dict as last resort
@@ -135,7 +138,7 @@ async def get_prerendered_content(request: Request, html_content: str) -> str:
     """Get pre-rendered content, with special handling for social media crawlers"""
     # Get language from query params or default to English
     language = request.query_params.get('lang', 'en')
-    translations = load_translations(language)
+    translations = await load_translations(language)
 
     is_crawler = is_social_crawler(request)
     return prerender_template(html_content, translations, is_crawler)

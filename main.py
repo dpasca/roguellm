@@ -26,6 +26,7 @@ import base64
 import secrets
 from social_crawler import get_prerendered_content
 import asyncio
+import aiofiles
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
@@ -153,9 +154,9 @@ async def read_landing(request: Request):
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
 
-        # Read and pre-render the HTML content
-        with open("static/index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
+        # Read and pre-render the HTML content using async file operations
+        async with aiofiles.open("static/index.html", "r", encoding="utf-8") as f:
+            html_content = await f.read()
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
@@ -197,9 +198,9 @@ async def read_game(request: Request):
             # Clear any existing generator ID if none provided
             request.session["generator_id"] = None
 
-        # Read and pre-render the HTML content
-        with open("static/game.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
+        # Read and pre-render the HTML content using async file operations
+        async with aiofiles.open("static/game.html", "r", encoding="utf-8") as f:
+            html_content = await f.read()
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)

@@ -10,6 +10,7 @@ logger = logging.getLogger()
 from typing import Dict, List, Optional, Union
 import concurrent.futures
 import asyncio
+import aiofiles
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
@@ -117,10 +118,10 @@ class Game:
             async def run_parallel_init():
                 # Run all initializations concurrently
                 await asyncio.gather(
-                    game.definitions.initialize_player_defs(),
-                    game.definitions.initialize_item_defs(),
-                    game.definitions.initialize_enemy_defs(),
-                    game.definitions.initialize_celltype_defs()
+                    game.initialize_player_defs(),
+                    game.initialize_item_defs(),
+                    game.initialize_enemy_defs(),
+                    game.initialize_celltype_defs()
                 )
 
             await run_parallel_init()
@@ -148,11 +149,14 @@ class Game:
     def get_game_title(self):
         return self.gen_ai.game_title
 
-    def make_defs_from_json(self, filename: str, transform_fn=None):
+    async def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
-            with open(filename, 'r') as f:
-                data = f.read()
-                return transform_fn(data) if transform_fn else json.loads(data)
+            async with aiofiles.open(filename, 'r') as f:
+                data = await f.read()
+                if transform_fn:
+                    return await transform_fn(data)
+                else:
+                    return json.loads(data)
         except FileNotFoundError:
             self.log_error(f"{filename} file not found.")
             return {} if transform_fn else []
@@ -160,39 +164,45 @@ class Game:
             self.log_error(f"Invalid JSON in {filename} file.")
             return {} if transform_fn else []
 
-    def initialize_player_defs(self):
-        self.definitions.player_defs = self.make_defs_from_json(
+    async def initialize_player_defs(self):
+        result = await self.make_defs_from_json(
             'game_players.json',
             transform_fn=self.gen_ai.gen_players_from_json_sample
-        )["player_defs"]
+        )
+        self.definitions.player_defs = result["player_defs"]
 
-    def initialize_item_defs(self):
-        self.definitions.item_defs = self.make_defs_from_json(
+    async def initialize_item_defs(self):
+        result = await self.make_defs_from_json(
             'game_items.json',
             transform_fn=self.gen_ai.gen_game_items_from_json_sample
-        )["item_defs"]
+        )
+        self.definitions.item_defs = result["item_defs"]
 
-    def initialize_enemy_defs(self):
-        self.definitions.enemy_defs = self.make_defs_from_json(
+    async def initialize_enemy_defs(self):
+        result = await self.make_defs_from_json(
             'game_enemies.json',
             transform_fn=self.gen_ai.gen_game_enemies_from_json_sample
-        )["enemy_defs"]
+        )
+        self.definitions.enemy_defs = result["enemy_defs"]
 
-    def initialize_celltype_defs(self):
-        self.definitions.celltype_defs = self.make_defs_from_json(
+    async def initialize_celltype_defs(self):
+        result = await self.make_defs_from_json(
             'game_celltypes.json',
             transform_fn=self.gen_ai.gen_game_celltypes_from_json_sample
-        )["celltype_defs"]
+        )
+        self.definitions.celltype_defs = result["celltype_defs"]
 
-    def _load_game_data(self):
+    async def _load_game_data(self):
         """Load all game data from JSON files."""
-        with open('game_celltypes.json', 'r') as f:
-            celltype_defs = json.load(f)
+        async with aiofiles.open('game_celltypes.json', 'r') as f:
+            content = await f.read()
+            celltype_defs = json.loads(content)
             # Icons are already validated by gen_ai
-            self.definitions.celltype_defs = self.gen_ai.gen_game_celltypes_from_json_sample(json.dumps(celltype_defs))
+            self.definitions.celltype_defs = await self.gen_ai.gen_game_celltypes_from_json_sample(json.dumps(celltype_defs))
 
-        with open('game_config.json', 'r') as f:
-            self.game_config = json.load(f)
+        async with aiofiles.open('game_config.json', 'r') as f:
+            content = await f.read()
+            self.game_config = json.loads(content)
             # Validate FontAwesome icons
             self.game_config = fa_runtime.process_game_data(self.game_config)
 
@@ -220,9 +230,10 @@ class Game:
             self.state.defeated_enemies = []
 
     async def initialize_game(self):
-        # Read config.json
-        with open('game_config.json', 'r') as f:
-            config = json.load(f)
+        # Read config.json using async file operations
+        async with aiofiles.open('game_config.json', 'r') as f:
+            content = await f.read()
+            config = json.loads(content)
 
         self.state = GameState.from_config(config) # Initialize GameState with "config"
         # Set player data with fallback to default
