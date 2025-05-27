@@ -29,6 +29,11 @@ SEARCH_PROVIDER=duckduckgo
 # SerpApi key if using SerpApi provider (optional)
 # SERPAPI_KEY=your_serpapi_key_here
 
+# Database Storage Configuration (Optional)
+# How often to upload database to cloud storage (in minutes)
+# Default: 5 minutes
+# UPLOAD_FREQUENCY_MINUTES=5
+
 # Firebase Configuration (Optional)
 # FIREBASE_API_KEY=
 # FIREBASE_AUTH_DOMAIN=
