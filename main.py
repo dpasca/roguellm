@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.websockets import WebSocketDisconnect
 from pydantic import BaseModel
 from typing import Dict, Optional
 import json
@@ -22,6 +23,7 @@ from dotenv import load_dotenv
 import uuid
 import zlib
 import base64
+import secrets
 from social_crawler import get_prerendered_content
 import asyncio
 
@@ -39,6 +41,48 @@ class CreateGameRequest(BaseModel):
     generator_id: Optional[str] = None
 
 #==================================================================
+# Security Configuration
+#==================================================================
+
+def get_session_secret_key() -> str:
+    """
+    Get or generate a secure session secret key.
+
+    Returns:
+        str: A secure session secret key
+
+    Raises:
+        ValueError: If no session secret is configured and fallback is disabled
+    """
+    session_secret = os.getenv("SESSION_SECRET_KEY")
+
+    if session_secret:
+        if len(session_secret) < 32:
+            logging.warning(
+                "SESSION_SECRET_KEY is shorter than recommended (32+ characters). "
+                "Consider using a longer, more secure key."
+            )
+        return session_secret
+
+    # Generate a secure fallback key
+    fallback_key = secrets.token_urlsafe(32)
+    logging.warning(
+        "⚠️  SESSION_SECRET_KEY not found in environment variables!\n"
+        "   Using a randomly generated key for this session.\n"
+        "   This means user sessions will not persist across server restarts.\n"
+        "   \n"
+        "   To fix this:\n"
+        "   1. Add SESSION_SECRET_KEY to your .env file\n"
+        "   2. Use a secure random string (32+ characters)\n"
+        "   3. Example: SESSION_SECRET_KEY=your_secure_random_string_here\n"
+        "   \n"
+        "   You can generate a secure key with:\n"
+        "   python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
+
+    return fallback_key
+
+#==================================================================
 # FastAPI
 #==================================================================
 
@@ -54,10 +98,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Session middleware
+# Session middleware with secure secret key
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY")
+    secret_key=get_session_secret_key()
 )
 
 # Mount static files directory
@@ -276,23 +320,38 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 await websocket.send_json(response)
 
+        except WebSocketDisconnect:
+            logging.info("WebSocket client disconnected normally")
+        except ConnectionResetError:
+            logging.info("WebSocket connection reset by client")
         except Exception as e:
-            logging.exception("Game loop error")
-            await websocket.close()
+            logging.exception(f"Game loop error: {e}")
+            # Try to send error message if connection is still open
+            try:
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': 'Game error occurred'
+                })
+            except (WebSocketDisconnect, ConnectionResetError, RuntimeError):
+                logging.debug("Could not send error message - connection already closed")
+    except WebSocketDisconnect:
+        logging.info("WebSocket disconnected during initialization")
     except Exception as e:
-        logging.exception("WebSocket connection error")
+        logging.exception(f"WebSocket connection error: {e}")
         # Send error message to client if possible
         try:
             await websocket.send_json({
                 'type': 'error',
                 'message': f'Failed to initialize game: {str(e)}'
             })
-        except:
-            pass  # Connection might already be closed
-        await websocket.close()
+        except (WebSocketDisconnect, ConnectionResetError, RuntimeError) as send_error:
+            logging.debug(f"Could not send initialization error message: {send_error}")
     finally:
         if game_instance and hasattr(game_instance, 'connected_clients'):
-            game_instance.connected_clients.remove(websocket)
+            try:
+                game_instance.connected_clients.discard(websocket)  # Use discard instead of remove to avoid KeyError
+            except Exception as cleanup_error:
+                logging.debug(f"Error during WebSocket cleanup: {cleanup_error}")
 
 if __name__ == "__main__":
     import uvicorn

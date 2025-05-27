@@ -1,6 +1,11 @@
 # Environment Variables Template
 # Copy this content to a .env file and fill in your actual API keys
 
+# Session Security
+# Generate a secure random string for session encryption
+# You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SESSION_SECRET_KEY=your_secure_random_session_key_here
+
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
 

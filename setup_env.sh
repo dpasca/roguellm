@@ -22,6 +22,11 @@ fi
 # Create .env file from template
 echo "📝 Creating .env file..."
 cat > .env << 'EOF'
+# Session Security
+# Generate a secure random string for session encryption
+# You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SESSION_SECRET_KEY=your_secure_random_session_key_here
+
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
 
@@ -59,8 +64,11 @@ echo "✅ .env file created successfully!"
 echo
 echo "🔑 NEXT STEPS:"
 echo "1. Get your OpenAI API key from: https://platform.openai.com/api-keys"
-echo "2. Edit the .env file and replace 'your_openai_api_key_here' with your actual API key"
+echo "2. Edit the .env file and replace:"
+echo "   - 'your_openai_api_key_here' with your actual API key"
+echo "   - 'your_secure_random_session_key_here' with a secure random string"
 echo "3. You can use the same API key for both LOW_SPEC_MODEL_API_KEY and HIGH_SPEC_MODEL_API_KEY"
+echo "4. Generate a session key with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
 echo
 echo "📝 To edit the .env file:"
 echo "   nano .env"
