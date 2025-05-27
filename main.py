@@ -94,7 +94,9 @@ async def lifespan(app: FastAPI):
     # Initialize database
     db.init_db()
     yield
-    # Shutdown (if needed)
+    # Shutdown - ensure database uploads are completed
+    logging.info("Shutting down database manager...")
+    db.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 

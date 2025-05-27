@@ -4,10 +4,13 @@ import uuid
 import sqlite3
 import hashlib
 import time
+import asyncio
 from typing import Dict, List, Optional, Union
 from contextlib import contextmanager
 import logging
 import boto3
+from threading import Lock, Thread
+from datetime import datetime, timedelta
 
 class DatabaseManager:
     class ConnectionWrapper:
@@ -17,16 +20,25 @@ class DatabaseManager:
 
         def commit(self):
             self.connection.commit()
+            # Schedule upload instead of blocking
             self.on_commit()
 
         def __getattr__(self, name):
             return getattr(self.connection, name)
 
-    def __init__(self):
+    def __init__(self, upload_frequency_minutes: int = 5):
         self.db_path = os.path.join("_data", "rllm_game_data.db")
         self.timeout = 20.0
         self.max_retries = 3
         self.retry_delay = 0.1
+
+        # Upload batching configuration
+        self.upload_frequency_minutes = upload_frequency_minutes
+        self.last_upload_time = None
+        self.pending_upload = False
+        self.upload_lock = Lock()
+        self.background_upload_thread = None
+        self.shutdown_flag = False
 
         # Check if storage is configured
         required_vars = [
@@ -44,11 +56,96 @@ class DatabaseManager:
                 aws_secret_access_key=os.getenv('DO_SPACES_SECRET_KEY')
             )
             self.bucket = os.getenv('DO_STORAGE_CONTAINER')
-            logging.info("Storage backend enabled")
+            logging.info(f"Storage backend enabled - upload frequency: {upload_frequency_minutes} minutes")
+
+            # Start background upload thread
+            self._start_background_upload_thread()
         else:
             self.s3 = None
             self.bucket = None
             logging.info("Storage backend disabled - using local storage only")
+
+    def _start_background_upload_thread(self):
+        """Start the background thread for periodic uploads"""
+        if self.background_upload_thread is None or not self.background_upload_thread.is_alive():
+            self.background_upload_thread = Thread(target=self._background_upload_worker, daemon=True)
+            self.background_upload_thread.start()
+            logging.info("Background upload thread started")
+
+    def _background_upload_worker(self):
+        """Background worker that handles periodic uploads"""
+        while not self.shutdown_flag:
+            try:
+                time.sleep(30)  # Check every 30 seconds
+
+                with self.upload_lock:
+                    if not self.pending_upload:
+                        continue
+
+                    # Check if enough time has passed since last upload
+                    now = datetime.now()
+                    if (self.last_upload_time is None or
+                        now - self.last_upload_time >= timedelta(minutes=self.upload_frequency_minutes)):
+
+                        self._upload_db_to_storage_sync()
+                        self.pending_upload = False
+                        self.last_upload_time = now
+                        logging.info("Background upload completed")
+
+            except Exception as e:
+                logging.error(f"Error in background upload worker: {e}")
+
+    def _schedule_upload(self):
+        """Schedule an upload to happen in the background"""
+        if not self.storage_enabled:
+            return
+
+        with self.upload_lock:
+            self.pending_upload = True
+
+        # Ensure background thread is running
+        if self.background_upload_thread is None or not self.background_upload_thread.is_alive():
+            self._start_background_upload_thread()
+
+    def _upload_db_to_storage_sync(self):
+        """Synchronous version of upload for background thread"""
+        if not self.storage_enabled:
+            return
+
+        try:
+            self.s3.upload_file(
+                Filename=self.db_path,
+                Bucket=self.bucket,
+                Key='rllm_game_data.db'
+            )
+            logging.info("Uploaded DB to storage (background)")
+        except Exception as e:
+            logging.error(f"Failed to upload DB to storage (background): {e}")
+
+    def force_upload_now(self):
+        """Force an immediate upload (for shutdown or critical operations)"""
+        if not self.storage_enabled:
+            return
+
+        with self.upload_lock:
+            self._upload_db_to_storage_sync()
+            self.pending_upload = False
+            self.last_upload_time = datetime.now()
+            logging.info("Forced immediate upload completed")
+
+    def shutdown(self):
+        """Gracefully shutdown the database manager"""
+        self.shutdown_flag = True
+
+        # Force final upload if there are pending changes
+        if self.pending_upload:
+            logging.info("Performing final upload before shutdown...")
+            self.force_upload_now()
+
+        # Wait for background thread to finish
+        if self.background_upload_thread and self.background_upload_thread.is_alive():
+            self.background_upload_thread.join(timeout=10)
+            logging.info("Background upload thread stopped")
 
     def download_db_from_storage(self):
         """Downloads DB from DO Spaces if storage is enabled"""
@@ -92,7 +189,7 @@ class DatabaseManager:
                     theme_desc_better TEXT,
                     language TEXT,
                     player_defs TEXT,
-                    item_defs TEXT, 
+                    item_defs TEXT,
                     enemy_defs TEXT,
                     celltype_defs TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -116,7 +213,7 @@ class DatabaseManager:
     def get_connection(self):
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         conn = sqlite3.connect(self.db_path, timeout=self.timeout)
-        wrapped = self.ConnectionWrapper(conn, self.upload_db_to_storage)
+        wrapped = self.ConnectionWrapper(conn, self._schedule_upload)
         try:
             yield wrapped
         finally:
@@ -216,7 +313,7 @@ class DatabaseManager:
             return generator_id
 
         generator_id = self._execute_with_retry(_save)
-        self.upload_db_to_storage()
+        # Upload is now scheduled automatically by the connection wrapper
         return generator_id
 
     def get_generator(self, generator_id: str) -> Optional[Dict]:
@@ -248,5 +345,7 @@ class DatabaseManager:
 
         return self._execute_with_retry(_get, generator_id)
 
-# Create a global instance
-db = DatabaseManager()
+# Create a global instance with configurable upload frequency
+# Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable
+upload_freq = int(os.getenv('UPLOAD_FREQUENCY_MINUTES', '5'))
+db = DatabaseManager(upload_frequency_minutes=upload_freq)
