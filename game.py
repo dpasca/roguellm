@@ -18,6 +18,7 @@ from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from combat_manager import CombatManager
 from entity_placement_manager import EntityPlacementManager
+from websocket_schemas import validate_websocket_message, ValidationError, WebSocketMessage
 
 #OLLAMA_BASE_URL = "http://localhost:11434"
 #OLLAMA_API_KEY = "ollama"
@@ -334,7 +335,38 @@ class Game:
         )
 
     async def handle_message(self, message: dict) -> dict:
-        action = message.get('action')
+        """
+        Handle incoming WebSocket messages with validation.
+
+        Args:
+            message: Raw message dictionary from WebSocket
+
+        Returns:
+            dict: Response message
+        """
+        try:
+            # Validate the incoming message
+            validated_message = validate_websocket_message(message)
+            action = validated_message.action.value
+
+            logger.debug(f"Processing validated message: action={action}")
+
+        except ValidationError as e:
+            logger.warning(f"Invalid WebSocket message: {e.message}")
+            if e.details:
+                logger.debug(f"Validation error details: {e.details}")
+
+            # Return structured error response
+            return await self.create_message(
+                description_raw=f"Invalid message: {e.message}",
+                description=f"Invalid message: {e.message}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error validating message: {e}")
+            return await self.create_message(
+                description_raw="Invalid message format",
+                description="Invalid message format"
+            )
 
         # Only initialize if it's an initialize action or if state doesn't exist
         if action == 'initialize' or not hasattr(self, 'state'):
@@ -363,15 +395,18 @@ class Game:
 
         result = None
         if action == 'move' and not self.state.in_combat:
-            result = await self.handle_move(message.get('direction'))
+            # Use validated direction from the message
+            result = await self.handle_move(validated_message.direction.value)
         elif action == 'attack' and self.state.in_combat:
             result = await self.handle_combat_action('attack')
         elif action == 'run' and self.state.in_combat:
             result = await self.handle_combat_action('run')
         elif action == 'use_item':
-            result = await self.handle_use_item(message.get('item_id'))
+            # Use validated item_id from the message
+            result = await self.handle_use_item(validated_message.item_id)
         elif action == 'equip_item':
-            result = await self.handle_equip_item(message.get('item_id'))
+            # Use validated item_id from the message
+            result = await self.handle_equip_item(validated_message.item_id)
         elif action == 'initialize':
             result = await self.initialize_game()
         elif action == 'get_initial_state':
