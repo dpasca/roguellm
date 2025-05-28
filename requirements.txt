@@ -11,3 +11,4 @@ boto3
 Pillow
 bs4
 aiofiles
+pre-commit
