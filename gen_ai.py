@@ -193,9 +193,10 @@ A universe where you can become the master of the universe by defeating other ma
         formatted_events = []
         RELEVANT_EVENTS = 5
         for event in event_history[-RELEVANT_EVENTS:]:  # Keep last N events
-            formatted_events.append(
-                f"[{event['action']}] {event['event']['description']}"
-            )
+            action = event.get('action', 'unknown')
+            # The description is directly in the event, not nested under 'event'
+            description = event.get('description', event.get('description_raw', 'No description'))
+            formatted_events.append(f"[{action}] {description}")
         return formatted_events
 
     def _create_context(self, gstate: GameState, event_history: List[dict]) -> str:
@@ -223,18 +224,19 @@ A universe where you can become the master of the universe by defeating other ma
             # Add previous room description if it exists
             if event_history:
                 previous_descriptions = [
-                    event['event']['description']
+                    event.get('description', event.get('description_raw', ''))
                     for event in event_history
-                    if event['event'].get('type') == 'update'
-                    and event['action'] in ['move', 'initialize']
-                    and (event['event'].get('state', {}).get('player_pos') == (x, y))
+                    if event.get('type') == 'update'
+                    and event.get('action') in ['move', 'initialize']
+                    and (event.get('state', {}).get('player_pos') == (x, y))
                 ]
                 if previous_descriptions:
                     context.append(f"Previous description of this room: {previous_descriptions[-1]}")
                 else:
-                    context.append("") # No previous room description
+                    context.append("No previous room description available.")
             else:
-                assert False, "No event history found"
+                # Handle the case where there's no event history yet (e.g., during initialization)
+                context.append("No previous room description available (first visit).")
 
         # Add player status
         health_pct = int(gstate.player_hp / gstate.player_max_hp * 100.0)
@@ -249,10 +251,15 @@ A universe where you can become the master of the universe by defeating other ma
                 context.append(f"Enemy is armed with: {', '.join(enemy.weapons)}")
 
         # Add recent events (limited to prevent context exploitation)
-        formatted_events = self._make_formatted_events(event_history)
-        context.append("")
-        context.append("# Recent events")
-        context.extend([f"- {event}" for event in formatted_events])
+        if event_history:
+            formatted_events = self._make_formatted_events(event_history)
+            context.append("")
+            context.append("# Recent events")
+            context.extend([f"- {event}" for event in formatted_events])
+        else:
+            context.append("")
+            context.append("# Recent events")
+            context.append("- No events yet (game just started)")
 
         # Add equipment info
         if gstate.equipment.weapon or gstate.equipment.armor:

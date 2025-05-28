@@ -299,18 +299,19 @@ async def websocket_endpoint(websocket: WebSocket):
         )
 
         try:
-            game_instance.connected_clients.add(websocket)
+            game_instance.add_client(websocket)
 
-            if game_instance.error_message:
-                logging.info(f"Sending error message: {game_instance.error_message}")
+            # Check for error message through state manager
+            if game_instance.state_manager and game_instance.state_manager.error_message:
+                logging.info(f"Sending error message: {game_instance.state_manager.error_message}")
                 await websocket.send_json({
                     'type': 'error',
-                    'message': game_instance.error_message
+                    'message': game_instance.state_manager.error_message
                 })
 
             initial_response = {
                 'type': 'connection_established',
-                'generator_id': game_instance.generator_id
+                'generator_id': game_instance.state_manager.generator_id if game_instance.state_manager else None
             }
             await websocket.send_json(initial_response)
 
@@ -318,8 +319,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = await websocket.receive_json()
                 response = await game_instance.handle_message(message)
 
-                if game_instance.generator_id and isinstance(response, dict):
-                    response['generator_id'] = game_instance.generator_id
+                # Add generator_id to response if available
+                if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
+                    response['generator_id'] = game_instance.state_manager.generator_id
 
                 await websocket.send_json(response)
 
@@ -350,9 +352,9 @@ async def websocket_endpoint(websocket: WebSocket):
         except (WebSocketDisconnect, ConnectionResetError, RuntimeError) as send_error:
             logging.debug(f"Could not send initialization error message: {send_error}")
     finally:
-        if game_instance and hasattr(game_instance, 'connected_clients'):
+        if game_instance:
             try:
-                game_instance.connected_clients.discard(websocket)  # Use discard instead of remove to avoid KeyError
+                game_instance.remove_client(websocket)
             except Exception as cleanup_error:
                 logging.debug(f"Error during WebSocket cleanup: {cleanup_error}")
 
