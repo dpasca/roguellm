@@ -1,30 +1,31 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>RogueLLM</title>
     <!-- Add these favicon links -->
-    <link rel="icon" type="image/png" sizes="32x32" href="static/favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="static/favicon/favicon-16x16.png">
-    <link rel="shortcut icon" href="static/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="shortcut icon" href="/static/icons/favicon.ico">
     <!-- Rest of your existing head content -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/vue-i18n@9"></script>
-    <link rel="stylesheet" href="static/css/base.css">
-    <link rel="stylesheet" href="static/css/style.css">
-    <link rel="stylesheet" href="static/css/game.css">
-    <link rel="stylesheet" href="static/css/game_overlay.css">
-    <link rel="stylesheet" href="static/css/game_controls.css">
-    <link rel="stylesheet" href="static/css/notifications.css">
-    <link rel="stylesheet" href="static/css/generator.css">
-    <link rel="stylesheet" href="static/css/game_dialog.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+    <link rel="stylesheet" href="/static/css/game_overlay.css">
+    <link rel="stylesheet" href="/static/css/game_controls.css">
+    <link rel="stylesheet" href="/static/css/notifications.css">
+    <link rel="stylesheet" href="/static/css/generator.css">
+    <link rel="stylesheet" href="/static/css/game_dialog.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="static/css/menu.css">
+    <link rel="stylesheet" href="/static/css/menu.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- Force versioning of CSS files to prevent caching -->
-    <script src="static/js/versioning.js"></script>
+    <script src="/static/js/versioning.js"></script>
     <!-- Navigation Prevention -->
     <script>
         // Set up navigation prevention immediately
@@ -35,7 +36,7 @@
         history.pushState(null, '', window.location.href);
 
         // Handle back button and gesture
-        window.addEventListener('popstate', function(e) {
+        window.addEventListener('popstate', function (e) {
             // If we still have a state, prevent navigation
             if (history.state !== null) {
                 e.preventDefault();
@@ -45,7 +46,7 @@
         });
 
         // Handle page unload
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             e.preventDefault();
             e.returnValue = leaveWarningMessage;
             return e.returnValue;
@@ -122,11 +123,13 @@
         }
     </style>
 </head>
+
 <body style="background-color: #121212; color: white;">
     <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
-                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle" v-text="gameState.game_title || gameTitle"></h1>
+                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle"
+                    v-text="gameState.game_title || gameTitle"></h1>
                 <div class="menu-icon" @click="toggleMenu">
                     <i class="fas fa-bars"></i>
                 </div>
@@ -147,7 +150,7 @@
                     </button>
                     <div class="menu-footer">
                         <div class="model-info">{{ $t('menu.modelInfo', { model: gameState.model_name }) }}</div>
-                        by Davide Pasca<br/><a href="https://newtypekk.com" target="_blank">NEWTYPE K.K.</a>
+                        by Davide Pasca<br /><a href="https://newtypekk.com" target="_blank">NEWTYPE K.K.</a>
                     </div>
                 </div>
             </div>
@@ -167,7 +170,8 @@
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-skull"></i>
-                        <span>{{ $t('gameOver.stats.finalLevel', { level: Math.floor(gameState.player_xp / 100) + 1 }) }}</span>
+                        <span>{{ $t('gameOver.stats.finalLevel', { level: Math.floor(gameState.player_xp / 100) + 1 })
+                            }}</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-map"></i>
@@ -200,7 +204,8 @@
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-skull"></i>
-                        <span>{{ $t('gameWin.stats.finalLevel', { level: gameState.player_level || Math.floor((gameState.player_xp || 0) / 100) + 1 }) }}</span>
+                        <span>{{ $t('gameWin.stats.finalLevel', { level: gameState.player_level ||
+                            Math.floor((gameState.player_xp || 0) / 100) + 1 }) }}</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-map"></i>
@@ -227,16 +232,10 @@
                     <div class="game-map" :class="{ 'in-combat': gameState.in_combat }">
                         <div v-if="gameState && gameState.explored" class="map">
                             <div v-for="(row, y) in gameState.explored" :key="y" class="row">
-                                <div v-for="(cell, x) in row"
-                                    :key="x"
-                                    class="cell"
-                                    :data-x="x"
-                                    :data-y="y"
-                                    :class="{
+                                <div v-for="(cell, x) in row" :key="x" class="cell" :data-x="x" :data-y="y" :class="{
                                         explored: gameState.explored[y][x],
                                         unexplored: !gameState.explored[y][x]
-                                    }"
-                                    :style="getCellStyle(x, y)">
+                                    }" :style="getCellStyle(x, y)">
                                     <i :class="getCellIcon(x, y)"></i>
                                 </div>
                             </div>
@@ -267,11 +266,11 @@
                             <span class="status-value">
                                 <div class="health-bar-container">
                                     <div class="health-bar">
-                                        <div class="health-bar-fill"
-                                             :style="{ width: getEnemyHealthPercentage + '%' }">
+                                        <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
                                         </div>
                                     </div>
-                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
+                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{
+                                        gameState.current_enemy.max_hp }}</span>
                                 </div>
                             </span>
                         </div>
@@ -290,8 +289,10 @@
                             <span class="status-value">{{ gameState.current_enemy.defense }}</span>
                         </div>
                         <div class="combat-buttons">
-                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{ $t('combat.buttons.attack') }}</button>
-                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{ $t('combat.buttons.run') }}</button>
+                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{
+                                $t('combat.buttons.attack') }}</button>
+                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{
+                                $t('combat.buttons.run') }}</button>
                         </div>
                     </div>
 
@@ -310,10 +311,11 @@
                                 <div class="health-bar-container">
                                     <div class="health-bar">
                                         <div class="health-bar-fill"
-                                             :style="{ width: getPlayerHealthPercentage + '%' }">
+                                            :style="{ width: getPlayerHealthPercentage + '%' }">
                                         </div>
                                     </div>
-                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
+                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp
+                                        }}</span>
                                 </div>
                             </span>
                         </div>
@@ -336,7 +338,13 @@
                                 <i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i>
                                 <span class="label-text">{{ $t('player.stats.location') }}</span>
                             </span>
-                            <span class="status-value">{{ gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name }} <!-- ({{ gameState.player_pos[0] }}, {{ gameState.player_pos[1] }}) --></span>
+                            <span class="status-value">{{
+                                gameState.cell_types && gameState.player_pos &&
+                                gameState.cell_types[gameState.player_pos[1]] &&
+                                gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]] ?
+                                gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name :
+                                'Loading...'
+                                }}</span>
                         </div>
                         <div class="status-item">
                             <span class="status-label">
@@ -345,8 +353,10 @@
                             </span>
                             <span class="status-value">
                                 <div class="equipment-details">
-                                    <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None' }}</span>
-                                    <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
+                                    <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None'
+                                        }}</span>
+                                    <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{
+                                        gameState.equipment.weapon.effect.attack }} ATK</span>
                                 </div>
                             </span>
                         </div>
@@ -357,8 +367,10 @@
                             </span>
                             <span class="status-value">
                                 <div class="equipment-details">
-                                    <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
-                                    <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
+                                    <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None'
+                                        }}</span>
+                                    <span v-if="gameState.equipment.armor" class="equipment-stat">+{{
+                                        gameState.equipment.armor.effect.defense }} DEF</span>
                                 </div>
                             </span>
                         </div>
@@ -372,21 +384,18 @@
                     <div class="inventory-ui" v-if="gameState">
                         <h3>{{ $t('player.inventory') }}</h3>
                         <div class="inventory-grid">
-                            <div v-for="item in gameState.inventory"
-                                :key="item.id"
-                                class="item-card"
+                            <div v-for="item in gameState.inventory" :key="item.id" class="item-card"
                                 :class="{ equipped: item.is_equipped }">
                                 <div class="item-card-header">
                                     <h4>{{ item.name }}</h4>
                                     <div class="item-actions">
-                                        <button v-if="item.type === 'consumable'"
-                                                @click="useItem(item.id)"
-                                                class="use-button">
+                                        <button v-if="item.type === 'consumable'" @click="useItem(item.id)"
+                                            class="use-button">
                                             {{ $t('inventory.use') }}
                                         </button>
                                         <button v-if="item.type === 'weapon' || item.type === 'armor'"
-                                                @click="equipItem(item.id)"
-                                                :class="{ 'equipped-button': item.is_equipped }">
+                                            @click="equipItem(item.id)"
+                                            :class="{ 'equipped-button': item.is_equipped }">
                                             {{ item.is_equipped ? '●' : '○' }}
                                         </button>
                                     </div>
@@ -433,15 +442,7 @@
         </div>
     </div>
     <!-- Load Vue first, then our app -->
-    <script>
-        // Wait for Vue to be loaded
-        window.addEventListener('load', function() {
-            // Now load our app code
-            var script = document.createElement('script');
-            script.src = 'static/js/createApp.js';
-            document.body.appendChild(script);
-        });
-    </script>
+    <script src="/static/js/createApp.js"></script>
 
     <!-- Loading Overlay -->
     <div class="loading-overlay" style="display: none;">
@@ -455,4 +456,5 @@
         </div>
     </div>
 </body>
+
 </html>

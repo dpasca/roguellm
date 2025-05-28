@@ -143,6 +143,14 @@ const app = Vue.createApp({
                 return;
             }
 
+            // Show loading screen immediately
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            const loadingMessage = document.querySelector('#loading-message');
+            if (loadingOverlay && loadingMessage) {
+                loadingMessage.textContent = 'Creating game session...';
+                loadingOverlay.style.display = 'flex';
+            }
+
             // Track game launch
             if (window.analytics) {
                 analytics.logEvent('game_started', {
@@ -153,7 +161,8 @@ const app = Vue.createApp({
             }
 
             try {
-                const response = await fetch('/api/create_game', {
+                // Use the new session-based API
+                const response = await fetch('/api/create_game_session', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -166,26 +175,25 @@ const app = Vue.createApp({
                     })
                 });
 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create game session');
+                }
+
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to create game');
-                }
+                // Redirect to the session-specific game URL
+                const gameUrl = `/game/${data.session_id}?lang=${this.selectedLanguage}`;
+                window.location.href = gameUrl;
 
-                if (data.error) {
-                    this.errorMessage = data.error;
-                    return;
-                }
-
-                const params = new URLSearchParams();
-                if (this.selectedTheme === 'generator') {
-                    params.append('game_id', this.generatorId.trim());
-                }
-                params.append('lang', this.selectedLanguage);
-
-                window.location.href = `/game${params.toString() ? '?' + params.toString() : ''}`;
             } catch (error) {
-                this.errorMessage = error.message || "Failed to start game. Please try again.";
+                console.error('Error creating game session:', error);
+                this.errorMessage = error.message || this.t('errors.failedToCreate');
+
+                // Hide loading screen on error
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'none';
+                }
             }
         },
         handleKeyDown(event) {

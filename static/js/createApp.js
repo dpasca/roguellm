@@ -153,27 +153,6 @@ const app = Vue.createApp({
         }
     },
     methods: {
-        async initializeGame(generatorId) {
-            try {
-                const response = await fetch('/api/create_game', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        generator_id: generatorId
-                    })
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to initialize game');
-                }
-                // The WebSocket connection will handle the game state update
-                return true;
-            } catch (error) {
-                console.error('Error initializing game:', error);
-                throw error;
-            }
-        },
         getCellStyle(x, y) {
             if (!this.gameState.cell_types || this.gameState.cell_types.length === 0) return {};
 
@@ -191,7 +170,7 @@ const app = Vue.createApp({
         getCellIcon(x, y) {
             // Check if there's an enemy at this position (either active or defeated)
             const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y) ||
-                         this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
+                this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
             if (enemy) {
                 const baseClass = enemy.font_awesome_icon;
                 const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
@@ -213,8 +192,8 @@ const app = Vue.createApp({
             const menuIcon = document.querySelector('.menu-icon');
             const title = document.querySelector('h1');
 
-            if (!menu.contains(event.target) && 
-                !menuIcon.contains(event.target) && 
+            if (!menu.contains(event.target) &&
+                !menuIcon.contains(event.target) &&
                 !title.contains(event.target)) {
                 this.isMenuOpen = false;
             }
@@ -222,7 +201,7 @@ const app = Vue.createApp({
         async shareGame() {
             if (!this.generatorId) return;
 
-            // Create the share URL with generator_id
+            // Create the share URL with generator_id (this will create a new session for the recipient)
             const shareUrl = `${window.location.origin}/game?game_id=${this.generatorId}`;
 
             try {
@@ -238,108 +217,66 @@ const app = Vue.createApp({
             this.isMenuOpen = false;
         },
         async initWebSocket() {
+            // Extract session ID from URL path
+            const pathParts = window.location.pathname.split('/');
+            const sessionId = pathParts[2]; // /game/{session_id}
+
+            if (!sessionId) {
+                console.error('No session ID found in URL');
+                this.errorMessage = 'Invalid game session';
+                return;
+            }
+
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game`);
+            this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game/${sessionId}`);
 
             this.ws.onmessage = async (event) => {
                 if (!event.data) {
                     console.warn("Received empty message, ignoring");
                     return;
                 }
-                //console.log('Received message:', event.data);
+
                 try {
                     const response = JSON.parse(event.data);
-                    if (!response || !response.type) {
-                        console.warn('Received message with no type:', event.data);
+                    console.log("Received message:", response);
+
+                    // Handle different message types
+                    if (response.type === 'status') {
+                        // Update loading message during game creation
+                        const loadingMessage = document.querySelector('#loading-message');
+                        if (loadingMessage) {
+                            loadingMessage.textContent = response.message;
+                        }
+
+                        if (response.status === 'ready') {
+                            // Game is ready, request initial state
+                            this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
+                        }
+                        return;
+                    }
+
+                    if (response.type === 'error') {
+                        console.error("WebSocket error:", response.message);
+                        this.errorMessage = response.message;
+                        hideLoading();
                         return;
                     }
 
                     if (response.type === 'connection_established') {
-                        // Request initial state once connection is confirmed
-                        this.ws.send(JSON.stringify({
-                            action: 'get_initial_state'
-                        }));
+                        console.log("Connection established");
+                        if (response.generator_id) {
+                            this.generatorId = response.generator_id;
+                        }
+                        // Request initial state
+                        this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
                         return;
                     }
 
-                    if (response.type === 'update') {
-                        console.log('Received state update:', response.state);
-                        const wasInCombat = this.gameState.in_combat;
-                        this.gameState = response.state;
+                    // Handle game state updates
+                    this.handleGameState(response);
 
-                        // Update game title
-                        if (response.state.game_title) {
-                            console.log('Setting game title to:', response.state.game_title);
-                            this.gameTitle = response.state.game_title;
-                            document.title = response.state.game_title; // Also update page title
-                        }
-
-                        // If we just entered combat, make sure player position is correct
-                        if (!wasInCombat && this.gameState.in_combat) {
-                            updatePlayerPosition(
-                                this.gameState.player_pos[0],
-                                this.gameState.player_pos[1],
-                                true
-                            );
-                            // Clear any pending movement state
-                            this.isMoveInProgress = false;
-                        }
-
-                        // Reset move in progress flag after any state update
-                        this.isMoveInProgress = false;
-
-                        if (response.description) {
-                            this.gameLogs.push(response.description);
-                        }
-                        // Hide loading overlay when we get a new game state
-                        const loadingOverlay = document.querySelector('.loading-overlay');
-                        if (loadingOverlay) {
-                            loadingOverlay.style.display = 'none';
-                        }
-                        if (!this.isGameInitialized) {
-                            console.log('Initial game state received:', this.gameState);
-                            if (this.gameState.game_title) {
-                                console.log('Setting initial game title to:', this.gameState.game_title);
-                                this.gameTitle = this.gameState.game_title;
-                                document.title = this.gameState.game_title;
-                            }
-                            this.isGameInitialized = true;
-                        } else {
-                            if (response.description) {
-                                this.$nextTick(() => {
-                                    const gameLog = document.querySelector('.game-log');
-                                    gameLog.scrollTop = gameLog.scrollHeight;
-                                });
-                            }
-                        }
-                        if (this.gameState.game_title) {
-                            this.gameTitle = this.gameState.game_title;
-                        }
-                        // Store generator ID if provided
-                        if (response.generator_id) {
-                            this.generatorId = response.generator_id;
-                            // Update URL with generator ID when received
-                            const newUrl = `${window.location.pathname}?game_id=${response.generator_id}`;
-                            window.history.replaceState({}, '', newUrl);
-                        }
-                        // Only update position if it doesn't match what we predicted
-                        const [expectedX, expectedY] = this.gameState.player_pos;
-                        const playerIcon = document.getElementById('player-icon');
-                        if (playerIcon &&
-                            (playerIcon.dataset.x !== expectedX.toString() ||
-                             playerIcon.dataset.y !== expectedY.toString())) {
-                            this.$nextTick(() => {
-                                updatePlayerPosition(expectedX, expectedY);
-                            });
-                        }
-                    } else if (response.type === 'error') {
-                        this.errorMessage = response.message;
-                        setTimeout(() => {
-                            this.errorMessage = null;
-                        }, 5000);
-                    }
                 } catch (error) {
-                    console.log('WebSocket message parsing error:', error);
+                    console.error("Error parsing WebSocket message:", error);
                 }
             };
 
@@ -373,7 +310,6 @@ const app = Vue.createApp({
             loadingOverlay.style.display = 'flex';
 
             try {
-                await this.initializeGame(this.generatorId);
                 // Send restart message through WebSocket
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify({
@@ -389,7 +325,7 @@ const app = Vue.createApp({
         },
         getNextPosition(direction) {
             const [x, y] = this.gameState.player_pos;
-            switch(direction) {
+            switch (direction) {
                 case 'n': return [x, y - 1];
                 case 's': return [x, y + 1];
                 case 'w': return [x - 1, y];
@@ -435,13 +371,13 @@ const app = Vue.createApp({
         },
         isPlayerPosition(x, y) {
             return this.gameState &&
-                    this.gameState.player_pos[0] === x &&
-                    this.gameState.player_pos[1] === y;
+                this.gameState.player_pos[0] === x &&
+                this.gameState.player_pos[1] === y;
         },
         canMove(direction) {
             if (!this.gameState || this.gameState.in_combat) return false;
             const [x, y] = this.gameState.player_pos;
-            switch(direction) {
+            switch (direction) {
                 case 'n': return y > 0;
                 case 's': return y < this.gameState.map_height - 1;
                 case 'w': return x > 0;
@@ -472,22 +408,22 @@ const app = Vue.createApp({
                 method: 'POST',
                 credentials: 'include'
             })
-            .then(response => {
-                if (response.redirected) {
-                    // Redirect to the landing page
-                    if (openInNewTab) {
-                        window.open(response.url, '_blank');
+                .then(response => {
+                    if (response.redirected) {
+                        // Redirect to the landing page
+                        if (openInNewTab) {
+                            window.open(response.url, '_blank');
+                        } else {
+                            window.location.href = response.url;
+                        }
                     } else {
-                        window.location.href = response.url;
+                        // Handle error if logout was not successful
+                        console.error('Failed to start a new game.');
                     }
-                } else {
-                    // Handle error if logout was not successful
-                    console.error('Failed to start a new game.');
-                }
-            })
-            .catch(error => {
-                console.error('Error starting new game:', error);
-            });
+                })
+                .catch(error => {
+                    console.error('Error starting new game:', error);
+                });
         },
         handleWindowResize() {
             // Force position update on resize
@@ -500,38 +436,80 @@ const app = Vue.createApp({
             }
         },
         handleGameState(response) {
-            if (response.type === 'update') {
+            if (response.type === 'update' && response.state) {
+                console.log('Received state update:', response.state);
+                const wasInCombat = this.gameState.in_combat;
                 this.gameState = response.state;
-                // Update the gameTitle when we receive a new state
+
+                // Update game title
                 if (response.state.game_title) {
+                    console.log('Setting game title to:', response.state.game_title);
                     this.gameTitle = response.state.game_title;
-                }
-                if (response.description) {
-                    this.addToGameLog(response.description);
-                }
-                // Store explored tiles count if provided
-                if (response.explored_tiles !== undefined) {
-                    this.gameState.explored_tiles = response.explored_tiles;
+                    document.title = response.state.game_title; // Also update page title
                 }
 
-                // Track game state changes
-                if (window.analytics) {
-                    // Track when game is over
-                    if (response.state.game_over) {
-                        analytics.logEvent('game_over', {
-                            title: this.gameTitle,
-                            explored_tiles: this.gameState.explored_tiles
-                        });
+                // If we just entered combat, make sure player position is correct
+                if (!wasInCombat && this.gameState.in_combat) {
+                    updatePlayerPosition(
+                        this.gameState.player_pos[0],
+                        this.gameState.player_pos[1],
+                        true
+                    );
+                    // Clear any pending movement state
+                    this.isMoveInProgress = false;
+                }
+
+                // Reset move in progress flag after any state update
+                this.isMoveInProgress = false;
+
+                if (response.description) {
+                    this.gameLogs.push(response.description);
+                }
+
+                // Hide loading screen when we receive any game state update
+                hideLoading();
+
+                if (!this.isGameInitialized) {
+                    console.log('Initial game state received:', this.gameState);
+                    if (this.gameState.game_title) {
+                        console.log('Setting initial game title to:', this.gameState.game_title);
+                        this.gameTitle = this.gameState.game_title;
+                        document.title = this.gameState.game_title;
                     }
-                    // Track combat events
-                    if (response.state.in_combat && !this.gameState.in_combat) {
-                        analytics.logEvent('combat_started', {
-                            enemy: response.state.current_enemy?.name
+                    this.isGameInitialized = true;
+                } else {
+                    if (response.description) {
+                        this.$nextTick(() => {
+                            const gameLog = document.querySelector('.game-log');
+                            if (gameLog) {
+                                gameLog.scrollTop = gameLog.scrollHeight;
+                            }
                         });
                     }
                 }
+
+                // Store generator ID if provided
+                if (response.generator_id) {
+                    this.generatorId = response.generator_id;
+                }
+
+                // Only update position if it doesn't match what we predicted
+                const [expectedX, expectedY] = this.gameState.player_pos;
+                const playerIcon = document.getElementById('player-icon');
+                if (playerIcon &&
+                    (playerIcon.dataset.x !== expectedX.toString() ||
+                        playerIcon.dataset.y !== expectedY.toString())) {
+                    this.$nextTick(() => {
+                        updatePlayerPosition(expectedX, expectedY);
+                    });
+                }
+            } else if (response.type === 'error') {
+                this.errorMessage = response.message;
+                hideLoading(); // Hide loading on error
+                setTimeout(() => {
+                    this.errorMessage = null;
+                }, 5000);
             }
-            // ...rest of the method
         }
     },
     mounted() {
@@ -547,13 +525,7 @@ const app = Vue.createApp({
             });
         }
 
-        // Rest of mounted logic
-        const urlParams = new URLSearchParams(window.location.search);
-        const generatorIdParam = urlParams.get('generator_id');
-        if (generatorIdParam) {
-            this.generatorId = generatorIdParam;
-        }
-
+        // Initialize WebSocket connection
         this.initWebSocket();
 
         // Add event listeners
@@ -565,22 +537,20 @@ const app = Vue.createApp({
         if (h1 && h1.dataset.initialTitle) {
             this.gameTitle = h1.dataset.initialTitle;
         }
-
-        // Clear loading interval if it exists when component is destroyed
-        if (loadingInterval) {
-            this.$once('hook:beforeDestroy', () => {
-                clearInterval(loadingInterval);
-            });
-        }
     },
     beforeUnmount() {
         document.removeEventListener('click', this.closeMenuIfClickedOutside);
         // Remove the resize event listener
         window.removeEventListener('resize', this.handleWindowResize);
+
+        // Clear loading interval if it exists
+        if (loadingInterval) {
+            clearInterval(loadingInterval);
+        }
     },
     watch: {
         // Watch for changes in player position
-        'gameState.player_pos': function(newVal, oldVal) {
+        'gameState.player_pos': function (newVal, oldVal) {
             // Only update if position has actually changed
             if (!oldVal || newVal[0] !== oldVal[0] || newVal[1] !== oldVal[1]) {
                 this.$nextTick(() => {
@@ -590,7 +560,7 @@ const app = Vue.createApp({
             }
         },
         // Watch for changes in combat state
-        'gameState.in_combat': function(newVal, oldVal) {
+        'gameState.in_combat': function (newVal, oldVal) {
             if (!newVal) { // Combat has ended
                 const [x, y] = this.gameState.player_pos;
                 this.$nextTick(() => {
@@ -599,7 +569,7 @@ const app = Vue.createApp({
             }
         },
         // Watch for changes in game title
-        'gameState.game_title': function(newVal) {
+        'gameState.game_title': function (newVal) {
             if (newVal) {
                 this.gameTitle = newVal;
             }
@@ -615,8 +585,7 @@ const app = Vue.createApp({
                         true
                     );
                 });
-                // Hide loading when game is initialized
-                hideLoading();
+                // Note: Loading screen is now hidden in handleGameState method
             }
         },
         'gameState.game_over'(newValue) {
@@ -697,18 +666,18 @@ loadTranslations().then(() => {
 });
 
 // Touch Handlers
-document.addEventListener('touchstart', function(event) {
+document.addEventListener('touchstart', function (event) {
     if (event.touches.length > 1) {
         event.preventDefault();
     }
 }, { passive: false });
 
-document.addEventListener('touchmove', function(event) {
+document.addEventListener('touchmove', function (event) {
     event.preventDefault();
 }, { passive: false });
 
 let lastTouchEnd = 0;
-document.addEventListener('touchend', function(event) {
+document.addEventListener('touchend', function (event) {
     const now = Date.now();
     if (now - lastTouchEnd <= 300) {
         event.preventDefault();
@@ -717,6 +686,6 @@ document.addEventListener('touchend', function(event) {
 }, false);
 
 // Prevent context menu on long press
-document.addEventListener('contextmenu', function(event) {
+document.addEventListener('contextmenu', function (event) {
     event.preventDefault();
 }, false);

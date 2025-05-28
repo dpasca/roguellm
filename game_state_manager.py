@@ -292,6 +292,14 @@ class GameStateManager:
 
     async def create_message(self, description_raw: str, description: str = ""):
         """Create a message with game state."""
+        # Check if state is initialized
+        if not hasattr(self, 'state') or self.state is None:
+            return {
+                'type': 'error',
+                'message': description_raw,
+                'description': description
+            }
+
         return {
             'type': 'update',
             'state': self.state.model_dump(),

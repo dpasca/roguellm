@@ -33,9 +33,85 @@ from game import Game
 from db import db
 
 #==================================================================
+# Game Session Management
+#==================================================================
+class GameSessionManager:
+    """Manages in-memory game sessions."""
+
+    def __init__(self):
+        self.sessions: Dict[str, dict] = {}  # Changed to store session data directly
+
+    def create_session(self, game_instance: Game) -> str:
+        """Create a new game session and return session ID."""
+        session_id = str(uuid.uuid4())
+        self.sessions[session_id] = {
+            'created_at': time.time(),
+            'last_accessed': time.time(),
+            'game_instance': game_instance,
+            'generator_id': game_instance.state_manager.generator_id if game_instance.state_manager else None,
+            'status': 'ready'
+        }
+        logging.info(f"Created new game session: {session_id}")
+        return session_id
+
+    def get_session(self, session_id: str) -> Optional[Game]:
+        """Get a game session by ID."""
+        if session_id in self.sessions:
+            session_data = self.sessions[session_id]
+            session_data['last_accessed'] = time.time()
+
+            # Handle both new and old session structures
+            if isinstance(session_data, dict) and 'game_instance' in session_data:
+                return session_data['game_instance']
+            else:
+                # Old structure - session_data is the game instance directly
+                return session_data
+        return None
+
+    def remove_session(self, session_id: str):
+        """Remove a game session."""
+        if session_id in self.sessions:
+            del self.sessions[session_id]
+            logging.info(f"Removed game session: {session_id}")
+
+    def cleanup_expired_sessions(self, max_age_hours: int = 24):
+        """Remove sessions older than max_age_hours."""
+        current_time = time.time()
+        expired_sessions = []
+
+        for session_id, session_data in self.sessions.items():
+            if current_time - session_data['last_accessed'] > max_age_hours * 3600:
+                expired_sessions.append(session_id)
+
+        for session_id in expired_sessions:
+            self.remove_session(session_id)
+
+        if expired_sessions:
+            logging.info(f"Cleaned up {len(expired_sessions)} expired sessions")
+
+    def get_session_count(self) -> int:
+        """Get the number of active sessions."""
+        return len(self.sessions)
+
+# Global session manager
+game_session_manager = GameSessionManager()
+
+#==================================================================
 # Models
 #==================================================================
 class CreateGameRequest(BaseModel):
+    theme: Optional[str] = None
+    language: str = "en"
+    do_web_search: bool = False
+    generator_id: Optional[str] = None
+
+class CreateGameSessionRequest(BaseModel):
+    generator_id: Optional[str] = None
+    theme: Optional[str] = None
+    language: str = "en"
+    do_web_search: bool = False
+
+class GameCreationRequest(BaseModel):
     theme: Optional[str] = None
     language: str = "en"
     do_web_search: bool = False
@@ -94,9 +170,20 @@ async def lifespan(app: FastAPI):
     load_dotenv()
     # Initialize database
     db.init_db()
+
+    # Start session cleanup task
+    async def cleanup_task():
+        while True:
+            await asyncio.sleep(3600)  # Run every hour
+            game_session_manager.cleanup_expired_sessions()
+
+    cleanup_task_handle = asyncio.create_task(cleanup_task())
+
     yield
+
     # Shutdown - ensure database uploads are completed
     logging.info("Shutting down database manager...")
+    cleanup_task_handle.cancel()
     db.shutdown()
 
 app = FastAPI(lifespan=lifespan)
@@ -172,7 +259,7 @@ async def read_landing(request: Request):
         logging.error(f"Error reading landing page: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# Game page
+# Game page - handles both generator sharing and direct session access
 @app.get("/game")
 async def read_game(request: Request):
     try:
@@ -181,7 +268,7 @@ async def read_game(request: Request):
             # Create new session
             request.session["game_session"] = str(uuid.uuid4())
 
-        # Check for generator_id/game_id in query parameters
+        # Check for generator_id/game_id in query parameters (for sharing)
         generator_id = request.query_params.get("generator_id")
         if not generator_id:
             generator_id = request.query_params.get("game_id")
@@ -192,26 +279,88 @@ async def read_game(request: Request):
             if not generator_data:
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
-            # Store valid generator ID in session
-            request.session["generator_id"] = generator_id
-        else:
-            # Clear any existing generator ID if none provided
-            request.session["generator_id"] = None
 
-        # Read and pre-render the HTML content using async file operations
+            # Check if user already has a session for this generator
+            existing_session_id = request.session.get(f"game_session_{generator_id}")
+            if existing_session_id and game_session_manager.get_session(existing_session_id):
+                # Redirect to existing session
+                return RedirectResponse(url=f"/game/{existing_session_id}")
+
+            # Create new game session for this generator
+            try:
+                game_instance = await Game.create(
+                    seed=int(time.time()),
+                    theme_desc=generator_data['theme_desc'],
+                    language=generator_data['language'],
+                    do_web_search=False,  # Don't re-do web search for shared generators
+                    generator_id=generator_id
+                )
+
+                session_id = game_session_manager.create_session(game_instance)
+                request.session[f"game_session_{generator_id}"] = session_id
+
+                # Redirect to the new session
+                return RedirectResponse(url=f"/game/{session_id}")
+
+            except Exception as e:
+                logging.error(f"Error creating game session for generator {generator_id}: {e}")
+                return RedirectResponse(url=f"/?error=failed_to_create_game")
+
+        # No generator ID provided - redirect to landing page
+        return RedirectResponse(url="/")
+
+    except Exception as e:
+        logging.error(f"Error reading game page: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Game session page - serves the actual game for a specific session
+@app.get("/game/{session_id}")
+async def read_game_session(session_id: str, request: Request):
+    try:
+        # Validate session exists (check directly in sessions dict)
+        if session_id not in game_session_manager.sessions:
+            # Session not found, redirect to landing
+            return RedirectResponse(url="/?error=session_not_found")
+
+        # Read and serve the game HTML
         async with aiofiles.open("static/game.html", "r", encoding="utf-8") as f:
             html_content = await f.read()
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
         return HTMLResponse(content=html_content)
+
     except Exception as e:
-        logging.error(f"Error reading game page: {e}")
+        logging.error(f"Error reading game session page: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# API endpoint for creating a new game
+# API endpoint for creating a new game session (replaces the old create_game)
+@app.post("/api/create_game_session")
+async def create_game_session(request: GameCreationRequest):
+    """Create a new game session and return session ID immediately"""
+    session_id = str(uuid.uuid4())
+
+    # Store the session with initial state in the new format
+    game_session_manager.sessions[session_id] = {
+        'created_at': time.time(),
+        'last_accessed': time.time(),
+        'game_instance': None,  # Will be set when game is created
+        'creation_request': request,
+        'status': 'creating',  # creating, ready, error
+        'generator_id': request.generator_id
+    }
+
+    logging.info(f"Created new game session: {session_id}")
+
+    return {
+        "session_id": session_id,
+        "status": "creating"
+    }
+
+# Legacy API endpoint for backward compatibility
 @app.post("/api/create_game")
 async def create_game(request: CreateGameRequest, req: Request):
+    """Legacy endpoint - redirects to new session-based flow."""
     try:
         if request.generator_id:
             # Check if generator exists
@@ -221,15 +370,13 @@ async def create_game(request: CreateGameRequest, req: Request):
                     "error": f"Game ID not found: {request.generator_id}"
                 }, status_code=404)
 
-        # Store generator_id in session if provided
+        # Store configuration in session for the new flow
         req.session["generator_id"] = request.generator_id if request.generator_id else None
-
-        # Set theme and language in session
-        theme_desc = request.theme if request.theme else "fantasy"
         req.session["language"] = request.language
         req.session["do_web_search"] = request.do_web_search
 
-        # Compress and store the theme description in session
+        # Set theme and compress it
+        theme_desc = request.theme if request.theme else "fantasy"
         compressed = base64.b64encode(zlib.compress(theme_desc.encode())).decode()
         req.session["theme_desc"] = compressed
 
@@ -264,13 +411,178 @@ class TimeProfiler:
         self.elapsed = time.time() - self.start
         logging.info(f"{self.name} took {self.elapsed:.2f} seconds")
 
-# WebSocket endpoint for the game
+# WebSocket endpoint for the game - now works with sessions
+@app.websocket("/ws/game/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    await websocket.accept()
+
+    try:
+        # Check if session exists
+        if session_id not in game_session_manager.sessions:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Session not found"
+            })
+            return
+
+        session = game_session_manager.sessions[session_id]
+
+        # If game is not created yet, create it now
+        if session['status'] == 'creating':
+            await websocket.send_json({
+                "type": "status",
+                "message": "Creating game world...",
+                "status": "creating"
+            })
+
+            try:
+                request = session['creation_request']
+
+                if request.generator_id:
+                    # Check if generator exists
+                    generator_data = db.get_generator(request.generator_id)
+                    if not generator_data:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": f"Game ID not found: {request.generator_id}"
+                        })
+                        return
+
+                    # Use generator data
+                    theme_desc = generator_data['theme_desc']
+                    language = generator_data['language']
+                    do_web_search = False  # Don't re-do web search for existing generators
+                else:
+                    # Use provided parameters
+                    theme_desc = request.theme if request.theme else "fantasy"
+                    language = request.language
+                    do_web_search = request.do_web_search
+
+                await websocket.send_json({
+                    "type": "status",
+                    "message": "Generating game content...",
+                    "status": "creating"
+                })
+
+                # Create new game instance with timeout
+                try:
+                    game_instance = await asyncio.wait_for(
+                        Game.create(
+                            seed=int(time.time()),
+                            theme_desc=theme_desc,
+                            language=language,
+                            do_web_search=do_web_search,
+                            generator_id=request.generator_id
+                        ),
+                        timeout=60.0  # 1 minute timeout
+                    )
+                except asyncio.TimeoutError:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Game creation is taking longer than expected. Please try again with a simpler theme or use an existing generator."
+                    })
+                    return
+
+                # Update session with created game
+                session['game_instance'] = game_instance
+                session['status'] = 'ready'
+                session['last_accessed'] = time.time()
+                if game_instance.state_manager:
+                    session['generator_id'] = game_instance.state_manager.generator_id
+
+                await websocket.send_json({
+                    "type": "status",
+                    "message": "Game ready!",
+                    "status": "ready"
+                })
+
+            except Exception as e:
+                logging.error(f"Error creating game for session {session_id}: {str(e)}")
+                session['status'] = 'error'
+                await websocket.send_json({
+                    "type": "error",
+                    "message": f"Failed to create game: {str(e)}"
+                })
+                return
+
+        # Get the game instance
+        game_instance = session['game_instance']
+        if not game_instance:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Game not ready"
+            })
+            return
+
+        # Handle the WebSocket connection with the game instance
+        try:
+            game_instance.add_client(websocket)
+
+            # Check for error message through state manager
+            if game_instance.state_manager and game_instance.state_manager.error_message:
+                logging.info(f"Sending error message: {game_instance.state_manager.error_message}")
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': game_instance.state_manager.error_message
+                })
+
+            initial_response = {
+                'type': 'connection_established',
+                'generator_id': game_instance.state_manager.generator_id if game_instance.state_manager else None
+            }
+            await websocket.send_json(initial_response)
+
+            while True:
+                message = await websocket.receive_json()
+                response = await game_instance.handle_message(message)
+
+                # Add generator_id to response if available
+                if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
+                    response['generator_id'] = game_instance.state_manager.generator_id
+
+                await websocket.send_json(response)
+
+        except WebSocketDisconnect:
+            logging.info("WebSocket client disconnected normally")
+        except ConnectionResetError:
+            logging.info("WebSocket connection reset by client")
+        except Exception as e:
+            logging.exception(f"Game loop error: {e}")
+            # Try to send error message if connection is still open
+            try:
+                await websocket.send_json({
+                    'type': 'error',
+                    'message': 'Game error occurred'
+                })
+            except (WebSocketDisconnect, ConnectionResetError, RuntimeError):
+                logging.debug("Could not send error message - connection already closed")
+        finally:
+            if game_instance:
+                try:
+                    game_instance.remove_client(websocket)
+                except Exception as cleanup_error:
+                    logging.debug(f"Error during WebSocket cleanup: {cleanup_error}")
+
+    except WebSocketDisconnect:
+        logging.info(f"WebSocket disconnected for session: {session_id}")
+    except Exception as e:
+        logging.error(f"WebSocket error for session {session_id}: {str(e)}")
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e)
+            })
+        except:
+            pass
+
+# Legacy WebSocket endpoint for backward compatibility
 @app.websocket("/ws/game")
-async def websocket_endpoint(websocket: WebSocket):
+async def legacy_websocket_endpoint(websocket: WebSocket):
+    """Legacy WebSocket endpoint - creates session on-the-fly for backward compatibility."""
     game_instance = None
     try:
         await websocket.accept()
-        logging.info("New WebSocket connection established")
+        logging.info("New WebSocket connection established (legacy)")
 
         session = websocket.session
 
@@ -297,6 +609,10 @@ async def websocket_endpoint(websocket: WebSocket):
             do_web_search=do_web_search,
             generator_id=generator_id
         )
+
+        # Create session for this game
+        session_id = game_session_manager.create_session(game_instance)
+        logging.info(f"Created legacy session: {session_id}")
 
         try:
             game_instance.add_client(websocket)
@@ -358,6 +674,49 @@ async def websocket_endpoint(websocket: WebSocket):
             except Exception as cleanup_error:
                 logging.debug(f"Error during WebSocket cleanup: {cleanup_error}")
 
+# API endpoint to get session info
+@app.get("/api/session/{session_id}/info")
+async def get_session_info(session_id: str):
+    """Get information about a game session."""
+    if session_id not in game_session_manager.sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session_data = game_session_manager.sessions[session_id]
+
+    # Handle both new and old session structures
+    if isinstance(session_data, dict) and 'game_instance' in session_data:
+        # New structure
+        game_instance = session_data['game_instance']
+        return JSONResponse({
+            "session_id": session_id,
+            "generator_id": session_data.get('generator_id'),
+            "created_at": session_data.get('created_at'),
+            "last_accessed": session_data.get('last_accessed'),
+            "status": session_data.get('status'),
+            "game_title": game_instance.get_game_title() if game_instance else None
+        })
+    else:
+        # Old structure - session_data is the game instance directly
+        game_instance = session_data
+        return JSONResponse({
+            "session_id": session_id,
+            "generator_id": game_instance.state_manager.generator_id if game_instance.state_manager else None,
+            "created_at": None,  # Not available in old structure
+            "last_accessed": None,  # Not available in old structure
+            "status": "ready",  # Assume ready for old structure
+            "game_title": game_instance.get_game_title() if game_instance else None
+        })
+
+# API endpoint to get server stats
+@app.get("/api/stats")
+async def get_server_stats():
+    """Get server statistics."""
+    return JSONResponse({
+        "active_sessions": game_session_manager.get_session_count(),
+        "uptime": time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0
+    })
+
 if __name__ == "__main__":
     import uvicorn
+    app.state.start_time = time.time()
     uvicorn.run(app, host="0.0.0.0", port=8000)

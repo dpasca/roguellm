@@ -27,7 +27,8 @@
     "share": "Condividi Gioco",
     "restart": "Riavvia Gioco",
     "newGame": "Crea Nuovo Gioco",
-    "debug": "Info Debug"
+    "debug": "Info Debug",
+    "modelInfo": "Modello: {model}"
   },
   "notifications": {
     "gameCopied": "ID Gioco copiato negli appunti!",
