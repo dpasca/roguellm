@@ -1,0 +1,1 @@
+- Ensure request of structured output (JSON) when necessary, since generation can still fail sometimes
