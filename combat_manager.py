@@ -101,6 +101,15 @@ class CombatManager:
         elif action == 'run':
             # 50% chance to escape
             if self.random.random() < 0.5:
+                # Add enemy to escaped list to prevent immediate re-encounter
+                x, y = game_state.player_pos
+                game_state.escaped_enemies.append({
+                    'x': x,
+                    'y': y,
+                    'name': game_state.current_enemy.name,
+                    'id': game_state.current_enemy.id
+                })
+
                 game_state.in_combat = False
                 game_state.current_enemy = None
                 # Move player back to previous position

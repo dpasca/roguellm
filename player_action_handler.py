@@ -14,57 +14,68 @@ class PlayerActionHandler:
         self.combat_manager = combat_manager
 
     async def handle_move(self, direction: str) -> dict:
-        """Handle player movement."""
-        if not direction:
-            return await self.game_state_manager.create_message("No direction specified!")
+        """Handle player movement in the specified direction."""
+        if self.game_state_manager.state.in_combat:
+            return await self.game_state_manager.create_message("You can't move while in combat!")
 
-        if self.game_state_manager.state.game_won or self.game_state_manager.state.game_over:
-            return await self.game_state_manager.create_message("Game is over! Press Restart to play again.")
+        if self.game_state_manager.state.game_over:
+            return await self.game_state_manager.create_message("Game over! You cannot move.")
 
-        # Save previous position
-        self.game_state_manager.state.player_pos_prev = self.game_state_manager.state.player_pos
-        # Get current position
+        if self.game_state_manager.state.game_won:
+            return await self.game_state_manager.create_message("You have won! The game is complete.")
+
+        # Calculate new position
         x, y = self.game_state_manager.state.player_pos
-        moved = True
+        prev_x, prev_y = x, y
 
-        if direction == 'n' and y > 0:
+        if direction == 'n':
             y -= 1
-        elif direction == 's' and y < self.game_state_manager.state.map_height - 1:
+        elif direction == 's':
             y += 1
-        elif direction == 'w' and x > 0:
+        elif direction == 'w':
             x -= 1
-        elif direction == 'e' and x < self.game_state_manager.state.map_width - 1:
+        elif direction == 'e':
             x += 1
         else:
-            moved = False
+            return await self.game_state_manager.create_message("Invalid direction!")
 
-        if moved:
-            # Update position immediately
-            self.game_state_manager.state.player_pos = (x, y)
-            # Mark the NEW position as explored after moving
-            self.game_state_manager.state.explored[y][x] = True
+        # Check bounds
+        if x < 0 or x >= self.game_state_manager.state.map_width or y < 0 or y >= self.game_state_manager.state.map_height:
+            return await self.game_state_manager.create_message("You can't move there!")
 
-            # Check if we need to generate a description (only for new cell types)
-            cur_ct = self.game_state_manager.state.cell_types[y][x]
-            cur_ct_name = cur_ct.get('name', '') if isinstance(cur_ct, dict) else str(cur_ct)
-            should_generate_description = self.game_state_manager.last_described_ct != cur_ct_name
+        # Update position and track previous position
+        self.game_state_manager.state.player_pos_prev = self.game_state_manager.state.player_pos
+        self.game_state_manager.state.player_pos = (x, y)
 
-            # Debug logging
-            logger.info(f"Movement: last_ct='{self.game_state_manager.last_described_ct}', cur_ct='{cur_ct_name}', generate_desc={should_generate_description}")
+        # Clear escaped enemies when moving away from them (not in adjacent cells)
+        self._clear_distant_escaped_enemies()
 
-            if should_generate_description:
-                self.game_state_manager.last_described_ct = cur_ct_name
+        # Mark cell as explored
+        self.game_state_manager.state.explored[y][x] = True
 
-            # Create immediate response with position update and current game state
-            immediate_result = await self.game_state_manager.create_message("Moving...")
+        # Determine if we should generate a room description
+        prev_cell_type = self.game_state_manager.state.cell_types[prev_y][prev_x]
+        curr_cell_type = self.game_state_manager.state.cell_types[y][x]
+        should_generate_description = prev_cell_type['id'] != curr_cell_type['id']
 
-            # Schedule async encounter and description generation
-            import asyncio
-            asyncio.create_task(self._handle_move_effects(x, y, should_generate_description))
+        # Create immediate response with position update and current game state
+        immediate_result = await self.game_state_manager.create_message("Moving...")
 
-            return immediate_result
-        else:
-            return await self.game_state_manager.create_message("You can't move in that direction.")
+        # Schedule async encounter and description generation
+        import asyncio
+        asyncio.create_task(self._handle_move_effects(x, y, should_generate_description))
+
+        return immediate_result
+
+    def _clear_distant_escaped_enemies(self):
+        """Clear escaped enemies that are not in adjacent cells to allow re-encounters."""
+        player_x, player_y = self.game_state_manager.state.player_pos
+
+        # Keep only escaped enemies that are adjacent to the player (within 1 cell)
+        self.game_state_manager.state.escaped_enemies = [
+            enemy for enemy in self.game_state_manager.state.escaped_enemies
+            if abs(enemy['x'] - player_x) <= 1 and abs(enemy['y'] - player_y) <= 1
+        ]
 
     async def _handle_move_effects(self, x: int, y: int, should_generate_description: bool):
         """Handle post-movement effects like encounters and descriptions asynchronously."""
@@ -249,6 +260,12 @@ class PlayerActionHandler:
                     for de in self.game_state_manager.state.defeated_enemies
                 )
 
+                # Check if this enemy was recently escaped from
+                was_escaped = any(
+                    ee['x'] == x and ee['y'] == y
+                    for ee in self.game_state_manager.state.escaped_enemies
+                )
+
                 # Add enemy to state.enemies list
                 existing_enemy = next((e for e in self.game_state_manager.state.enemies if e['x'] == x and e['y'] == y), None)
                 if existing_enemy:
@@ -277,8 +294,8 @@ class PlayerActionHandler:
                         'is_defeated': True
                     })
 
-                # Don't enter combat if the enemy was already defeated
-                if was_defeated:
+                # Don't enter combat if the enemy was already defeated or recently escaped from
+                if was_defeated or was_escaped:
                     self.game_state_manager.state.current_enemy = None
                     self.game_state_manager.state.in_combat = False
 
@@ -292,6 +309,10 @@ class PlayerActionHandler:
                 if was_defeated:
                     return await self.game_state_manager.create_message(
                         f"You see a defeated {enemy.name} here."
+                    )
+                elif was_escaped:
+                    return await self.game_state_manager.create_message(
+                        f"You see the {enemy.name} you escaped from. It seems agitated but doesn't immediately attack."
                     )
                 else:
                     return await self.game_state_manager.create_message(
@@ -372,6 +393,12 @@ class PlayerActionHandler:
                     for de in self.game_state_manager.state.defeated_enemies
                 )
 
+                # Check if this enemy was recently escaped from
+                was_escaped = any(
+                    ee['x'] == x and ee['y'] == y
+                    for ee in self.game_state_manager.state.escaped_enemies
+                )
+
                 # Update enemies list
                 existing_enemy = next((e for e in self.game_state_manager.state.enemies if e['x'] == x and e['y'] == y), None)
                 if existing_enemy:
@@ -389,14 +416,18 @@ class PlayerActionHandler:
                         'is_defeated': was_defeated
                     })
 
-                if was_defeated:
+                if was_defeated or was_escaped:
                     self.game_state_manager.state.current_enemy = None
                     self.game_state_manager.state.in_combat = False
-                    self.game_state_manager.entity_placements = [
-                        p for p in self.game_state_manager.entity_placements
-                        if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
-                    ]
-                    return await self.game_state_manager.create_message(f"You see a defeated {enemy.name} here.")
+                    if was_defeated:
+                        self.game_state_manager.entity_placements = [
+                            p for p in self.game_state_manager.entity_placements
+                            if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
+                        ]
+                    if was_defeated:
+                        return await self.game_state_manager.create_message(f"You see a defeated {enemy.name} here.")
+                    else:  # was_escaped
+                        return await self.game_state_manager.create_message(f"You see the {enemy.name} you escaped from. It seems agitated but doesn't immediately attack.")
                 else:
                     return await self.game_state_manager.create_message(f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})")
 
