@@ -513,6 +513,15 @@ const app = Vue.createApp({
                     }
                 });
 
+                // Add listener for 3D arrow movement
+                this.arrowMoveHandler = (event) => {
+                    const direction = event.detail.direction;
+                    if (direction && this.canMove(direction)) {
+                        this.move(direction);
+                    }
+                };
+                window.addEventListener('arrow-move', this.arrowMoveHandler);
+
                 // Update the 3D scene with current game state
                 this.update3DScene();
             }
@@ -522,6 +531,9 @@ const app = Vue.createApp({
                 this.threeRenderer.dispose();
                 this.threeRenderer = null;
             }
+
+            // Remove the arrow movement event listener
+            window.removeEventListener('arrow-move', this.arrowMoveHandler);
         },
         update3DScene() {
             if (this.threeRenderer && this.gameState) {

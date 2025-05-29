@@ -170,6 +170,10 @@
     gap: 5px;
     z-index: 10;
     pointer-events: auto;
+    /* Hide 2D overlay controls when 3D arrows are active */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
 }
 
 .move-btn {
