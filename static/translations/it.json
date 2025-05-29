@@ -71,6 +71,7 @@
     }
   },
   "player": {
+    "status": "Stato Giocatore",
     "inventory": "Inventario",
     "equipment": {
       "weapon": "Arma",
@@ -81,13 +82,27 @@
       "attack": "Attacco",
       "defense": "Difesa",
       "xp": "XP",
+      "level": "Livello",
       "location": "Posizione"
     }
+  },
+  "equipment": {
+    "title": "Equipaggiamento",
+    "weapon": "Arma",
+    "armor": "Armatura",
+    "empty": "Nessuno"
   },
   "inventory": {
     "use": "Usa",
     "equip": "Equipaggia",
     "unequip": "Rimuovi"
+  },
+  "gameLog": {
+    "title": "Registro di Gioco"
+  },
+  "loading": {
+    "title": "Caricamento",
+    "generating": "Generazione gioco..."
   },
   "debug": {
     "title": "Informazioni di Debug",

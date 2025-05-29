@@ -1,18 +1,13 @@
 {
     "// Notes": "Parameters are indicated with {paramName}",
-
-    "// Translation Notes":
-    "Localize sensibly based on the fact that this is for a video game. e.g. do not translate 'Game Over' for the Italian version.",
-
+    "// Translation Notes": "Localize sensibly based on the fact that this is for a video game. e.g. do not translate 'Game Over' for the Italian version.",
     "// Main UI": "Main interface translations",
     "title": "RogueLLM",
     "subtitle_with_author": "An experimental AI-driven roguelike game by {author}",
-
     "// Navigation": "Navigation related messages",
     "navigation": {
         "leaveWarning": "Are you sure you want to leave the game?"
     },
-
     "// Theme Selection": "Theme selection related translations",
     "selectTheme": "Select Your Theme",
     "fantasyTheme": "Fantasy Theme",
@@ -20,7 +15,6 @@
     "enterGameDescription": "Describe the setting for your game. e.g. 'Programmers in the wild'",
     "generatorTheme": "Generator Theme",
     "improveGameDescription": "Improve game description with web search",
-
     "// Game Setup": "Game setup and configuration translations",
     "useGameId": "Use Game ID",
     "customThemeDescription": "Enter a description for your custom theme:",
@@ -28,7 +22,6 @@
     "startGame": "Start Game",
     "createGame": "Create Game",
     "errorGameId": "Please enter a Game ID",
-
     "// Game Interface": "In-game interface translations",
     "menu": {
         "share": "Share Game",
@@ -78,6 +71,7 @@
         }
     },
     "player": {
+        "status": "Player Status",
         "inventory": "Inventory",
         "equipment": {
             "weapon": "Weapon",
@@ -88,13 +82,27 @@
             "attack": "Attack",
             "defense": "Defense",
             "xp": "XP",
+            "level": "Level",
             "location": "Location"
         }
+    },
+    "equipment": {
+        "title": "Equipment",
+        "weapon": "Weapon",
+        "armor": "Armor",
+        "empty": "None"
     },
     "inventory": {
         "use": "Use",
         "equip": "Equip",
         "unequip": "Unequip"
+    },
+    "gameLog": {
+        "title": "Game Log"
+    },
+    "loading": {
+        "title": "Loading",
+        "generating": "Generating game..."
     },
     "debug": {
         "title": "Debug Information",

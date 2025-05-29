@@ -128,7 +128,10 @@ const app = Vue.createApp({
             isDebugPanelOpen: false,
             errorMessage: null,
             generatorId: null,
-            showShareNotification: false
+            showShareNotification: false,
+            // Three.js related
+            threeRenderer: null,
+            use3D: true // Toggle between 2D and 3D rendering
         }
     },
     computed: {
@@ -436,79 +439,113 @@ const app = Vue.createApp({
             }
         },
         handleGameState(response) {
-            if (response.type === 'update' && response.state) {
-                console.log('Received state update:', response.state);
-                const wasInCombat = this.gameState.in_combat;
-                this.gameState = response.state;
-
-                // Update game title
-                if (response.state.game_title) {
-                    console.log('Setting game title to:', response.state.game_title);
-                    this.gameTitle = response.state.game_title;
-                    document.title = response.state.game_title; // Also update page title
+            if (response.type === 'game_state' || response.type === 'update') {
+                // Store previous position for animation
+                if (this.gameState.player_pos) {
+                    this.gameState.player_pos_prev = [...this.gameState.player_pos];
                 }
 
-                // If we just entered combat, make sure player position is correct
-                if (!wasInCombat && this.gameState.in_combat) {
-                    updatePlayerPosition(
-                        this.gameState.player_pos[0],
-                        this.gameState.player_pos[1],
-                        true
-                    );
-                    // Clear any pending movement state
-                    this.isMoveInProgress = false;
+                // Handle both 'game_state' (with data property) and 'update' (with state property)
+                const newState = response.data || response.state;
+                if (newState) {
+                    this.gameState = { ...this.gameState, ...newState };
+
+                    // Set game as initialized
+                    this.isGameInitialized = true;
+
+                    // Update game title if present
+                    if (newState.game_title) {
+                        this.gameTitle = newState.game_title;
+                    }
                 }
 
-                // Reset move in progress flag after any state update
-                this.isMoveInProgress = false;
-
+                // Add description to game log if present
                 if (response.description) {
                     this.gameLogs.push(response.description);
                 }
 
-                // Hide loading screen when we receive any game state update
-                hideLoading();
-
-                if (!this.isGameInitialized) {
-                    console.log('Initial game state received:', this.gameState);
-                    if (this.gameState.game_title) {
-                        console.log('Setting initial game title to:', this.gameState.game_title);
-                        this.gameTitle = this.gameState.game_title;
-                        document.title = this.gameState.game_title;
-                    }
-                    this.isGameInitialized = true;
-                } else {
-                    if (response.description) {
-                        this.$nextTick(() => {
-                            const gameLog = document.querySelector('.game-log');
-                            if (gameLog) {
-                                gameLog.scrollTop = gameLog.scrollHeight;
-                            }
-                        });
-                    }
+                // Update 3D scene if renderer is active
+                if (this.use3D) {
+                    this.update3DScene();
                 }
 
-                // Store generator ID if provided
-                if (response.generator_id) {
-                    this.generatorId = response.generator_id;
-                }
-
-                // Only update position if it doesn't match what we predicted
-                const [expectedX, expectedY] = this.gameState.player_pos;
-                const playerIcon = document.getElementById('player-icon');
-                if (playerIcon &&
-                    (playerIcon.dataset.x !== expectedX.toString() ||
-                        playerIcon.dataset.y !== expectedY.toString())) {
+                // Update player position for 2D rendering (if not using 3D)
+                if (!this.use3D && this.gameState.player_pos) {
                     this.$nextTick(() => {
-                        updatePlayerPosition(expectedX, expectedY);
+                        updatePlayerPosition(this.gameState.player_pos[0], this.gameState.player_pos[1], true);
                     });
                 }
+
+                this.isMoveInProgress = false;
+                hideLoading();
+            } else if (response.type === 'game_log') {
+                this.gameLogs.push(response.data);
             } else if (response.type === 'error') {
-                this.errorMessage = response.message;
-                hideLoading(); // Hide loading on error
-                setTimeout(() => {
-                    this.errorMessage = null;
-                }, 5000);
+                this.errorMessage = response.data.message;
+                this.isMoveInProgress = false;
+                hideLoading();
+            }
+        },
+        toggle3D() {
+            this.use3D = !this.use3D;
+            if (this.use3D) {
+                this.init3DRenderer();
+            } else {
+                this.dispose3DRenderer();
+            }
+        },
+        init3DRenderer() {
+            if (this.threeRenderer) {
+                this.dispose3DRenderer();
+            }
+
+            const container = document.getElementById('threejs-container');
+            if (container && window.ThreeJSRenderer) {
+                this.threeRenderer = new ThreeJSRenderer(container, this.gameState);
+
+                // Add click handler for movement
+                container.addEventListener('click', (event) => {
+                    if (this.gameState.in_combat) return;
+
+                    const clickPos = this.threeRenderer.onMapClick(event);
+                    if (clickPos) {
+                        this.moveToPosition(clickPos.x, clickPos.y);
+                    }
+                });
+
+                // Update the 3D scene with current game state
+                this.update3DScene();
+            }
+        },
+        dispose3DRenderer() {
+            if (this.threeRenderer) {
+                this.threeRenderer.dispose();
+                this.threeRenderer = null;
+            }
+        },
+        update3DScene() {
+            if (this.threeRenderer && this.gameState) {
+                this.threeRenderer.updateGameMap(this.gameState);
+            }
+        },
+        moveToPosition(targetX, targetY) {
+            // Calculate path and move step by step
+            const currentX = this.gameState.player_pos[0];
+            const currentY = this.gameState.player_pos[1];
+
+            const deltaX = targetX - currentX;
+            const deltaY = targetY - currentY;
+
+            // Move one step at a time
+            let direction = null;
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                direction = deltaX > 0 ? 'e' : 'w';
+            } else {
+                direction = deltaY > 0 ? 's' : 'n';
+            }
+
+            if (direction && this.canMove(direction)) {
+                this.move(direction);
             }
         }
     },
@@ -537,6 +574,13 @@ const app = Vue.createApp({
         if (h1 && h1.dataset.initialTitle) {
             this.gameTitle = h1.dataset.initialTitle;
         }
+
+        // Initialize 3D renderer if Three.js is available
+        this.$nextTick(() => {
+            if (this.use3D && window.THREE) {
+                this.init3DRenderer();
+            }
+        });
     },
     beforeUnmount() {
         document.removeEventListener('click', this.closeMenuIfClickedOutside);
@@ -547,6 +591,9 @@ const app = Vue.createApp({
         if (loadingInterval) {
             clearInterval(loadingInterval);
         }
+
+        // Dispose 3D renderer
+        this.dispose3DRenderer();
     },
     watch: {
         // Watch for changes in player position
@@ -591,6 +638,13 @@ const app = Vue.createApp({
         'gameState.game_over'(newValue) {
             if (newValue === true) {
                 this.preventNavigation = false;
+            }
+        },
+        use3D(newVal) {
+            if (newVal) {
+                this.init3DRenderer();
+            } else {
+                this.dispose3DRenderer();
             }
         }
     }

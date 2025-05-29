@@ -27,7 +27,8 @@
     "share": "ゲームを共有",
     "restart": "ゲームを再開",
     "newGame": "新しいゲームを作成",
-    "debug": "デバッグ情報"
+    "debug": "デバッグ情報",
+    "modelInfo": "AIモデル: {model}"
   },
   "notifications": {
     "gameCopied": "ゲームIDがクリップボードにコピーされました！",
@@ -70,6 +71,7 @@
     }
   },
   "player": {
+    "status": "プレイヤーステータス",
     "inventory": "インベントリ",
     "equipment": {
       "weapon": "武器",
@@ -80,13 +82,27 @@
       "attack": "攻撃",
       "defense": "防御",
       "xp": "XP",
+      "level": "レベル",
       "location": "位置"
     }
+  },
+  "equipment": {
+    "title": "装備",
+    "weapon": "武器",
+    "armor": "防具",
+    "empty": "なし"
   },
   "inventory": {
     "use": "使用",
     "equip": "装備",
     "unequip": "装備解除"
+  },
+  "gameLog": {
+    "title": "ゲームログ"
+  },
+  "loading": {
+    "title": "読み込み中",
+    "generating": "ゲーム生成中..."
   },
   "debug": {
     "title": "デバッグ情報",

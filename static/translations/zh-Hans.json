@@ -27,7 +27,8 @@
     "share": "分享游戏",
     "restart": "重新开始游戏",
     "newGame": "创建新游戏",
-    "debug": "调试信息"
+    "debug": "调试信息",
+    "modelInfo": "AI 模型：{model}"
   },
   "notifications": {
     "gameCopied": "游戏 ID 已复制到剪贴板！",
@@ -70,6 +71,7 @@
     }
   },
   "player": {
+    "status": "玩家状态",
     "inventory": "背包",
     "equipment": {
       "weapon": "武器",
@@ -80,13 +82,27 @@
       "attack": "攻击",
       "defense": "防御",
       "xp": "经验值",
+      "level": "等级",
       "location": "位置"
     }
+  },
+  "equipment": {
+    "title": "装备",
+    "weapon": "武器",
+    "armor": "护甲",
+    "empty": "无"
   },
   "inventory": {
     "use": "使用",
     "equip": "装备",
     "unequip": "卸下装备"
+  },
+  "gameLog": {
+    "title": "游戏日志"
+  },
+  "loading": {
+    "title": "加载中",
+    "generating": "生成游戏中..."
   },
   "debug": {
     "title": "调试信息",

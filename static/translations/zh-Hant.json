@@ -27,7 +27,8 @@
     "share": "分享遊戲",
     "restart": "重新開始遊戲",
     "newGame": "創建新遊戲",
-    "debug": "除錯資訊"
+    "debug": "除錯資訊",
+    "modelInfo": "AI 模型：{model}"
   },
   "notifications": {
     "gameCopied": "遊戲 ID 已複製到剪貼簿！",
@@ -70,6 +71,7 @@
     }
   },
   "player": {
+    "status": "玩家狀態",
     "inventory": "物品欄",
     "equipment": {
       "weapon": "武器",
@@ -80,13 +82,27 @@
       "attack": "攻擊力",
       "defense": "防禦力",
       "xp": "經驗值",
+      "level": "等級",
       "location": "位置"
     }
+  },
+  "equipment": {
+    "title": "裝備",
+    "weapon": "武器",
+    "armor": "護甲",
+    "empty": "無"
   },
   "inventory": {
     "use": "使用",
     "equip": "裝備",
     "unequip": "卸下裝備"
+  },
+  "gameLog": {
+    "title": "遊戲日誌"
+  },
+  "loading": {
+    "title": "載入中",
+    "generating": "生成遊戲中..."
   },
   "debug": {
     "title": "除錯資訊",

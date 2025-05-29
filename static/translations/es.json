@@ -27,7 +27,8 @@
     "share": "Compartir juego",
     "restart": "Reiniciar juego",
     "newGame": "Crear nuevo juego",
-    "debug": "Información de depuración"
+    "debug": "Información de depuración",
+    "modelInfo": "Modelo de IA: {model}"
   },
   "notifications": {
     "gameCopied": "¡ID del juego copiado al portapapeles!",
@@ -70,6 +71,7 @@
     }
   },
   "player": {
+    "status": "Estado del Jugador",
     "inventory": "Inventario",
     "equipment": {
       "weapon": "Arma",
@@ -80,13 +82,27 @@
       "attack": "Ataque",
       "defense": "Defensa",
       "xp": "XP",
+      "level": "Nivel",
       "location": "Ubicación"
     }
+  },
+  "equipment": {
+    "title": "Equipamiento",
+    "weapon": "Arma",
+    "armor": "Armadura",
+    "empty": "Ninguno"
   },
   "inventory": {
     "use": "Usar",
     "equip": "Equipar",
     "unequip": "Desequipar"
+  },
+  "gameLog": {
+    "title": "Registro del Juego"
+  },
+  "loading": {
+    "title": "Cargando",
+    "generating": "Generando juego..."
   },
   "debug": {
     "title": "Información de depuración",

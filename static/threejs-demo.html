@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Three.js Roguelike Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="stylesheet" href="/static/css/threejs.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #121212;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            background: #4dabf7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #339af0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="demo-container">
+        <h1>Three.js Roguelike Demo</h1>
+        <p>This demonstrates the 3D rendering for your roguelike game.</p>
+
+        <div id="threejs-container"></div>
+
+        <div class="controls">
+            <button onclick="demo.addRandomTile()">Add Random Tile</button>
+            <button onclick="demo.addEnemy()">Add Enemy</button>
+            <button onclick="demo.addItem()">Add Item</button>
+            <button onclick="demo.movePlayer()">Move Player</button>
+            <button onclick="demo.reset()">Reset Scene</button>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <h3>Controls:</h3>
+            <ul>
+                <li>Left mouse: Rotate camera</li>
+                <li>Right mouse: Pan camera</li>
+                <li>Mouse wheel: Zoom</li>
+                <li>Click tiles to move player (when integrated)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/static/js/threejs-renderer.js"></script>
+    <script>
+        // Demo game state
+        const demoGameState = {
+            cell_types: [
+                [
+                    { name: 'Grass', map_color: '#4a7c59' },
+                    { name: 'Stone', map_color: '#666666' },
+                    { name: 'Water', map_color: '#4dabf7' },
+                    { name: 'Mountain', map_color: '#8b4513' }
+                ],
+                [
+                    { name: 'Forest', map_color: '#2d5016' },
+                    { name: 'Grass', map_color: '#4a7c59' },
+                    { name: 'Stone', map_color: '#666666' },
+                    { name: 'Hill', map_color: '#8fbc8f' }
+                ],
+                [
+                    { name: 'Grass', map_color: '#4a7c59' },
+                    { name: 'Grass', map_color: '#4a7c59' },
+                    { name: 'Forest', map_color: '#2d5016' },
+                    { name: 'Water', map_color: '#4dabf7' }
+                ],
+                [
+                    { name: 'Stone', map_color: '#666666' },
+                    { name: 'Mountain', map_color: '#8b4513' },
+                    { name: 'Grass', map_color: '#4a7c59' },
+                    { name: 'Grass', map_color: '#4a7c59' }
+                ]
+            ],
+            explored: [
+                [true, true, false, false],
+                [true, true, true, false],
+                [false, true, true, true],
+                [false, false, true, true]
+            ],
+            player_pos: [1, 1],
+            enemies: [
+                { x: 2, y: 2, is_defeated: false }
+            ],
+            items: [
+                { x: 3, y: 3 }
+            ]
+        };
+
+        // Initialize demo
+        const container = document.getElementById('threejs-container');
+        const demo = {
+            renderer: null,
+
+            init() {
+                this.renderer = new ThreeJSRenderer(container, demoGameState);
+                this.renderer.updateGameMap(demoGameState);
+            },
+
+            addRandomTile() {
+                const x = Math.floor(Math.random() * 4);
+                const y = Math.floor(Math.random() * 4);
+                demoGameState.explored[y][x] = true;
+                this.renderer.updateGameMap(demoGameState);
+            },
+
+            addEnemy() {
+                const x = Math.floor(Math.random() * 4);
+                const y = Math.floor(Math.random() * 4);
+                if (demoGameState.explored[y][x]) {
+                    demoGameState.enemies.push({ x, y, is_defeated: false });
+                    this.renderer.updateGameMap(demoGameState);
+                }
+            },
+
+            addItem() {
+                const x = Math.floor(Math.random() * 4);
+                const y = Math.floor(Math.random() * 4);
+                if (demoGameState.explored[y][x]) {
+                    demoGameState.items.push({ x, y });
+                    this.renderer.updateGameMap(demoGameState);
+                }
+            },
+
+            movePlayer() {
+                const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+                const [dx, dy] = directions[Math.floor(Math.random() * 4)];
+                const newX = Math.max(0, Math.min(3, demoGameState.player_pos[0] + dx));
+                const newY = Math.max(0, Math.min(3, demoGameState.player_pos[1] + dy));
+
+                if (demoGameState.explored[newY][newX]) {
+                    demoGameState.player_pos = [newX, newY];
+                    this.renderer.updatePlayerPosition(demoGameState.player_pos);
+                }
+            },
+
+            reset() {
+                demoGameState.explored = [
+                    [true, true, false, false],
+                    [true, true, true, false],
+                    [false, true, true, true],
+                    [false, false, true, true]
+                ];
+                demoGameState.player_pos = [1, 1];
+                demoGameState.enemies = [{ x: 2, y: 2, is_defeated: false }];
+                demoGameState.items = [{ x: 3, y: 3 }];
+                this.renderer.updateGameMap(demoGameState);
+            }
+        };
+
+        // Start demo when page loads
+        window.addEventListener('load', () => {
+            demo.init();
+        });
+    </script>
+</body>
+
+</html>
