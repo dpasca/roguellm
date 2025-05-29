@@ -10,8 +10,13 @@ class SceneManager {
         this.isDraggingWithOrbitControls = false;
         this.initialCameraStateForDragDetection = null;
 
+        // Camera following
+        this.cameraOffset = new THREE.Vector3(6, 8, 6); // Initial offset for camera setup
+        this.playerPosition = new THREE.Vector3(0, 0, 0); // Track player position
+        this.targetPassiveFollowStrength = 1.0; // Snap target to player when idle
+        this.targetActiveFollowStrength = 0.05;  // Gently lerp target when user is controlling camera
+
         // Constants
-        this.FRUSTUM_SIZE = 15;
         this.DRAG_ANGLE_THRESHOLD = 0.01;
         this.DRAG_TARGET_THRESHOLD = 0.05;
         this.DRAG_ZOOM_THRESHOLD = 0.01;
@@ -39,18 +44,18 @@ class SceneManager {
 
     setupCamera() {
         const aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera = new THREE.OrthographicCamera(
-            this.FRUSTUM_SIZE * aspect / -2,
-            this.FRUSTUM_SIZE * aspect / 2,
-            this.FRUSTUM_SIZE / 2,
-            this.FRUSTUM_SIZE / -2,
-            1,
-            1000
+
+        // Switch to perspective camera with narrow FOV
+        this.camera = new THREE.PerspectiveCamera(
+            35, // Field of view - relatively narrow (was 75 by default)
+            aspect,
+            0.1, // Near clipping plane
+            1000 // Far clipping plane
         );
-        // Position for an isometric-like view
-        this.camera.position.set(10, 10, 10);
+
+        // Position camera closer with some perspective
+        this.camera.position.set(6, 8, 6); // Closer than before (was 10, 10, 10)
         this.camera.lookAt(0, 0, 0);
-        this.camera.zoom = 1;
         this.camera.updateProjectionMatrix();
     }
 
@@ -98,6 +103,17 @@ class SceneManager {
             this.controls.dampingFactor = 0.05;
             this.controls.enableRotate = true;
             this.controls.screenSpacePanning = true;
+
+            // Allow the camera to follow the player but still enable user control
+            this.controls.enablePan = true;
+            this.controls.enableZoom = true;
+
+            // Set reasonable limits for camera movement
+            this.controls.minDistance = 3;
+            this.controls.maxDistance = 25;
+            this.controls.maxPolarAngle = Math.PI * 0.8; // Don't allow going too low
+
+            // Don't set a fixed target - let it follow the player
             this.controls.target.set(0, 0, 0);
 
             this.controls.addEventListener('start', () => {
@@ -178,19 +194,58 @@ class SceneManager {
     onWindowResize() {
         const aspect = this.container.clientWidth / this.container.clientHeight;
 
-        this.camera.left = this.FRUSTUM_SIZE * aspect / -2;
-        this.camera.right = this.FRUSTUM_SIZE * aspect / 2;
-        this.camera.top = this.FRUSTUM_SIZE / 2;
-        this.camera.bottom = this.FRUSTUM_SIZE / -2;
+        // Update perspective camera aspect ratio
+        this.camera.aspect = aspect;
         this.camera.updateProjectionMatrix();
 
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     }
 
     update() {
+        // Update camera target first based on player position
+        this.updateCameraFollowing();
+
+        // Then, let OrbitControls update the camera's position/rotation
+        // based on the new target and any user input.
         if (this.controls) {
             this.controls.update();
         }
+    }
+
+    updateCameraFollowing() {
+        // Adjust the OrbitControls target to follow the player.
+        // Also maintain camera position to preserve distance and orientation.
+
+        if (this.controls && this.playerPosition) { // Ensure controls and playerPosition are valid
+            const targetLookAt = new THREE.Vector3()
+                .copy(this.playerPosition)
+                .add(new THREE.Vector3(0, 0.5, 0)); // Look slightly above player's base
+
+            if (this.userIsActivelyOperatingControls) {
+                // Gentle lerp when user is actively controlling
+                this.controls.target.lerp(targetLookAt, this.targetActiveFollowStrength);
+            } else {
+                // When not actively controlling, maintain camera's relative position to the new target
+
+                // Calculate current offset from target to camera
+                const currentOffset = new THREE.Vector3()
+                    .subVectors(this.camera.position, this.controls.target);
+
+                // Calculate target positions for both target and camera
+                const newTarget = targetLookAt.clone();
+                const newCameraPosition = newTarget.clone().add(currentOffset);
+
+                // Smooth interpolation to new positions
+                const followSpeed = 0.1; // Adjust this value for faster/slower following
+                this.controls.target.lerp(newTarget, followSpeed);
+                this.camera.position.lerp(newCameraPosition, followSpeed);
+            }
+        }
+    }
+
+    // Method to update player position (called from EntityRenderer)
+    setPlayerPosition(x, y, z) {
+        this.playerPosition.set(x, y, z);
     }
 
     render() {

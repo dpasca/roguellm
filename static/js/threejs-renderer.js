@@ -63,21 +63,11 @@ class ThreeJSRenderer {
 
         // Update player position
         if (gameState.player_pos) {
-            const playerMesh = this.entityRenderer.updatePlayer(gameState.player_pos, mapCenterX, mapCenterZ);
+            const playerMesh = this.entityRenderer.updatePlayer(gameState.player_pos, mapCenterX, mapCenterZ, this.sceneManager);
 
             // Create arrows around the player
             if (playerMesh) {
                 this.arrowController.createArrows(playerMesh.position);
-            }
-        }
-
-        // Adjust camera to look at the player position (or center if not available)
-        if (this.sceneManager.controls) {
-            const playerPosition = this.entityRenderer.getPlayerPosition();
-            if (playerPosition) {
-                this.sceneManager.controls.target.copy(playerPosition);
-            } else {
-                this.sceneManager.controls.target.set(0, 0, 0);
             }
         }
 
@@ -89,6 +79,9 @@ class ThreeJSRenderer {
 
         // Update scene manager (controls, etc.)
         this.sceneManager.update();
+
+        // Update entity animations (player movement)
+        this.entityRenderer.update();
 
         // Update arrows to follow player
         const playerPosition = this.entityRenderer.getPlayerPosition();

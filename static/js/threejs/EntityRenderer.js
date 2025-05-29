@@ -5,6 +5,12 @@ class EntityRenderer {
         this.scene.add(this.entityGroup);
         this.playerMesh = null;
 
+        // Player movement animation
+        this.isAnimatingPlayer = false;
+        this.playerAnimationSpeed = 0.2; // Speed of interpolation (higher = faster)
+        this.currentPlayerPosition = new THREE.Vector3();
+        this.targetPlayerPosition = new THREE.Vector3();
+
         // Constants
         this.TILE_SIZE = 1;
         this.ENTITY_SIZE = 0.5;
@@ -87,30 +93,67 @@ class EntityRenderer {
         this.entityGroup.add(entity);
     }
 
-    updatePlayer(playerPos, mapCenterX, mapCenterZ) {
-        this.clearPlayer();
+    updatePlayer(playerPos, mapCenterX, mapCenterZ, sceneManager = null) {
+        // Create player mesh if it doesn't exist
+        if (!this.playerMesh) {
+            const geometry = new THREE.BoxGeometry(this.PLAYER_SIZE, this.PLAYER_SIZE * 1.5, this.PLAYER_SIZE); // Taller box for player
+            const material = new THREE.MeshLambertMaterial({ color: 0x4dabf7 }); // Blue
 
-        const geometry = new THREE.BoxGeometry(this.PLAYER_SIZE, this.PLAYER_SIZE * 1.5, this.PLAYER_SIZE); // Taller box for player
-        const material = new THREE.MeshLambertMaterial({ color: 0x4dabf7 }); // Blue
+            this.playerMesh = new THREE.Mesh(geometry, material);
+            this.playerMesh.castShadow = true; // Enable shadow casting
+            this.playerMesh.receiveShadow = true; // Enable shadow receiving
+            this.scene.add(this.playerMesh); // Add directly to scene, not entityGroup
+        }
 
-        this.playerMesh = new THREE.Mesh(geometry, material);
-
+        // Calculate target position
+        let targetX, targetZ;
         if (playerPos && playerPos.length >= 2) {
-            this.playerMesh.position.set(
-                playerPos[0] * this.TILE_SIZE - mapCenterX,
-                (this.PLAYER_SIZE * 1.5) / 2 + 0.05, // Position above the tile
-                playerPos[1] * this.TILE_SIZE - mapCenterZ
-            );
+            targetX = playerPos[0] * this.TILE_SIZE - mapCenterX;
+            targetZ = playerPos[1] * this.TILE_SIZE - mapCenterZ;
         } else {
             // Default position if playerPos is invalid
-            this.playerMesh.position.set(-mapCenterX, (this.PLAYER_SIZE * 1.5) / 2 + 0.05, -mapCenterZ);
+            targetX = -mapCenterX;
+            targetZ = -mapCenterZ;
         }
-        this.playerMesh.castShadow = true; // Enable shadow casting
-        this.playerMesh.receiveShadow = true; // Enable shadow receiving
 
-        this.scene.add(this.playerMesh); // Add directly to scene, not entityGroup
+        const targetY = (this.PLAYER_SIZE * 1.5) / 2 + 0.05; // Position above the tile
+        this.targetPlayerPosition.set(targetX, targetY, targetZ);
+
+        // If this is the first time setting position, don't animate
+        if (this.currentPlayerPosition.length() === 0) {
+            this.currentPlayerPosition.copy(this.targetPlayerPosition);
+            this.playerMesh.position.copy(this.currentPlayerPosition);
+        } else {
+            // Check if position actually changed to start animation
+            const positionChanged = !this.currentPlayerPosition.equals(this.targetPlayerPosition);
+            if (positionChanged) {
+                this.isAnimatingPlayer = true;
+            }
+        }
+
+        // Update camera if sceneManager is provided
+        if (sceneManager) {
+            sceneManager.setPlayerPosition(this.targetPlayerPosition.x, this.targetPlayerPosition.y, this.targetPlayerPosition.z);
+        }
 
         return this.playerMesh;
+    }
+
+    // Call this every frame to update animations
+    update() {
+        if (this.isAnimatingPlayer && this.playerMesh) {
+            // Interpolate towards target position
+            this.currentPlayerPosition.lerp(this.targetPlayerPosition, this.playerAnimationSpeed);
+            this.playerMesh.position.copy(this.currentPlayerPosition);
+
+            // Check if we're close enough to stop animating
+            const distance = this.currentPlayerPosition.distanceTo(this.targetPlayerPosition);
+            if (distance < 0.01) {
+                this.currentPlayerPosition.copy(this.targetPlayerPosition);
+                this.playerMesh.position.copy(this.currentPlayerPosition);
+                this.isAnimatingPlayer = false;
+            }
+        }
     }
 
     getPlayerPosition() {
