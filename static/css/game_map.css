@@ -9,12 +9,17 @@
     transition: all 0.2s ease;
 }
 
+.cell.fog-of-war {
+    border-color: #222;
+    /* Darker border for fog of war tiles */
+}
+
 .cell i {
     color: inherit;
 }
 
-.row { 
-    display: flex; 
+.row {
+    display: flex;
 }
 
 /* Map Container */
@@ -32,7 +37,7 @@
 /* Player Icon */
 .player-icon {
     position: absolute;
-    background-color: rgba(0,0,0,0.25);
+    background-color: rgba(0, 0, 0, 0.25);
     border-radius: 50%;
     transition: left 0.5s ease, top 0.5s ease;
     display: flex;
@@ -62,4 +67,4 @@
         width: 22px;
         height: 26px;
     }
-} 
+}

@@ -44,12 +44,14 @@ class MapRenderer {
                 const isExplored = gameState.explored[y][x];
                 const isCurrentPlayerPosition = gameState.player_pos &&
                     gameState.player_pos[0] === x && gameState.player_pos[1] === y;
-                const isAdjacent = this.isAdjacentToExplored(x, y, gameState.explored, mapWidth, mapHeight);
+                const isImmediateNeighbor = this.isImmediateNeighborToPlayer(x, y, gameState.player_pos, mapWidth, mapHeight);
+                const isInFogOfWar = this.isInFogOfWar(x, y, gameState.explored, mapWidth, mapHeight);
 
-                // Show tile if it's explored, player's current position, or adjacent to explored
-                if (isExplored || isCurrentPlayerPosition || isAdjacent) {
-                    this.createTile(x, y, gameState.cell_types[y][x], mapCenterX, mapCenterZ,
-                        isExplored || isCurrentPlayerPosition);
+                // Show tile if it's explored, player's current position, immediate neighbor, or in fog of war
+                if (isExplored || isCurrentPlayerPosition || isImmediateNeighbor || isInFogOfWar) {
+                    // Determine if tile should be fully visible or fogged
+                    const isFullyVisible = isExplored || isCurrentPlayerPosition || isImmediateNeighbor;
+                    this.createTile(x, y, gameState.cell_types[y][x], mapCenterX, mapCenterZ, isFullyVisible);
                     tilesCreated++;
                 }
             }
@@ -65,10 +67,22 @@ class MapRenderer {
         return { mapCenterX, mapCenterZ };
     }
 
-    isAdjacentToExplored(x, y, explored, mapWidth, mapHeight) {
-        // Check if this tile is adjacent to any explored tile
-        for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
+    isImmediateNeighborToPlayer(x, y, playerPos, mapWidth, mapHeight) {
+        if (!playerPos) return false;
+
+        const [playerX, playerY] = playerPos;
+        const dx = Math.abs(x - playerX);
+        const dy = Math.abs(y - playerY);
+
+        // Check if within immediate 3x3 area around player (1-tile radius)
+        return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0); // Exclude player position itself
+    }
+
+    isInFogOfWar(x, y, explored, mapWidth, mapHeight) {
+        // Check if this tile is within 2 tiles of any explored tile (broader fog of war)
+        const FOG_RADIUS = 2;
+        for (let dy = -FOG_RADIUS; dy <= FOG_RADIUS; dy++) {
+            for (let dx = -FOG_RADIUS; dx <= FOG_RADIUS; dx++) {
                 if (dx === 0 && dy === 0) continue; // Skip the tile itself
 
                 const nx = x + dx;
@@ -101,10 +115,10 @@ class MapRenderer {
             color.lerp(new THREE.Color(0xffffff), 0.2); // Mix 20% white for brightness
             opacity = 1.0;
         } else {
-            // Unexplored but adjacent tiles: darker and more transparent
+            // Unexplored but visible tiles (fog of war): slightly darker and less transparent
             color = new THREE.Color(cellType.map_color || '#888888');
-            color.lerp(new THREE.Color(0x000000), 0.6); // Mix 60% black for darkness
-            opacity = 0.4;
+            color.lerp(new THREE.Color(0x000000), 0.3); // Mix only 30% black (was 60%)
+            opacity = 0.7; // Higher opacity (was 0.4)
         }
 
         console.log(`Tile color for explored=${isExplored}:`, color);

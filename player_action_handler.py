@@ -25,8 +25,6 @@ class PlayerActionHandler:
         self.game_state_manager.state.player_pos_prev = self.game_state_manager.state.player_pos
         # Get current position
         x, y = self.game_state_manager.state.player_pos
-        # Set the current position as explored
-        self.game_state_manager.state.explored[y][x] = True
         moved = True
 
         if direction == 'n' and y > 0:
@@ -42,6 +40,8 @@ class PlayerActionHandler:
 
         if moved:
             self.game_state_manager.state.player_pos = (x, y)
+            # Mark the NEW position as explored after moving
+            self.game_state_manager.state.explored[y][x] = True
             encounter_result = await self._check_encounters()
 
             # Process temporary effects

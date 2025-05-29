@@ -307,10 +307,8 @@
                     <div v-if="!use3D" class="game-map" :class="{ 'in-combat': gameState.in_combat }">
                         <div v-if="gameState && gameState.explored" class="map">
                             <div v-for="(row, y) in gameState.explored" :key="y" class="row">
-                                <div v-for="(cell, x) in row" :key="x" class="cell" :data-x="x" :data-y="y" :class="{
-                                        explored: gameState.explored[y][x],
-                                        unexplored: !gameState.explored[y][x]
-                                    }" :style="getCellStyle(x, y)">
+                                <div v-for="(cell, x) in row" :key="x" v-if="isCellVisible(x, y)" class="cell"
+                                    :data-x="x" :data-y="y" :class="getCellClass(x, y)" :style="getCellStyle(x, y)">
                                     <i :class="getCellIcon(x, y)"></i>
                                 </div>
                             </div>

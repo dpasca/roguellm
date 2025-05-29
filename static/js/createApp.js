@@ -161,13 +161,29 @@ const app = Vue.createApp({
 
             const cellType = this.gameState.cell_types[y][x];
             const isExplored = this.gameState.explored[y][x];
+            const isCurrentPlayerPosition = this.gameState.player_pos &&
+                this.gameState.player_pos[0] === x && this.gameState.player_pos[1] === y;
+            const isImmediateNeighbor = this.isImmediateNeighborToPlayer(x, y);
 
-            const scaleBg = isExplored ? 0.6 : 0.5; // Unexplored cells are darker
-            const scaleFg = isExplored ? 0.9 : 0.8; // Unexplored cells are darker
+            const isFullyVisible = isExplored || isCurrentPlayerPosition || isImmediateNeighbor;
+
+            let scaleBg, scaleFg, opacity;
+            if (isFullyVisible) {
+                // Fully visible tiles: bright colors
+                scaleBg = 0.6;
+                scaleFg = 0.9;
+                opacity = 1.0;
+            } else {
+                // Fog of war tiles: less dark than before
+                scaleBg = 0.45; // Was 0.5, now slightly darker than fully visible but not too dark
+                scaleFg = 0.7;  // Was 0.8, now moderately visible
+                opacity = 0.7;  // Less transparent than before
+            }
 
             return {
                 backgroundColor: scaleColor(cellType.map_color, scaleBg),
-                color: scaleColor(cellType.map_color, scaleFg)
+                color: scaleColor(cellType.map_color, scaleFg),
+                opacity: opacity
             };
         },
         getCellIcon(x, y) {
@@ -559,7 +575,65 @@ const app = Vue.createApp({
             if (direction && this.canMove(direction)) {
                 this.move(direction);
             }
-        }
+        },
+        isCellVisible(x, y) {
+            if (!this.gameState.explored) return false;
+
+            const isExplored = this.gameState.explored[y][x];
+            const isCurrentPlayerPosition = this.gameState.player_pos &&
+                this.gameState.player_pos[0] === x && this.gameState.player_pos[1] === y;
+            const isImmediateNeighbor = this.isImmediateNeighborToPlayer(x, y);
+            const isInFogOfWar = this.isInFogOfWar(x, y);
+
+            return isExplored || isCurrentPlayerPosition || isImmediateNeighbor || isInFogOfWar;
+        },
+        isImmediateNeighborToPlayer(x, y) {
+            if (!this.gameState.player_pos) return false;
+
+            const [playerX, playerY] = this.gameState.player_pos;
+            const dx = Math.abs(x - playerX);
+            const dy = Math.abs(y - playerY);
+
+            // Check if within immediate 3x3 area around player (1-tile radius)
+            return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0); // Exclude player position itself
+        },
+        isInFogOfWar(x, y) {
+            if (!this.gameState.explored) return false;
+
+            const FOG_RADIUS = 2;
+            const mapWidth = this.gameState.explored[0].length;
+            const mapHeight = this.gameState.explored.length;
+
+            for (let dy = -FOG_RADIUS; dy <= FOG_RADIUS; dy++) {
+                for (let dx = -FOG_RADIUS; dx <= FOG_RADIUS; dx++) {
+                    if (dx === 0 && dy === 0) continue; // Skip the tile itself
+
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    // Check bounds
+                    if (nx >= 0 && nx < mapWidth && ny >= 0 && ny < mapHeight) {
+                        if (this.gameState.explored[ny][nx]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        },
+        getCellClass(x, y) {
+            const isExplored = this.gameState.explored[y][x];
+            const isCurrentPlayerPosition = this.gameState.player_pos &&
+                this.gameState.player_pos[0] === x && this.gameState.player_pos[1] === y;
+            const isImmediateNeighbor = this.isImmediateNeighborToPlayer(x, y);
+
+            const isFullyVisible = isExplored || isCurrentPlayerPosition || isImmediateNeighbor;
+
+            return {
+                explored: isFullyVisible,
+                'fog-of-war': !isFullyVisible
+            };
+        },
     },
     mounted() {
         // Show loading screen
