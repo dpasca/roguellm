@@ -71,9 +71,14 @@ class ThreeJSRenderer {
             }
         }
 
-        // Adjust camera to look at the center of the map
+        // Adjust camera to look at the player position (or center if not available)
         if (this.sceneManager.controls) {
-            this.sceneManager.controls.target.set(0, 0, 0);
+            const playerPosition = this.entityRenderer.getPlayerPosition();
+            if (playerPosition) {
+                this.sceneManager.controls.target.copy(playerPosition);
+            } else {
+                this.sceneManager.controls.target.set(0, 0, 0);
+            }
         }
 
         console.log("ThreeJSRenderer: Map update complete. Scene children:", this.sceneManager.scene.children.length);
