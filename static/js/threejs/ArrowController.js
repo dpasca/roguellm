@@ -27,6 +27,11 @@ class ArrowController {
 
     setGameState(gameState) {
         this.gameState = gameState;
+        // DIAGNOSTIC: Log current arrows in scene
+        // console.log("[DIAGNOSTIC] Current arrows in arrowGroup:", this.arrowGroup.children.length);
+        // this.arrowGroup.children.forEach((child, index) => {
+        //     console.log(`[DIAGNOSTIC] Arrow ${index}: UUID: ${child.uuid}, userData: ${JSON.stringify(child.userData)}`);
+        // });
     }
 
     clearArrows() {
@@ -66,8 +71,14 @@ class ArrowController {
                 );
                 this.arrowGroup.add(arrow);
                 this.arrows[dir.name] = arrow;
+                // console.log(`[CREATEARROWS DEBUG] Created arrow ${dir.name}, UUID: ${arrow.uuid}, userData: ${JSON.stringify(arrow.userData)}`);
             }
         });
+
+        // console.log("[CREATEARROWS DEBUG] Final check of this.arrowGroup children's userData:");
+        // this.arrowGroup.children.forEach(child => {
+        //     console.log(`[CREATEARROWS DEBUG] Child UUID: ${child.uuid}, Name: ${child.name}, userData: ${JSON.stringify(child.userData)}`);
+        // });
     }
 
     createArrow(direction, rotation) {
@@ -88,6 +99,7 @@ class ArrowController {
 
         // Group for the visual parts of the arrow, to be oriented along +Z axis
         const visualArrowGroup = new THREE.Group();
+        // console.log(`[CREATE_ARROW_FN DEBUG] visualArrowGroup for ${direction}, UUID: ${visualArrowGroup.uuid}`);
 
         // Rotate shaft so its length (default Y) aligns with the Z-axis, pointing towards +Z
         shaft.rotation.x = Math.PI / 2;
@@ -106,7 +118,7 @@ class ArrowController {
         // Apply the N/S/E/W rotation to this main group
         arrowInstanceGroup.rotation.y = rotation;
         arrowInstanceGroup.userData = { direction: direction };
-
+        // console.log(`[CREATE_ARROW_FN DEBUG] arrowInstanceGroup for ${direction}, UUID: ${arrowInstanceGroup.uuid}, Name: ${arrowInstanceGroup.name || 'N/A'}, userData set to: ${JSON.stringify(arrowInstanceGroup.userData)}`);
         return arrowInstanceGroup;
     }
 
@@ -124,6 +136,9 @@ class ArrowController {
 
     updateArrows(playerPosition) {
         if (!playerPosition || !this.camera) return;
+
+        // console.log("[DIAGNOSTIC updateArrows] Called with playerPosition:", playerPosition);
+        // console.log("[DIAGNOSTIC updateArrows] Current arrows count:", this.arrowGroup.children.length);
 
         const directions = [
             { name: 'n', offset: { x: 0, z: -this.ARROW_DISTANCE } },
@@ -145,6 +160,8 @@ class ArrowController {
                 const distance = this.camera.position.distanceTo(arrow.position);
                 const scale = Math.max(0.8, Math.min(2.5, distance * 0.15));
                 arrow.scale.setScalar(scale);
+            } else {
+                // console.log(`[DIAGNOSTIC updateArrows] Arrow for direction ${dir.name} is missing from this.arrows`);
             }
         });
     }
@@ -156,39 +173,78 @@ class ArrowController {
         const rect = this.renderer.domElement.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        const mouse = new THREE.Vector2(x, y);
 
-        // Raycast against arrows
         const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+        raycaster.setFromCamera(mouse, this.camera);
 
         const intersects = raycaster.intersectObjects(this.arrowGroup.children, true);
+        // console.log(`ArrowController: intersects.length = ${intersects.length}`);
 
-        // Reset previous hover state
-        if (this.hoveredArrow) {
-            this.hoveredArrow.traverse((obj) => {
-                if (obj.material) {
-                    obj.material.emissive.setHex(0x000000);
-                }
-            });
-            this.hoveredArrow = null;
-            this.renderer.domElement.style.cursor = 'default';
-        }
-
-        // Set new hover state
+        let hoveredArrow = null;
         if (intersects.length > 0) {
-            let arrowParent = intersects[0].object;
-            while (arrowParent.parent && arrowParent.parent !== this.arrowGroup) {
-                arrowParent = arrowParent.parent;
+            const intersectedObject = intersects[0].object;
+            // console.log(`[DEBUG] Intersected obj: ${intersectedObject.uuid}`); // Optional: keep for debugging
+            const visualGroup = intersectedObject.parent;
+
+            if (visualGroup) {
+                // console.log(`[DEBUG] visualGroup (parent of intersected): ${visualGroup.uuid}`); // Optional
+                const instanceGroup = visualGroup.parent; // This should be our arrowInstanceGroup
+                if (instanceGroup) {
+                    // console.log(`[DEBUG] instanceGroup (parent of visual): ${instanceGroup.uuid}, its userData: ${JSON.stringify(instanceGroup.userData)}`); // Optional
+                    // We've verified instanceGroup has the correct userData. Trust this direct traversal.
+                    hoveredArrow = instanceGroup;
+                } else {
+                    // console.log("[DEBUG] instanceGroup (parent of visualGroup) is null/undefined. Cannot set hoveredArrow.");
+                }
+            } else {
+                // console.log("[DEBUG] visualGroup (parent of intersectedObject) is null/undefined. Cannot set hoveredArrow.");
             }
 
-            this.hoveredArrow = arrowParent;
-            this.hoveredArrow.traverse((obj) => {
+            // Now check the determined hoveredArrow
+            if (hoveredArrow && hoveredArrow.userData && hoveredArrow.userData.direction) {
+                // console.log(`ArrowController: Hovered arrow identified: ${hoveredArrow.userData.direction} (UUID: ${hoveredArrow.uuid})`);
+            } else if (hoveredArrow) {
+                // console.log(`ArrowController: userData.direction is MISSING on hoveredArrow. UUID: ${hoveredArrow.uuid}, userData value: ${JSON.stringify(hoveredArrow.userData)}`);
+            } else {
+                // This will be hit if visualGroup or instanceGroup was null, or if intersects.length was 0 initially
+                // console.log("ArrowController: hoveredArrow is null after attempting to find it.");
+            }
+        } else {
+            // No intersections - hoveredArrow remains null
+        }
+
+        // Update the class member this.hoveredArrow for the rendering loop
+        this.hoveredArrow = hoveredArrow;
+        // Update cursor style based on the locally determined hoveredArrow from this event
+        this.renderer.domElement.style.cursor = hoveredArrow ? 'pointer' : 'default';
+
+        // The color update loop uses this.hoveredArrow, which is now correctly set
+        this.arrowGroup.children.forEach((arrow) => {
+            arrow.traverse((obj) => {
                 if (obj.material) {
-                    obj.material.emissive.setHex(0x222222);
+                    // Store default colors if not already stored
+                    if (!obj.material.userData) obj.material.userData = {}; // Initialize userData if it doesn't exist
+                    if (obj.material.userData.defaultColor === undefined) { // Check with undefined for robustness
+                        obj.material.userData.defaultColor = obj.material.color.getHex();
+                    }
+                    if (obj.material.userData.defaultEmissive === undefined) {
+                        obj.material.userData.defaultEmissive = obj.material.emissive.getHex();
+                    }
+
+                    // Check if the current arrow being iterated is the one that was identified as hovered
+                    if (arrow === this.hoveredArrow) { // Compare with this.hoveredArrow, not the local hoveredArrow from onMouseMove
+                        // Red hover effect
+                        obj.material.color.setHex(0xff4444); // Bright red
+                        obj.material.emissive.setHex(0x330000); // Dark red glow
+                    } else {
+                        // Restore original colors
+                        obj.material.color.setHex(obj.material.userData.defaultColor);
+                        obj.material.emissive.setHex(obj.material.userData.defaultEmissive);
+                    }
                 }
             });
-            this.renderer.domElement.style.cursor = 'pointer';
-        }
+        });
     }
 
     onArrowClick(event) {
