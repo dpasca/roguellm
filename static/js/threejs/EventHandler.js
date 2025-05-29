@@ -190,10 +190,8 @@ class EventHandler {
 
             // Only allow movement to valid adjacent cells
             if (this.isValidMovementCell(finalX, finalY)) {
-                console.log(`3D Click: Valid movement to Grid(${finalX}, ${finalY})`);
                 return { x: finalX, y: finalY };
             } else {
-                console.log(`3D Click: Invalid movement to Grid(${finalX}, ${finalY}) - not adjacent or out of bounds`);
                 return null;
             }
         }

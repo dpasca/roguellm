@@ -314,6 +314,11 @@ class GameStateManager:
 
     async def create_message_description(self, message):
         """Create or enhance message description using AI."""
+        # Skip LLM processing for simple status messages like "Moving..."
+        if message.get('description_raw') == "Moving...":
+            message['description'] = message['description_raw'] # Keep it as is
+            return message
+
         if not message.get('description') or message.get('description') == "":
             if message.get('description_raw'):
                 adapted_description = await self._gen_adapt_sentence(message['description_raw'])

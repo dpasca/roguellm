@@ -185,7 +185,6 @@ class SceneManager {
         this.camera.updateProjectionMatrix();
 
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        console.log(`3D renderer resized to: ${this.container.clientWidth}x${this.container.clientHeight}`);
     }
 
     update() {

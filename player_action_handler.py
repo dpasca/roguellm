@@ -39,19 +39,72 @@ class PlayerActionHandler:
             moved = False
 
         if moved:
+            # Update position immediately
             self.game_state_manager.state.player_pos = (x, y)
             # Mark the NEW position as explored after moving
             self.game_state_manager.state.explored[y][x] = True
-            encounter_result = await self._check_encounters()
+
+            # Check if we need to generate a description (only for new cell types)
+            cur_ct = self.game_state_manager.state.cell_types[y][x]
+            cur_ct_name = cur_ct.get('name', '') if isinstance(cur_ct, dict) else str(cur_ct)
+            should_generate_description = self.game_state_manager.last_described_ct != cur_ct_name
+
+            # Debug logging
+            logger.info(f"Movement: last_ct='{self.game_state_manager.last_described_ct}', cur_ct='{cur_ct_name}', generate_desc={should_generate_description}")
+
+            if should_generate_description:
+                self.game_state_manager.last_described_ct = cur_ct_name
+
+            # Create immediate response with position update and current game state
+            immediate_result = await self.game_state_manager.create_message("Moving...")
+
+            # Schedule async encounter and description generation
+            import asyncio
+            asyncio.create_task(self._handle_move_effects(x, y, should_generate_description))
+
+            return immediate_result
+        else:
+            return await self.game_state_manager.create_message("You can't move in that direction.")
+
+    async def _handle_move_effects(self, x: int, y: int, should_generate_description: bool):
+        """Handle post-movement effects like encounters and descriptions asynchronously."""
+        try:
+            # If we don't need a description, skip all processing that might trigger LLM calls
+            if not should_generate_description:
+                # Still check for encounters/items, but don't generate descriptions
+                encounter_result = await self._check_encounters_no_description()
+                if encounter_result:  # Only send if there's an actual encounter (enemy/item)
+                    await self._broadcast_message(encounter_result)
+                return
+
+            # Full processing for new cell types
+            encounter_result = await self._check_encounters(should_generate_description)
 
             # Process temporary effects
             effects_log = await self._process_temporary_effects()
             if effects_log:
                 encounter_result['description_raw'] = effects_log + "\n" + encounter_result['description_raw']
 
-            return encounter_result
-        else:
-            return await self.game_state_manager.create_message("You can't move in that direction.")
+            # Only send follow-up message if there's meaningful content
+            description_raw = encounter_result.get('description_raw', '').strip()
+            if description_raw and description_raw != "":
+                # Send follow-up message with encounter/description
+                encounter_result = await self.game_state_manager.create_message_description(encounter_result)
+
+                # Broadcast to connected clients
+                await self._broadcast_message(encounter_result)
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger()
+            logger.error(f"Error in _handle_move_effects: {e}")
+
+    async def _broadcast_message(self, message: dict):
+        """Broadcast a message to all connected WebSocket clients."""
+        # We need access to the WebSocket handler to broadcast
+        # This will be set up when we modify the WebSocket handler
+        if hasattr(self, '_websocket_handler') and self._websocket_handler:
+            await self._websocket_handler.broadcast_to_clients(message)
 
     async def handle_use_item(self, item_id: str) -> dict:
         """Handle using an item from inventory."""
@@ -168,7 +221,7 @@ class PlayerActionHandler:
 
         return "\n".join(effects_log)
 
-    async def _check_encounters(self) -> dict:
+    async def _check_encounters(self, should_generate_description: bool) -> dict:
         """Check for encounters at the current position."""
         x, y = self.game_state_manager.state.player_pos
 
@@ -287,16 +340,101 @@ class PlayerActionHandler:
                     f"You found a {item.name}! {item.description}"
                 )
 
-        # Only get room description if we're in a new cell type or don't have a previous description
-        px = self.game_state_manager.state.player_pos[0]
-        py = self.game_state_manager.state.player_pos[1]
-        cur_ct = self.game_state_manager.state.cell_types[py][px]
-        if self.game_state_manager.last_described_ct != cur_ct:
-            self.game_state_manager.last_described_ct = cur_ct
+        # Only get room description if should_generate_description flag is set
+        if should_generate_description:
             return await self.game_state_manager.create_message_room()
         else:
             # Return empty description if in same room type
             return await self.game_state_manager.create_message('')
+
+    async def _check_encounters_no_description(self) -> dict:
+        """Check for encounters without generating any descriptions - for same cell types."""
+        x, y = self.game_state_manager.state.player_pos
+
+        # Check for enemies (same logic as _check_encounters but no descriptions)
+        enemy_here = next(
+            (p for p in self.game_state_manager.entity_placements if p['x'] == x and p['y'] == y and p['type'] == 'enemy'),
+            None
+        )
+
+        if enemy_here:
+            enemy_def = next(
+                (e for e in self.game_state_manager.definitions.enemy_defs if e['enemy_id'] == enemy_here['entity_id']),
+                None
+            )
+            if enemy_def:
+                enemy = self._generate_enemy_from_def(enemy_def)
+                self.game_state_manager.state.current_enemy = enemy
+                self.game_state_manager.state.in_combat = True
+
+                was_defeated = any(
+                    de['x'] == x and de['y'] == y
+                    for de in self.game_state_manager.state.defeated_enemies
+                )
+
+                # Update enemies list
+                existing_enemy = next((e for e in self.game_state_manager.state.enemies if e['x'] == x and e['y'] == y), None)
+                if existing_enemy:
+                    existing_enemy['id'] = enemy.id
+                    existing_enemy['name'] = enemy.name
+                    existing_enemy['font_awesome_icon'] = enemy.font_awesome_icon
+                    existing_enemy['is_defeated'] = was_defeated
+                else:
+                    self.game_state_manager.state.enemies.append({
+                        'id': enemy.id,
+                        'x': x,
+                        'y': y,
+                        'name': enemy.name,
+                        'font_awesome_icon': enemy.font_awesome_icon,
+                        'is_defeated': was_defeated
+                    })
+
+                if was_defeated:
+                    self.game_state_manager.state.current_enemy = None
+                    self.game_state_manager.state.in_combat = False
+                    self.game_state_manager.entity_placements = [
+                        p for p in self.game_state_manager.entity_placements
+                        if not (p['x'] == x and p['y'] == y and p['type'] == 'enemy')
+                    ]
+                    return await self.game_state_manager.create_message(f"You see a defeated {enemy.name} here.")
+                else:
+                    return await self.game_state_manager.create_message(f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})")
+
+        # Check for items
+        item_here = next(
+            (p for p in self.game_state_manager.entity_placements if p['x'] == x and p['y'] == y and p['type'] == 'item'),
+            None
+        )
+
+        if item_here:
+            item_def = next(
+                (i for i in self.game_state_manager.definitions.item_defs if i['id'] == item_here['entity_id']),
+                None
+            )
+            if item_def:
+                item = self._generate_item_from_def(item_def)
+
+                if item.type in ['weapon', 'armor']:
+                    existing_item = next(
+                        (i for i in self.game_state_manager.state.inventory if i.name == item.name),
+                        None
+                    )
+                    if existing_item:
+                        self.game_state_manager.entity_placements = [
+                            p for p in self.game_state_manager.entity_placements
+                            if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
+                        ]
+                        return await self.game_state_manager.create_message(f"You found another {item.name}, but you already have one.")
+
+                self.game_state_manager.state.inventory.append(item)
+                self.game_state_manager.entity_placements = [
+                    p for p in self.game_state_manager.entity_placements
+                    if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
+                ]
+                return await self.game_state_manager.create_message(f"You found a {item.name}! {item.description}")
+
+        # No encounters and no description needed - return None
+        return None
 
     def _generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a definition."""

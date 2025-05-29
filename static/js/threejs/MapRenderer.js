@@ -27,15 +27,12 @@ class MapRenderer {
             return;
         }
 
-        console.log("MapRenderer: Updating game map", gameState);
         this.clearTiles();
 
         const mapHeight = gameState.cell_types.length;
         const mapWidth = gameState.cell_types[0].length;
         const mapCenterX = (mapWidth * this.TILE_SIZE) / 2 - this.TILE_SIZE / 2;
         const mapCenterZ = (mapHeight * this.TILE_SIZE) / 2 - this.TILE_SIZE / 2;
-
-        console.log(`Map dimensions: ${mapWidth}x${mapHeight}, center: (${mapCenterX}, ${mapCenterZ})`);
 
         // Create tiles with fog of war effect
         let tilesCreated = 0;
@@ -56,7 +53,6 @@ class MapRenderer {
                 }
             }
         }
-        console.log(`Created ${tilesCreated} tiles`);
 
         // Create cardinal markers once gameState is available and map is set up
         if (!this.cardinalMarkersCreated && gameState && gameState.map_width) {
@@ -100,8 +96,6 @@ class MapRenderer {
     }
 
     createTile(x, y, cellType, mapCenterX, mapCenterZ, isExplored = true) {
-        console.log(`Creating tile at (${x}, ${y}) with type:`, cellType, `explored: ${isExplored}`);
-
         // Use PlaneGeometry for flat tiles
         const geometry = new THREE.PlaneGeometry(this.TILE_SIZE * 0.9, this.TILE_SIZE * 0.9);
 
@@ -120,8 +114,6 @@ class MapRenderer {
             color.lerp(new THREE.Color(0x000000), 0.3); // Mix only 30% black (was 60%)
             opacity = 0.7; // Higher opacity (was 0.4)
         }
-
-        console.log(`Tile color for explored=${isExplored}:`, color);
 
         const material = new THREE.MeshLambertMaterial({
             color: color,
@@ -150,7 +142,6 @@ class MapRenderer {
         }
         tile.position.y = elevation;
 
-        console.log(`Tile positioned at:`, tile.position);
         this.tileGroup.add(tile);
 
         // Add wireframe border for better visibility

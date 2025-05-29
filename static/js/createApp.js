@@ -456,17 +456,32 @@ const app = Vue.createApp({
         },
         handleGameState(response) {
             if (response.type === 'game_state' || response.type === 'update') {
-                // Store previous position for animation
-                if (this.gameState.player_pos) {
-                    this.gameState.player_pos_prev = [...this.gameState.player_pos];
-                }
-
-                // Handle both 'game_state' (with data property) and 'update' (with state property)
                 const newState = response.data || response.state;
-                if (newState) {
-                    this.gameState = { ...this.gameState, ...newState };
 
-                    // Set game as initialized
+                if (newState) {
+                    if (response.description_raw === "Moving...") {
+                        // This is an immediate movement response. Trust its player_pos.
+                        if (this.gameState.player_pos) {
+                            this.gameState.player_pos_prev = [...this.gameState.player_pos];
+                        }
+                        this.gameState = { ...this.gameState, ...newState };
+                    } else {
+                        // This is a follow-up message (e.g., description) or initial game state.
+                        // Preserve current player_pos and player_pos_prev to avoid flicker from delayed messages.
+                        const currentPos = this.gameState.player_pos ? [...this.gameState.player_pos] : null;
+                        const currentPosPrev = this.gameState.player_pos_prev ? [...this.gameState.player_pos_prev] : null;
+
+                        this.gameState = { ...this.gameState, ...newState };
+
+                        if (currentPos) {
+                            this.gameState.player_pos = currentPos;
+                        }
+                        if (currentPosPrev) {
+                            this.gameState.player_pos_prev = currentPosPrev;
+                        }
+                    }
+
+                    // Set game as initialized (can happen with initial state or first update)
                     this.isGameInitialized = true;
 
                     // Update game title if present
@@ -475,25 +490,35 @@ const app = Vue.createApp({
                     }
                 }
 
-                // Add description to game log if present
-                if (response.description) {
-                    this.gameLogs.push(response.description);
-                }
-
                 // Update 3D scene if renderer is active
                 if (this.use3D) {
                     this.update3DScene();
                 }
 
                 // Update player position for 2D rendering (if not using 3D)
+                // This should use the potentially preserved (and correct) player_pos
                 if (!this.use3D && this.gameState.player_pos) {
                     this.$nextTick(() => {
                         updatePlayerPosition(this.gameState.player_pos[0], this.gameState.player_pos[1], true);
                     });
                 }
 
-                this.isMoveInProgress = false;
-                hideLoading();
+                // Handle descriptions - add to log if meaningful
+                if (response.description && response.description.trim() !== "" && response.description !== "Moving...") {
+                    this.gameLogs.push(response.description);
+                }
+
+                // Hide loading screen for game state updates
+                if (response.description_raw === "Moving...") {
+                    // This is the immediate movement response - movement is visually complete
+                    this.isMoveInProgress = false;
+                    hideLoading();
+                } else if (this.isGameInitialized) {
+                    // Hide loading screen when game is properly initialized
+                    hideLoading();
+                    this.isMoveInProgress = false;
+                }
+
             } else if (response.type === 'game_log') {
                 this.gameLogs.push(response.data);
             } else if (response.type === 'error') {
@@ -718,7 +743,7 @@ const app = Vue.createApp({
                         true
                     );
                 });
-                // Note: Loading screen is now hidden in handleGameState method
+                // Loading screen is hidden in handleGameState method when game is initialized
             }
         },
         'gameState.game_over'(newValue) {

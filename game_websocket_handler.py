@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 from websocket_schemas import validate_websocket_message, ValidationError
+import json
 
 logger = logging.getLogger()
 
@@ -11,6 +12,8 @@ class WebSocketHandler:
     def __init__(self, game_state_manager, player_action_handler):
         self.game_state_manager = game_state_manager
         self.player_action_handler = player_action_handler
+        # Set up bidirectional reference for broadcasting
+        self.player_action_handler._websocket_handler = self
         self.connected_clients = set()
 
     async def handle_message(self, message: dict) -> dict:
@@ -157,3 +160,24 @@ class WebSocketHandler:
     def get_connected_clients(self):
         """Get the set of connected clients."""
         return self.connected_clients.copy()
+
+    async def broadcast_to_clients(self, message: dict):
+        """Broadcast a message to all connected WebSocket clients."""
+        if not self.connected_clients:
+            return
+
+        # Create a list to store clients to remove (if disconnected)
+        clients_to_remove = []
+
+        for client in self.connected_clients.copy():
+            try:
+                # Send message to each connected client
+                await client.send_text(json.dumps(message))
+            except Exception as e:
+                logger.warning(f"Failed to send message to client: {e}")
+                # Mark client for removal
+                clients_to_remove.append(client)
+
+        # Remove disconnected clients
+        for client in clients_to_remove:
+            self.connected_clients.discard(client)
