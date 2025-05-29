@@ -15,6 +15,9 @@ class EntityRenderer {
         this.TILE_SIZE = 1;
         this.ENTITY_SIZE = 0.5;
         this.PLAYER_SIZE = 0.6;
+
+        // Initialize texture manager
+        this.textureManager = new TextureManager();
     }
 
     clearEntities() {
@@ -46,7 +49,7 @@ class EntityRenderer {
                     this.createEntity(
                         enemy.x,
                         enemy.y,
-                        0xff4444, // Red for enemies
+                        enemy.font_awesome_icon || 'fa-solid fa-skull', // Use FontAwesome icon
                         'enemy',
                         mapCenterX,
                         mapCenterZ,
@@ -62,7 +65,7 @@ class EntityRenderer {
                 this.createEntity(
                     item.x,
                     item.y,
-                    0x44ff44, // Green for items
+                    item.font_awesome_icon || 'fa-solid fa-box', // Use FontAwesome icon
                     'item',
                     mapCenterX,
                     mapCenterZ,
@@ -72,14 +75,26 @@ class EntityRenderer {
         }
     }
 
-    createEntity(gridX, gridY, color, type, mapCenterX, mapCenterZ, size) {
+    createEntity(gridX, gridY, iconClass, type, mapCenterX, mapCenterZ, size) {
         let geometry;
         if (type === 'item') {
             geometry = new THREE.CylinderGeometry(size / 2, size / 2, size * 0.5, 16); // Cylinder for items
         } else {
             geometry = new THREE.BoxGeometry(size, size, size); // Box for enemies
         }
-        const material = new THREE.MeshLambertMaterial({ color: color });
+
+        // Create texture from FontAwesome icon
+        const texture = this.textureManager.createIconTexture(iconClass, {
+            size: 64,
+            backgroundColor: this.getEntityBackgroundColor(type),
+            iconColor: '#ffffff',
+            padding: 8
+        });
+
+        const material = new THREE.MeshLambertMaterial({
+            map: texture,
+            transparent: true
+        });
 
         const entity = new THREE.Mesh(geometry, material);
         entity.position.set(
@@ -93,11 +108,37 @@ class EntityRenderer {
         this.entityGroup.add(entity);
     }
 
+    getEntityBackgroundColor(type) {
+        // Return appropriate background colors for different entity types
+        switch (type) {
+            case 'enemy':
+                return '#cc3333'; // Red background for enemies
+            case 'item':
+                return '#33cc33'; // Green background for items
+            case 'player':
+                return '#3366cc'; // Blue background for player
+            default:
+                return '#666666'; // Default gray
+        }
+    }
+
     updatePlayer(playerPos, mapCenterX, mapCenterZ, sceneManager = null) {
         // Create player mesh if it doesn't exist
         if (!this.playerMesh) {
             const geometry = new THREE.BoxGeometry(this.PLAYER_SIZE, this.PLAYER_SIZE * 1.5, this.PLAYER_SIZE); // Taller box for player
-            const material = new THREE.MeshLambertMaterial({ color: 0x4dabf7 }); // Blue
+
+            // Create texture for player using FontAwesome icon
+            const texture = this.textureManager.createIconTexture('fa-solid fa-user', {
+                size: 64,
+                backgroundColor: '#4dabf7', // Blue background
+                iconColor: '#ffffff',
+                padding: 8
+            });
+
+            const material = new THREE.MeshLambertMaterial({
+                map: texture,
+                transparent: true
+            });
 
             this.playerMesh = new THREE.Mesh(geometry, material);
             this.playerMesh.castShadow = true; // Enable shadow casting
@@ -165,6 +206,10 @@ class EntityRenderer {
         this.clearPlayer();
         if (this.entityGroup) {
             this.scene.remove(this.entityGroup);
+        }
+        // Clean up texture manager
+        if (this.textureManager) {
+            this.textureManager.dispose();
         }
     }
 }

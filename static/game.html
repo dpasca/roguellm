@@ -15,6 +15,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+    <!-- Three.js Custom Modules -->
+    <script src="/static/js/threejs/generate-icon-map.js"></script>
+    <script src="/static/js/threejs/TextureManager.js"></script>
+    <script src="/static/js/threejs/MapRenderer.js"></script>
+    <script src="/static/js/threejs/EntityRenderer.js"></script>
+    <script src="/static/js/threejs/EventHandler.js"></script>
+    <script src="/static/js/threejs/SceneManager.js"></script>
+    <script src="/static/js/threejs/ArrowController.js"></script>
+
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/game.css">
@@ -515,11 +524,12 @@
         </div>
     </div>
     <!-- Load Three.js renderer modules in dependency order -->
+    <script src="/static/js/threejs/TextureManager.js"></script>
     <script src="/static/js/threejs/SceneManager.js"></script>
     <script src="/static/js/threejs/MapRenderer.js"></script>
     <script src="/static/js/threejs/EntityRenderer.js"></script>
-    <script src="/static/js/threejs/ArrowController.js"></script>
     <script src="/static/js/threejs/EventHandler.js"></script>
+    <script src="/static/js/threejs/ArrowController.js"></script>
     <script src="/static/js/threejs-renderer.js"></script>
     <!-- Load Vue first, then our app -->
     <script src="/static/js/createApp.js"></script>

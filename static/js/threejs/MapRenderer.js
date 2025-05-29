@@ -9,6 +9,9 @@ class MapRenderer {
 
         // Cardinal markers state
         this.cardinalMarkersCreated = false;
+
+        // Initialize texture manager
+        this.textureManager = new TextureManager();
     }
 
     clearTiles() {
@@ -99,28 +102,35 @@ class MapRenderer {
         // Use PlaneGeometry for flat tiles
         const geometry = new THREE.PlaneGeometry(this.TILE_SIZE * 0.9, this.TILE_SIZE * 0.9);
 
-        // Handle fog of war colors
-        let color;
-        let opacity;
+        // Create the same texture for both explored and unexplored tiles
+        const texture = this.textureManager.createFloorTexture(cellType, {
+            size: 64,
+            iconColor: '#ffffff',  // Always use white icons
+            padding: 8,
+            showIcon: true
+        });
+
+        // Create material with fog of war effects applied through material properties only
+        let material;
 
         if (isExplored) {
-            // Explored tiles: full color and brightness
-            color = new THREE.Color(cellType.map_color || '#888888');
-            color.lerp(new THREE.Color(0xffffff), 0.2); // Mix 20% white for brightness
-            opacity = 1.0;
+            // Explored tiles: normal appearance
+            material = new THREE.MeshLambertMaterial({
+                map: texture,
+                side: THREE.DoubleSide,
+                transparent: false,
+                opacity: 1.0
+            });
         } else {
-            // Unexplored but visible tiles (fog of war): slightly darker and less transparent
-            color = new THREE.Color(cellType.map_color || '#888888');
-            color.lerp(new THREE.Color(0x000000), 0.3); // Mix only 30% black (was 60%)
-            opacity = 0.7; // Higher opacity (was 0.4)
+            // Unexplored tiles: apply fog of war effect through material properties
+            material = new THREE.MeshLambertMaterial({
+                map: texture,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.6,           // Reduce overall opacity
+                color: 0x444444         // Darken the entire texture (icons and background)
+            });
         }
-
-        const material = new THREE.MeshLambertMaterial({
-            color: color,
-            side: THREE.DoubleSide,
-            transparent: !isExplored,
-            opacity: opacity
-        });
 
         const tile = new THREE.Mesh(geometry, material);
 
@@ -144,14 +154,14 @@ class MapRenderer {
 
         this.tileGroup.add(tile);
 
-        // Add wireframe border for better visibility
+        // Add wireframe border for better visibility (optional - can be removed for cleaner look)
         const wireframeGeometry = new THREE.PlaneGeometry(this.TILE_SIZE, this.TILE_SIZE);
         const wireframeMaterial = new THREE.MeshBasicMaterial({
             color: isExplored ? 0x666666 : 0x333333,
             wireframe: true,
             side: THREE.DoubleSide,
             transparent: !isExplored,
-            opacity: isExplored ? 1.0 : 0.3
+            opacity: isExplored ? 0.3 : 0.2  // More subtle wireframe
         });
         const wireframe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
         wireframe.position.copy(tile.position);
@@ -197,6 +207,10 @@ class MapRenderer {
         this.clearTiles();
         if (this.tileGroup) {
             this.scene.remove(this.tileGroup);
+        }
+        // Clean up texture manager
+        if (this.textureManager) {
+            this.textureManager.dispose();
         }
     }
 }
