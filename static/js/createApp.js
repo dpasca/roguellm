@@ -131,7 +131,10 @@ const app = Vue.createApp({
             showShareNotification: false,
             // Three.js related
             threeRenderer: null,
-            use3D: true // Toggle between 2D and 3D rendering
+            use3D: true, // Toggle between 2D and 3D rendering
+            showInventory: false, // Toggle inventory overlay in 3D mode
+            newItemsCount: 0, // Count of new items since last inventory view
+            lastInventoryCount: 0 // Track inventory count to detect new items
         }
     },
     computed: {
@@ -506,7 +509,11 @@ const app = Vue.createApp({
                 // Handle descriptions - add to log if meaningful
                 if (response.description && response.description.trim() !== "" && response.description !== "Moving...") {
                     this.gameLogs.push(response.description);
+                    this.scrollGameLogToBottom();
                 }
+
+                // Check for new items
+                this.checkForNewItems();
 
                 // Hide loading screen for game state updates
                 if (response.description_raw === "Moving...") {
@@ -521,6 +528,7 @@ const app = Vue.createApp({
 
             } else if (response.type === 'game_log') {
                 this.gameLogs.push(response.data);
+                this.scrollGameLogToBottom();
             } else if (response.type === 'error') {
                 this.errorMessage = response.data.message;
                 this.isMoveInProgress = false;
@@ -659,6 +667,32 @@ const app = Vue.createApp({
                 'fog-of-war': !isFullyVisible
             };
         },
+        toggleInventory() {
+            this.showInventory = !this.showInventory;
+            if (this.showInventory) {
+                // Reset new items count when inventory is opened
+                this.newItemsCount = 0;
+                this.lastInventoryCount = this.gameState.inventory ? this.gameState.inventory.length : 0;
+            }
+        },
+        checkForNewItems() {
+            if (this.gameState.inventory) {
+                const currentCount = this.gameState.inventory.length;
+                if (currentCount > this.lastInventoryCount) {
+                    // New items detected
+                    this.newItemsCount += (currentCount - this.lastInventoryCount);
+                    this.lastInventoryCount = currentCount;
+                }
+            }
+        },
+        scrollGameLogToBottom() {
+            this.$nextTick(() => {
+                const gameLogElement = document.querySelector('.game-log-overlay .game-log');
+                if (gameLogElement) {
+                    gameLogElement.scrollTop = gameLogElement.scrollHeight;
+                }
+            });
+        },
     },
     mounted() {
         // Show loading screen
@@ -743,6 +777,8 @@ const app = Vue.createApp({
                         true
                     );
                 });
+                // Initialize inventory count tracking
+                this.lastInventoryCount = this.gameState.inventory ? this.gameState.inventory.length : 0;
                 // Loading screen is hidden in handleGameState method when game is initialized
             }
         },
