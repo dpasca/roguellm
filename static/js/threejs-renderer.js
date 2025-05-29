@@ -110,6 +110,7 @@ class ThreeJSRenderer {
         }
 
         // Dispose all modules
+        this.eventHandler.dispose();
         this.arrowController.dispose();
         this.entityRenderer.dispose();
         this.mapRenderer.dispose();

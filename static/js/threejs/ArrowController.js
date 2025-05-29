@@ -216,8 +216,10 @@ class ArrowController {
 
         // Update the class member this.hoveredArrow for the rendering loop
         this.hoveredArrow = hoveredArrow;
-        // Update cursor style based on the locally determined hoveredArrow from this event
-        this.renderer.domElement.style.cursor = hoveredArrow ? 'pointer' : 'default';
+        // Only update cursor if we're actually hovering an arrow - let EventHandler handle other cases
+        if (hoveredArrow) {
+            this.renderer.domElement.style.cursor = 'pointer';
+        }
 
         // The color update loop uses this.hoveredArrow, which is now correctly set
         this.arrowGroup.children.forEach((arrow) => {

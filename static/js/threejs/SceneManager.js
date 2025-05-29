@@ -6,9 +6,15 @@ class SceneManager {
         this.renderer = null;
         this.controls = null;
         this.resizeObserver = null;
+        this.userIsActivelyOperatingControls = false;
+        this.isDraggingWithOrbitControls = false;
+        this.initialCameraStateForDragDetection = null;
 
         // Constants
         this.FRUSTUM_SIZE = 15;
+        this.DRAG_ANGLE_THRESHOLD = 0.01;
+        this.DRAG_TARGET_THRESHOLD = 0.05;
+        this.DRAG_ZOOM_THRESHOLD = 0.01;
 
         this.init();
     }
@@ -93,6 +99,57 @@ class SceneManager {
             this.controls.enableRotate = true;
             this.controls.screenSpacePanning = true;
             this.controls.target.set(0, 0, 0);
+
+            this.controls.addEventListener('start', () => {
+                this.userIsActivelyOperatingControls = true;
+                this.isDraggingWithOrbitControls = false;
+
+                if (this.controls && this.camera) {
+                    this.initialCameraStateForDragDetection = {
+                        azimuthal: this.controls.getAzimuthalAngle ? this.controls.getAzimuthalAngle() : null,
+                        polar: this.controls.getPolarAngle ? this.controls.getPolarAngle() : null,
+                        target: this.controls.target ? this.controls.target.clone() : new THREE.Vector3(),
+                        zoom: this.camera.zoom
+                    };
+                }
+            });
+
+            this.controls.addEventListener('change', () => {
+                if (this.userIsActivelyOperatingControls && this.initialCameraStateForDragDetection && this.controls && this.camera) {
+                    let significantChange = false;
+                    const initialState = this.initialCameraStateForDragDetection;
+
+                    if (initialState.azimuthal !== null && this.controls.getAzimuthalAngle) {
+                        if (Math.abs(this.controls.getAzimuthalAngle() - initialState.azimuthal) > this.DRAG_ANGLE_THRESHOLD) {
+                            significantChange = true;
+                        }
+                    }
+                    if (!significantChange && initialState.polar !== null && this.controls.getPolarAngle) {
+                        if (Math.abs(this.controls.getPolarAngle() - initialState.polar) > this.DRAG_ANGLE_THRESHOLD) {
+                            significantChange = true;
+                        }
+                    }
+                    if (!significantChange && initialState.target && this.controls.target) {
+                        if (this.controls.target.distanceTo(initialState.target) > this.DRAG_TARGET_THRESHOLD) {
+                            significantChange = true;
+                        }
+                    }
+                    if (!significantChange) {
+                        if (Math.abs(this.camera.zoom - initialState.zoom) > this.DRAG_ZOOM_THRESHOLD) {
+                            significantChange = true;
+                        }
+                    }
+
+                    if (significantChange) {
+                        this.isDraggingWithOrbitControls = true;
+                    }
+                }
+            });
+
+            this.controls.addEventListener('end', () => {
+                this.userIsActivelyOperatingControls = false;
+                this.initialCameraStateForDragDetection = null;
+            });
         }
     }
 
