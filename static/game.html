@@ -102,7 +102,7 @@
             pointer-events: none;
         }
 
-        .game-overlay > * {
+        .game-overlay>* {
             pointer-events: auto;
         }
 
@@ -147,11 +147,18 @@
             transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.9);
             backdrop-filter: blur(15px);
-            border: 3px solid rgba(255, 100, 100, 0.5);
-            border-radius: 15px;
-            padding: 25px;
-            min-width: 400px;
-            box-shadow: 0 12px 48px rgba(255, 0, 0, 0.2);
+            border: 2px solid rgba(255, 100, 100, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 350px;
+            box-shadow: 0 8px 32px rgba(255, 0, 0, 0.3);
+        }
+
+        .combat-overlay .combat-ui {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
         }
 
         /* Game Log - Bottom */
@@ -185,15 +192,50 @@
             margin-right: 2px;
         }
 
-        .game-log-overlay .game-log > div {
+        .game-log-overlay .game-log>div {
             margin-bottom: 8px;
             padding: 6px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .game-log-overlay .game-log > div:last-child {
+        .game-log-overlay .game-log>div:last-child {
             border-bottom: none;
             margin-bottom: 0;
+        }
+
+        /* Test Mode Badge Styles */
+        .test-mode-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            color: white;
+            font-size: 0.6em;
+            font-weight: bold;
+            padding: 4px 8px;
+            margin-left: 10px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+            animation: testModePulse 2s ease-in-out infinite;
+            vertical-align: middle;
+        }
+
+        .test-mode-badge i {
+            margin-right: 4px;
+        }
+
+        @keyframes testModePulse {
+
+            0%,
+            100% {
+                box-shadow: 0 2px 8px rgba(255, 107, 53, 0.4);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 4px 16px rgba(255, 107, 53, 0.6);
+                transform: scale(1.05);
+            }
         }
 
         /* Custom scrollbar for game log */
@@ -228,20 +270,30 @@
             transform: translateX(-50%);
         }
 
-        /* Mode Toggle - Top Center */
-        .mode-toggle-overlay {
+        /* Game Title - Top Center */
+        .game-title-overlay {
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(8px);
             border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 8px;
+            border-radius: 20px;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .game-title-overlay h2 {
+            margin: 0;
+            font-size: 16px;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            font-weight: 500;
         }
 
         /* Enhanced styles for game elements */
-        .game-overlay h3, .game-overlay h4 {
+        .game-overlay h3,
+        .game-overlay h4 {
             color: #fff;
             margin: 0 0 10px 0;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
@@ -319,10 +371,13 @@
         }
 
         @keyframes inventoryPulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 border-color: rgba(76, 209, 55, 0.8);
                 box-shadow: 0 0 20px rgba(76, 209, 55, 0.4);
             }
+
             50% {
                 border-color: rgba(76, 209, 55, 1);
                 box-shadow: 0 0 30px rgba(76, 209, 55, 0.6);
@@ -416,8 +471,12 @@
     <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
-                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle"
-                    v-text="gameState.game_title || gameTitle"></h1>
+                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle">
+                    {{ gameState.game_title || gameTitle }}
+                    <span v-if="testMode" class="test-mode-badge" title="Test mode active - using cached game instance">
+                        <i class="fas fa-flask"></i> TEST
+                    </span>
+                </h1>
                 <div class="menu-icon" @click="toggleMenu">
                     <i class="fas fa-bars"></i>
                 </div>
@@ -518,263 +577,16 @@
 
             <!-- Game Container -->
             <div class="game-container">
-                <!-- Mode Toggle Overlay - Always visible -->
-                <div class="game-overlay mode-toggle-overlay">
-                    <div class="render-mode-toggle">
-                        <button @click="use3D = true" :class="{ active: use3D }">
-                            <i class="fas fa-cube"></i> 3D View
-                        </button>
-                        <button @click="use3D = false" :class="{ active: !use3D }">
-                            <i class="fas fa-th"></i> 2D View
-                        </button>
-                    </div>
+                <!-- Game Title Overlay -->
+                <div class="game-overlay game-title-overlay">
+                    <h2>{{ gameTitle }}</h2>
                 </div>
 
-                <!-- Three.js Container (3D Mode) - Fullscreen -->
-                <div v-if="use3D" id="threejs-container"></div>
+                <!-- Three.js Container - Fullscreen -->
+                <div id="threejs-container"></div>
 
-                <!-- Player HUD Overlay - Only in 3D mode -->
-                <div v-if="use3D && gameState" class="game-overlay player-hud">
-                    <div class="player-status">
-                        <div class="player-header">
-                            <h3>{{ gameState.player.name }}</h3>
-                            <i :class="gameState.player.font_awesome_icon"></i>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                <span class="label-text">{{ $t('player.stats.hp') }}</span>
-                            </span>
-                            <span class="status-value">
-                                <div class="health-bar-container">
-                                    <div class="health-bar">
-                                        <div class="health-bar-fill" :style="{ width: getPlayerHealthPercentage + '%' }">
-                                        </div>
-                                    </div>
-                                    <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
-                                </div>
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                <span class="label-text">{{ $t('player.stats.attack') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.player_attack }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-star fa-fw" style="color: #4cd137;"></i>
-                                <span class="label-text">{{ $t('player.stats.xp') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.player_xp }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i>
-                                <span class="label-text">{{ $t('player.stats.location') }}</span>
-                            </span>
-                            <span class="status-value">{{
-                                gameState.cell_types && gameState.player_pos &&
-                                gameState.cell_types[gameState.player_pos[1]] &&
-                                gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]] ?
-                                gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name :
-                                'Loading...'
-                                }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-gavel fa-fw" style="color: #a8a8a8;"></i>
-                                <span class="label-text">{{ $t('player.equipment.weapon') }}</span>
-                            </span>
-                            <span class="status-value">
-                                <div class="equipment-details">
-                                    <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None' }}</span>
-                                    <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{ gameState.equipment.weapon.effect.attack }} ATK</span>
-                                </div>
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
-                                <span class="label-text">{{ $t('player.equipment.armor') }}</span>
-                            </span>
-                            <span class="status-value">
-                                <div class="equipment-details">
-                                    <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None' }}</span>
-                                    <span v-if="gameState.equipment.armor" class="equipment-stat">+{{ gameState.equipment.armor.effect.defense }} DEF</span>
-                                </div>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Movement Controls Overlay - Only in 3D mode -->
-                <div v-if="use3D && gameState && !gameState.in_combat" class="game-overlay movement-overlay">
-                    <div class="controls-3d">
-                        <button @click="move('n')" class="move-btn move-up" :disabled="!canMove('n')">
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                        <button @click="move('w')" class="move-btn move-left" :disabled="!canMove('w')">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button @click="move('e')" class="move-btn move-right" :disabled="!canMove('e')">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button @click="move('s')" class="move-btn move-down" :disabled="!canMove('s')">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Combat UI Overlay - Only in 3D mode -->
-                <div v-if="use3D && gameState && gameState.in_combat && gameState.current_enemy" class="game-overlay combat-overlay">
-                    <div class="combat-ui">
-                        <div class="enemy-header">
-                            <h3>{{ gameState.current_enemy.name }}</h3>
-                            <i :class="gameState.current_enemy.font_awesome_icon"></i>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                <span class="label-text">{{ $t('combat.stats.hp') }}</span>
-                            </span>
-                            <span class="status-value">
-                                <div class="health-bar-container">
-                                    <div class="health-bar">
-                                        <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
-                                        </div>
-                                    </div>
-                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
-                                </div>
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                <span class="label-text">{{ $t('combat.stats.attack') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.current_enemy.attack }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
-                                <span class="label-text">{{ $t('combat.stats.defense') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.current_enemy.defense }}</span>
-                        </div>
-                        <div class="combat-buttons">
-                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{ $t('combat.buttons.attack') }}</button>
-                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{ $t('combat.buttons.run') }}</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Inventory Toggle Button - Only in 3D mode -->
-                <div v-if="use3D" class="inventory-toggle" :class="{ 'has-new-items': newItemsCount > 0 }" @click="toggleInventory">
-                    <i class="fas fa-backpack"></i>
-                    <div v-if="newItemsCount > 0" class="inventory-notification-badge">{{ newItemsCount }}</div>
-                </div>
-
-                <!-- Inventory Overlay - Only in 3D mode -->
-                <div v-if="use3D && gameState" class="game-overlay inventory-overlay" :class="{ hidden: !showInventory }">
-                    <div class="inventory-ui">
-                        <h3>{{ $t('player.inventory') }}</h3>
-                        <div class="inventory-grid">
-                            <div v-for="item in gameState.inventory" :key="item.id" class="item-card" :class="{ equipped: item.is_equipped }">
-                                <div class="item-card-header">
-                                    <h4>{{ item.name }}</h4>
-                                    <div class="item-actions">
-                                        <button v-if="item.type === 'consumable'" @click="useItem(item.id)" class="use-button">
-                                            {{ $t('inventory.use') }}
-                                        </button>
-                                        <button v-if="item.type === 'weapon' || item.type === 'armor'" @click="equipItem(item.id)" :class="{ 'equipped-button': item.is_equipped }">
-                                            {{ item.is_equipped ? '●' : '○' }}
-                                        </button>
-                                    </div>
-                                </div>
-                                <p>{{ item.description }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Game Log Overlay - Only in 3D mode -->
-                <div v-if="use3D" class="game-overlay game-log-overlay">
-                    <div class="game-log">
-                        <div v-for="(log, index) in gameLogs" :key="index">
-                            {{ log }}
-                        </div>
-                    </div>
-                </div>
-
-                    <!-- Game Map (2D Mode) -->
-                    <div v-if="!use3D" class="game-map" :class="{ 'in-combat': gameState.in_combat }">
-                        <div v-if="gameState && gameState.explored" class="map">
-                            <div v-for="(row, y) in gameState.explored" :key="y" class="row">
-                                <div v-for="(cell, x) in row" :key="x" v-if="isCellVisible(x, y)" class="cell"
-                                    :data-x="x" :data-y="y" :class="getCellClass(x, y)" :style="getCellStyle(x, y)">
-                                    <i :class="getCellIcon(x, y)"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="controls" v-if="gameState && !gameState.in_combat">
-                            <button @click="move('n')" data-dir="n" :disabled="!canMove('n')"></button>
-                            <button @click="move('s')" data-dir="s" :disabled="!canMove('s')"></button>
-                            <button @click="move('w')" data-dir="w" :disabled="!canMove('w')"></button>
-                            <button @click="move('e')" data-dir="e" :disabled="!canMove('e')"></button>
-                        </div>
-                        <!-- Move the player icon inside the game-map container -->
-                        <div id="player-icon" class="player-icon">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                    </div>
-
-                    <!-- Combat UI -->
-                    <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
-                        <div class="enemy-header">
-                            <h3>{{ gameState.current_enemy.name }}</h3>
-                            <i :class="gameState.current_enemy.font_awesome_icon"></i>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                <span class="label-text">{{ $t('combat.stats.hp') }}</span>
-                            </span>
-                            <span class="status-value">
-                                <div class="health-bar-container">
-                                    <div class="health-bar">
-                                        <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
-                                        </div>
-                                    </div>
-                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{
-                                        gameState.current_enemy.max_hp }}</span>
-                                </div>
-                            </span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                <span class="label-text">{{ $t('combat.stats.attack') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.current_enemy.attack }}</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">
-                                <i class="fas fa-shield-alt fa-fw" style="color: #4dabf7;"></i>
-                                <span class="label-text">{{ $t('combat.stats.defense') }}</span>
-                            </span>
-                            <span class="status-value">{{ gameState.current_enemy.defense }}</span>
-                        </div>
-                        <div class="combat-buttons">
-                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{
-                                $t('combat.buttons.attack') }}</button>
-                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{
-                                $t('combat.buttons.run') }}</button>
-                        </div>
-                    </div>
-
-                    <!-- Player Status -->
+                <!-- Player HUD Overlay -->
+                <div v-if="gameState" class="game-overlay player-hud">
                     <div class="player-status">
                         <div class="player-header">
                             <h3>{{ gameState.player.name }}</h3>
@@ -854,12 +666,81 @@
                         </div>
                     </div>
                 </div>
-                <!-- End of .game-content -->
 
-                <!-- Inventory stays below .game-content -->
-                <div class="game-sidebar">
-                    <!-- Inventory UI -->
-                    <div class="inventory-ui" v-if="gameState">
+                <!-- Movement Controls Overlay -->
+                <div v-if="gameState && !gameState.in_combat" class="game-overlay movement-overlay">
+                    <div class="controls-3d">
+                        <button @click="move('n')" class="move-btn move-up" :disabled="!canMove('n')">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button @click="move('w')" class="move-btn move-left" :disabled="!canMove('w')">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button @click="move('e')" class="move-btn move-right" :disabled="!canMove('e')">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button @click="move('s')" class="move-btn move-down" :disabled="!canMove('s')">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Combat UI Overlay -->
+                <div v-if="gameState && gameState.in_combat && gameState.current_enemy"
+                    class="game-overlay combat-overlay">
+                    <div class="combat-ui">
+                        <div class="enemy-header">
+                            <h3>{{ gameState.current_enemy.name }}</h3>
+                            <i :class="gameState.current_enemy.font_awesome_icon"></i>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">
+                                <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
+                                <span class="label-text">{{ $t('combat.stats.hp') }}</span>
+                            </span>
+                            <span class="status-value">
+                                <div class="health-bar-container">
+                                    <div class="health-bar">
+                                        <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
+                                        </div>
+                                    </div>
+                                    <span class="health-text">{{ gameState.current_enemy.hp }}/{{
+                                        gameState.current_enemy.max_hp }}</span>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">
+                                <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
+                                <span class="label-text">{{ $t('combat.stats.attack') }}</span>
+                            </span>
+                            <span class="status-value">{{ gameState.current_enemy.attack }}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">
+                                <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
+                                <span class="label-text">{{ $t('combat.stats.defense') }}</span>
+                            </span>
+                            <span class="status-value">{{ gameState.current_enemy.defense }}</span>
+                        </div>
+                        <div class="combat-buttons">
+                            <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{
+                                $t('combat.buttons.attack') }}</button>
+                            <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{
+                                $t('combat.buttons.run') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Toggle Button -->
+                <div class="inventory-toggle" :class="{ 'has-new-items': newItemsCount > 0 }" @click="toggleInventory">
+                    <i class="fas fa-backpack"></i>
+                    <div v-if="newItemsCount > 0" class="inventory-notification-badge">{{ newItemsCount }}</div>
+                </div>
+
+                <!-- Inventory Overlay -->
+                <div v-if="gameState" class="game-overlay inventory-overlay" :class="{ hidden: !showInventory }">
+                    <div class="inventory-ui">
                         <h3>{{ $t('player.inventory') }}</h3>
                         <div class="inventory-grid">
                             <div v-for="item in gameState.inventory" :key="item.id" class="item-card"
@@ -883,51 +764,225 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Debug Panel -->
-            <div class="debug-panel" :class="{ active: isDebugPanelOpen }" v-if="gameState">
-                <div class="debug-panel-header">
-                    <h3>{{ $t('debug.title') }}</h3>
-                    <button @click="toggleDebugPanel" class="close-button">×</button>
-                </div>
-                <div class="debug-panel-content">
-                    <div class="debug-section">
-                        <h4>{{ $t('debug.itemsOnMap') }}</h4>
-                        <div v-for="item in gameState.items" :key="item.id" class="debug-item">
-                            <span>{{ item.name }} ({{ item.x }}, {{ item.y }})</span>
-                        </div>
-                    </div>
-                    <div class="debug-section">
-                        <h4>{{ $t('debug.enemiesOnMap') }}</h4>
-                        <div v-for="enemy in gameState.enemies" :key="enemy.id" class="debug-item">
-                            <span>{{ enemy.name }} ({{ enemy.x }}, {{ enemy.y }}) - HP: {{ enemy.hp }}</span>
+                <!-- Game Log Overlay -->
+                <div class="game-overlay game-log-overlay">
+                    <div class="game-log">
+                        <div v-for="(log, index) in gameLogs" :key="index">
+                            {{ log }}
                         </div>
                     </div>
                 </div>
-            </div>
+                <div v-if="!use3D" class="game-map" :class="{ 'in-combat': gameState.in_combat }">
+                    <div v-if="gameState && gameState.explored" class="map">
+                        <div v-for="(row, y) in gameState.explored" :key="y" class="row">
+                            <div v-for="(cell, x) in row" :key="x" v-if="isCellVisible(x, y)" class="cell" :data-x="x"
+                                :data-y="y" :class="getCellClass(x, y)" :style="getCellStyle(x, y)">
+                                <i :class="getCellIcon(x, y)"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="controls" v-if="gameState && !gameState.in_combat">
+                        <button @click="move('n')" data-dir="n" :disabled="!canMove('n')"></button>
+                        <button @click="move('s')" data-dir="s" :disabled="!canMove('s')"></button>
+                        <button @click="move('w')" data-dir="w" :disabled="!canMove('w')"></button>
+                        <button @click="move('e')" data-dir="e" :disabled="!canMove('e')"></button>
+                    </div>
+                    <!-- Move the player icon inside the game-map container -->
+                    <div id="player-icon" class="player-icon">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </div>
 
-            <!-- Game Log -->
-            <div class="game-log">
-                <div v-for="(log, index) in gameLogs" :key="index">
-                    {{ log }}
+                <!-- Combat UI -->
+                <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
+                    <div class="enemy-header">
+                        <h3>{{ gameState.current_enemy.name }}</h3>
+                        <i :class="gameState.current_enemy.font_awesome_icon"></i>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
+                            <span class="label-text">{{ $t('combat.stats.hp') }}</span>
+                        </span>
+                        <span class="status-value">
+                            <div class="health-bar-container">
+                                <div class="health-bar">
+                                    <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
+                                    </div>
+                                </div>
+                                <span class="health-text">{{ gameState.current_enemy.hp }}/{{
+                                    gameState.current_enemy.max_hp }}</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
+                            <span class="label-text">{{ $t('combat.stats.attack') }}</span>
+                        </span>
+                        <span class="status-value">{{ gameState.current_enemy.attack }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-shield-alt fa-fw" style="color: #4dabf7;"></i>
+                            <span class="label-text">{{ $t('combat.stats.defense') }}</span>
+                        </span>
+                        <span class="status-value">{{ gameState.current_enemy.defense }}</span>
+                    </div>
+                    <div class="combat-buttons">
+                        <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{
+                            $t('combat.buttons.attack') }}</button>
+                        <button @click="run" class="run-button"><i class="fas fa-running fa-fw"></i> {{
+                            $t('combat.buttons.run') }}</button>
+                    </div>
+                </div>
+
+                <!-- Player Status -->
+                <div class="player-status">
+                    <div class="player-header">
+                        <h3>{{ gameState.player.name }}</h3>
+                        <i :class="gameState.player.font_awesome_icon"></i>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
+                            <span class="label-text">{{ $t('player.stats.hp') }}</span>
+                        </span>
+                        <span class="status-value">
+                            <div class="health-bar-container">
+                                <div class="health-bar">
+                                    <div class="health-bar-fill" :style="{ width: getPlayerHealthPercentage + '%' }">
+                                    </div>
+                                </div>
+                                <span class="health-text">{{ gameState.player_hp }}/{{ gameState.player_max_hp
+                                    }}</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
+                            <span class="label-text">{{ $t('player.stats.attack') }}</span>
+                        </span>
+                        <span class="status-value">{{ gameState.player_attack }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-star fa-fw" style="color: #4cd137;"></i>
+                            <span class="label-text">{{ $t('player.stats.xp') }}</span>
+                        </span>
+                        <span class="status-value">{{ gameState.player_xp }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-map-marker-alt fa-fw" style="color: #ff7f50;"></i>
+                            <span class="label-text">{{ $t('player.stats.location') }}</span>
+                        </span>
+                        <span class="status-value">{{
+                            gameState.cell_types && gameState.player_pos &&
+                            gameState.cell_types[gameState.player_pos[1]] &&
+                            gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]] ?
+                            gameState.cell_types[gameState.player_pos[1]][gameState.player_pos[0]].name :
+                            'Loading...'
+                            }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-gavel fa-fw" style="color: #a8a8a8;"></i>
+                            <span class="label-text">{{ $t('player.equipment.weapon') }}</span>
+                        </span>
+                        <span class="status-value">
+                            <div class="equipment-details">
+                                <span>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : 'None'
+                                    }}</span>
+                                <span v-if="gameState.equipment.weapon" class="equipment-stat">+{{
+                                    gameState.equipment.weapon.effect.attack }} ATK</span>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">
+                            <i class="fas fa-shield-alt fa-fw" style="color: #70a1ff;"></i>
+                            <span class="label-text">{{ $t('player.equipment.armor') }}</span>
+                        </span>
+                        <span class="status-value">
+                            <div class="equipment-details">
+                                <span>{{ gameState.equipment.armor ? gameState.equipment.armor.name : 'None'
+                                    }}</span>
+                                <span v-if="gameState.equipment.armor" class="equipment-stat">+{{
+                                    gameState.equipment.armor.effect.defense }} DEF</span>
+                            </div>
+                        </span>
+                    </div>
                 </div>
             </div>
+            <!-- End of .game-content -->
 
-            <div v-if="errorMessage" class="error-message">
-                {{ errorMessage }}
+            <!-- Inventory stays below .game-content -->
+            <div class="game-sidebar">
+                <!-- Inventory UI -->
+                <div class="inventory-ui" v-if="gameState">
+                    <h3>{{ $t('player.inventory') }}</h3>
+                    <div class="inventory-grid">
+                        <div v-for="item in gameState.inventory" :key="item.id" class="item-card"
+                            :class="{ equipped: item.is_equipped }">
+                            <div class="item-card-header">
+                                <h4>{{ item.name }}</h4>
+                                <div class="item-actions">
+                                    <button v-if="item.type === 'consumable'" @click="useItem(item.id)"
+                                        class="use-button">
+                                        {{ $t('inventory.use') }}
+                                    </button>
+                                    <button v-if="item.type === 'weapon' || item.type === 'armor'"
+                                        @click="equipItem(item.id)" :class="{ 'equipped-button': item.is_equipped }">
+                                        {{ item.is_equipped ? '●' : '○' }}
+                                    </button>
+                                </div>
+                            </div>
+                            <p>{{ item.description }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Debug Panel -->
+        <div class="debug-panel" :class="{ active: isDebugPanelOpen }" v-if="gameState">
+            <div class="debug-panel-header">
+                <h3>{{ $t('debug.title') }}</h3>
+                <button @click="toggleDebugPanel" class="close-button">×</button>
+            </div>
+            <div class="debug-panel-content">
+                <div class="debug-section">
+                    <h4>{{ $t('debug.itemsOnMap') }}</h4>
+                    <div v-for="item in gameState.items" :key="item.id" class="debug-item">
+                        <span>{{ item.name }} ({{ item.x }}, {{ item.y }})</span>
+                    </div>
+                </div>
+                <div class="debug-section">
+                    <h4>{{ $t('debug.enemiesOnMap') }}</h4>
+                    <div v-for="enemy in gameState.enemies" :key="enemy.id" class="debug-item">
+                        <span>{{ enemy.name }} ({{ enemy.x }}, {{ enemy.y }}) - HP: {{ enemy.hp }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Log -->
+        <div class="game-log">
+            <div v-for="(log, index) in gameLogs" :key="index">
+                {{ log }}
+            </div>
+        </div>
+
+        <div v-if="errorMessage" class="error-message">
+            {{ errorMessage }}
+        </div>
     </div>
-    <!-- Load Three.js renderer modules in dependency order -->
-    <script src="/static/js/threejs/TextureManager.js"></script>
-    <script src="/static/js/threejs/SceneManager.js"></script>
-    <script src="/static/js/threejs/MapRenderer.js"></script>
-    <script src="/static/js/threejs/EntityRenderer.js"></script>
-    <script src="/static/js/threejs/EventHandler.js"></script>
-    <script src="/static/js/threejs/ArrowController.js"></script>
+    </div>
+    <!-- Load Vue app (Three.js modules already loaded in head) -->
     <script src="/static/js/threejs-renderer.js"></script>
-    <!-- Load Vue first, then our app -->
     <script src="/static/js/createApp.js"></script>
 
     <!-- Loading Overlay -->

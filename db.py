@@ -195,6 +195,21 @@ class DatabaseManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Add table for caching game instances (map + entity placements)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS game_instance_cache (
+                    id TEXT PRIMARY KEY,
+                    generator_id TEXT,
+                    map_data TEXT,
+                    entity_placements TEXT,
+                    map_width INTEGER,
+                    map_height INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (generator_id) REFERENCES generators (id)
+                )
+            """)
+
             conn.commit()
 
     def backup_db(self):
@@ -317,33 +332,97 @@ class DatabaseManager:
         return generator_id
 
     def get_generator(self, generator_id: str) -> Optional[Dict]:
-        """
-        Retrieve a generator by its ID.
-        Returns None if not found.
-        """
+        """Get a generator by ID"""
         def _get(conn, generator_id):
-            cur = conn.cursor()
-            cur.execute("""
-                SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs
-                FROM generators
-                WHERE id = ?
+            cursor = conn.execute("""
+                SELECT id, theme_desc, theme_desc_better, language,
+                       player_defs, item_defs, enemy_defs, celltype_defs, created_at
+                FROM generators WHERE id = ?
             """, (generator_id,))
+            row = cursor.fetchone()
+            if row:
+                # Handle potential None values in JSON fields
+                try:
+                    player_defs = json.loads(row[4]) if row[4] else []
+                    item_defs = json.loads(row[5]) if row[5] else []
+                    enemy_defs = json.loads(row[6]) if row[6] else []
+                    celltype_defs = json.loads(row[7]) if row[7] else []
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON decode error for generator {generator_id}: {e}")
+                    # Return None to indicate this generator is corrupted
+                    return None
 
-            result = cur.fetchone()
-            if result is None:
-                return None
-
-            return {
-                'theme_desc': result[0],
-                'theme_desc_better': result[1],
-                'language': result[2],
-                'player_defs': json.loads(result[3]),
-                'item_defs': json.loads(result[4]),
-                'enemy_defs': json.loads(result[5]),
-                'celltype_defs': json.loads(result[6])
-            }
+                return {
+                    'id': row[0],
+                    'theme_desc': row[1],
+                    'theme_desc_better': row[2],
+                    'language': row[3],
+                    'player_defs': player_defs,
+                    'item_defs': item_defs,
+                    'enemy_defs': enemy_defs,
+                    'celltype_defs': celltype_defs,
+                    'created_at': row[8]
+                }
+            return None
 
         return self._execute_with_retry(_get, generator_id)
+
+    def save_game_instance_cache(self, generator_id: str, map_data: List[List[Dict]],
+                                entity_placements: List[Dict], map_width: int, map_height: int) -> str:
+        """Save a generated game instance to cache"""
+        cache_id = str(uuid.uuid4())
+
+        def _save(conn, cache_id, generator_id, map_data, entity_placements, map_width, map_height):
+            conn.execute("""
+                INSERT INTO game_instance_cache (id, generator_id, map_data, entity_placements, map_width, map_height)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                cache_id,
+                generator_id,
+                json.dumps(map_data),
+                json.dumps(entity_placements),
+                map_width,
+                map_height
+            ))
+            self._schedule_upload()
+            return cache_id
+
+        return self._execute_with_retry(_save, cache_id, generator_id, map_data, entity_placements, map_width, map_height)
+
+    def get_cached_game_instance(self, generator_id: str) -> Optional[Dict]:
+        """Get a cached game instance for a generator (returns most recent)"""
+        def _get(conn, generator_id):
+            cursor = conn.execute("""
+                SELECT * FROM game_instance_cache
+                WHERE generator_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (generator_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row[0],
+                    'generator_id': row[1],
+                    'map_data': json.loads(row[2]),
+                    'entity_placements': json.loads(row[3]),
+                    'map_width': row[4],
+                    'map_height': row[5],
+                    'created_at': row[6]
+                }
+            return None
+
+        return self._execute_with_retry(_get, generator_id)
+
+    def clear_game_instance_cache(self, generator_id: str = None):
+        """Clear cached game instances, optionally for a specific generator"""
+        def _clear(conn, generator_id):
+            if generator_id:
+                conn.execute("DELETE FROM game_instance_cache WHERE generator_id = ?", (generator_id,))
+            else:
+                conn.execute("DELETE FROM game_instance_cache")
+            self._schedule_upload()
+
+        return self._execute_with_retry(_clear, generator_id)
 
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable

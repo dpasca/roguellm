@@ -6,6 +6,24 @@
 # You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 SESSION_SECRET_KEY=your_secure_random_session_key_here
 
+# Firebase Configuration (Optional)
+#FIREBASE_API_KEY=your_firebase_api_key_here
+#FIREBASE_AUTH_DOMAIN=my_roguellm.firebaseapp.com
+#FIREBASE_PROJECT_ID=my_roguellm
+#FIREBASE_STORAGE_BUCKET=my_roguellm.firebasestorage.app
+#FIREBASE_MESSAGING_SENDER_ID=100000000000
+#FIREBASE_APP_ID=1:100000000000:web:1000000000000000000000
+#FIREBASE_MEASUREMENT_ID=G-1000000000
+
+# Database Storage Configuration (Optional)
+# How often to upload database to cloud storage (in minutes)
+# Default: 5 minutes
+#UPLOAD_FREQUENCY_MINUTES=5
+#DO_SPACES_ACCESS_KEY=your_digitalocean_spaces_access_key_here
+#DO_SPACES_SECRET_KEY=your_digitalocean_spaces_secret_key_here
+#DO_STORAGE_CONTAINER=database
+#DO_STORAGE_SERVER=https://my_roguellm.xyz.digitaloceanspaces.com
+
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
 
@@ -29,16 +47,7 @@ SEARCH_PROVIDER=duckduckgo
 # SerpApi key if using SerpApi provider (optional)
 # SERPAPI_KEY=your_serpapi_key_here
 
-# Database Storage Configuration (Optional)
-# How often to upload database to cloud storage (in minutes)
-# Default: 5 minutes
-# UPLOAD_FREQUENCY_MINUTES=5
-
-# Firebase Configuration (Optional)
-# FIREBASE_API_KEY=
-# FIREBASE_AUTH_DOMAIN=
-# FIREBASE_PROJECT_ID=
-# FIREBASE_STORAGE_BUCKET=
-# FIREBASE_MESSAGING_SENDER_ID=
-# FIREBASE_APP_ID=
-# FIREBASE_MEASUREMENT_ID=
+# Testing Configuration (Optional)
+# Enable cached game instances to speed up testing (avoids AI generation)
+# Set to true to use cached maps and entity placements when available
+#USE_CACHED_GAME_INSTANCES=false

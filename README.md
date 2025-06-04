@@ -152,6 +152,54 @@ Notice that *DuckDuckGo* does not require an API key, but it may rate-limit and 
 
 See `game_config.json` and `game_items.json` for more details.
 
+## Test Mode (Cached Game Instances)
+
+For faster testing and development, RogueLLM supports caching generated game instances to avoid repeated AI generation of maps and entity placements.
+
+### Setup Test Mode
+
+1. **Enable caching** by setting the environment variable in your `.env` file:
+   ```bash
+   USE_CACHED_GAME_INSTANCES=true
+   ```
+
+2. **How it works**:
+   - When you first load a game with a specific generator ID, the map and entity placements are generated and cached
+   - Subsequent loads of the same generator will use the cached version instead of generating new content
+   - This dramatically speeds up testing when working on UI/UX features
+
+### Managing Cache
+
+Use the included cache management script:
+
+```bash
+# List all cached game instances
+python tools/test_cache.py list
+
+# Clear all cached instances
+python tools/test_cache.py clear
+
+# Clear cache for a specific generator
+python tools/test_cache.py clear --generator-id 2d3da55f
+
+# Clear cache via API (useful during development)
+python tools/test_cache.py clear-api
+```
+
+### API Endpoint
+
+You can also clear cache programmatically:
+
+```bash
+# Clear all cache
+curl -X POST http://127.0.0.1:8000/api/admin/clear_cache
+
+# Clear cache for specific generator
+curl -X POST "http://127.0.0.1:8000/api/admin/clear_cache?generator_id=2d3da55f"
+```
+
+**Note**: Cached instances are automatically saved to the database when caching is enabled and new content is generated.
+
 ## Icons generation
 
 ```bash

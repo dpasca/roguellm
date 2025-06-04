@@ -398,6 +398,19 @@ async def logout(request: Request):
     request.session["game_session"] = str(uuid.uuid4())
     return response
 
+# API endpoint to clear game instance cache (for testing)
+@app.post("/api/admin/clear_cache")
+async def clear_game_instance_cache(generator_id: Optional[str] = None):
+    """Clear cached game instances for testing purposes."""
+    try:
+        db.clear_game_instance_cache(generator_id)
+        message = f"Cleared game instance cache for generator {generator_id}" if generator_id else "Cleared all game instance cache"
+        logging.info(message)
+        return JSONResponse({"message": message})
+    except Exception as e:
+        logging.error(f"Error clearing cache: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 # Time profiler
 class TimeProfiler:
     def __init__(self, name="Operation"):

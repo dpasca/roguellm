@@ -131,10 +131,10 @@ const app = Vue.createApp({
             showShareNotification: false,
             // Three.js related
             threeRenderer: null,
-            use3D: true, // Toggle between 2D and 3D rendering
-            showInventory: false, // Toggle inventory overlay in 3D mode
+            showInventory: false, // Toggle inventory overlay
             newItemsCount: 0, // Count of new items since last inventory view
-            lastInventoryCount: 0 // Track inventory count to detect new items
+            lastInventoryCount: 0, // Track inventory count to detect new items
+            testMode: false // Indicates if test mode (cached instances) is active
         }
     },
     computed: {
@@ -491,20 +491,15 @@ const app = Vue.createApp({
                     if (newState.game_title) {
                         this.gameTitle = newState.game_title;
                     }
+
+                    // Update test mode indicator if present
+                    if (response.test_mode !== undefined) {
+                        this.testMode = response.test_mode;
+                    }
                 }
 
                 // Update 3D scene if renderer is active
-                if (this.use3D) {
-                    this.update3DScene();
-                }
-
-                // Update player position for 2D rendering (if not using 3D)
-                // This should use the potentially preserved (and correct) player_pos
-                if (!this.use3D && this.gameState.player_pos) {
-                    this.$nextTick(() => {
-                        updatePlayerPosition(this.gameState.player_pos[0], this.gameState.player_pos[1], true);
-                    });
-                }
+                this.update3DScene();
 
                 // Handle descriptions - add to log if meaningful
                 if (response.description && response.description.trim() !== "" && response.description !== "Moving...") {
@@ -722,7 +717,7 @@ const app = Vue.createApp({
 
         // Initialize 3D renderer if Three.js is available
         this.$nextTick(() => {
-            if (this.use3D && window.THREE) {
+            if (window.THREE) {
                 this.init3DRenderer();
             }
         });
@@ -741,25 +736,6 @@ const app = Vue.createApp({
         this.dispose3DRenderer();
     },
     watch: {
-        // Watch for changes in player position
-        'gameState.player_pos': function (newVal, oldVal) {
-            // Only update if position has actually changed
-            if (!oldVal || newVal[0] !== oldVal[0] || newVal[1] !== oldVal[1]) {
-                this.$nextTick(() => {
-                    const [x, y] = newVal;
-                    updatePlayerPosition(x, y);
-                });
-            }
-        },
-        // Watch for changes in combat state
-        'gameState.in_combat': function (newVal, oldVal) {
-            if (!newVal) { // Combat has ended
-                const [x, y] = this.gameState.player_pos;
-                this.$nextTick(() => {
-                    updatePlayerPosition(x, y, true); // Force update
-                });
-            }
-        },
         // Watch for changes in game title
         'gameState.game_title': function (newVal) {
             if (newVal) {
@@ -769,14 +745,6 @@ const app = Vue.createApp({
         // Add watcher for isGameInitialized
         isGameInitialized(newVal) {
             if (newVal) {
-                this.$nextTick(() => {
-                    // Force update player position when game is initialized
-                    updatePlayerPosition(
-                        this.gameState.player_pos[0],
-                        this.gameState.player_pos[1],
-                        true
-                    );
-                });
                 // Initialize inventory count tracking
                 this.lastInventoryCount = this.gameState.inventory ? this.gameState.inventory.length : 0;
                 // Loading screen is hidden in handleGameState method when game is initialized

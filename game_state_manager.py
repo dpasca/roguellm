@@ -59,6 +59,9 @@ class GameStateManager:
         self.theme_desc_better = None
         self.do_web_search = do_web_search
 
+        # Check if we should use cached game instances
+        self.use_cached_instances = os.getenv("USE_CACHED_GAME_INSTANCES", "false").lower() == "true"
+
     @classmethod
     async def create(cls, seed: int, theme_desc: str, do_web_search: bool = False,
                     language: str = "en", generator_id: Optional[str] = None):
@@ -253,23 +256,59 @@ class GameStateManager:
                     logger.warning("Invalid cell_types in config, generating random map")
                     self.state.cell_types = self.make_random_map()
             else:
-                # Generate AI map or fallback to random
-                try:
-                    if self.definitions.celltype_defs:
-                        self.state.cell_types = await self.gen_ai.gen_game_map_from_celltypes(
-                            self.definitions.celltype_defs,
-                            self.state.map_width,
-                            self.state.map_height
-                        )
-                    else:
-                        logger.warning("No celltype definitions available, using random map")
-                        self.state.cell_types = self.make_random_map()
-                except Exception as e:
-                    logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
-                    self.state.cell_types = self.make_random_map()
+                # Check if we should use cached game instances and have a generator_id
+                cached_instance = None
+                if self.use_cached_instances and self.generator_id:
+                    cached_instance = db.get_cached_game_instance(self.generator_id)
+                    if cached_instance:
+                        logger.info(f"Using cached game instance for generator {self.generator_id}")
+                        self.state.cell_types = cached_instance['map_data']
+                        # Override map dimensions if cached instance has different size
+                        if (cached_instance['map_width'] != self.state.map_width or
+                            cached_instance['map_height'] != self.state.map_height):
+                            logger.info(f"Updating map dimensions from cache: {cached_instance['map_width']}x{cached_instance['map_height']}")
+                            self.state.map_width = cached_instance['map_width']
+                            self.state.map_height = cached_instance['map_height']
+                            # Recreate explored array with new dimensions
+                            self.state.explored = [[False for _ in range(self.state.map_width)]
+                                                 for _ in range(self.state.map_height)]
+                        # Set entity placements directly from cache
+                        self.entity_placements = cached_instance['entity_placements']
 
-        # Generate entity placements
-        await self.initialize_game_placements()
+                if not cached_instance:
+                    # Generate AI map or fallback to random
+                    try:
+                        if self.definitions.celltype_defs:
+                            self.state.cell_types = await self.gen_ai.gen_game_map_from_celltypes(
+                                self.definitions.celltype_defs,
+                                self.state.map_width,
+                                self.state.map_height
+                            )
+                        else:
+                            logger.warning("No celltype definitions available, using random map")
+                            self.state.cell_types = self.make_random_map()
+                    except Exception as e:
+                        logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
+                        self.state.cell_types = self.make_random_map()
+
+        # Generate entity placements (skip if we loaded from cache)
+        if not hasattr(self, 'entity_placements') or self.entity_placements is None:
+            await self.initialize_game_placements()
+
+            # Save to cache if we generated new content and caching is enabled
+            if (self.use_cached_instances and self.generator_id and
+                not USE_RANDOM_MAP and hasattr(self, 'entity_placements')):
+                try:
+                    cache_id = db.save_game_instance_cache(
+                        self.generator_id,
+                        self.state.cell_types,
+                        self.entity_placements,
+                        self.state.map_width,
+                        self.state.map_height
+                    )
+                    logger.info(f"Saved game instance to cache with ID: {cache_id}")
+                except Exception as e:
+                    logger.error(f"Failed to save game instance to cache: {str(e)}")
 
         # Process the entity placements to populate enemies and items
         self.entity_manager.process_placements(self.state)
@@ -300,12 +339,18 @@ class GameStateManager:
                 'description': description
             }
 
-        return {
+        message = {
             'type': 'update',
             'state': self.state.model_dump(),
             'description_raw': description_raw,
             'description': description
         }
+
+        # Add test mode information
+        if self.use_cached_instances:
+            message['test_mode'] = True
+
+        return message
 
     async def create_message_room(self):
         """Create a message with room description."""
