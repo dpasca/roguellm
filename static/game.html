@@ -108,14 +108,15 @@
 
         /* Player HUD - Top Left */
         .player-hud {
-            top: 20px;
+            top: 90px;
             left: 20px;
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 15px;
-            min-width: 280px;
+            padding: 8px 10px;
+            width: auto;
+            max-width: 220px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
@@ -329,8 +330,8 @@
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -338,11 +339,110 @@
             font-size: 18px;
             cursor: pointer;
             transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Compact player HUD styling */
+        .player-hud .status-item {
+            margin: 3px 0 !important;
+            grid-template-columns: 20px auto !important;
+            gap: 6px !important;
+            align-items: center;
+        }
+
+        .player-hud .status-label {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-hud .status-label i {
+            font-size: 12px;
+        }
+
+        .player-hud .status-label .label-text {
+            display: none;
+            /* Hide text labels to save space, icons are self-explanatory */
+        }
+
+        @media screen and (max-width: 768px) {
+            .player-hud {
+                top: 70px;
+                left: 10px;
+                width: auto;
+                max-width: 200px;
+                padding: 6px 8px;
+            }
+
+            .player-hud .status-item {
+                grid-template-columns: 18px auto !important;
+                margin: 2px 0 !important;
+                gap: 4px !important;
+            }
+
+            .player-hud .status-label i {
+                font-size: 11px;
+            }
+
+            .player-hud .status-value {
+                font-size: 11px !important;
+            }
+
+            .player-hud .player-header h3 {
+                font-size: 13px !important;
+            }
+
+            .inventory-toggle {
+                right: 10px;
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+
+        .player-hud .status-value {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .player-hud .player-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .player-hud .player-header h3 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .player-hud .player-header i {
+            font-size: 14px;
+        }
+
+        .player-hud .health-text {
+            font-size: 11px;
+        }
+
+        .player-hud .equipment-details {
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .player-hud .equipment-stat {
+            font-size: 10px;
+            color: #4CAF50;
         }
 
         .inventory-toggle:hover {
             background: rgba(255, 255, 255, 0.1);
             transform: translateY(-50%) scale(1.1);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         .inventory-toggle.has-new-items {
@@ -472,7 +572,7 @@
         <div class="container">
             <div class="header-bar">
                 <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle">
-                    {{ gameState.game_title || gameTitle }}
+                    {{ gameState.game_title || (gameTitle !== 'RogueLLM: Unknown Title' ? gameTitle : 'RogueLLM') }}
                     <span v-if="testMode" class="test-mode-badge" title="Test mode active - using cached game instance">
                         <i class="fas fa-flask"></i> TEST
                     </span>
@@ -579,7 +679,8 @@
             <div class="game-container">
                 <!-- Game Title Overlay -->
                 <div class="game-overlay game-title-overlay">
-                    <h2>{{ gameTitle }}</h2>
+                    <h2>{{ gameState.game_title || (gameTitle !== 'RogueLLM: Unknown Title' ? gameTitle : 'RogueLLM') }}
+                    </h2>
                 </div>
 
                 <!-- Three.js Container - Fullscreen -->
@@ -733,8 +834,9 @@
                 </div>
 
                 <!-- Inventory Toggle Button -->
-                <div class="inventory-toggle" :class="{ 'has-new-items': newItemsCount > 0 }" @click="toggleInventory">
-                    <i class="fas fa-backpack"></i>
+                <div class="inventory-toggle" :class="{ 'has-new-items': newItemsCount > 0 }" @click="toggleInventory"
+                    title="Inventory">
+                    <i class="fas fa-box-open"></i>
                     <div v-if="newItemsCount > 0" class="inventory-notification-badge">{{ newItemsCount }}</div>
                 </div>
 
