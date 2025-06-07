@@ -37,23 +37,12 @@ class MapRenderer {
         const mapCenterX = (mapWidth * this.TILE_SIZE) / 2 - this.TILE_SIZE / 2;
         const mapCenterZ = (mapHeight * this.TILE_SIZE) / 2 - this.TILE_SIZE / 2;
 
-        // Create tiles with fog of war effect
+        // Create all tiles (fog of war removed)
         let tilesCreated = 0;
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
-                const isExplored = gameState.explored[y][x];
-                const isCurrentPlayerPosition = gameState.player_pos &&
-                    gameState.player_pos[0] === x && gameState.player_pos[1] === y;
-                const isImmediateNeighbor = this.isImmediateNeighborToPlayer(x, y, gameState.player_pos, mapWidth, mapHeight);
-                const isInFogOfWar = this.isInFogOfWar(x, y, gameState.explored, mapWidth, mapHeight);
-
-                // Show tile if it's explored, player's current position, immediate neighbor, or in fog of war
-                if (isExplored || isCurrentPlayerPosition || isImmediateNeighbor || isInFogOfWar) {
-                    // Determine if tile should be fully visible or fogged
-                    const isFullyVisible = isExplored || isCurrentPlayerPosition || isImmediateNeighbor;
-                    this.createTile(x, y, gameState.cell_types[y][x], mapCenterX, mapCenterZ, isFullyVisible);
-                    tilesCreated++;
-                }
+                this.createTile(x, y, gameState.cell_types[y][x], mapCenterX, mapCenterZ, true);
+                tilesCreated++;
             }
         }
 
@@ -66,71 +55,26 @@ class MapRenderer {
         return { mapCenterX, mapCenterZ };
     }
 
-    isImmediateNeighborToPlayer(x, y, playerPos, mapWidth, mapHeight) {
-        if (!playerPos) return false;
-
-        const [playerX, playerY] = playerPos;
-        const dx = Math.abs(x - playerX);
-        const dy = Math.abs(y - playerY);
-
-        // Check if within immediate 3x3 area around player (1-tile radius)
-        return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0); // Exclude player position itself
-    }
-
-    isInFogOfWar(x, y, explored, mapWidth, mapHeight) {
-        // Check if this tile is within 2 tiles of any explored tile (broader fog of war)
-        const FOG_RADIUS = 2;
-        for (let dy = -FOG_RADIUS; dy <= FOG_RADIUS; dy++) {
-            for (let dx = -FOG_RADIUS; dx <= FOG_RADIUS; dx++) {
-                if (dx === 0 && dy === 0) continue; // Skip the tile itself
-
-                const nx = x + dx;
-                const ny = y + dy;
-
-                // Check bounds
-                if (nx >= 0 && nx < mapWidth && ny >= 0 && ny < mapHeight) {
-                    if (explored[ny][nx]) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
 
     createTile(x, y, cellType, mapCenterX, mapCenterZ, isExplored = true) {
         // Use PlaneGeometry for flat tiles
         const geometry = new THREE.PlaneGeometry(this.TILE_SIZE * 0.9, this.TILE_SIZE * 0.9);
 
-        // Create the same texture for both explored and unexplored tiles
+        // Create texture
         const texture = this.textureManager.createFloorTexture(cellType, {
             size: 64,
-            iconColor: '#ffffff',  // Always use white icons
+            iconColor: '#ffffff',
             padding: 8,
             showIcon: true
         });
 
-        // Create material with fog of war effects applied through material properties only
-        let material;
-
-        if (isExplored) {
-            // Explored tiles: normal appearance
-            material = new THREE.MeshLambertMaterial({
-                map: texture,
-                side: THREE.DoubleSide,
-                transparent: false,
-                opacity: 1.0
-            });
-        } else {
-            // Unexplored tiles: apply fog of war effect through material properties
-            material = new THREE.MeshLambertMaterial({
-                map: texture,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.6,           // Reduce overall opacity
-                color: 0x444444         // Darken the entire texture (icons and background)
-            });
-        }
+        // Create material with normal appearance (fog of war removed)
+        const material = new THREE.MeshLambertMaterial({
+            map: texture,
+            side: THREE.DoubleSide,
+            transparent: false,
+            opacity: 1.0
+        });
 
         const tile = new THREE.Mesh(geometry, material);
 
@@ -154,14 +98,14 @@ class MapRenderer {
 
         this.tileGroup.add(tile);
 
-        // Add wireframe border for better visibility (optional - can be removed for cleaner look)
+        // Add subtle wireframe border for better tile definition
         const wireframeGeometry = new THREE.PlaneGeometry(this.TILE_SIZE, this.TILE_SIZE);
         const wireframeMaterial = new THREE.MeshBasicMaterial({
-            color: isExplored ? 0x666666 : 0x333333,
+            color: 0x555555,
             wireframe: true,
             side: THREE.DoubleSide,
-            transparent: !isExplored,
-            opacity: isExplored ? 0.3 : 0.2  // More subtle wireframe
+            transparent: true,
+            opacity: 0.2  // Subtle wireframe
         });
         const wireframe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
         wireframe.position.copy(tile.position);
