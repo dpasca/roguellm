@@ -1,6 +1,8 @@
 class TextureManager {
     constructor() {
         this.textureCache = new Map();
+        this.atlasCache = new Map();
+        this.uvMappings = new Map();
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = 64;  // Power of 2 for better performance
@@ -8,6 +10,10 @@ class TextureManager {
 
         // Ensure FontAwesome is loaded
         this.fontAwesomeLoaded = this.checkFontAwesome();
+
+        // Atlas configuration
+        this.useAtlas = true; // Enable atlas by default
+        this.currentAtlasId = null;
     }
 
     checkFontAwesome() {
@@ -336,6 +342,205 @@ class TextureManager {
 
     dispose() {
         this.clearCache();
+        this.clearAtlasCache();
+    }
+
+    // Texture Atlas Methods
+    /**
+     * Load texture atlas and UV mappings from server
+     * @param {string} atlasId - The ID of the atlas to load.
+     * @returns {Promise<object>} - A promise that resolves with the atlas data.
+     */
+    async loadTextureAtlas(atlasId) {
+        if (this.atlasCache.has(atlasId)) {
+            return this.atlasCache.get(atlasId);
+        }
+
+        try {
+            // Get atlas metadata
+            const response = await fetch(`/api/textures/${atlasId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to load atlas metadata: ${response.status}`);
+            }
+
+            const atlasInfo = await response.json();
+
+            // Load atlas image
+            const imageResponse = await fetch(`/api/textures/${atlasId}/image`);
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to load atlas image: ${imageResponse.status}`);
+            }
+
+            const imageBlob = await imageResponse.blob();
+            const imageUrl = URL.createObjectURL(imageBlob);
+
+            // Create Three.js texture from image
+            const texture = await new Promise((resolve, reject) => {
+                new THREE.TextureLoader().load(
+                    imageUrl,
+                    (texture) => {
+                        texture.generateMipmaps = false;
+                        texture.wrapS = THREE.ClampToEdgeWrapping;
+                        texture.wrapT = THREE.ClampToEdgeWrapping;
+                        texture.minFilter = THREE.LinearFilter;
+                        texture.magFilter = THREE.LinearFilter;
+                        resolve(texture);
+                    },
+                    undefined,
+                    reject
+                );
+            });
+
+            // Store atlas data
+            const atlasData = {
+                texture: texture,
+                info: atlasInfo,
+                imageUrl: imageUrl
+            };
+
+            this.atlasCache.set(atlasId, atlasData);
+            this.uvMappings.set(atlasId, atlasInfo.cells);
+            this.currentAtlasId = atlasId;
+
+            console.log(`Loaded texture atlas ${atlasId} with ${Object.keys(atlasInfo.cells).length} cells`);
+            return atlasData;
+
+        } catch (error) {
+            console.error(`Failed to load texture atlas ${atlasId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create texture using UV coordinates from atlas
+     * @param {object} cellType - The cell type to create a texture for.
+     * @param {string|null} atlasId - The ID of the atlas to use.
+     * @returns {THREE.Texture} - The configured texture.
+     */
+    createAtlasTexture(cellType, atlasId = null) {
+        const targetAtlasId = atlasId || this.currentAtlasId;
+
+        if (!targetAtlasId || !this.atlasCache.has(targetAtlasId)) {
+            console.warn(`Atlas ${targetAtlasId} not loaded, falling back to Font Awesome`);
+            return this.createFallbackTexture(cellType);
+        }
+
+        const atlasData = this.atlasCache.get(targetAtlasId);
+        const uvMappings = this.uvMappings.get(targetAtlasId);
+
+        // Find UV mapping for cell type
+        const cellMapping = uvMappings[cellType.id] || uvMappings[cellType.name];
+
+        if (!cellMapping) {
+            console.warn(`No UV mapping found for cell type ${cellType.id || cellType.name}, using fallback`);
+            return this.createFallbackTexture(cellType);
+        }
+
+        // Create cache key
+        const cacheKey = `atlas-${targetAtlasId}-${cellType.id || cellType.name}`;
+
+        // Return cached texture if available
+        if (this.textureCache.has(cacheKey)) {
+            return this.textureCache.get(cacheKey);
+        }
+
+        // Clone the atlas texture
+        const texture = atlasData.texture.clone();
+        texture.needsUpdate = true;
+
+        // Set UV offset and repeat for this cell
+        texture.offset.set(cellMapping.uv_x, cellMapping.uv_y);
+        texture.repeat.set(cellMapping.uv_width, cellMapping.uv_height);
+
+        // Cache the texture
+        this.textureCache.set(cacheKey, texture);
+
+        return texture;
+    }
+
+    /**
+     * Enhanced fallback using procedural generation or Font Awesome
+     * @param {object} cellType - The cell type to create a fallback texture for.
+     * @returns {THREE.Texture} - The fallback texture.
+     */
+    createFallbackTexture(cellType) {
+        // Try Font Awesome first
+        if (cellType.font_awesome_icon) {
+            return this.createFloorTexture(cellType, {
+                size: 64,
+                iconColor: '#ffffff',
+                padding: 8,
+                showIcon: true
+            });
+        }
+
+        // Generate simple color texture
+        return this.createSolidColorTexture(cellType.map_color || '#888888', 64);
+    }
+
+    /**
+     * Generate a new texture atlas for the given cell types
+     * @param {string} generatorId - The ID of the game generator.
+     * @param {string} themeDescription - The description of the game theme.
+     * @param {Array<object>} cellTypes - The cell types to include in the atlas.
+     * @returns {Promise<string>} - A promise that resolves with the new atlas ID.
+     */
+    async generateAtlasForCellTypes(generatorId, themeDescription, cellTypes) {
+        try {
+            const response = await fetch('/api/textures/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    generator_id: generatorId,
+                    theme_description: themeDescription,
+                    cell_types: cellTypes,
+                    atlas_size: 1024,
+                    grid_size: 4,
+                    use_ai: false  // Use placeholder for now
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate atlas: ${response.status}`);
+            }
+
+            const atlasInfo = await response.json();
+            console.log(`Generated texture atlas ${atlasInfo.atlas_id} for generator ${generatorId}`);
+
+            // Load the generated atlas
+            await this.loadTextureAtlas(atlasInfo.atlas_id);
+
+            return atlasInfo.atlas_id;
+
+        } catch (error) {
+            console.error('Failed to generate texture atlas:', error);
+            throw error;
+        }
+    }
+
+    // Clear atlas cache
+    clearAtlasCache() {
+        for (const atlasData of this.atlasCache.values()) {
+            if (atlasData.texture) {
+                atlasData.texture.dispose();
+            }
+            if (atlasData.imageUrl) {
+                URL.revokeObjectURL(atlasData.imageUrl);
+            }
+        }
+        this.atlasCache.clear();
+        this.uvMappings.clear();
+        this.currentAtlasId = null;
+    }
+
+    // Get current atlas info
+    getCurrentAtlasInfo() {
+        if (!this.currentAtlasId || !this.atlasCache.has(this.currentAtlasId)) {
+            return null;
+        }
+        return this.atlasCache.get(this.currentAtlasId).info;
     }
 }
 

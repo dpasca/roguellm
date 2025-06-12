@@ -24,11 +24,14 @@ class MapRenderer {
         }
     }
 
-    updateMap(gameState) {
+    async updateMap(gameState) {
         if (!gameState || !gameState.cell_types || !gameState.explored) {
             console.warn("MapRenderer: Game state not ready for map update.", gameState);
             return;
         }
+
+        // Initialize texture atlas if not already loaded
+        await this.initializeTextureAtlas(gameState);
 
         this.clearTiles();
 
@@ -55,18 +58,72 @@ class MapRenderer {
         return { mapCenterX, mapCenterZ };
     }
 
+    /**
+     * Initialize texture atlas for the current game
+     * @param {object} gameState - The game state object.
+     * @returns {Promise<void>}
+     */
+    async initializeTextureAtlas(gameState) {
+        try {
+            // Skip if atlas is already loaded
+            if (this.textureManager.currentAtlasId) {
+                console.log(`Texture atlas already loaded: ${this.textureManager.currentAtlasId}`);
+                return;
+            }
+
+            // Extract unique cell types from the game state
+            const uniqueCellTypes = new Map();
+            for (let y = 0; y < gameState.cell_types.length; y++) {
+                for (let x = 0; x < gameState.cell_types[y].length; x++) {
+                    const cellType = gameState.cell_types[y][x];
+                    const key = cellType.id || cellType.name;
+                    if (!uniqueCellTypes.has(key)) {
+                        uniqueCellTypes.set(key, cellType);
+                    }
+                }
+            }
+
+            const cellTypesArray = Array.from(uniqueCellTypes.values());
+            console.log(`Found ${cellTypesArray.length} unique cell types:`, cellTypesArray.map(ct => ct.name));
+
+            // Get generator ID and theme from game state (if available)
+            const generatorId = gameState.generator_id || 'default';
+            const themeDescription = gameState.theme_description || gameState.game_title || 'Generic fantasy world';
+
+            // Generate and load texture atlas
+            const atlasId = await this.textureManager.generateAtlasForCellTypes(
+                generatorId,
+                themeDescription,
+                cellTypesArray
+            );
+
+            console.log(`Texture atlas initialized: ${atlasId}`);
+
+        } catch (error) {
+            console.error('Failed to initialize texture atlas, using fallback textures:', error);
+            // Disable atlas for this session
+            this.textureManager.useAtlas = false;
+        }
+    }
+
 
     createTile(x, y, cellType, mapCenterX, mapCenterZ, isExplored = true) {
         // Use PlaneGeometry for flat tiles
         const geometry = new THREE.PlaneGeometry(this.TILE_SIZE * 0.9, this.TILE_SIZE * 0.9);
 
-        // Create texture
-        const texture = this.textureManager.createFloorTexture(cellType, {
-            size: 64,
-            iconColor: '#ffffff',
-            padding: 8,
-            showIcon: true
-        });
+        // Create texture - try atlas first, fallback to Font Awesome
+        let texture;
+        if (this.textureManager.useAtlas && this.textureManager.currentAtlasId) {
+            texture = this.textureManager.createAtlasTexture(cellType);
+        } else {
+            // Fallback to original Font Awesome texture creation
+            texture = this.textureManager.createFloorTexture(cellType, {
+                size: 64,
+                iconColor: '#ffffff',
+                padding: 8,
+                showIcon: true
+            });
+        }
 
         // Create material with normal appearance (fog of war removed)
         const material = new THREE.MeshLambertMaterial({

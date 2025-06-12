@@ -31,6 +31,7 @@ import aiofiles
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
 from db import db
+from texture_generator import TextureGenerator
 
 #==================================================================
 # Game Session Management
@@ -719,6 +720,95 @@ async def get_session_info(session_id: str):
             "status": "ready",  # Assume ready for old structure
             "game_title": game_instance.get_game_title() if game_instance else None
         })
+
+# Initialize texture generator
+texture_generator = TextureGenerator()
+
+# Texture atlas API endpoints
+@app.post("/api/textures/generate")
+async def generate_texture_atlas(request: Request):
+    """Generate a texture atlas for a generator"""
+    try:
+        data = await request.json()
+        generator_id = data.get('generator_id')
+        theme_description = data.get('theme_description', '')
+        cell_types = data.get('cell_types', [])
+        atlas_size = data.get('atlas_size', 1024)
+        grid_size = data.get('grid_size', 4)
+        use_ai = data.get('use_ai', False)
+
+        if not generator_id or not cell_types:
+            raise HTTPException(status_code=400, detail="generator_id and cell_types are required")
+
+        atlas = await texture_generator.generate_texture_atlas(
+            generator_id=generator_id,
+            theme_description=theme_description,
+            cell_types=cell_types,
+            atlas_size=atlas_size,
+            grid_size=grid_size,
+            use_ai=use_ai
+        )
+
+        return JSONResponse({
+            "atlas_id": atlas.id,
+            "generator_id": atlas.generator_id,
+            "atlas_size": atlas.atlas_size,
+            "grid_size": atlas.grid_size,
+            "cells": {k: v.model_dump() for k, v in atlas.cells.items()},
+            "local_path": atlas.local_path
+        })
+
+    except Exception as e:
+        logging.error(f"Failed to generate texture atlas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/textures/{atlas_id}")
+async def get_texture_atlas_info(atlas_id: str):
+    """Get texture atlas metadata"""
+    try:
+        atlas = await texture_generator.get_atlas_by_id(atlas_id)
+        if not atlas:
+            raise HTTPException(status_code=404, detail="Atlas not found")
+
+        return JSONResponse({
+            "atlas_id": atlas.id,
+            "generator_id": atlas.generator_id,
+            "atlas_size": atlas.atlas_size,
+            "grid_size": atlas.grid_size,
+            "cells": {k: v.model_dump() for k, v in atlas.cells.items()},
+            "local_path": atlas.local_path,
+            "created_at": atlas.created_at
+        })
+
+    except Exception as e:
+        logging.error(f"Failed to get texture atlas info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/textures/{atlas_id}/image")
+async def get_texture_atlas_image(atlas_id: str):
+    """Get texture atlas image file"""
+    try:
+        # Get atlas info to find generator_id
+        atlas = await texture_generator.get_atlas_by_id(atlas_id)
+        if not atlas:
+            raise HTTPException(status_code=404, detail="Atlas not found")
+
+        # Get image data
+        image_data = await texture_generator.get_atlas_image_data(atlas.generator_id, atlas_id)
+        if not image_data:
+            raise HTTPException(status_code=404, detail="Atlas image not found")
+
+        return Response(
+            content=image_data,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=3600"}  # Cache for 1 hour
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Failed to get texture atlas image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # API endpoint to get server stats
 @app.get("/api/stats")

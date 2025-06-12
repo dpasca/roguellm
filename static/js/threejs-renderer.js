@@ -40,7 +40,7 @@ class ThreeJSRenderer {
         this.arrowController.clearArrows();
     }
 
-    updateGameMap(gameState) {
+    async updateGameMap(gameState) {
         if (!gameState || !gameState.cell_types || !gameState.explored) {
             console.warn("ThreeJSRenderer: Game state not ready for map update.", gameState);
             return;
@@ -53,7 +53,7 @@ class ThreeJSRenderer {
         console.log("ThreeJSRenderer: Updating game map", gameState);
 
         // Update map
-        const mapInfo = this.mapRenderer.updateMap(gameState);
+        const mapInfo = await this.mapRenderer.updateMap(gameState);
         if (!mapInfo) return;
 
         const { mapCenterX, mapCenterZ } = mapInfo;

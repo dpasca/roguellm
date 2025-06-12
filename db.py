@@ -210,6 +210,36 @@ class DatabaseManager:
                 )
             """)
 
+            # Texture atlas tables
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS texture_atlases (
+                    id TEXT PRIMARY KEY,
+                    generator_id TEXT NOT NULL,
+                    theme_hash TEXT NOT NULL,
+                    atlas_size INTEGER DEFAULT 1024,
+                    grid_size INTEGER DEFAULT 4,
+                    storage_url TEXT,
+                    local_path TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (generator_id) REFERENCES generators (id)
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS texture_atlas_cells (
+                    id TEXT PRIMARY KEY,
+                    atlas_id TEXT NOT NULL,
+                    cell_type TEXT NOT NULL,
+                    grid_x INTEGER NOT NULL,
+                    grid_y INTEGER NOT NULL,
+                    uv_x REAL NOT NULL,
+                    uv_y REAL NOT NULL,
+                    uv_width REAL NOT NULL,
+                    uv_height REAL NOT NULL,
+                    FOREIGN KEY (atlas_id) REFERENCES texture_atlases (id)
+                )
+            """)
+
             conn.commit()
 
     def backup_db(self):
@@ -423,6 +453,115 @@ class DatabaseManager:
             self._schedule_upload()
 
         return self._execute_with_retry(_clear, generator_id)
+
+    def save_texture_atlas(self, atlas_data: dict) -> str:
+        """Save texture atlas metadata to database"""
+        def _save(conn, atlas_data):
+            # Insert atlas
+            conn.execute("""
+                INSERT OR REPLACE INTO texture_atlases
+                (id, generator_id, theme_hash, atlas_size, grid_size, storage_url, local_path, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            """, (
+                atlas_data['id'],
+                atlas_data['generator_id'],
+                atlas_data['theme_hash'],
+                atlas_data['atlas_size'],
+                atlas_data['grid_size'],
+                atlas_data.get('storage_url'),
+                atlas_data.get('local_path')
+            ))
+
+            # Delete existing cells for this atlas
+            conn.execute("DELETE FROM texture_atlas_cells WHERE atlas_id = ?", (atlas_data['id'],))
+
+            # Insert atlas cells
+            for cell_id, cell_data in atlas_data['cells'].items():
+                conn.execute("""
+                    INSERT INTO texture_atlas_cells
+                    (id, atlas_id, cell_type, grid_x, grid_y, uv_x, uv_y, uv_width, uv_height)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    f"{atlas_data['id']}_{cell_id}",
+                    atlas_data['id'],
+                    cell_data['cell_type'],
+                    cell_data['grid_x'],
+                    cell_data['grid_y'],
+                    cell_data['uv_x'],
+                    cell_data['uv_y'],
+                    cell_data['uv_width'],
+                    cell_data['uv_height']
+                ))
+
+            conn.commit()
+            self._schedule_upload()
+            return atlas_data['id']
+
+        return self._execute_with_retry(_save, atlas_data)
+
+    def get_texture_atlas(self, atlas_id: str) -> Optional[dict]:
+        """Get texture atlas by ID"""
+        def _get(conn, atlas_id):
+            # Get atlas metadata
+            cursor = conn.execute("""
+                SELECT id, generator_id, theme_hash, atlas_size, grid_size,
+                       storage_url, local_path, created_at
+                FROM texture_atlases WHERE id = ?
+            """, (atlas_id,))
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            atlas = {
+                'id': row[0],
+                'generator_id': row[1],
+                'theme_hash': row[2],
+                'atlas_size': row[3],
+                'grid_size': row[4],
+                'storage_url': row[5],
+                'local_path': row[6],
+                'created_at': row[7],
+                'cells': {}
+            }
+
+            # Get atlas cells
+            cursor = conn.execute("""
+                SELECT cell_type, grid_x, grid_y, uv_x, uv_y, uv_width, uv_height
+                FROM texture_atlas_cells WHERE atlas_id = ?
+            """, (atlas_id,))
+
+            for row in cursor.fetchall():
+                cell_type = row[0]
+                atlas['cells'][cell_type] = {
+                    'cell_type': cell_type,
+                    'grid_x': row[1],
+                    'grid_y': row[2],
+                    'uv_x': row[3],
+                    'uv_y': row[4],
+                    'uv_width': row[5],
+                    'uv_height': row[6]
+                }
+
+            return atlas
+
+        return self._execute_with_retry(_get, atlas_id)
+
+    def find_texture_atlas_by_generator_and_hash(self, generator_id: str, theme_hash: str) -> Optional[dict]:
+        """Find existing texture atlas for generator and theme"""
+        def _find(conn, generator_id, theme_hash):
+            cursor = conn.execute("""
+                SELECT id FROM texture_atlases
+                WHERE generator_id = ? AND theme_hash = ?
+                ORDER BY created_at DESC LIMIT 1
+            """, (generator_id, theme_hash))
+
+            row = cursor.fetchone()
+            if row:
+                return self.get_texture_atlas(row[0])
+            return None
+
+        return self._execute_with_retry(_find, generator_id, theme_hash)
 
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable

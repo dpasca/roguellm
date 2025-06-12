@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 class Enemy(BaseModel):
     id: str
@@ -64,3 +64,25 @@ class GameState(BaseModel):
         instance.explored = [[False for _ in range(instance.map_width)]
                            for _ in range(instance.map_height)]
         return instance
+
+
+class TextureAtlasCell(BaseModel):
+    cell_type: str
+    grid_x: int
+    grid_y: int
+    uv_x: float  # UV coordinates (0-1 range)
+    uv_y: float
+    uv_width: float
+    uv_height: float
+
+
+class TextureAtlas(BaseModel):
+    id: str
+    generator_id: str
+    theme_hash: str
+    atlas_size: int = 1024
+    grid_size: int = 4
+    storage_url: Optional[str] = None
+    local_path: Optional[str] = None
+    cells: Dict[str, TextureAtlasCell] = Field(default_factory=dict)
+    created_at: Optional[str] = None
