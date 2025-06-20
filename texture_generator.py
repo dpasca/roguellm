@@ -68,58 +68,103 @@ class TextureGenerator:
 
         return int((r + m) * 255), int((g + m) * 255), int((b + m) * 255)
 
+    def _linear_gradient(self, draw, rect, color1, color2, vertical=True):
+        """Draw a linear gradient in the given rectangle."""
+        min_x, min_y, max_x, max_y = rect
+        width = max_x - min_x
+        height = max_y - min_y
+        if vertical:
+            for y in range(int(min_y), int(max_y)):
+                ratio = (y - min_y) / height
+                r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+                g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+                b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+                draw.line([(min_x, y), (max_x, y)], fill=(r,g,b))
+        else:
+            for x in range(int(min_x), int(max_x)):
+                ratio = (x - min_x) / width
+                r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+                g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+                b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+                draw.line([(x, min_y), (x, max_y)], fill=(r,g,b))
+
+    def _checkerboard(self, draw, rect, color1, color2, num_checkers=8):
+        """Draw a checkerboard pattern in the given rectangle."""
+        min_x, min_y, max_x, max_y = rect
+        width = max_x - min_x
+        height = max_y - min_y
+        checker_w = width / num_checkers
+        checker_h = height / num_checkers
+        for i in range(num_checkers):
+            for j in range(num_checkers):
+                c_x1 = min_x + j * checker_w
+                c_y1 = min_y + i * checker_h
+                c_x2 = c_x1 + checker_w
+                c_y2 = c_y1 + checker_h
+                if (i + j) % 2 == 0:
+                    draw.rectangle([c_x1, c_y1, c_x2, c_y2], fill=color1, width=0)
+                else:
+                    draw.rectangle([c_x1, c_y1, c_x2, c_y2], fill=color2, width=0)
+
     def generate_placeholder_atlas(
         self,
         cell_types: List[Dict],
         atlas_size: int = 1024,
         grid_size: int = 4
     ) -> bytes:
-        """Generate simple color-based atlas using PIL"""
+        """Generate enhanced procedural textures (gradients, patterns)"""
         try:
-            # Create new image with a random background color
             bg_color = (random.randint(20, 50), random.randint(20, 50), random.randint(20, 50))
             image = Image.new('RGB', (atlas_size, atlas_size), color=bg_color)
             draw = ImageDraw.Draw(image)
 
             cell_size = atlas_size // grid_size
 
-            # Fill grid with cell type colors
             for i in range(grid_size * grid_size):
                 grid_x = i % grid_size
                 grid_y = i // grid_size
 
-                # Use cell type data if available, otherwise create a placeholder name
                 if i < len(cell_types):
                     cell_type = cell_types[i]
                     cell_name = cell_type.get('name', f'cell_{i}')
                 else:
                     cell_name = f'placeholder_{i}'
 
-                # Generate a vibrant color from the cell name
                 color_rgb = self._get_color_from_string(cell_name)
 
-                # Calculate cell position
                 x1 = grid_x * cell_size
                 y1 = grid_y * cell_size
                 x2 = x1 + cell_size
                 y2 = y1 + cell_size
 
-                # Draw filled rectangle
-                draw.rectangle([x1, y1, x2, y2], fill=color_rgb)
+                h = hashlib.sha256(cell_name.encode()).digest()
+                pattern_choice = h[3] % 3
+
+                if pattern_choice == 0:
+                    # Solid color
+                    draw.rectangle([x1, y1, x2, y2], fill=color_rgb)
+                elif pattern_choice == 1:
+                    # Gradient
+                    color2 = tuple(max(0, c - 80) for c in color_rgb)
+                    is_vertical = (h[4] % 2 == 0)
+                    self._linear_gradient(draw, (x1, y1, x2, y2), color_rgb, color2, is_vertical)
+                else: # pattern_choice == 2
+                    # Checkerboard
+                    color2 = tuple(max(0, c - 60) for c in color_rgb)
+                    self._checkerboard(draw, (x1, y1, x2, y2), color_rgb, color2, 8)
 
                 # Add subtle border
                 border_color = tuple(max(0, c - 40) for c in color_rgb)
                 draw.rectangle([x1, y1, x2, y2], outline=border_color, width=3)
 
-                logger.debug(f"Drew cell {cell_name} at ({grid_x}, {grid_y}) with color {color_rgb}")
+                logger.debug(f"Drew cell {cell_name} at ({grid_x}, {grid_y}) with pattern {pattern_choice}")
 
-            # Convert to bytes
             buffer = BytesIO()
             image.save(buffer, format='PNG', optimize=True)
             return buffer.getvalue()
 
         except Exception as e:
-            logger.error(f"Failed to generate placeholder atlas: {e}")
+            logger.error(f"Failed to generate enhanced procedural atlas: {e}")
             raise
 
     def generate_enhanced_procedural_atlas(
@@ -159,11 +204,11 @@ class TextureGenerator:
             # Generate atlas image
             if use_ai and self.gen_ai:
                 # TODO: Implement AI generation
-                logger.warning("AI generation not yet implemented, using placeholder")
-                image_data = self.generate_placeholder_atlas(cell_types, atlas_size, grid_size)
+                logger.warning("AI generation not yet implemented, using enhanced procedural")
+                image_data = self.generate_enhanced_procedural_atlas(theme_description, cell_types, atlas_size, grid_size)
             else:
-                logger.info(f"Generating placeholder atlas for {len(cell_types)} cell types")
-                image_data = self.generate_placeholder_atlas(cell_types, atlas_size, grid_size)
+                logger.info(f"Generating enhanced procedural atlas for {len(cell_types)} cell types")
+                image_data = self.generate_enhanced_procedural_atlas(theme_description, cell_types, atlas_size, grid_size)
 
             # Store atlas image
             local_path = await self.storage_manager.store_atlas(generator_id, atlas_id, image_data)
