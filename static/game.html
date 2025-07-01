@@ -236,7 +236,8 @@
                                         explored: gameState.explored[y][x],
                                         unexplored: !gameState.explored[y][x]
                                     }" :style="getCellStyle(x, y)">
-                                    <i :class="getCellIcon(x, y)"></i>
+                                    <img v-if="getCellPixelArt(x, y)" :src="getCellPixelArt(x, y)" :class="getCellIcon(x, y)" alt="icon" />
+                                    <i v-else :class="getCellIcon(x, y)"></i>
                                 </div>
                             </div>
                         </div>
@@ -256,7 +257,8 @@
                     <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
                         <div class="enemy-header">
                             <h3>{{ gameState.current_enemy.name }}</h3>
-                            <i :class="gameState.current_enemy.font_awesome_icon"></i>
+                            <img v-if="gameState.current_enemy.pixel_art_data_url" :src="gameState.current_enemy.pixel_art_data_url" class="pixel-art-icon enemy-icon" alt="enemy icon" />
+                            <i v-else :class="gameState.current_enemy.font_awesome_icon"></i>
                         </div>
                         <div class="status-item">
                             <span class="status-label">
@@ -300,7 +302,8 @@
                     <div class="player-status">
                         <div class="player-header">
                             <h3>{{ gameState.player.name }}</h3>
-                            <i :class="gameState.player.font_awesome_icon"></i>
+                            <img v-if="gameState.player.pixel_art_data_url" :src="gameState.player.pixel_art_data_url" class="pixel-art-icon player-icon" alt="player icon" />
+                            <i v-else :class="gameState.player.font_awesome_icon"></i>
                         </div>
                         <div class="status-item">
                             <span class="status-label">

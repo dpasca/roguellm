@@ -169,14 +169,47 @@ const app = Vue.createApp({
         },
         getCellIcon(x, y) {
             // Check if there's an enemy at this position (either active or defeated)
+            if (!this.gameState || !this.gameState.enemies || !this.gameState.defeated_enemies || !this.gameState.cell_types) {
+                return 'fas fa-question'; // Default icon if game state not ready
+            }
+
             const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y) ||
                 this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
             if (enemy) {
+                // Use pixel art if available, otherwise fall back to FontAwesome
+                if (enemy.pixel_art_data_url) {
+                    return 'pixel-art-icon enemy-icon' + (enemy.is_defeated ? ' defeated' : '');
+                }
                 const baseClass = enemy.font_awesome_icon;
                 const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
                 return `${baseClass} ${enemyClass}`;
             }
-            return this.gameState.cell_types[y][x].font_awesome_icon;
+
+            // Use pixel art for cell type if available
+            const cellType = this.gameState.cell_types[y] && this.gameState.cell_types[y][x];
+            if (cellType && cellType.pixel_art_data_url) {
+                return 'pixel-art-icon cell-icon';
+            }
+            return cellType ? cellType.font_awesome_icon : 'fas fa-question';
+        },
+        getCellPixelArt(x, y) {
+            // Return pixel art data URL for the cell
+            if (!this.gameState || !this.gameState.enemies || !this.gameState.defeated_enemies || !this.gameState.cell_types) {
+                return null;
+            }
+
+            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y) ||
+                this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
+            if (enemy && enemy.pixel_art_data_url) {
+                return enemy.pixel_art_data_url;
+            }
+
+            const cellType = this.gameState.cell_types[y] && this.gameState.cell_types[y][x];
+            if (cellType && cellType.pixel_art_data_url) {
+                return cellType.pixel_art_data_url;
+            }
+
+            return null;
         },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;

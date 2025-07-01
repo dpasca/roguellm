@@ -195,6 +195,24 @@ class DatabaseManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # Add pixel art cache table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pixel_art (
+                    cache_key TEXT PRIMARY KEY,
+                    pixel_data TEXT NOT NULL,
+                    entity_type TEXT NOT NULL,
+                    entity_name TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Create index for efficient lookups
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_pixel_art_entity
+                ON pixel_art(entity_type, entity_name)
+            """)
+
             conn.commit()
 
     def backup_db(self):
@@ -344,6 +362,42 @@ class DatabaseManager:
             }
 
         return self._execute_with_retry(_get, generator_id)
+
+    def save_pixel_art(self, cache_key: str, pixel_data: str, entity_type: str, entity_name: str):
+        """Save pixel art to the cache."""
+        def _save(conn, *args):
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT OR REPLACE INTO pixel_art
+                (cache_key, pixel_data, entity_type, entity_name)
+                VALUES (?, ?, ?, ?)
+            """, (cache_key, pixel_data, entity_type, entity_name))
+            conn.commit()
+
+        self._execute_with_retry(_save)
+
+    def get_pixel_art(self, cache_key: str) -> Optional[str]:
+        """Retrieve pixel art from the cache."""
+        def _get(conn, cache_key):
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT pixel_data FROM pixel_art WHERE cache_key = ?
+            """, (cache_key,))
+
+            result = cur.fetchone()
+            return result[0] if result else None
+
+        return self._execute_with_retry(_get, cache_key)
+
+    def clear_pixel_art_cache(self):
+        """Clear all cached pixel art (useful for testing or cleanup)."""
+        def _clear(conn):
+            cur = conn.cursor()
+            cur.execute("DELETE FROM pixel_art")
+            conn.commit()
+            return cur.rowcount
+
+        return self._execute_with_retry(_clear)
 
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable

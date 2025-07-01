@@ -49,7 +49,7 @@ class GameStateManager:
         self.gen_ai = GenAI(lo_model=lo_model, hi_model=hi_model)
 
         # Initialize the definitions manager
-        self.definitions = GameDefinitionsManager(self.gen_ai, language)
+        self.definitions = GameDefinitionsManager(self.gen_ai, language, theme_desc)
 
         # Initialize the entity placement manager
         self.entity_manager = EntityPlacementManager(self.random, self.definitions, self.gen_ai)
@@ -119,7 +119,46 @@ class GameStateManager:
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
+            # Note: Pixel art generation is now triggered from Game.create() with callback support
+
         return manager
+
+    async def _generate_pixel_art_in_background(self, game_instance=None):
+        """Generate pixel art icons in the background without blocking game creation."""
+        try:
+            logger.info("Background pixel art generation started...")
+            await self.definitions.enhance_with_pixel_art()
+            logger.info("=== BACKGROUND PIXEL ART GENERATION COMPLETED ===")
+
+            # If we have a game instance, send updates to connected clients
+            if game_instance and hasattr(game_instance, 'get_connected_clients'):
+                connected_clients = game_instance.get_connected_clients()
+                if connected_clients:
+                    logger.info(f"Sending pixel art updates to {len(connected_clients)} connected clients")
+
+                    # Create updated state message
+                    try:
+                        updated_state = await self.create_message(
+                            description_raw="Pixel art icons have been generated for your game!",
+                            description="🎨 Game icons updated with pixel art!"
+                        )
+
+                        # Send to all connected clients
+                        for client in connected_clients.copy():  # Use copy to avoid modification during iteration
+                            try:
+                                await client.send_json(updated_state)
+                                logger.info("Sent pixel art update to client")
+                            except Exception as client_error:
+                                logger.warning(f"Failed to send pixel art update to client: {client_error}")
+                                # Remove disconnected client
+                                connected_clients.discard(client)
+                    except Exception as state_error:
+                        logger.error(f"Failed to create state message for pixel art update: {state_error}")
+
+        except Exception as e:
+            logger.error(f"=== BACKGROUND PIXEL ART GENERATION FAILED: {str(e)} ===")
+            import traceback
+            logger.error(traceback.format_exc())
 
     def get_game_title(self):
         """Get the game title from the AI generator."""

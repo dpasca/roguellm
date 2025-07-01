@@ -34,7 +34,7 @@ USE_RANDOM_MAP = False
 
 class Game:
     """Main game class that coordinates all game components."""
-    
+
     def __init__(
             self,
             seed : int,
@@ -47,7 +47,7 @@ class Game:
         self.state_manager = None  # Will be set in create() method
         self.player_action_handler = None  # Will be set in create() method
         self.websocket_handler = None  # Will be set in create() method
-        
+
         # Store initialization parameters
         self.seed = seed
         self.theme_desc = theme_desc
@@ -80,6 +80,17 @@ class Game:
 
         # Create the WebSocket handler
         game.websocket_handler = WebSocketHandler(game.state_manager, game.player_action_handler)
+
+        # Start pixel art generation in background with callback to update clients
+        logger.info("=== STARTING BACKGROUND PIXEL ART GENERATION WITH CALLBACK ===")
+        try:
+            # Don't await this - let it run in background
+            asyncio.create_task(game.state_manager._generate_pixel_art_in_background(game))
+            logger.info("=== PIXEL ART GENERATION TASK WITH CALLBACK CREATED ===")
+        except Exception as e:
+            logger.error(f"=== PIXEL ART GENERATION TASK FAILED: {str(e)} ===")
+            import traceback
+            logger.error(traceback.format_exc())
 
         return game
 
@@ -129,7 +140,7 @@ class Game:
         """Generate a random item (backward compatibility)."""
         if not self.state_manager:
             raise RuntimeError("Game not properly initialized")
-        
+
         # Use the first item definition as a template
         if self.state_manager.definitions.item_defs:
             item_def = self.state_manager.random.choice(self.state_manager.definitions.item_defs)
