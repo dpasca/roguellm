@@ -334,6 +334,39 @@ async def read_game_session(session_id: str, request: Request):
         logging.error(f"Error reading game session page: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@app.get("/game2/{session_id}")
+async def read_game2_session(session_id: str):
+    """Serve the Phaser/Vite spike client for an existing game session."""
+    try:
+        if session_id not in game_session_manager.sessions:
+            return RedirectResponse(url="/?error=session_not_found")
+
+        dev_server = os.getenv("GAME2_DEV_SERVER")
+        if dev_server:
+            return RedirectResponse(url=f"{dev_server.rstrip('/')}/game2/{session_id}")
+
+        index_path = os.path.join("static", "game2", "index.html")
+        if not os.path.exists(index_path):
+            return HTMLResponse(
+                content=(
+                    "<!doctype html><html><body style=\"font-family:sans-serif;"
+                    "background:#101218;color:#f4f4f4;padding:32px\">"
+                    "<h1>RogueLLM Game2 is not built yet</h1>"
+                    "<p>Run <code>cd frontend && npm run dev</code>, then open "
+                    f"<code>http://127.0.0.1:5173/game2/{session_id}</code>.</p>"
+                    "<p>For FastAPI serving, run <code>cd frontend && npm run build</code> first.</p>"
+                    "</body></html>"
+                ),
+                status_code=503
+            )
+
+        async with aiofiles.open(index_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=await f.read())
+
+    except Exception as e:
+        logging.error(f"Error reading game2 session page: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 # API endpoint for creating a new game session (replaces the old create_game)
 @app.post("/api/create_game_session")
 async def create_game_session(request: GameCreationRequest):

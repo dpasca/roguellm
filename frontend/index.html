@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RogueLLM Game2</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e1014'/%3E%3Ccircle cx='16' cy='16' r='10' fill='%2370d66d'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  </head>
+  <body>
+    <div id="app">
+      <main class="shell">
+        <section class="playfield">
+          <div id="game-canvas"></div>
+        </section>
+        <aside class="hud" id="hud">
+          <header class="hud-header">
+            <div>
+              <p class="eyebrow">RogueLLM</p>
+              <h1><i id="player-icon" class="fa-solid fa-user"></i><span id="game-title">Connecting...</span></h1>
+            </div>
+            <div class="connection-pill" id="connection-status">offline</div>
+          </header>
+
+          <section class="panel">
+            <div class="stat-row">
+              <span>HP</span>
+              <strong id="player-hp">--</strong>
+            </div>
+            <div class="meter">
+              <div id="player-hp-meter"></div>
+            </div>
+            <div class="stat-grid">
+              <div>
+                <span>Attack</span>
+                <strong id="player-attack">--</strong>
+              </div>
+              <div>
+                <span>Defense</span>
+                <strong id="player-defense">--</strong>
+              </div>
+              <div>
+                <span>XP</span>
+                <strong id="player-xp">--</strong>
+              </div>
+              <div>
+                <span>Tile</span>
+                <strong id="player-location">--</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel combat-panel" id="combat-panel" hidden>
+            <h2>Combat</h2>
+            <div class="stat-row">
+              <span id="enemy-name">Enemy</span>
+              <strong id="enemy-hp">--</strong>
+            </div>
+            <div class="meter enemy-meter">
+              <div id="enemy-hp-meter"></div>
+            </div>
+          </section>
+
+          <section class="panel controls-panel">
+            <p id="movement-lock" class="movement-lock" hidden>Movement locked during combat</p>
+            <div class="dpad" aria-label="movement controls">
+              <button id="move-n" type="button">N</button>
+              <button id="move-w" type="button">W</button>
+              <button id="move-e" type="button">E</button>
+              <button id="move-s" type="button">S</button>
+            </div>
+            <div class="combat-actions">
+              <button id="attack" type="button">Attack</button>
+              <button id="run" type="button">Run</button>
+            </div>
+          </section>
+
+          <section class="panel inventory-panel">
+            <h2>Inventory</h2>
+            <div id="inventory-list" class="inventory-list"></div>
+          </section>
+
+          <section class="panel log-panel">
+            <h2>Log</h2>
+            <div id="game-log" class="game-log"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

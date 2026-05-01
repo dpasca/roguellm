@@ -35,6 +35,10 @@ _data
 # Tools venv (legacy)
 tools/venv
 
+# Frontend
+frontend/node_modules/
+static/game2/
+
 # IDE
 .vscode/
 .idea/
