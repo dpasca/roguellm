@@ -5,9 +5,9 @@
   "type": "module",
   "packageManager": "pnpm@10.23.0",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 5173",
+    "dev": "vite --host 127.0.0.1 --port 5273",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "preview": "vite preview --host 127.0.0.1 --port 4273"
   },
   "dependencies": {
     "phaser": "4.1.0"

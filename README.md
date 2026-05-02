@@ -148,7 +148,22 @@ Notice that *DuckDuckGo* does not require an API key, but it may rate-limit and 
 
 ## Running the Game
 1. Launch with `./run.sh` for MacOS/Linux or `run.bat` for Windows.
-2. Open browser and navigate to `http://127.0.0.1:8000/`.
+2. Open browser and navigate to `http://127.0.0.1:8127/`.
+
+The backend default port can be changed with `ROGUELLM_BACKEND_PORT`.
+
+For the Phaser Game2 spike:
+
+```bash
+cd frontend
+pnpm install
+pnpm run dev
+```
+
+Run the backend with `GAME2_DEV_SERVER=http://127.0.0.1:5273` if you want `/game2/...`
+backend links to redirect into the Vite dev server. To replay an existing generated game,
+open `http://127.0.0.1:8127/game2?game_id=<id>` or list recent IDs with
+`http://127.0.0.1:8127/api/generators/recent`.
 
 See `game_config.json` and `game_items.json` for more details.
 

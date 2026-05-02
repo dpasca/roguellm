@@ -96,6 +96,8 @@ class GameSessionManager:
 # Global session manager
 game_session_manager = GameSessionManager()
 
+DEFAULT_GAME2_DEV_SERVER = "http://127.0.0.1:5273"
+
 #==================================================================
 # Models
 #==================================================================
@@ -116,6 +118,38 @@ class GameCreationRequest(BaseModel):
     language: str = "en"
     do_web_search: bool = False
     generator_id: Optional[str] = None
+
+def get_requested_generator_id(request: Request) -> Optional[str]:
+    return request.query_params.get("generator_id") or request.query_params.get("game_id")
+
+def get_game2_dev_server() -> Optional[str]:
+    dev_server = os.getenv("GAME2_DEV_SERVER")
+    return dev_server.rstrip("/") if dev_server else None
+
+def is_dev_generator_list_allowed(request: Request) -> bool:
+    client_host = request.client.host if request.client else ""
+    return client_host in {"127.0.0.1", "::1", "localhost"} or os.getenv("ENABLE_DEV_GENERATOR_LIST") == "1"
+
+async def create_or_reuse_generator_session(request: Request, generator_id: str) -> Optional[str]:
+    generator_data = db.get_generator(generator_id)
+    if not generator_data:
+        return None
+
+    existing_session_id = request.session.get(f"game_session_{generator_id}")
+    if existing_session_id and game_session_manager.get_session(existing_session_id):
+        return existing_session_id
+
+    game_instance = await Game.create(
+        seed=int(time.time()),
+        theme_desc=generator_data['theme_desc'],
+        language=generator_data['language'],
+        do_web_search=False,
+        generator_id=generator_id
+    )
+
+    session_id = game_session_manager.create_session(game_instance)
+    request.session[f"game_session_{generator_id}"] = session_id
+    return session_id
 
 #==================================================================
 # Security Configuration
@@ -341,9 +375,9 @@ async def read_game2_session(session_id: str):
         if session_id not in game_session_manager.sessions:
             return RedirectResponse(url="/?error=session_not_found")
 
-        dev_server = os.getenv("GAME2_DEV_SERVER")
+        dev_server = get_game2_dev_server()
         if dev_server:
-            return RedirectResponse(url=f"{dev_server.rstrip('/')}/game2/{session_id}")
+            return RedirectResponse(url=f"{dev_server}/game2/{session_id}")
 
         index_path = os.path.join("static", "game2", "index.html")
         if not os.path.exists(index_path):
@@ -352,9 +386,9 @@ async def read_game2_session(session_id: str):
                     "<!doctype html><html><body style=\"font-family:sans-serif;"
                     "background:#101218;color:#f4f4f4;padding:32px\">"
                     "<h1>RogueLLM Game2 is not built yet</h1>"
-                    "<p>Run <code>cd frontend && npm run dev</code>, then open "
-                    f"<code>http://127.0.0.1:5173/game2/{session_id}</code>.</p>"
-                    "<p>For FastAPI serving, run <code>cd frontend && npm run build</code> first.</p>"
+                    "<p>Run <code>cd frontend && pnpm run dev</code>, then open "
+                    f"<code>{DEFAULT_GAME2_DEV_SERVER}/game2/{session_id}</code>.</p>"
+                    "<p>For FastAPI serving, run <code>cd frontend && pnpm run build</code> first.</p>"
                     "</body></html>"
                 ),
                 status_code=503
@@ -366,6 +400,28 @@ async def read_game2_session(session_id: str):
     except Exception as e:
         logging.error(f"Error reading game2 session page: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/game2")
+async def read_game2(request: Request):
+    """Create or reuse a Game2 session from an existing generator id."""
+    try:
+        generator_id = get_requested_generator_id(request)
+        if not generator_id:
+            return RedirectResponse(url="/")
+
+        session_id = await create_or_reuse_generator_session(request, generator_id)
+        if not session_id:
+            return RedirectResponse(url="/?error=invalid_generator")
+
+        dev_server = get_game2_dev_server()
+        if dev_server:
+            return RedirectResponse(url=f"{dev_server}/game2/{session_id}")
+
+        return RedirectResponse(url=f"/game2/{session_id}")
+
+    except Exception as e:
+        logging.error(f"Error creating game2 session from generator: {e}")
+        return RedirectResponse(url="/?error=failed_to_create_game")
 
 # API endpoint for creating a new game session (replaces the old create_game)
 @app.post("/api/create_game_session")
@@ -418,6 +474,22 @@ async def create_game(request: CreateGameRequest, req: Request):
         })
     except Exception as e:
         logging.error(f"Error in create_game: {str(e)}")
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/generators/recent")
+async def get_recent_generators(request: Request, limit: int = 20):
+    """Return recent generator IDs for local development and replay testing."""
+    if not is_dev_generator_list_allowed(request):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    try:
+        return JSONResponse({
+            "generators": db.list_generators(limit)
+        })
+    except Exception as e:
+        logging.error(f"Error listing recent generators: {e}")
         return JSONResponse({
             "error": str(e)
         }, status_code=500)
@@ -751,5 +823,6 @@ async def get_server_stats():
 
 if __name__ == "__main__":
     import uvicorn
+    load_dotenv()
     app.state.start_time = time.time()
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=int(os.getenv("ROGUELLM_BACKEND_PORT", "8127")))

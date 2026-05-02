@@ -345,6 +345,39 @@ class DatabaseManager:
 
         return self._execute_with_retry(_get, generator_id)
 
+    def list_generators(self, limit: int = 20) -> List[Dict]:
+        """
+        Return recent generator metadata for development and testing flows.
+        """
+        limit = max(1, min(limit, 100))
+
+        def _list(conn, limit):
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, theme_desc, theme_desc_better, language, created_at
+                FROM generators
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+
+            generators = []
+            for row in cur.fetchall():
+                theme_desc = row[1] or ""
+                theme_desc_better = row[2] or theme_desc
+                title_source = theme_desc_better.strip() or theme_desc.strip()
+                title = title_source.splitlines()[0][:120] if title_source else row[0]
+
+                generators.append({
+                    'id': row[0],
+                    'title': title,
+                    'language': row[3],
+                    'created_at': row[4]
+                })
+
+            return generators
+
+        return self._execute_with_retry(_list, limit)
+
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable
 upload_freq = int(os.getenv('UPLOAD_FREQUENCY_MINUTES', '5'))
