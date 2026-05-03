@@ -31,6 +31,7 @@ import aiofiles
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
 from db import db
+from dev_fixtures import dev_fixture_exists
 
 #==================================================================
 # Game Session Management
@@ -122,6 +123,9 @@ class GameCreationRequest(BaseModel):
 def get_requested_generator_id(request: Request) -> Optional[str]:
     return request.query_params.get("generator_id") or request.query_params.get("game_id")
 
+def get_query_flag(request: Request, name: str) -> bool:
+    return request.query_params.get(name, "").lower() in {"1", "true", "yes", "on"}
+
 def get_game2_dev_server() -> Optional[str]:
     dev_server = os.getenv("GAME2_DEV_SERVER")
     return dev_server.rstrip("/") if dev_server else None
@@ -130,13 +134,17 @@ def is_dev_generator_list_allowed(request: Request) -> bool:
     client_host = request.client.host if request.client else ""
     return client_host in {"127.0.0.1", "::1", "localhost"} or os.getenv("ENABLE_DEV_GENERATOR_LIST") == "1"
 
-async def create_or_reuse_generator_session(request: Request, generator_id: str) -> Optional[str]:
+async def create_or_reuse_generator_session(
+        request: Request,
+        generator_id: str,
+        use_dev_fixture: bool = False
+) -> Optional[str]:
     generator_data = db.get_generator(generator_id)
     if not generator_data:
         return None
 
     existing_session_id = request.session.get(f"game_session_{generator_id}")
-    if existing_session_id and game_session_manager.get_session(existing_session_id):
+    if not use_dev_fixture and existing_session_id and game_session_manager.get_session(existing_session_id):
         return existing_session_id
 
     game_instance = await Game.create(
@@ -144,11 +152,13 @@ async def create_or_reuse_generator_session(request: Request, generator_id: str)
         theme_desc=generator_data['theme_desc'],
         language=generator_data['language'],
         do_web_search=False,
-        generator_id=generator_id
+        generator_id=generator_id,
+        use_dev_fixture=use_dev_fixture
     )
 
     session_id = game_session_manager.create_session(game_instance)
-    request.session[f"game_session_{generator_id}"] = session_id
+    if not use_dev_fixture:
+        request.session[f"game_session_{generator_id}"] = session_id
     return session_id
 
 #==================================================================
@@ -409,7 +419,12 @@ async def read_game2(request: Request):
         if not generator_id:
             return RedirectResponse(url="/")
 
-        session_id = await create_or_reuse_generator_session(request, generator_id)
+        use_dev_fixture = get_query_flag(request, "fixture") and is_dev_generator_list_allowed(request)
+        session_id = await create_or_reuse_generator_session(
+            request,
+            generator_id,
+            use_dev_fixture=use_dev_fixture
+        )
         if not session_id:
             return RedirectResponse(url="/?error=invalid_generator")
 
@@ -485,8 +500,12 @@ async def get_recent_generators(request: Request, limit: int = 20):
         raise HTTPException(status_code=404, detail="Not found")
 
     try:
+        generators = db.list_generators(limit)
+        for generator in generators:
+            generator["has_fixture"] = dev_fixture_exists(generator["id"])
+
         return JSONResponse({
-            "generators": db.list_generators(limit)
+            "generators": generators
         })
     except Exception as e:
         logging.error(f"Error listing recent generators: {e}")

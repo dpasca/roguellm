@@ -5,7 +5,7 @@
     <!-- Update favicon paths -->
     <link rel="icon" type="image/png" sizes="32x32" href="static/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="static/favicon/favicon-16x16.png">
-    <link rel="shortcut icon" href="static/favicon/favicon.ico">
+    <link rel="shortcut icon" href="static/favicon/favicon-32x32.png">
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/style.css">
@@ -200,6 +200,39 @@
                         :disabled="selectedTheme === 'custom' && !customDescription.trim()">
                     {{ t('createGame') }}
                 </button>
+
+                <section v-if="devToolsVisible" class="dev-panel">
+                    <div class="dev-panel-header">
+                        <div>
+                            <span class="dev-kicker">Local dev</span>
+                            <h2>Quick Game2</h2>
+                        </div>
+                        <button @click="loadDevGenerators" class="dev-refresh-btn" :disabled="devToolsLoading" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <p v-if="devToolsError" class="dev-error">{{ devToolsError }}</p>
+                    <div v-else-if="devToolsLoading" class="dev-empty">Loading recent game IDs...</div>
+                    <div v-else-if="!devGenerators.length" class="dev-empty">No saved game IDs yet.</div>
+                    <div v-else class="dev-generator-list">
+                        <button
+                            v-for="generator in devGenerators"
+                            :key="generator.id"
+                            @click="launchDevGame2(generator.id)"
+                            class="dev-generator-btn"
+                            type="button">
+                            <span class="dev-generator-title">
+                                <i class="fas fa-vial"></i>
+                                {{ generator.title }}
+                            </span>
+                            <span class="dev-generator-meta">
+                                <code>{{ generator.id }}</code>
+                                <span>{{ generator.language }}</span>
+                                <span v-if="generator.has_fixture" class="dev-fixture-badge">cached</span>
+                            </span>
+                        </button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>

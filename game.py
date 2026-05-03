@@ -34,26 +34,28 @@ USE_RANDOM_MAP = False
 
 class Game:
     """Main game class that coordinates all game components."""
-    
+
     def __init__(
             self,
             seed : int,
             theme_desc : str,
             do_web_search: bool = False,
             language : str = "en",
-            generator_id: Optional[str] = None
+            generator_id: Optional[str] = None,
+            use_dev_fixture: bool = False
     ):
         # Initialize the core components
         self.state_manager = None  # Will be set in create() method
         self.player_action_handler = None  # Will be set in create() method
         self.websocket_handler = None  # Will be set in create() method
-        
+
         # Store initialization parameters
         self.seed = seed
         self.theme_desc = theme_desc
         self.do_web_search = do_web_search
         self.language = language
         self.generator_id = generator_id
+        self.use_dev_fixture = use_dev_fixture
 
     @classmethod
     async def create(
@@ -62,14 +64,15 @@ class Game:
             theme_desc : str,
             do_web_search: bool = False,
             language : str = "en",
-            generator_id: Optional[str] = None
+            generator_id: Optional[str] = None,
+            use_dev_fixture: bool = False
     ):
         """Factory method to create and initialize a Game instance."""
-        game = cls(seed, theme_desc, do_web_search, language, generator_id)
+        game = cls(seed, theme_desc, do_web_search, language, generator_id, use_dev_fixture)
 
         # Create the state manager
         game.state_manager = await GameStateManager.create(
-            seed, theme_desc, do_web_search, language, generator_id
+            seed, theme_desc, do_web_search, language, generator_id, use_dev_fixture
         )
 
         # Create the combat manager (reuse existing one from state manager)
@@ -129,7 +132,7 @@ class Game:
         """Generate a random item (backward compatibility)."""
         if not self.state_manager:
             raise RuntimeError("Game not properly initialized")
-        
+
         # Use the first item definition as a template
         if self.state_manager.definitions.item_defs:
             item_def = self.state_manager.random.choice(self.state_manager.definitions.item_defs)

@@ -13,6 +13,13 @@ if (!sessionId) {
   if (generatorId) {
     const gameUrl = new URL('/game2', getBackendOrigin());
     gameUrl.searchParams.set('game_id', generatorId);
+    const currentParams = new URLSearchParams(window.location.search);
+    for (const paramName of ['fixture']) {
+      const paramValue = currentParams.get(paramName);
+      if (paramValue) {
+        gameUrl.searchParams.set(paramName, paramValue);
+      }
+    }
     window.location.replace(gameUrl.toString());
     document.body.innerHTML = '<div class="fatal">Creating session from game id...</div>';
     throw new Error('Redirecting to create a session from game id');

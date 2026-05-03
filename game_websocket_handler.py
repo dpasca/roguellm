@@ -60,6 +60,7 @@ class WebSocketHandler:
                 # For get_initial_state, return the initialization message with description
                 if action == 'get_initial_state':
                     result = await self.game_state_manager.create_message_description(initial_message)
+                    await self.game_state_manager.save_dev_fixture(result)
                     self.game_state_manager.events_add('initialize', result)
                     return result
                 return initial_message
@@ -85,15 +86,19 @@ class WebSocketHandler:
 
         # Handle initialize action - reinitialize the game
         if action == 'initialize':
-            return await self.game_state_manager.create_message_description(
+            result = await self.game_state_manager.create_message_description(
                 await self.game_state_manager.initialize_game()
             )
+            await self.game_state_manager.save_dev_fixture(result)
+            return result
 
         if action == 'restart':
             self.game_state_manager.events_reset()
-            return await self.game_state_manager.create_message_description(
+            result = await self.game_state_manager.create_message_description(
                 await self.game_state_manager.initialize_game()
             )
+            await self.game_state_manager.save_dev_fixture(result)
+            return result
 
         # Check game over and win states before processing any other action
         if self.game_state_manager.state.game_over:

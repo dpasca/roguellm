@@ -32,7 +32,11 @@ const app = Vue.createApp({
             supportedLanguages: SUPPORTED_LANGUAGES,
             rawTranslations: {},
             config: CONFIG,
-            isLoading: true
+            isLoading: true,
+            devToolsVisible: false,
+            devToolsLoading: false,
+            devToolsError: null,
+            devGenerators: []
         }
     },
     computed: {
@@ -134,6 +138,36 @@ const app = Vue.createApp({
         },
         clearError() {
             this.errorMessage = null;
+        },
+        isLocalDevHost() {
+            return ['127.0.0.1', 'localhost', '::1'].includes(window.location.hostname);
+        },
+        async loadDevGenerators() {
+            if (!this.isLocalDevHost()) {
+                return;
+            }
+
+            this.devToolsVisible = true;
+            this.devToolsLoading = true;
+            this.devToolsError = null;
+
+            try {
+                const response = await fetch('/api/generators/recent?limit=8');
+                if (!response.ok) {
+                    throw new Error(`Unable to load recent game IDs (${response.status})`);
+                }
+
+                const data = await response.json();
+                this.devGenerators = data.generators || [];
+            } catch (error) {
+                console.error('Error loading dev generators:', error);
+                this.devToolsError = error.message || 'Unable to load recent game IDs';
+            } finally {
+                this.devToolsLoading = false;
+            }
+        },
+        launchDevGame2(generatorId) {
+            window.location.href = `/game2?game_id=${encodeURIComponent(generatorId)}&fixture=1`;
         },
         async launchGame() {
             this.clearError();
@@ -263,6 +297,8 @@ const app = Vue.createApp({
             this.selectedTheme = 'generator';
             this.generatorId = generatorId;
         }
+
+        await this.loadDevGenerators();
 
         // Track page view
         if (window.analytics) {

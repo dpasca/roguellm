@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Union
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
 from db import db
+from dev_fixtures import DEV_FIXTURE_SCHEMA_VERSION, get_dev_fixture_path
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from entity_placement_manager import EntityPlacementManager
@@ -24,7 +25,8 @@ class GameStateManager:
     """Manages game state initialization, persistence, and message creation."""
 
     def __init__(self, seed: int, theme_desc: str, do_web_search: bool = False,
-                 language: str = "en", generator_id: Optional[str] = None):
+                 language: str = "en", generator_id: Optional[str] = None,
+                 use_dev_fixture: bool = False):
         self.random = random.Random(seed)
         self.error_message = None
         self.item_sequence_cnt = 0
@@ -58,12 +60,15 @@ class GameStateManager:
         self.theme_desc = theme_desc
         self.theme_desc_better = None
         self.do_web_search = do_web_search
+        self.use_dev_fixture = use_dev_fixture
+        self.dev_fixture_loaded = False
 
     @classmethod
     async def create(cls, seed: int, theme_desc: str, do_web_search: bool = False,
-                    language: str = "en", generator_id: Optional[str] = None):
+                    language: str = "en", generator_id: Optional[str] = None,
+                    use_dev_fixture: bool = False):
         """Factory method to create and initialize a GameStateManager."""
-        manager = cls(seed, theme_desc, do_web_search, language, generator_id)
+        manager = cls(seed, theme_desc, do_web_search, language, generator_id, use_dev_fixture)
 
         if generator_id:
             # Load from existing generator
@@ -196,6 +201,10 @@ class GameStateManager:
 
     async def initialize_game(self):
         """Initialize the game state and return initial message."""
+        fixture_message = await self.load_dev_fixture()
+        if fixture_message:
+            return fixture_message
+
         # Read config.json using async file operations
         try:
             async with aiofiles.open('game_config.json', 'r') as f:
@@ -279,6 +288,74 @@ class GameStateManager:
         self.state.explored[y][x] = True
 
         return await self.create_message("Game initialized!")
+
+    async def load_dev_fixture(self):
+        """Load a cached initial game state for local development, when requested."""
+        if not self.use_dev_fixture or not self.generator_id:
+            return None
+
+        fixture_path = get_dev_fixture_path(self.generator_id)
+        if not fixture_path or not os.path.exists(fixture_path):
+            return None
+
+        try:
+            async with aiofiles.open(fixture_path, 'r', encoding='utf-8') as f:
+                content = await f.read()
+            fixture = json.loads(content)
+
+            if fixture.get('schema_version') != DEV_FIXTURE_SCHEMA_VERSION:
+                logger.info(f"Ignoring outdated dev fixture: {fixture_path}")
+                return None
+
+            self.state = GameState.model_validate(fixture['state'])
+            self.event_history = []
+            self.entity_placements = fixture.get('entity_placements', [])
+            self.dev_fixture_loaded = True
+
+            initial_message = fixture.get('initial_message', {})
+            logger.info(f"Loaded dev fixture for generator {self.generator_id}: {fixture_path}")
+            return await self.create_message(
+                initial_message.get('description_raw', "Game initialized!"),
+                initial_message.get('description', "")
+            )
+        except Exception as e:
+            logger.warning(f"Failed to load dev fixture {fixture_path}: {e}")
+            return None
+
+    async def save_dev_fixture(self, initial_message: dict):
+        """Save the initial game state for fast local replay."""
+        if (
+            not self.use_dev_fixture or
+            self.dev_fixture_loaded or
+            not self.generator_id or
+            not hasattr(self, 'state') or
+            self.state is None
+        ):
+            return
+
+        fixture_path = get_dev_fixture_path(self.generator_id)
+        if not fixture_path:
+            return
+
+        try:
+            os.makedirs(os.path.dirname(fixture_path), exist_ok=True)
+            fixture = {
+                'schema_version': DEV_FIXTURE_SCHEMA_VERSION,
+                'generator_id': self.generator_id,
+                'created_at': time.time(),
+                'game_title': self.state.game_title,
+                'state': self.state.model_dump(mode='json'),
+                'entity_placements': getattr(self, 'entity_placements', []),
+                'initial_message': {
+                    'description_raw': initial_message.get('description_raw', "Game initialized!"),
+                    'description': initial_message.get('description', "")
+                }
+            }
+            async with aiofiles.open(fixture_path, 'w', encoding='utf-8') as f:
+                await f.write(json.dumps(fixture, ensure_ascii=False, indent=2))
+            logger.info(f"Saved dev fixture for generator {self.generator_id}: {fixture_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save dev fixture {fixture_path}: {e}")
 
     def events_reset(self):
         """Reset the event history."""

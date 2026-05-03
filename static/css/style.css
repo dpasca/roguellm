@@ -241,6 +241,131 @@
     background-color: #4CAF50;  /* Keep the same green color as enabled state */
 }
 
+.dev-panel {
+    width: min(760px, calc(100% - 24px));
+    margin: 28px auto 0;
+    padding: 16px;
+    border: 1px solid #3b4350;
+    border-radius: 8px;
+    background: #171b22;
+    text-align: left;
+    box-sizing: border-box;
+}
+
+.dev-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.dev-panel h2 {
+    margin: 2px 0 0;
+    color: #f4f7fb;
+    font-size: 1.2rem;
+}
+
+.dev-kicker {
+    color: #80f18b;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.dev-refresh-btn {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid #4b5565;
+    border-radius: 6px;
+    background: #202630;
+    color: #dce2ed;
+    cursor: pointer;
+}
+
+.dev-refresh-btn:hover {
+    background: #2a3240;
+}
+
+.dev-refresh-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.dev-generator-list {
+    display: grid;
+    gap: 8px;
+}
+
+.dev-generator-btn {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #333b49;
+    border-radius: 6px;
+    background: #1e2430;
+    color: #f4f7fb;
+    cursor: pointer;
+    text-align: left;
+}
+
+.dev-generator-btn:hover {
+    border-color: #6cd978;
+    background: #252d3a;
+}
+
+.dev-generator-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.dev-generator-title i {
+    color: #80f18b;
+    margin-right: 8px;
+}
+
+.dev-generator-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #aab3c2;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.dev-generator-meta code {
+    color: #dce2ed;
+}
+
+.dev-fixture-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #234f2a;
+    color: #aaf5b2;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.dev-empty,
+.dev-error {
+    margin: 0;
+    color: #aab3c2;
+}
+
+.dev-error {
+    color: #ff9b9b;
+}
+
 .language-selector {
     margin: 0px 0px 20px 0;
     text-align: center;
@@ -451,6 +576,21 @@
 
     .theme-card i {
         font-size: 2em;
+    }
+
+    .dev-panel {
+        width: calc(100% - 16px);
+        padding: 12px;
+    }
+
+    .dev-generator-btn {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .dev-generator-meta {
+        flex-wrap: wrap;
+        white-space: normal;
     }
 }
 
