@@ -13,6 +13,7 @@ const movementButtons: Record<Direction, string> = {
 export class HudController {
   private logs: string[] = [];
   private currentState: GameState | null = null;
+  private actionPending = false;
 
   constructor(private readonly sendAction: SendAction) {
     this.bindControls();
@@ -23,40 +24,53 @@ export class HudController {
     this.setText('connection-status', status);
   }
 
+  setActionPending(pending: boolean): void {
+    this.actionPending = pending;
+    if (this.currentState) {
+      this.updateControlState(this.currentState);
+    }
+  }
+
   addLog(message: string): void {
     if (!message.trim()) {
       return;
     }
 
-    this.logs.push(message);
+    this.logs.unshift(message);
     this.logs = this.logs.slice(-40);
     const log = this.requireElement('game-log');
     log.replaceChildren(
-      ...this.logs.map((entry) => {
+      ...this.logs.map((entry, index) => {
         const row = document.createElement('p');
+        if (index === 0) {
+          row.className = 'latest';
+        }
         row.textContent = entry;
         return row;
       })
     );
-    log.scrollTop = log.scrollHeight;
+    log.scrollTop = 0;
   }
 
   render(state: GameState): void {
     this.currentState = state;
     document.body.classList.toggle('in-combat', state.in_combat);
+    document.body.classList.toggle('game-ended', this.isTerminal(state));
+    const displayedHp = Math.max(0, state.player_hp);
     this.setText('game-title', state.game_title || 'RogueLLM');
     this.requireElement('player-icon').className = normalizeFontAwesomeClass(
       state.player.font_awesome_icon,
       'fa-solid fa-user'
     );
-    this.setText('player-hp', `${state.player_hp}/${state.player_max_hp}`);
+    this.setText('player-hp', `${displayedHp}/${state.player_max_hp}`);
     this.setText('player-attack', String(state.player_attack));
     this.setText('player-defense', String(state.player_defense));
     this.setText('player-xp', String(state.player_xp));
     this.setText('player-location', this.getCurrentLocationName(state));
-    this.setMeter('player-hp-meter', state.player_hp, state.player_max_hp);
+    this.setMeter('player-hp-meter', displayedHp, state.player_max_hp);
     this.renderCombat(state);
-    this.renderInventory(state.inventory);
+    this.renderInventory(state.inventory, this.isTerminal(state));
+    this.renderEndState(state);
     this.updateControlState(state);
   }
 
@@ -74,11 +88,22 @@ export class HudController {
     this.requireButton('run').addEventListener('click', () => {
       this.sendAction({ action: 'run' });
     });
+
+    this.requireButton('restart').addEventListener('click', () => {
+      this.setConnectionStatus('restarting');
+      this.sendAction({ action: 'restart' });
+    });
   }
 
   private bindKeyboard(): void {
     window.addEventListener('keydown', (event) => {
-      if (event.repeat || !this.currentState || this.currentState.in_combat) {
+      if (
+        event.repeat ||
+        this.actionPending ||
+        !this.currentState ||
+        this.currentState.in_combat ||
+        this.isTerminal(this.currentState)
+      ) {
         return;
       }
 
@@ -106,7 +131,7 @@ export class HudController {
     this.setMeter('enemy-hp-meter', state.current_enemy.hp, state.current_enemy.max_hp);
   }
 
-  private renderInventory(items: Item[]): void {
+  private renderInventory(items: Item[], terminal: boolean): void {
     const list = this.requireElement('inventory-list');
 
     if (items.length === 0) {
@@ -148,24 +173,52 @@ export class HudController {
           action.disabled = true;
         }
 
+        if (terminal) {
+          action.disabled = true;
+        }
+
         row.append(content, action);
         return row;
       })
     );
   }
 
-  private updateControlState(state: GameState): void {
-    for (const [direction, id] of Object.entries(movementButtons) as [Direction, string][]) {
-      this.requireButton(id).disabled = state.in_combat || !this.canMove(state, direction);
+  private renderEndState(state: GameState): void {
+    const overlay = this.requireElement('end-state-overlay');
+    const defeated = state.game_over || state.player_hp <= 0;
+    const won = state.game_won;
+    overlay.hidden = !defeated && !won;
+
+    if (overlay.hidden) {
+      return;
     }
 
-    this.requireButton('attack').disabled = !state.in_combat || state.game_over || state.game_won;
-    this.requireButton('run').disabled = !state.in_combat || state.game_over || state.game_won;
+    this.setText('end-state-kicker', won ? 'Case closed' : 'Down for the count');
+    this.setText('end-state-title', state.game_title || 'RogueLLM');
+    this.setText(
+      'end-state-message',
+      won
+        ? 'You cleared every known threat in this run.'
+        : `You were defeated${state.current_enemy ? ` by ${state.current_enemy.name}` : ''}.`
+    );
+    this.setText('end-state-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
+    this.setText('end-state-xp', String(state.player_xp));
+  }
+
+  private updateControlState(state: GameState): void {
+    const terminal = this.isTerminal(state);
+
+    for (const [direction, id] of Object.entries(movementButtons) as [Direction, string][]) {
+      this.requireButton(id).disabled = this.actionPending || terminal || state.in_combat || !this.canMove(state, direction);
+    }
+
+    this.requireButton('attack').disabled = this.actionPending || terminal || !state.in_combat;
+    this.requireButton('run').disabled = this.actionPending || terminal || !state.in_combat;
   }
 
   private canMove(state: GameState, direction: Direction): boolean {
     const [x, y] = state.player_pos;
-    if (state.game_over || state.game_won) {
+    if (this.isTerminal(state)) {
       return false;
     }
 
@@ -179,6 +232,10 @@ export class HudController {
       case 'e':
         return x < state.map_width - 1;
     }
+  }
+
+  private isTerminal(state: GameState): boolean {
+    return state.game_over || state.game_won || state.player_hp <= 0;
   }
 
   private directionFromKey(key: string): Direction | null {

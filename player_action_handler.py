@@ -42,6 +42,7 @@ class PlayerActionHandler:
 
         if moved:
             self.game_state_manager.state.player_pos = (x, y)
+            self.game_state_manager.state.explored[y][x] = True
             encounter_result = await self._check_encounters()
 
             # Process temporary effects
@@ -143,6 +144,9 @@ class PlayerActionHandler:
     async def handle_combat_action(self, action: str) -> dict:
         """Handle combat actions by delegating to combat manager."""
         result = await self.combat_manager.handle_combat_action(self.game_state_manager.state, action)
+        if self._all_enemy_placements_defeated():
+            self.game_state_manager.state.game_won = True
+            result += "\nCongratulations! You have defeated all enemies!"
         return await self.game_state_manager.create_message(result)
 
     async def _process_temporary_effects(self) -> str:
@@ -313,3 +317,18 @@ class PlayerActionHandler:
             effect=item_def['effect'],
             description=item_def['description']
         )
+
+    def _all_enemy_placements_defeated(self) -> bool:
+        enemy_positions = {
+            (placement['x'], placement['y'])
+            for placement in self.game_state_manager.entity_placements
+            if placement.get('type') == 'enemy'
+        }
+        if not enemy_positions:
+            return False
+
+        defeated_positions = {
+            (enemy['x'], enemy['y'])
+            for enemy in self.game_state_manager.state.defeated_enemies
+        }
+        return enemy_positions.issubset(defeated_positions)

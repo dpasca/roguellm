@@ -85,6 +85,25 @@
             <div id="game-log" class="game-log"></div>
           </section>
         </aside>
+
+        <section class="end-state-overlay" id="end-state-overlay" hidden>
+          <div class="end-state-panel">
+            <p class="end-state-kicker" id="end-state-kicker">Mission ended</p>
+            <h2 id="end-state-title">RogueLLM</h2>
+            <p id="end-state-message"></p>
+            <dl class="end-state-stats">
+              <div>
+                <dt>HP</dt>
+                <dd id="end-state-hp">--</dd>
+              </div>
+              <div>
+                <dt>XP</dt>
+                <dd id="end-state-xp">--</dd>
+              </div>
+            </dl>
+            <button id="restart" type="button">Restart</button>
+          </div>
+        </section>
       </main>
     </div>
     <script type="module" src="/src/main.ts"></script>

@@ -4,7 +4,7 @@ import { RogueScene } from './game/RogueScene';
 import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
 import { HudController } from './ui/hud';
-import type { GameServerMessage } from './protocol/types';
+import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
 const sessionId = getSessionIdFromLocation();
 
@@ -65,14 +65,23 @@ if (canvasParent) {
   });
 }
 
+let currentState: GameState | null = null;
+let actionPending = false;
+let nextClientActionId = 1;
+let pendingActionId: number | null = null;
+
 const socket = new GameSocketClient(sessionId, {
   onOpen() {
     hud.setConnectionStatus('online');
   },
   onClose() {
+    actionPending = false;
+    hud.setActionPending(false);
     hud.setConnectionStatus('closed');
   },
   onError() {
+    actionPending = false;
+    hud.setActionPending(false);
     hud.setConnectionStatus('error');
   },
   onMessage(message) {
@@ -80,7 +89,25 @@ const socket = new GameSocketClient(sessionId, {
   }
 });
 
-const hud = new HudController((action) => socket.send(action));
+const hud = new HudController((action) => {
+  if (actionPending && action.action !== 'restart') {
+    return;
+  }
+
+  const actionToSend = attachClientActionId(action);
+  const optimistic = applyOptimisticAction(action);
+  if (isGameplayAction(action)) {
+    actionPending = true;
+    pendingActionId = actionToSend.client_action_id ?? null;
+    hud.setActionPending(true);
+    hud.setConnectionStatus(optimistic ? 'revealing' : 'thinking');
+    if (action.action === 'run') {
+      hud.addLog('Trying to break away...');
+    }
+  }
+
+  socket.send(actionToSend);
+});
 
 function handleServerMessage(message: GameServerMessage): void {
   switch (message.type) {
@@ -89,6 +116,8 @@ function handleServerMessage(message: GameServerMessage): void {
       socket.send({ action: 'get_initial_state' });
       break;
     case 'status':
+      actionPending = false;
+      hud.setActionPending(false);
       hud.setConnectionStatus(message.status);
       hud.addLog(message.message);
       if (message.status === 'ready') {
@@ -96,17 +125,92 @@ function handleServerMessage(message: GameServerMessage): void {
       }
       break;
     case 'error':
+      actionPending = false;
+      hud.setActionPending(false);
       hud.setConnectionStatus('error');
       hud.addLog(message.message);
       break;
     case 'update':
+      if (isStaleActionResponse(message)) {
+        return;
+      }
+      actionPending = false;
+      pendingActionId = null;
+      hud.setActionPending(false);
+      currentState = message.state;
       scene.renderGameState(message.state);
       hud.render(message.state);
+      hud.setConnectionStatus('ready');
       if (message.description) {
         hud.addLog(message.description);
       }
       break;
   }
+}
+
+function attachClientActionId(action: GameAction): GameAction {
+  if (!isGameplayAction(action)) {
+    return action;
+  }
+
+  return {
+    ...action,
+    client_action_id: nextClientActionId++
+  };
+}
+
+function isStaleActionResponse(message: GameServerMessage): boolean {
+  if (message.type !== 'update' || !message.client_action_id || pendingActionId === null) {
+    return false;
+  }
+
+  return message.client_action_id !== pendingActionId;
+}
+
+function applyOptimisticAction(action: GameAction): boolean {
+  if (action.action !== 'move' || !currentState || !canOptimisticallyMove(currentState, action.direction)) {
+    return false;
+  }
+
+  const nextState = structuredClone(currentState);
+  const [x, y] = nextState.player_pos;
+  const [nextX, nextY] = nextPosition(x, y, action.direction);
+  nextState.player_pos_prev = [x, y];
+  nextState.player_pos = [nextX, nextY];
+  nextState.explored = nextState.explored.map((row) => [...row]);
+  nextState.explored[nextY][nextX] = true;
+  currentState = nextState;
+
+  scene.renderGameState(nextState);
+  hud.render(nextState);
+  return true;
+}
+
+function canOptimisticallyMove(state: GameState, direction: Direction): boolean {
+  if (state.in_combat || state.game_over || state.game_won || state.player_hp <= 0) {
+    return false;
+  }
+
+  const [x, y] = state.player_pos;
+  const [nextX, nextY] = nextPosition(x, y, direction);
+  return nextX >= 0 && nextX < state.map_width && nextY >= 0 && nextY < state.map_height;
+}
+
+function nextPosition(x: number, y: number, direction: Direction): [number, number] {
+  switch (direction) {
+    case 'n':
+      return [x, y - 1];
+    case 's':
+      return [x, y + 1];
+    case 'w':
+      return [x - 1, y];
+    case 'e':
+      return [x + 1, y];
+  }
+}
+
+function isGameplayAction(action: GameAction): boolean {
+  return action.action !== 'get_initial_state';
 }
 
 socket.connect();

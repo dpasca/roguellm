@@ -14,8 +14,6 @@ export class RogueScene extends Phaser.Scene {
   private mapGraphics?: Phaser.GameObjects.Graphics;
   private markerGraphics?: Phaser.GameObjects.Graphics;
   private labelLayer?: Phaser.GameObjects.Container;
-  private player?: Phaser.GameObjects.Container;
-  private playerBody?: Phaser.GameObjects.Arc;
   private iconOverlay?: IconOverlay;
   private layout: MapLayout = { originX: 24, originY: 24, tileSize: 48 };
 
@@ -51,7 +49,7 @@ export class RogueScene extends Phaser.Scene {
     this.labelLayer.removeAll(true);
 
     this.drawTiles(this.state);
-    this.drawPlayer(this.state);
+    this.drawPlayerMarker(this.state);
     this.iconOverlay?.render(this.state, this.layout);
   }
 
@@ -102,38 +100,44 @@ export class RogueScene extends Phaser.Scene {
     }
   }
 
-  private drawPlayer(state: GameState): void {
-    const [x, y] = state.player_pos;
-    const { tileSize } = this.layout;
-    const target = this.tileCenter(x, y);
-
-    if (!this.player) {
-      this.player = this.add.container(target.x, target.y).setDepth(20);
-      this.playerBody = this.add.circle(0, 0, tileSize * 0.28, 0x6ee56c, 1);
-      this.playerBody.setAlpha(0.28);
-      this.player.add([this.playerBody]);
+  private drawPlayerMarker(state: GameState): void {
+    if (!this.markerGraphics) {
       return;
     }
 
-    if (this.playerBody) {
-      this.playerBody.setRadius(tileSize * 0.25);
-    }
-
-    this.tweens.killTweensOf(this.player);
-    this.tweens.add({
-      targets: this.player,
-      x: target.x,
-      y: target.y,
-      duration: 160,
-      ease: 'Sine.easeOut'
-    });
-  }
-
-  private tileCenter(x: number, y: number): { x: number; y: number } {
+    const [x, y] = state.player_pos;
     const { originX, originY, tileSize } = this.layout;
-    return {
-      x: originX + x * tileSize + tileSize / 2,
-      y: originY + y * tileSize + tileSize / 2
-    };
+    const tileX = originX + x * tileSize;
+    const tileY = originY + y * tileSize;
+    const inset = Math.max(2, Math.floor(tileSize * 0.08));
+    const lineWidth = Math.max(2, Math.floor(tileSize * 0.06));
+    const cornerSize = Math.max(7, Math.floor(tileSize * 0.22));
+    const color = state.game_over || state.player_hp <= 0
+      ? 0xf06b6b
+      : state.game_won
+        ? 0xf2c84b
+        : 0x7ee07b;
+
+    this.markerGraphics.lineStyle(lineWidth, color, 0.95);
+    this.markerGraphics.strokeRect(
+      tileX + inset + 0.5,
+      tileY + inset + 0.5,
+      tileSize - inset * 2 - 1,
+      tileSize - inset * 2 - 1
+    );
+
+    this.markerGraphics.fillStyle(color, 0.95);
+    this.markerGraphics.fillRect(
+      tileX + tileSize - inset - cornerSize,
+      tileY + tileSize - inset - lineWidth,
+      cornerSize,
+      lineWidth
+    );
+    this.markerGraphics.fillRect(
+      tileX + tileSize - inset - lineWidth,
+      tileY + tileSize - inset - cornerSize,
+      lineWidth,
+      cornerSize
+    );
   }
 }

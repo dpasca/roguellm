@@ -75,12 +75,6 @@ class CombatManager:
                 game_state.in_combat = False
                 game_state.current_enemy = None
 
-                # Check if all enemies have been defeated
-                remaining_enemies = [e for e in game_state.enemies if not e['is_defeated']]
-                if not remaining_enemies:
-                    game_state.game_won = True
-                    return f"{combat_log}\nYou defeated the enemy, gained {xp_gained} XP and {hp_gained} HP\nCongratulations! You have defeated all enemies!"
-
                 return f"{combat_log}\nYou defeated the enemy, gained {xp_gained} XP and {hp_gained} HP"
 
             # Enemy counter-attacks
@@ -103,9 +97,8 @@ class CombatManager:
             if self.random.random() < 0.5:
                 game_state.in_combat = False
                 game_state.current_enemy = None
-                # Move player back to previous position
-                game_state.player_pos = game_state.player_pos_prev
-                return "You managed to escape!"
+                game_state.player_pos_prev = game_state.player_pos
+                return "You broke away from the fight!"
             else:
                 # Enemy gets a free attack
                 damage_taken = max(0, self.random.randint(

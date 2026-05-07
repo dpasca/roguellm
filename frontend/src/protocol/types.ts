@@ -1,13 +1,17 @@
 export type Direction = 'n' | 's' | 'e' | 'w';
 
+export interface ActionEnvelope {
+  client_action_id?: number;
+}
+
 export type GameAction =
-  | { action: 'get_initial_state' }
-  | { action: 'move'; direction: Direction }
-  | { action: 'attack' }
-  | { action: 'run' }
-  | { action: 'use_item'; item_id: string }
-  | { action: 'equip_item'; item_id: string }
-  | { action: 'restart' };
+  | ({ action: 'get_initial_state' } & ActionEnvelope)
+  | ({ action: 'move'; direction: Direction } & ActionEnvelope)
+  | ({ action: 'attack' } & ActionEnvelope)
+  | ({ action: 'run' } & ActionEnvelope)
+  | ({ action: 'use_item'; item_id: string } & ActionEnvelope)
+  | ({ action: 'equip_item'; item_id: string } & ActionEnvelope)
+  | ({ action: 'restart' } & ActionEnvelope);
 
 export interface CellType {
   id?: string;
@@ -102,4 +106,6 @@ export type GameServerMessage =
       description_raw?: string;
       description?: string;
       generator_id?: string;
+      response_action?: GameAction['action'];
+      client_action_id?: number;
     };

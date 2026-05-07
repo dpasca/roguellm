@@ -64,15 +64,6 @@ export class IconOverlay {
       ));
     }
 
-    const [playerX, playerY] = state.player_pos;
-    icons.push(this.createIcon(
-      normalizeFontAwesomeClass(state.player.font_awesome_icon, 'fa-solid fa-user'),
-      playerX,
-      playerY,
-      layout,
-      'player-map-icon'
-    ));
-
     this.root.replaceChildren(...icons);
   }
 
