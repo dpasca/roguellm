@@ -421,6 +421,69 @@ h2 {
   .latest-message-panel {
     display: none;
   }
+
+  .workbench-mode .hud {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .workbench-mode h1 {
+    font-size: 22px;
+  }
+
+  .workbench-mode .panel {
+    padding: 10px;
+  }
+
+  .workbench-mode .stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .workbench-mode .controls-panel {
+    grid-template-columns: 116px 1fr;
+    gap: 8px;
+  }
+
+  .workbench-mode .movement-lock {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .workbench-mode .dpad {
+    grid-template-columns: repeat(3, 34px);
+    grid-template-rows: repeat(3, 34px);
+    gap: 3px;
+  }
+
+  .workbench-mode .combat-actions {
+    gap: 6px;
+  }
+
+  .workbench-mode .inventory-list {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .workbench-mode .inventory-item {
+    padding: 6px;
+  }
+
+  .workbench-mode .inventory-item span {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workbench-mode .inventory-item button {
+    min-height: 32px;
+  }
+
+  .workbench-mode .game-log {
+    max-height: none;
+  }
 }
 
 .game-log {

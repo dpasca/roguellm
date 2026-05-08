@@ -3,7 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_URL = 'http://127.0.0.1:8127/game2?game_id=159e473b&fixture=1';
+const DEFAULT_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=skin';
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
+const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -31,9 +33,27 @@ const scenarios = [
     mode: 'ready'
   },
   {
+    name: 'mobile-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'workbench',
+    url: workbenchUrl
+  },
+  {
+    name: 'mobile-workbench-log',
+    viewport: { width: 390, height: 844 },
+    mode: 'workbench-log',
+    url: workbenchUrl
+  },
+  {
     name: 'desktop-ready',
     viewport: { width: 1280, height: 900 },
     mode: 'ready'
+  },
+  {
+    name: 'desktop-workbench',
+    viewport: { width: 1280, height: 900 },
+    mode: 'workbench',
+    url: workbenchUrl
   }
 ];
 
@@ -59,6 +79,7 @@ try {
 
 const summary = {
   entryUrl,
+  workbenchUrl,
   outDir,
   generatedAt: new Date().toISOString(),
   results,
@@ -89,15 +110,19 @@ if (!summary.ok) {
 async function runScenario(page, scenario) {
   const failures = [];
 
-  await page.goto(entryUrl, { waitUntil: 'domcontentloaded' });
-  await waitForGameReady(page);
+  await page.goto(scenario.url ?? entryUrl, { waitUntil: 'domcontentloaded' });
+  if (scenario.mode.startsWith('workbench')) {
+    await waitForWorkbenchReady(page);
+  } else {
+    await waitForGameReady(page);
+  }
 
   if (scenario.mode === 'combat') {
     await page.getByRole('button', { name: 'E', exact: true }).click();
     await waitForCombatReady(page);
   }
 
-  if (scenario.mode === 'log') {
+  if (scenario.mode === 'log' || scenario.mode === 'workbench-log') {
     await page.getByRole('button', { name: 'Log', exact: true }).click();
     await waitForLogOpen(page);
   }
@@ -146,7 +171,19 @@ async function waitForCombatReady(page) {
 async function waitForLogOpen(page) {
   await page.waitForFunction(() => {
     const status = document.getElementById('connection-status')?.textContent?.trim();
-    return status === 'ready' && document.body.classList.contains('log-open');
+    return (status === 'ready' || status === 'bench') && document.body.classList.contains('log-open');
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForWorkbenchReady(page) {
+  await page.waitForFunction(() => {
+    const status = document.getElementById('connection-status')?.textContent?.trim();
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    return document.body.dataset.workbench === 'skin' &&
+      document.body.classList.contains('workbench-mode') &&
+      status === 'bench' &&
+      latest &&
+      latest !== 'Connecting...';
   }, null, { timeout: 20_000 });
 }
 
@@ -162,7 +199,14 @@ async function collectMetrics(page) {
       combatPanel: '#combat-panel',
       controlsPanel: '.controls-panel',
       logPanel: '#log-panel',
-      firstLogEntry: '#game-log p.latest'
+      firstLogEntry: '#game-log p.latest',
+      inventoryPanel: '.inventory-panel',
+      firstInventoryItem: '#inventory-list .inventory-item',
+      statusPill: '#connection-status',
+      attackButton: '#attack',
+      runButton: '#run',
+      moveEastButton: '#move-e',
+      endStateOverlay: '#end-state-overlay'
     };
 
     const rectFor = (selector) => {
@@ -204,8 +248,10 @@ async function collectMetrics(page) {
       overflowsY: document.documentElement.scrollHeight > innerHeight,
       overflowsX: document.documentElement.scrollWidth > innerWidth,
       skin: document.body.dataset.skin ?? null,
+      workbench: document.body.dataset.workbench ?? null,
       inCombat: document.body.classList.contains('in-combat'),
       logOpen: document.body.classList.contains('log-open'),
+      statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
       rects
     };
@@ -278,18 +324,69 @@ function validateMetrics(scenario, metrics) {
   }
 
   if (scenario.mode === 'combat') {
-    if (!metrics.inCombat) {
-      failures.push('combat scenario did not enter combat');
-    }
+    validateCombatScenario(metrics, failures);
+  }
 
-    const combat = metrics.rects.combatPanel;
-    if (!combat || combat.visibleHeight < 56) {
-      failures.push(`combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
-    }
+  if (scenario.mode.startsWith('workbench')) {
+    validateWorkbenchScenario(scenario, metrics, failures);
   }
 
   failures.push(...validateAssetUsage(metrics));
   return failures;
+}
+
+function validateCombatScenario(metrics, failures) {
+  if (!metrics.inCombat) {
+    failures.push('combat scenario did not enter combat');
+  }
+
+  const combat = metrics.rects.combatPanel;
+  if (!combat || combat.visibleHeight < 56) {
+    failures.push(`combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
+  }
+}
+
+function validateWorkbenchScenario(scenario, metrics, failures) {
+  const isMobile = scenario.viewport.width <= 860;
+
+  if (metrics.workbench !== 'skin') {
+    failures.push(`expected skin workbench mode, got ${metrics.workbench ?? 'none'}`);
+  }
+
+  if (metrics.statusText !== 'bench') {
+    failures.push(`expected bench status text, got ${metrics.statusText}`);
+  }
+
+  validateCombatScenario(metrics, failures);
+
+  if (!metrics.latestTextLength || metrics.latestTextLength < 40) {
+    failures.push('workbench latest message is too short to inspect text treatment');
+  }
+
+  if (scenario.mode === 'workbench-log') {
+    const log = metrics.rects.logPanel;
+    const firstEntry = metrics.rects.firstLogEntry;
+    if (!metrics.logOpen) {
+      failures.push('workbench log scenario did not open the log drawer');
+    }
+    if (!log || log.visibleHeight < 260) {
+      failures.push(`workbench open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+    }
+    if (!firstEntry || firstEntry.visibleHeight < 48) {
+      failures.push(`workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
+    }
+  }
+
+  if (!isMobile) {
+    const inventory = metrics.rects.inventoryPanel;
+    const item = metrics.rects.firstInventoryItem;
+    if (!inventory || inventory.visibleHeight < 72) {
+      failures.push(`desktop workbench inventory is too small: ${inventory?.visibleHeight ?? 0}px visible`);
+    }
+    if (!item || item.visibleHeight < 40) {
+      failures.push(`desktop workbench inventory item is clipped: ${item?.visibleHeight ?? 0}px visible`);
+    }
+  }
 }
 
 function validateAssetUsage(metrics) {

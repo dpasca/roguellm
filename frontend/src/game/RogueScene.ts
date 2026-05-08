@@ -31,6 +31,7 @@ export class RogueScene extends Phaser.Scene {
       this.iconOverlay = new IconOverlay(parent);
     }
     this.scale.on('resize', () => this.redraw());
+    this.redraw();
     this.events.emit('scene-ready');
   }
 
