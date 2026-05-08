@@ -13,6 +13,13 @@ The files in `raw/` are generated reference surfaces only:
 
 They are useful for style direction and source material, but they are not currently runtime assets.
 
+## Current Runtime Assets
+
+The files in `assets/` are safe for live CSS:
+
+- `lcd-fill-tile.png`: a 64x64 seamless LCD fill. It is intended to be used with `background-repeat: repeat` and `background-size: 64px 64px`.
+- `panel-fill-tile.png`: a 64x64 seamless graphite panel fill. It is intended to be used with `background-repeat: repeat` and `background-size: 64px 64px`.
+
 ## Runtime Asset Rules
 
 Use one of these patterns before wiring an image into CSS:
@@ -28,8 +35,8 @@ Do not use generated full panels as a generic `cover` background on live control
 
 For the next asset pass, generate or crop these explicit pieces:
 
-- `lcd-fill-tile.png`: 32x32 or 64x64 seamless green scanline fill.
-- `panel-fill-tile.png`: 64x64 seamless dark brushed graphite fill.
+- `lcd-fill-tile.png`: 32x32 or 64x64 seamless green scanline fill. Done for this skin.
+- `panel-fill-tile.png`: 64x64 seamless dark brushed graphite fill. Done for this skin.
 - `panel-corner-tl.png`, `panel-corner-tr.png`, `panel-corner-bl.png`, `panel-corner-br.png`: fixed corners.
 - `panel-edge-top.png`, `panel-edge-right.png`, `panel-edge-bottom.png`, `panel-edge-left.png`: repeatable or stretch-safe edges.
 - `button-160x48-normal.png`, `button-160x48-active.png`, `button-160x48-disabled.png`: fixed-size button surfaces.
