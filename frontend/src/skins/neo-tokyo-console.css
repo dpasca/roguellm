@@ -1,0 +1,63 @@
+body.skin-neo-tokyo-console {
+  --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --skin-bg: #07090b;
+  --skin-body-background:
+    linear-gradient(90deg, rgba(104, 255, 124, 0.08), transparent 26%),
+    radial-gradient(circle at 88% 4%, rgba(255, 65, 88, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(255, 200, 87, 0.04), transparent 42%),
+    #07090b;
+  --skin-text: #f5f8f4;
+  --skin-muted: #9aa7a6;
+  --skin-muted-strong: #b8c2c0;
+  --skin-accent: #8cff8d;
+  --skin-accent-strong: #adff9b;
+  --skin-danger: #ff6679;
+  --skin-warning: #ffc857;
+  --skin-border: #25353c;
+  --skin-border-strong: #4c5f66;
+  --skin-panel: #11181b;
+  --skin-panel-alt: #172026;
+  --skin-panel-inset: #081013;
+  --skin-panel-danger: #25131a;
+  --skin-button: linear-gradient(180deg, #273238, #151d22 55%, #10161a);
+  --skin-button-border: #4a5b64;
+  --skin-canvas-bg: #070b0d;
+  --skin-canvas-border: #304149;
+  --skin-hud-bg: rgba(10, 14, 17, 0.96);
+  --skin-log-bg: #0a1410;
+  --skin-log-border: #284637;
+  --skin-log-latest-bg: #102015;
+  --skin-log-latest-border: #5e8d67;
+  --skin-overlay-bg: rgba(3, 6, 8, 0.76);
+  --skin-shadow-strong: rgba(0, 0, 0, 0.58);
+  --skin-meter-bg: #252e35;
+  --skin-meter-fill: linear-gradient(90deg, #61d860, #a9ff77);
+  --skin-meter-enemy: linear-gradient(90deg, #d94354, #ff7b68);
+  --skin-frame-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.65),
+    0 12px 32px rgba(0, 0, 0, 0.32);
+}
+
+body.skin-neo-tokyo-console button {
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.75);
+}
+
+body.skin-neo-tokyo-console .panel,
+body.skin-neo-tokyo-console .end-state-panel {
+  box-shadow: var(--skin-frame-shadow);
+}
+
+body.skin-neo-tokyo-console .log-panel {
+  background:
+    linear-gradient(180deg, rgba(140, 255, 141, 0.04), transparent 46%),
+    var(--skin-panel);
+}
+
+body.skin-neo-tokyo-console .game-log p.latest {
+  text-shadow: 0 0 12px rgba(140, 255, 141, 0.2);
+}

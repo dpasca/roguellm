@@ -18,6 +18,7 @@ export class HudController {
   constructor(private readonly sendAction: SendAction) {
     this.bindControls();
     this.bindKeyboard();
+    this.setLogOpen(false);
   }
 
   setConnectionStatus(status: string): void {
@@ -37,7 +38,8 @@ export class HudController {
     }
 
     this.logs.unshift(message);
-    this.logs = this.logs.slice(-40);
+    this.logs = this.logs.slice(0, 40);
+    this.setText('latest-message', this.logs[0]);
     const log = this.requireElement('game-log');
     log.replaceChildren(
       ...this.logs.map((entry, index) => {
@@ -92,6 +94,18 @@ export class HudController {
     this.requireButton('restart').addEventListener('click', () => {
       this.setConnectionStatus('restarting');
       this.sendAction({ action: 'restart' });
+    });
+
+    this.requireButton('log-toggle').addEventListener('click', () => {
+      this.setLogOpen(!document.body.classList.contains('log-open'));
+    });
+
+    this.requireButton('log-close').addEventListener('click', () => {
+      this.setLogOpen(false);
+    });
+
+    this.requireButton('log-backdrop').addEventListener('click', () => {
+      this.setLogOpen(false);
     });
   }
 
@@ -273,6 +287,12 @@ export class HudController {
 
   private setText(id: string, text: string): void {
     this.requireElement(id).textContent = text;
+  }
+
+  private setLogOpen(open: boolean): void {
+    document.body.classList.toggle('log-open', open);
+    this.requireButton('log-toggle').setAttribute('aria-expanded', String(open));
+    this.requireButton('log-backdrop').hidden = !open;
   }
 
   private requireButton(id: string): HTMLButtonElement {

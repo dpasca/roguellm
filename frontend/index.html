@@ -22,7 +22,18 @@
             <div class="connection-pill" id="connection-status">offline</div>
           </header>
 
-          <section class="panel">
+          <section class="panel latest-message-panel">
+            <div class="panel-heading-row">
+              <h2>Latest</h2>
+              <button id="log-toggle" class="compact-button" type="button" aria-controls="log-panel" aria-expanded="false">
+                <i class="fa-solid fa-list" aria-hidden="true"></i>
+                <span>Log</span>
+              </button>
+            </div>
+            <p id="latest-message" class="latest-message">Connecting...</p>
+          </section>
+
+          <section class="panel player-panel">
             <div class="stat-row">
               <span>HP</span>
               <strong id="player-hp">--</strong>
@@ -80,11 +91,18 @@
             <div id="inventory-list" class="inventory-list"></div>
           </section>
 
-          <section class="panel log-panel">
-            <h2>Log</h2>
+          <section class="panel log-panel" id="log-panel">
+            <div class="panel-heading-row">
+              <h2>Log</h2>
+              <button id="log-close" class="compact-button log-close" type="button" aria-label="Close log">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </div>
             <div id="game-log" class="game-log"></div>
           </section>
         </aside>
+
+        <button id="log-backdrop" class="log-backdrop" type="button" aria-label="Close log" hidden></button>
 
         <section class="end-state-overlay" id="end-state-overlay" hidden>
           <div class="end-state-panel">

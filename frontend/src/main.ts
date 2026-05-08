@@ -3,6 +3,8 @@ import './styles.css';
 import { RogueScene } from './game/RogueScene';
 import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
+import { applySkin } from './skins/applySkin';
+import { getSkinFromLocation } from './skins/registry';
 import { HudController } from './ui/hud';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
@@ -14,7 +16,7 @@ if (!sessionId) {
     const gameUrl = new URL('/game2', getBackendOrigin());
     gameUrl.searchParams.set('game_id', generatorId);
     const currentParams = new URLSearchParams(window.location.search);
-    for (const paramName of ['fixture']) {
+    for (const paramName of ['fixture', 'skin']) {
       const paramValue = currentParams.get(paramName);
       if (paramValue) {
         gameUrl.searchParams.set(paramName, paramValue);
@@ -29,14 +31,17 @@ if (!sessionId) {
   throw new Error('Missing game session id');
 }
 
-const scene = new RogueScene();
+const activeSkin = getSkinFromLocation();
+applySkin(activeSkin);
+
+const scene = new RogueScene(activeSkin.map);
 const canvasParent = document.getElementById('game-canvas');
 const initialWidth = Math.max(320, canvasParent?.clientWidth ?? 960);
 const initialHeight = Math.max(240, canvasParent?.clientHeight ?? 640);
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game-canvas',
-  backgroundColor: '#0e1014',
+  backgroundColor: activeSkin.map.canvasBackground,
   scale: {
     mode: Phaser.Scale.NONE,
     parent: 'game-canvas',

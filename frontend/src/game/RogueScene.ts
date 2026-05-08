@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameState } from '../protocol/types';
 import { parseHexColor, scaleRgb } from './color';
 import { IconOverlay } from './IconOverlay';
+import type { SkinMapPalette } from '../skins/types';
 
 interface MapLayout {
   originX: number;
@@ -17,7 +18,7 @@ export class RogueScene extends Phaser.Scene {
   private iconOverlay?: IconOverlay;
   private layout: MapLayout = { originX: 24, originY: 24, tileSize: 48 };
 
-  constructor() {
+  constructor(private readonly mapSkin: SkinMapPalette) {
     super('RogueScene');
   }
 
@@ -82,8 +83,8 @@ export class RogueScene extends Phaser.Scene {
         const cell = state.cell_types[y]?.[x];
         const explored = state.explored[y]?.[x] ?? false;
         const baseColor = parseHexColor(cell?.map_color);
-        const fillColor = scaleRgb(baseColor, explored ? 0.72 : 0.32);
-        const strokeColor = explored ? 0x45484f : 0x25272d;
+        const fillColor = scaleRgb(baseColor, explored ? this.mapSkin.exploredTileScale : this.mapSkin.unexploredTileScale);
+        const strokeColor = explored ? this.mapSkin.exploredTileStroke : this.mapSkin.unexploredTileStroke;
         const tileX = originX + x * tileSize;
         const tileY = originY + y * tileSize;
 
@@ -93,7 +94,7 @@ export class RogueScene extends Phaser.Scene {
         this.mapGraphics.strokeRect(tileX + 0.5, tileY + 0.5, tileSize - 1, tileSize - 1);
 
         if (!explored) {
-          this.mapGraphics.fillStyle(0x11141a, 0.35);
+          this.mapGraphics.fillStyle(this.mapSkin.unexploredTileOverlay, this.mapSkin.unexploredTileOverlayAlpha);
           this.mapGraphics.fillRect(tileX, tileY, tileSize - 1, tileSize - 1);
         }
       }
@@ -113,10 +114,10 @@ export class RogueScene extends Phaser.Scene {
     const lineWidth = Math.max(2, Math.floor(tileSize * 0.06));
     const cornerSize = Math.max(7, Math.floor(tileSize * 0.22));
     const color = state.game_over || state.player_hp <= 0
-      ? 0xf06b6b
+      ? this.mapSkin.defeatedPlayerMarker
       : state.game_won
-        ? 0xf2c84b
-        : 0x7ee07b;
+        ? this.mapSkin.victoryPlayerMarker
+        : this.mapSkin.playerMarker;
 
     this.markerGraphics.lineStyle(lineWidth, color, 0.95);
     this.markerGraphics.strokeRect(
