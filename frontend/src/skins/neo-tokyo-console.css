@@ -36,30 +36,114 @@ body.skin-neo-tokyo-console {
   --skin-lcd-fill-tile: url('./neo-tokyo-console/assets/lcd-fill-tile.png');
   --skin-lcd-frame-9slice: url('./neo-tokyo-console/assets/lcd-frame-9slice.png');
   --skin-panel-fill-tile: url('./neo-tokyo-console/assets/panel-fill-tile.png');
+  --skin-panel-frame-9slice: url('./neo-tokyo-console/assets/panel-frame-9slice.png');
+  --skin-button-fill-tile: url('./neo-tokyo-console/assets/button-fill-tile.png');
+  --skin-button-frame-9slice: url('./neo-tokyo-console/assets/button-frame-9slice.png');
   --skin-frame-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -1px 0 rgba(0, 0, 0, 0.65),
     0 12px 32px rgba(0, 0, 0, 0.32);
 }
 
-body.skin-neo-tokyo-console button {
-  border-radius: 2px;
+body.skin-neo-tokyo-console .shell {
+  isolation: isolate;
+  background:
+    linear-gradient(90deg, rgba(140, 255, 141, 0.04), transparent 22%, rgba(255, 102, 121, 0.04)),
+    radial-gradient(circle at 18% 8%, rgba(140, 255, 141, 0.10), transparent 20%),
+    radial-gradient(circle at 96% 0%, rgba(255, 102, 121, 0.12), transparent 32%),
+    #05090b;
+}
+
+body.skin-neo-tokyo-console .shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 8%, transparent 92%, rgba(0, 0, 0, 0.34)),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.5);
+    inset 0 0 0 1px rgba(140, 255, 141, 0.12),
+    inset 0 0 34px rgba(0, 0, 0, 0.64);
+}
+
+body.skin-neo-tokyo-console #game-canvas {
+  border: 6px solid transparent;
+  border-image-source: var(--skin-panel-frame-9slice);
+  border-image-slice: 12;
+  border-image-repeat: repeat;
+  border-image-width: 6px;
+  background-color: var(--skin-canvas-bg);
+  background-image:
+    radial-gradient(circle at 50% 42%, rgba(140, 255, 141, 0.08), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.26)),
+    var(--skin-panel-fill-tile);
+  background-position: 0 0, 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: 100% 100%, 100% 100%, 96px 96px;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    inset 0 0 42px rgba(140, 255, 141, 0.06),
+    0 20px 46px rgba(0, 0, 0, 0.40);
+}
+
+body.skin-neo-tokyo-console button {
+  border: 4px solid transparent;
+  border-image-source: var(--skin-button-frame-9slice);
+  border-image-slice: 12;
+  border-image-repeat: repeat;
+  border-image-width: 4px;
+  border-radius: 0;
+  background-color: #121d23;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 42%, rgba(0, 0, 0, 0.34)),
+    var(--skin-button-fill-tile);
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 96px 96px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.62),
+    0 8px 18px rgba(0, 0, 0, 0.22);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.75);
 }
 
 body.skin-neo-tokyo-console .panel,
 body.skin-neo-tokyo-console .end-state-panel {
+  border: 4px solid transparent;
+  border-image-source: var(--skin-panel-frame-9slice);
+  border-image-slice: 12;
+  border-image-repeat: repeat;
+  border-image-width: 4px;
   background-color: var(--skin-panel);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.14)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(0, 0, 0, 0.20)),
     var(--skin-panel-fill-tile);
   background-position: 0 0, 0 0;
   background-repeat: no-repeat, repeat;
-  background-size: 100% 100%, 64px 64px;
+  background-size: 100% 100%, 96px 96px;
   box-shadow: var(--skin-frame-shadow);
+}
+
+body.skin-neo-tokyo-console .hud {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 18%),
+    radial-gradient(circle at 78% 0%, rgba(255, 102, 121, 0.08), transparent 26%),
+    rgba(8, 12, 15, 0.96);
+}
+
+body.skin-neo-tokyo-console .connection-pill {
+  border: 4px solid transparent;
+  border-image-source: var(--skin-button-frame-9slice);
+  border-image-slice: 12;
+  border-image-repeat: repeat;
+  border-image-width: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.24)),
+    var(--skin-button-fill-tile);
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 96px 96px;
 }
 
 body.skin-neo-tokyo-console .log-panel {
@@ -69,7 +153,7 @@ body.skin-neo-tokyo-console .log-panel {
     var(--skin-panel-fill-tile);
   background-position: 0 0, 0 0;
   background-repeat: no-repeat, repeat;
-  background-size: 100% 100%, 64px 64px;
+  background-size: 100% 100%, 96px 96px;
 }
 
 body.skin-neo-tokyo-console .latest-message,
@@ -85,9 +169,49 @@ body.skin-neo-tokyo-console .game-log p.latest {
     var(--skin-lcd-fill-tile);
   background-position: 0 0, 0 0;
   background-repeat: no-repeat, repeat;
-  background-size: 100% 100%, 64px 64px;
+  background-size: 100% 100%, 96px 96px;
 }
 
 body.skin-neo-tokyo-console .game-log p.latest {
   text-shadow: 0 0 12px rgba(140, 255, 141, 0.2);
+}
+
+body.skin-neo-tokyo-console .meter {
+  border: 1px solid rgba(140, 255, 141, 0.22);
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 17px, rgba(255, 255, 255, 0.06) 17px 18px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.22)),
+    var(--skin-button-fill-tile);
+  background-repeat: repeat, no-repeat, repeat;
+  background-size: 18px 100%, 100% 100%, 96px 96px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
+body.skin-neo-tokyo-console .meter > div {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 14px rgba(140, 255, 141, 0.26);
+}
+
+body.skin-neo-tokyo-console .enemy-meter > div {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 0 14px rgba(255, 102, 121, 0.24);
+}
+
+@media (max-width: 860px) {
+  body.skin-neo-tokyo-console #game-canvas {
+    border-width: 4px;
+    border-image-width: 4px;
+  }
+
+  body.skin-neo-tokyo-console .panel,
+  body.skin-neo-tokyo-console .end-state-panel,
+  body.skin-neo-tokyo-console button,
+  body.skin-neo-tokyo-console .connection-pill {
+    border-width: 3px;
+    border-image-width: 3px;
+  }
 }

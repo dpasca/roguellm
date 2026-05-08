@@ -17,9 +17,12 @@ They are useful for style direction and source material, but they are not curren
 
 The files in `assets/` are safe for live CSS:
 
-- `lcd-fill-tile.png`: a 64x64 seamless LCD fill. It is intended to be used with `background-repeat: repeat` and `background-size: 64px 64px`.
-- `lcd-frame-9slice.png`: a 32x32 transparent LCD frame. It is intended to be used as a border image with slice `8`, fixed corners, and repeated edges.
-- `panel-fill-tile.png`: a 64x64 seamless graphite panel fill. It is intended to be used with `background-repeat: repeat` and `background-size: 64px 64px`.
+- `lcd-fill-tile.png`: a 96x96 seamless LCD fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
+- `lcd-frame-9slice.png`: a 48x48 transparent LCD frame. It is intended to be used as a border image with slice `8`, fixed corners, and repeated edges.
+- `panel-fill-tile.png`: a 96x96 seamless graphite panel fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
+- `panel-frame-9slice.png`: a 48x48 transparent panel frame. It is intended to be used as a border image with slice `12`, fixed corners, and repeated edges.
+- `button-fill-tile.png`: a 96x96 seamless brushed button fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
+- `button-frame-9slice.png`: a 48x48 transparent button frame. It is intended to be used as a border image with slice `12`, fixed corners, and repeated edges.
 
 ## Runtime Asset Rules
 
@@ -36,11 +39,13 @@ Do not use generated full panels as a generic `cover` background on live control
 
 For the next asset pass, generate or crop these explicit pieces:
 
-- `lcd-fill-tile.png`: 32x32 or 64x64 seamless green scanline fill. Done for this skin.
-- `panel-fill-tile.png`: 64x64 seamless dark brushed graphite fill. Done for this skin.
+- `lcd-fill-tile.png`: 32x32, 64x64, or 96x96 seamless green scanline fill. Done for this skin.
+- `panel-fill-tile.png`: seamless dark brushed graphite fill. Done for this skin.
 - `panel-corner-tl.png`, `panel-corner-tr.png`, `panel-corner-bl.png`, `panel-corner-br.png`: fixed corners.
 - `panel-edge-top.png`, `panel-edge-right.png`, `panel-edge-bottom.png`, `panel-edge-left.png`: repeatable or stretch-safe edges.
-- `lcd-frame-9slice.png`: 32x32 transparent LCD frame with fixed corners and repeat-safe edges. Done for this skin.
+- `lcd-frame-9slice.png`: transparent LCD frame with fixed corners and repeat-safe edges. Done for this skin.
+- `panel-frame-9slice.png`: transparent panel frame with fixed corners and repeat-safe edges. Done for this skin.
+- `button-fill-tile.png` and `button-frame-9slice.png`: repeat-safe button fill and frame. Done for this skin.
 - `button-160x48-normal.png`, `button-160x48-active.png`, `button-160x48-disabled.png`: fixed-size button surfaces.
 - `led-green.png`, `led-amber.png`, `led-red.png`: fixed accent lights.
 

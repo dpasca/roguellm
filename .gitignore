@@ -37,6 +37,7 @@ tools/venv
 
 # Frontend
 frontend/node_modules/
+frontend/visual-inspections/
 static/game2/
 
 # IDE
