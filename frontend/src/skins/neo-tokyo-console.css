@@ -34,6 +34,7 @@ body.skin-neo-tokyo-console {
   --skin-meter-fill: linear-gradient(90deg, #61d860, #a9ff77);
   --skin-meter-enemy: linear-gradient(90deg, #d94354, #ff7b68);
   --skin-lcd-fill-tile: url('./neo-tokyo-console/assets/lcd-fill-tile.png');
+  --skin-lcd-frame-9slice: url('./neo-tokyo-console/assets/lcd-frame-9slice.png');
   --skin-panel-fill-tile: url('./neo-tokyo-console/assets/panel-fill-tile.png');
   --skin-frame-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
@@ -73,6 +74,11 @@ body.skin-neo-tokyo-console .log-panel {
 
 body.skin-neo-tokyo-console .latest-message,
 body.skin-neo-tokyo-console .game-log p.latest {
+  border: 4px solid transparent;
+  border-image-source: var(--skin-lcd-frame-9slice);
+  border-image-slice: 8;
+  border-image-repeat: repeat;
+  border-image-width: 4px;
   background-color: var(--skin-log-latest-bg);
   background-image:
     linear-gradient(180deg, rgba(140, 255, 141, 0.08), rgba(3, 8, 5, 0.2)),
