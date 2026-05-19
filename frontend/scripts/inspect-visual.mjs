@@ -4,8 +4,10 @@ import path from 'node:path';
 
 const DEFAULT_URL = 'http://127.0.0.1:8127/game2?game_id=159e473b&fixture=1';
 const DEFAULT_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=skin';
+const DEFAULT_FIXED_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin';
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
 const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
+const fixedWorkbenchUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -45,6 +47,18 @@ const scenarios = [
     url: workbenchUrl
   },
   {
+    name: 'mobile-fixed-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchUrl
+  },
+  {
+    name: 'mobile-fixed-workbench-log',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-log',
+    url: fixedWorkbenchUrl
+  },
+  {
     name: 'desktop-ready',
     viewport: { width: 1280, height: 900 },
     mode: 'ready'
@@ -54,6 +68,12 @@ const scenarios = [
     viewport: { width: 1280, height: 900 },
     mode: 'workbench',
     url: workbenchUrl
+  },
+  {
+    name: 'desktop-fixed-workbench',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchUrl
   }
 ];
 
@@ -80,6 +100,7 @@ try {
 const summary = {
   entryUrl,
   workbenchUrl,
+  fixedWorkbenchUrl,
   outDir,
   generatedAt: new Date().toISOString(),
   results,
@@ -111,7 +132,9 @@ async function runScenario(page, scenario) {
   const failures = [];
 
   await page.goto(scenario.url ?? entryUrl, { waitUntil: 'domcontentloaded' });
-  if (scenario.mode.startsWith('workbench')) {
+  if (scenario.mode.startsWith('fixed-workbench')) {
+    await waitForFixedWorkbenchReady(page);
+  } else if (scenario.mode.startsWith('workbench')) {
     await waitForWorkbenchReady(page);
   } else {
     await waitForGameReady(page);
@@ -122,7 +145,7 @@ async function runScenario(page, scenario) {
     await waitForCombatReady(page);
   }
 
-  if (scenario.mode === 'log' || scenario.mode === 'workbench-log') {
+  if (scenario.mode === 'log' || scenario.mode === 'workbench-log' || scenario.mode === 'fixed-workbench-log') {
     await page.getByRole('button', { name: 'Log', exact: true }).click();
     await waitForLogOpen(page);
   }
@@ -171,7 +194,7 @@ async function waitForCombatReady(page) {
 async function waitForLogOpen(page) {
   await page.waitForFunction(() => {
     const status = document.getElementById('connection-status')?.textContent?.trim();
-    return (status === 'ready' || status === 'bench') && document.body.classList.contains('log-open');
+    return !!status && document.body.classList.contains('log-open');
   }, null, { timeout: 20_000 });
 }
 
@@ -182,6 +205,18 @@ async function waitForWorkbenchReady(page) {
     return document.body.dataset.workbench === 'skin' &&
       document.body.classList.contains('workbench-mode') &&
       status === 'bench' &&
+      latest &&
+      latest !== 'Connecting...';
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedWorkbenchReady(page) {
+  await page.waitForFunction(() => {
+    const status = document.getElementById('connection-status')?.textContent?.trim();
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    return document.body.dataset.workbench === 'fixed-skin' &&
+      document.body.classList.contains('fixed-workbench-mode') &&
+      status &&
       latest &&
       latest !== 'Connecting...';
   }, null, { timeout: 20_000 });
@@ -249,6 +284,7 @@ async function collectMetrics(page) {
       overflowsX: document.documentElement.scrollWidth > innerWidth,
       skin: document.body.dataset.skin ?? null,
       workbench: document.body.dataset.workbench ?? null,
+      fixedProfile: document.body.dataset.fixedProfile ?? null,
       inCombat: document.body.classList.contains('in-combat'),
       logOpen: document.body.classList.contains('log-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
@@ -261,6 +297,7 @@ async function collectMetrics(page) {
 function validateMetrics(scenario, metrics) {
   const failures = [];
   const isMobile = scenario.viewport.width <= 860;
+  const isFixedWorkbench = scenario.mode.startsWith('fixed-workbench');
 
   if (metrics.skin !== 'neo-tokyo-console') {
     failures.push(`expected neo-tokyo-console skin, got ${metrics.skin ?? 'none'}`);
@@ -286,20 +323,25 @@ function validateMetrics(scenario, metrics) {
 
   if (isMobile) {
     const latest = metrics.rects.latestMessage;
-    if (!latest || latest.display === 'none') {
+    if (isFixedWorkbench && metrics.logOpen) {
+      // Fixed skins swap the latest LCD for the full log module when opened.
+    } else if (!latest || latest.display === 'none') {
       failures.push('mobile latest message is not visible');
     } else if (latest.visibleHeight < 56) {
       failures.push(`mobile latest message is too short: ${latest.visibleHeight}px visible`);
     }
 
-    const log = metrics.rects.logPanel;
-    if (!log || log.display === 'none') {
-      failures.push('mobile log drawer is missing from DOM');
-    } else if (!metrics.logOpen && (Number(log.opacity) > 0.01 || log.visibleHeight > 2)) {
-      failures.push(`mobile log drawer leaks while closed: opacity=${log.opacity}, visibleHeight=${log.visibleHeight}px`);
+    if (!isFixedWorkbench) {
+      const log = metrics.rects.logPanel;
+      if (!log || log.display === 'none') {
+        failures.push('mobile log drawer is missing from DOM');
+      } else if (!metrics.logOpen && (Number(log.opacity) > 0.01 || log.visibleHeight > 2)) {
+        failures.push(`mobile log drawer leaks while closed: opacity=${log.opacity}, visibleHeight=${log.visibleHeight}px`);
+      }
     }
 
     if (scenario.mode === 'log') {
+      const log = metrics.rects.logPanel;
       if (!metrics.logOpen) {
         failures.push('mobile log scenario did not open the log drawer');
       }
@@ -313,12 +355,12 @@ function validateMetrics(scenario, metrics) {
     }
   } else {
     const latestPanel = metrics.rects.latestPanel;
-    if (latestPanel && latestPanel.display !== 'none') {
+    if (!isFixedWorkbench && latestPanel && latestPanel.display !== 'none') {
       failures.push('desktop should hide mobile latest panel');
     }
 
     const log = metrics.rects.logPanel;
-    if (!log || log.visibleHeight < 160) {
+    if (!isFixedWorkbench && (!log || log.visibleHeight < 160)) {
       failures.push(`desktop log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
   }
@@ -329,6 +371,10 @@ function validateMetrics(scenario, metrics) {
 
   if (scenario.mode.startsWith('workbench')) {
     validateWorkbenchScenario(scenario, metrics, failures);
+  }
+
+  if (scenario.mode.startsWith('fixed-workbench')) {
+    validateFixedWorkbenchScenario(scenario, metrics, failures);
   }
 
   failures.push(...validateAssetUsage(metrics));
@@ -385,6 +431,50 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!item || item.visibleHeight < 40) {
       failures.push(`desktop workbench inventory item is clipped: ${item?.visibleHeight ?? 0}px visible`);
+    }
+  }
+}
+
+function validateFixedWorkbenchScenario(scenario, metrics, failures) {
+  if (metrics.workbench !== 'fixed-skin') {
+    failures.push(`expected fixed skin workbench mode, got ${metrics.workbench ?? 'none'}`);
+  }
+
+  if (!metrics.fixedProfile) {
+    failures.push('fixed workbench did not select a fixed profile');
+  }
+
+  if (!metrics.inCombat) {
+    failures.push('fixed workbench did not render the combat state');
+  }
+
+  const combat = metrics.rects.combatPanel;
+  if (!combat || combat.visibleHeight < 40) {
+    failures.push(`fixed workbench combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
+  }
+
+  const map = metrics.rects.map;
+  if (!map || map.visibleHeight < 250 || map.visibleWidth < 300) {
+    failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
+  }
+
+  const attack = metrics.rects.attackButton;
+  const run = metrics.rects.runButton;
+  if (!attack || attack.visibleHeight < 40 || !run || run.visibleHeight < 40) {
+    failures.push(`fixed workbench action buttons are clipped: attack=${attack?.visibleHeight ?? 0}, run=${run?.visibleHeight ?? 0}`);
+  }
+
+  if (scenario.mode === 'fixed-workbench-log') {
+    const log = metrics.rects.logPanel;
+    const firstEntry = metrics.rects.firstLogEntry;
+    if (!metrics.logOpen) {
+      failures.push('fixed workbench log scenario did not open the log drawer');
+    }
+    if (!log || log.visibleHeight < 160) {
+      failures.push(`fixed workbench open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+    }
+    if (!firstEntry || firstEntry.visibleHeight < 40) {
+      failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
     }
   }
 }

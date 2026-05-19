@@ -6,13 +6,16 @@ import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation 
 import { applySkin } from './skins/applySkin';
 import { getSkinFromLocation } from './skins/registry';
 import { HudController } from './ui/hud';
+import { isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
 import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
 const activeSkin = getSkinFromLocation();
 applySkin(activeSkin);
 
-if (isSkinWorkbench()) {
+if (isFixedSkinWorkbench()) {
+  startFixedSkinWorkbench(activeSkin);
+} else if (isSkinWorkbench()) {
   startSkinWorkbench(activeSkin);
 } else {
   const sessionId = getSessionIdFromLocation();

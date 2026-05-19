@@ -4,7 +4,7 @@ import type { Direction, GameAction, GameState } from '../protocol/types';
 import type { GameSkin } from '../skins/types';
 import { HudController } from '../ui/hud';
 
-const WORKBENCH_LOGS = [
+export const WORKBENCH_LOGS = [
   'The bench boots in combat: bright LCD text, danger meter, chrome buttons, map icons, and panel edges all visible at once.',
   'Inventory contains a weapon, armor, and consumable so equipped rows and action buttons can be inspected on desktop.',
   'The mobile log drawer should feel like a physical slide-out terminal, not a clipped afterthought.',
@@ -84,7 +84,7 @@ function createWorkbenchGame(scene: RogueScene, skin: GameSkin): Phaser.Game {
   return game;
 }
 
-function applyWorkbenchAction(state: GameState, action: GameAction): GameState {
+export function applyWorkbenchAction(state: GameState, action: GameAction): GameState {
   switch (action.action) {
     case 'attack':
       return {
@@ -160,7 +160,7 @@ function nextPosition(x: number, y: number, direction: Direction): [number, numb
   }
 }
 
-function createWorkbenchState(): GameState {
+export function createWorkbenchState(): GameState {
   const cells = createWorkbenchCells();
   const explored = cells.map((row, y) => row.map((_, x) => y < 7 || x < 3 || (x + y) % 5 === 0));
 
