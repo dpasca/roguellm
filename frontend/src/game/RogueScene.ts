@@ -88,18 +88,82 @@ export class RogueScene extends Phaser.Scene {
         const strokeColor = explored ? this.mapSkin.exploredTileStroke : this.mapSkin.unexploredTileStroke;
         const tileX = originX + x * tileSize;
         const tileY = originY + y * tileSize;
+        const tileExtent = tileSize - 1;
 
-        this.mapGraphics.fillStyle(fillColor, 1);
-        this.mapGraphics.fillRect(tileX, tileY, tileSize - 1, tileSize - 1);
-        this.mapGraphics.lineStyle(1, strokeColor, 1);
-        this.mapGraphics.strokeRect(tileX + 0.5, tileY + 0.5, tileSize - 1, tileSize - 1);
+        this.mapGraphics.fillStyle(scaleRgb(fillColor, explored ? 0.5 : 0.34), 1);
+        this.mapGraphics.fillRect(tileX, tileY, tileExtent, tileExtent);
+        this.mapGraphics.fillStyle(fillColor, explored ? 0.88 : 0.42);
+        this.mapGraphics.fillRect(tileX + 2, tileY + 2, Math.max(1, tileExtent - 4), Math.max(1, tileExtent - 4));
+        this.drawTileMatrix(tileX, tileY, tileSize, baseColor, explored, x, y);
+        this.drawTileBevel(tileX, tileY, tileExtent, strokeColor, baseColor, explored);
 
         if (!explored) {
           this.mapGraphics.fillStyle(this.mapSkin.unexploredTileOverlay, this.mapSkin.unexploredTileOverlayAlpha);
-          this.mapGraphics.fillRect(tileX, tileY, tileSize - 1, tileSize - 1);
+          this.mapGraphics.fillRect(tileX, tileY, tileExtent, tileExtent);
         }
       }
     }
+  }
+
+  private drawTileMatrix(
+    tileX: number,
+    tileY: number,
+    tileSize: number,
+    baseColor: number,
+    explored: boolean,
+    mapX: number,
+    mapY: number
+  ): void {
+    if (!this.mapGraphics) {
+      return;
+    }
+
+    const inset = Math.max(4, Math.floor(tileSize * 0.12));
+    const step = Math.max(5, Math.floor(tileSize * 0.13));
+    const dotSize = Math.max(1, Math.floor(tileSize * 0.035));
+    const dotColor = scaleRgb(baseColor, explored ? 1.55 : 0.88);
+    const sparkColor = scaleRgb(baseColor, explored ? 2.1 : 1.1);
+    const dotAlpha = explored ? 0.58 : 0.16;
+    const sparkAlpha = explored ? 0.88 : 0.26;
+
+    this.mapGraphics.fillStyle(dotColor, dotAlpha);
+    for (let y = tileY + inset; y < tileY + tileSize - inset; y += step) {
+      for (let x = tileX + inset; x < tileX + tileSize - inset; x += step) {
+        this.mapGraphics.fillRect(x, y, dotSize, dotSize);
+      }
+    }
+
+    this.mapGraphics.fillStyle(sparkColor, sparkAlpha);
+    const sparkCount = explored ? 3 : 1;
+    for (let i = 0; i < sparkCount; i += 1) {
+      const offsetX = ((mapX * 17 + mapY * 7 + i * 19) % Math.max(1, tileSize - inset * 2));
+      const offsetY = ((mapX * 11 + mapY * 23 + i * 13) % Math.max(1, tileSize - inset * 2));
+      this.mapGraphics.fillRect(tileX + inset + offsetX, tileY + inset + offsetY, dotSize, dotSize);
+    }
+  }
+
+  private drawTileBevel(
+    tileX: number,
+    tileY: number,
+    tileExtent: number,
+    strokeColor: number,
+    baseColor: number,
+    explored: boolean
+  ): void {
+    if (!this.mapGraphics) {
+      return;
+    }
+
+    this.mapGraphics.lineStyle(1, strokeColor, 1);
+    this.mapGraphics.strokeRect(tileX + 0.5, tileY + 0.5, tileExtent, tileExtent);
+    this.mapGraphics.lineStyle(1, scaleRgb(baseColor, explored ? 1.45 : 0.72), explored ? 0.48 : 0.2);
+    this.mapGraphics.strokeRect(tileX + 2.5, tileY + 2.5, Math.max(1, tileExtent - 4), Math.max(1, tileExtent - 4));
+    this.mapGraphics.lineStyle(1, 0xffffff, explored ? 0.08 : 0.03);
+    this.mapGraphics.lineBetween(tileX + 2, tileY + 2, tileX + tileExtent - 2, tileY + 2);
+    this.mapGraphics.lineBetween(tileX + 2, tileY + 2, tileX + 2, tileY + tileExtent - 2);
+    this.mapGraphics.lineStyle(1, 0x000000, 0.5);
+    this.mapGraphics.lineBetween(tileX + 2, tileY + tileExtent - 2, tileX + tileExtent - 2, tileY + tileExtent - 2);
+    this.mapGraphics.lineBetween(tileX + tileExtent - 2, tileY + 2, tileX + tileExtent - 2, tileY + tileExtent - 2);
   }
 
   private drawPlayerMarker(state: GameState): void {

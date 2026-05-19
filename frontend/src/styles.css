@@ -717,21 +717,30 @@ h2 {
     gap: 6px;
   }
 
+  body.skin-neo-tokyo-console .combat-actions button {
+    min-height: 50px;
+    font-size: 17px;
+  }
+
   .in-combat .player-panel .stat-grid {
     display: none;
   }
 
   .in-combat .controls-panel {
-    grid-template-columns: 1fr;
+    grid-template-columns: 106px 1fr;
   }
 
-  .in-combat .movement-lock,
-  .in-combat .dpad {
+  .in-combat .movement-lock {
     display: none;
   }
 
+  .in-combat .dpad {
+    display: grid;
+    opacity: 0.62;
+  }
+
   .in-combat .combat-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .inventory-panel {
@@ -817,5 +826,14 @@ h2 {
 
   button {
     min-height: 30px;
+  }
+
+  body.skin-neo-tokyo-console .combat-actions button {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  body.skin-neo-tokyo-console .dpad button {
+    font-size: 16px;
   }
 }
