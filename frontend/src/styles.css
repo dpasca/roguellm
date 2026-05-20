@@ -614,6 +614,14 @@ h2 {
   transform-origin: center;
 }
 
+body.skin-neo-tokyo-console .fixed-skin-stage.shell {
+  border: 0;
+  border-radius: 0;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-shadow: none;
+}
+
 .fixed-skin-stage > * {
   position: absolute;
 }
@@ -624,6 +632,21 @@ h2 {
   border: 0;
   background: #05090a;
   box-shadow: none;
+}
+
+body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas,
+body.skin-neo-tokyo-console .fixed-skin-stage .panel,
+body.skin-neo-tokyo-console .fixed-skin-stage .latest-message,
+body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p {
+  border: 0;
+  border-image-source: none;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+
+body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
+  background-color: #05090a;
 }
 
 .fixed-skin-stage #game-canvas canvas {
@@ -843,6 +866,21 @@ h2 {
     0 2px 0 rgba(0, 0, 0, 0.86);
 }
 
+body.skin-neo-tokyo-console .fixed-skin-stage .fixed-skin-button {
+  border: 0;
+  border-image-source: none;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+body.skin-neo-tokyo-console .fixed-skin-stage #attack,
+body.skin-neo-tokyo-console .fixed-skin-stage #run {
+  border: 0;
+  border-image-source: none;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
 .fixed-run {
   color: #efffe3;
 }
@@ -867,6 +905,84 @@ h2 {
 .fixed-skin-stage[data-profile="mobile-portrait"] .fixed-latest-region .latest-message,
 .fixed-skin-stage[data-profile="mobile-portrait"] .fixed-game-log p {
   font-size: 12px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-region p {
+  font-size: 7px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-region h1 {
+  margin-top: 1px;
+  color: #9cff7c;
+  font-size: 15px;
+  line-height: 1.05;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-region i {
+  margin-right: 5px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-status-indicator {
+  font-size: 8px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-region-label {
+  margin-bottom: 2px;
+  font-size: 8px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-latest-region .latest-message,
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-game-log p {
+  color: #bbff9b;
+  font-size: 10px;
+  line-height: 1.18;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-log-region {
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-game-log {
+  gap: 4px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-game-log p {
+  padding-bottom: 3px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-hp-row {
+  font-size: 13px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-row {
+  gap: 5px;
+  margin-top: 11px;
+  font-size: 9px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-row strong {
+  margin-left: 2px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-combat-region h2 {
+  margin-bottom: 2px;
+  font-size: 10px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-combat-row {
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-combat-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixed-skin-button:disabled {

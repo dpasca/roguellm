@@ -8,6 +8,8 @@ const DEFAULT_FIXED_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workb
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
 const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
 const fixedWorkbenchUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
+const fixedWorkbenchProfileUrl = (profile) =>
+  `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -57,6 +59,36 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-log',
     url: fixedWorkbenchUrl
+  },
+  {
+    name: 'mobile-reference-fixed-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchProfileUrl('reference-mobile')
+  },
+  {
+    name: 'mobile-reference-fixed-workbench-log',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-log',
+    url: fixedWorkbenchProfileUrl('reference-mobile')
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v2')
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-log',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-log',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v2')
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-movement',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-movement',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=movement`
   },
   {
     name: 'desktop-ready',
@@ -150,6 +182,11 @@ async function runScenario(page, scenario) {
     await waitForLogOpen(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-movement') {
+    await page.getByRole('button', { name: 'E', exact: true }).click();
+    await waitForFixedMovement(page);
+  }
+
   await page.waitForTimeout(300);
 
   const screenshotPath = path.join(outDir, `${scenario.name}.png`);
@@ -222,6 +259,15 @@ async function waitForFixedWorkbenchReady(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedMovement(page) {
+  await page.waitForFunction(() => {
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    return document.body.dataset.fixedScenario === 'movement' &&
+      !document.body.classList.contains('in-combat') &&
+      latest?.includes('moved E');
+  }, null, { timeout: 20_000 });
+}
+
 async function collectMetrics(page) {
   return page.evaluate(() => {
     const selectorMap = {
@@ -285,9 +331,11 @@ async function collectMetrics(page) {
       skin: document.body.dataset.skin ?? null,
       workbench: document.body.dataset.workbench ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
+      fixedScenario: document.body.dataset.fixedScenario ?? null,
       inCombat: document.body.classList.contains('in-combat'),
       logOpen: document.body.classList.contains('log-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
+      latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
       rects
     };
@@ -327,7 +375,7 @@ function validateMetrics(scenario, metrics) {
       // Fixed skins swap the latest LCD for the full log module when opened.
     } else if (!latest || latest.display === 'none') {
       failures.push('mobile latest message is not visible');
-    } else if (latest.visibleHeight < 56) {
+    } else if (latest.visibleHeight < (isCompactFixedProfile(metrics.fixedProfile) ? 40 : 56)) {
       failures.push(`mobile latest message is too short: ${latest.visibleHeight}px visible`);
     }
 
@@ -436,6 +484,9 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 }
 
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
+  const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
+  const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
+
   if (metrics.workbench !== 'fixed-skin') {
     failures.push(`expected fixed skin workbench mode, got ${metrics.workbench ?? 'none'}`);
   }
@@ -444,12 +495,24 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push('fixed workbench did not select a fixed profile');
   }
 
-  if (!metrics.inCombat) {
+  if (!isMovementScenario && !metrics.inCombat) {
     failures.push('fixed workbench did not render the combat state');
   }
 
+  if (isMovementScenario) {
+    if (metrics.fixedScenario !== 'movement') {
+      failures.push(`expected movement scenario, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (metrics.inCombat) {
+      failures.push('movement scenario is still in combat');
+    }
+    if (!metrics.latestText.includes('moved E')) {
+      failures.push('movement scenario did not move east');
+    }
+  }
+
   const combat = metrics.rects.combatPanel;
-  if (!combat || combat.visibleHeight < 40) {
+  if (!combat || combat.visibleHeight < (isCompactProfile ? 32 : 40)) {
     failures.push(`fixed workbench combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
   }
 
@@ -470,13 +533,17 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!metrics.logOpen) {
       failures.push('fixed workbench log scenario did not open the log drawer');
     }
-    if (!log || log.visibleHeight < 160) {
+    if (!log || log.visibleHeight < (isCompactProfile ? 52 : 160)) {
       failures.push(`fixed workbench open log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
-    if (!firstEntry || firstEntry.visibleHeight < 40) {
+    if (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
     }
   }
+}
+
+function isCompactFixedProfile(fixedProfile) {
+  return fixedProfile === 'reference-mobile' || fixedProfile === 'reference-mobile-v2';
 }
 
 function validateAssetUsage(metrics) {

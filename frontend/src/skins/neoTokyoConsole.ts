@@ -1,5 +1,8 @@
 import type { FixedSkinProfile, GameSkin } from './types';
 
+type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2';
+type FixedButtonAssetName = 'attack' | 'run' | 'dpad' | 'dpad-n' | 'dpad-s' | 'dpad-e' | 'dpad-w' | 'log';
+
 const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
   eager: true,
   query: '?url',
@@ -15,8 +18,8 @@ function fixedAsset(path: string): string {
 }
 
 function fixedButton(
-  profile: 'mobile' | 'desktop',
-  name: 'attack' | 'run' | 'dpad' | 'log'
+  profile: FixedAssetProfile,
+  name: FixedButtonAssetName
 ): Record<'idle' | 'hover' | 'pressed' | 'disabled', string> {
   return {
     idle: fixedAsset(`${profile}/${name}-idle.png`),
@@ -26,7 +29,7 @@ function fixedButton(
   };
 }
 
-function fixedIndicators(profile: 'mobile' | 'desktop') {
+function fixedIndicators(profile: FixedAssetProfile) {
   return {
     status: {
       ready: fixedAsset(`${profile}/status-ready.png`),
@@ -43,6 +46,8 @@ function fixedIndicators(profile: 'mobile' | 'desktop') {
 
 const mobileIndicators = fixedIndicators('mobile');
 const desktopIndicators = fixedIndicators('desktop');
+const referenceMobileIndicators = fixedIndicators('reference-mobile');
+const referenceMobileV2Indicators = fixedIndicators('reference-mobile-v2');
 
 const fixedProfiles: FixedSkinProfile[] = [
   {
@@ -114,6 +119,150 @@ const fixedProfiles: FixedSkinProfile[] = [
       combatLed: {
         rect: { x: 344, y: 672, width: 18, height: 18 },
         states: mobileIndicators.combatLed
+      }
+    }
+  },
+  {
+    id: 'reference-mobile',
+    label: 'Reference Cyberdeck Mobile',
+    width: 390,
+    height: 844,
+    background: fixedAsset('reference-mobile/chassis.png'),
+    regions: {
+      map: { x: 24, y: 45, width: 342, height: 371 },
+      title: { x: 26, y: 538, width: 268, height: 36 },
+      latest: { x: 25, y: 454, width: 276, height: 50 },
+      log: { x: 20, y: 444, width: 292, height: 72 },
+      playerHp: { x: 24, y: 574, width: 340, height: 48 },
+      playerHpFill: { x: 84, y: 594, width: 177, height: 8 },
+      playerStats: { x: 32, y: 614, width: 310, height: 20 },
+      combat: { x: 31, y: 623, width: 318, height: 40 },
+      enemyHpFill: { x: 178, y: 644, width: 112, height: 8 }
+    },
+    buttons: {
+      attack: {
+        rect: { x: 202, y: 646, width: 156, height: 69 },
+        label: 'Attack',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'attack')
+      },
+      run: {
+        rect: { x: 213, y: 723, width: 150, height: 68 },
+        label: 'Run',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'run')
+      },
+      log: {
+        rect: { x: 316, y: 436, width: 43, height: 31 },
+        label: 'Log',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'log')
+      },
+      moveN: {
+        rect: { x: 74, y: 675, width: 55, height: 55 },
+        label: 'N',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'dpad-n')
+      },
+      moveS: {
+        rect: { x: 74, y: 764, width: 55, height: 55 },
+        label: 'S',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'dpad-s')
+      },
+      moveE: {
+        rect: { x: 116, y: 717, width: 55, height: 55 },
+        label: 'E',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'dpad-e')
+      },
+      moveW: {
+        rect: { x: 27, y: 717, width: 55, height: 55 },
+        label: 'W',
+        hideLabel: true,
+        states: fixedButton('reference-mobile', 'dpad-w')
+      }
+    },
+    indicators: {
+      status: {
+        rect: { x: 310, y: 529, width: 52, height: 24 },
+        states: referenceMobileIndicators.status
+      },
+      combatLed: {
+        rect: { x: 344, y: 654, width: 18, height: 18 },
+        states: referenceMobileIndicators.combatLed
+      }
+    }
+  },
+  {
+    id: 'reference-mobile-v2',
+    label: 'Reference Cyberdeck Mobile V2',
+    width: 390,
+    height: 844,
+    background: fixedAsset('reference-mobile-v2/chassis.png'),
+    regions: {
+      map: { x: 31, y: 55, width: 328, height: 353 },
+      title: { x: 27, y: 538, width: 270, height: 36 },
+      latest: { x: 27, y: 456, width: 276, height: 50 },
+      log: { x: 25, y: 452, width: 280, height: 56 },
+      playerHp: { x: 27, y: 574, width: 338, height: 48 },
+      playerHpFill: { x: 84, y: 594, width: 177, height: 8 },
+      playerStats: { x: 32, y: 614, width: 310, height: 20 },
+      combat: { x: 31, y: 623, width: 318, height: 34 },
+      enemyHpFill: { x: 178, y: 644, width: 112, height: 8 }
+    },
+    buttons: {
+      attack: {
+        rect: { x: 202, y: 646, width: 156, height: 69 },
+        label: 'Attack',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'attack')
+      },
+      run: {
+        rect: { x: 213, y: 723, width: 150, height: 68 },
+        label: 'Run',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'run')
+      },
+      log: {
+        rect: { x: 316, y: 436, width: 43, height: 31 },
+        label: 'Log',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'log')
+      },
+      moveN: {
+        rect: { x: 74, y: 675, width: 55, height: 55 },
+        label: 'N',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'dpad-n')
+      },
+      moveS: {
+        rect: { x: 74, y: 764, width: 55, height: 55 },
+        label: 'S',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'dpad-s')
+      },
+      moveE: {
+        rect: { x: 116, y: 717, width: 55, height: 55 },
+        label: 'E',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'dpad-e')
+      },
+      moveW: {
+        rect: { x: 27, y: 717, width: 55, height: 55 },
+        label: 'W',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'dpad-w')
+      }
+    },
+    indicators: {
+      status: {
+        rect: { x: 310, y: 529, width: 52, height: 24 },
+        states: referenceMobileV2Indicators.status
+      },
+      combatLed: {
+        rect: { x: 344, y: 654, width: 18, height: 18 },
+        states: referenceMobileV2Indicators.combatLed
       }
     }
   },

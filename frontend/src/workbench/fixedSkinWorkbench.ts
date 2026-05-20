@@ -5,6 +5,7 @@ import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkin
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
+type FixedWorkbenchScenario = 'combat' | 'movement';
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
@@ -36,18 +37,20 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
     throw new Error(`Skin ${skin.id} does not define fixed profiles`);
   }
   const profile = selectedProfile;
+  const scenario = selectScenario();
 
   document.body.classList.add('workbench-mode', 'fixed-workbench-mode');
   document.body.dataset.workbench = 'fixed-skin';
   document.body.dataset.fixedProfile = profile.id;
+  document.body.dataset.fixedScenario = scenario;
 
   const app = document.getElementById('app');
   if (!app) {
     throw new Error('Missing #app');
   }
 
-  let state = createWorkbenchState();
-  let logs = [...WORKBENCH_LOGS].reverse();
+  let state = createInitialState(scenario);
+  let logs = createInitialLogs(scenario);
   let logOpen = false;
   const stage = buildStage(app, profile);
   const scene = new RogueScene(skin.map);
@@ -105,7 +108,43 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
     return profiles.find((profile) => profile.id === 'desktop-wide') ?? profiles[0] ?? null;
   }
 
-  return profiles.find((profile) => profile.id === 'mobile-portrait') ?? profiles[0] ?? null;
+  return (
+    profiles.find((profile) => profile.id === 'reference-mobile-v2') ??
+    profiles.find((profile) => profile.id === 'mobile-portrait') ??
+    profiles[0] ??
+    null
+  );
+}
+
+function selectScenario(): FixedWorkbenchScenario {
+  return new URLSearchParams(window.location.search).get('scenario') === 'movement' ? 'movement' : 'combat';
+}
+
+function createInitialState(scenario: FixedWorkbenchScenario): GameState {
+  const state = createWorkbenchState();
+  if (scenario === 'combat') {
+    return state;
+  }
+
+  const explored = state.explored.map((row) => [...row]);
+  explored[3][5] = true;
+  return {
+    ...state,
+    player_pos_prev: state.player_pos,
+    player_pos: [5, 3],
+    explored,
+    in_combat: false,
+    current_enemy: null
+  };
+}
+
+function createInitialLogs(scenario: FixedWorkbenchScenario): string[] {
+  const baseLogs = [...WORKBENCH_LOGS].reverse();
+  if (scenario === 'combat') {
+    return baseLogs;
+  }
+
+  return ['Movement test: D-pad is unlocked; tap an arrow to verify movement hitboxes.', ...baseLogs];
 }
 
 function buildStage(app: HTMLElement, profile: FixedSkinProfile): HTMLElement {
@@ -186,16 +225,18 @@ function createButton(buttonId: FixedButtonId, button: FixedSkinButton): HTMLBut
   element.setAttribute('aria-label', button.label);
   applyRect(element, button.rect);
 
-  if (button.icon) {
+  if (!button.hideLabel && button.icon) {
     const icon = document.createElement('i');
     icon.className = button.icon;
     icon.setAttribute('aria-hidden', 'true');
     element.append(icon);
   }
 
-  const label = document.createElement('span');
-  label.textContent = button.label;
-  element.append(label);
+  if (!button.hideLabel) {
+    const label = document.createElement('span');
+    label.textContent = button.label;
+    element.append(label);
+  }
   setButtonVisual(element, button, 'idle');
   return element;
 }

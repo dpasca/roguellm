@@ -24,6 +24,7 @@ export interface FixedSkinButton {
   rect: FixedSkinRect;
   label: string;
   icon?: string;
+  hideLabel?: boolean;
   states: Record<FixedSkinButtonState, string>;
 }
 
