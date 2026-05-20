@@ -53,6 +53,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'mobile-portrait',
     label: 'Mobile Portrait Cyberdeck',
+    kind: 'mobilePortrait',
     width: 390,
     height: 844,
     background: fixedAsset('mobile/chassis.png'),
@@ -125,6 +126,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'reference-mobile',
     label: 'Reference Cyberdeck Mobile',
+    kind: 'mobilePortrait',
     width: 390,
     height: 844,
     background: fixedAsset('reference-mobile/chassis.png'),
@@ -197,6 +199,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'reference-mobile-v2',
     label: 'Reference Cyberdeck Mobile V2',
+    kind: 'mobilePortrait',
     width: 390,
     height: 844,
     background: fixedAsset('reference-mobile-v2/chassis.png'),
@@ -269,6 +272,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'desktop-wide',
     label: 'Desktop Wide Cyberdeck',
+    kind: 'desktopWide',
     width: 1280,
     height: 900,
     background: fixedAsset('desktop/chassis.png'),

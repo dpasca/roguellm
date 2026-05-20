@@ -5,7 +5,7 @@ import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkin
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
-type FixedWorkbenchScenario = 'combat' | 'movement';
+type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics';
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
@@ -52,7 +52,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   let state = createInitialState(scenario);
   let logs = createInitialLogs(scenario);
   let logOpen = false;
-  const stage = buildStage(app, profile);
+  const stage = buildStage(app, profile, scenario);
   const scene = new RogueScene(skin.map);
   const game = createFixedGame(scene, skin, profile);
   const buttons = bindButtons(profile, (buttonId) => {
@@ -105,24 +105,25 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
   }
 
   if (window.innerWidth >= 900) {
-    return profiles.find((profile) => profile.id === 'desktop-wide') ?? profiles[0] ?? null;
+    return profiles.find((profile) => profile.kind === 'desktopWide') ?? profiles[0] ?? null;
   }
 
   return (
     profiles.find((profile) => profile.id === 'reference-mobile-v2') ??
-    profiles.find((profile) => profile.id === 'mobile-portrait') ??
+    profiles.find((profile) => profile.kind === 'mobilePortrait') ??
     profiles[0] ??
     null
   );
 }
 
 function selectScenario(): FixedWorkbenchScenario {
-  return new URLSearchParams(window.location.search).get('scenario') === 'movement' ? 'movement' : 'combat';
+  const scenario = new URLSearchParams(window.location.search).get('scenario');
+  return scenario === 'movement' || scenario === 'diagnostics' ? scenario : 'combat';
 }
 
 function createInitialState(scenario: FixedWorkbenchScenario): GameState {
   const state = createWorkbenchState();
-  if (scenario === 'combat') {
+  if (scenario === 'combat' || scenario === 'diagnostics') {
     return state;
   }
 
@@ -144,10 +145,14 @@ function createInitialLogs(scenario: FixedWorkbenchScenario): string[] {
     return baseLogs;
   }
 
+  if (scenario === 'diagnostics') {
+    return ['Diagnostics: every fixed skin sprite state is visible in the map aperture.', ...baseLogs];
+  }
+
   return ['Movement test: D-pad is unlocked; tap an arrow to verify movement hitboxes.', ...baseLogs];
 }
 
-function buildStage(app: HTMLElement, profile: FixedSkinProfile): HTMLElement {
+function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: FixedWorkbenchScenario): HTMLElement {
   app.replaceChildren();
 
   const viewport = document.createElement('main');
@@ -191,6 +196,10 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile): HTMLElement {
   const log = stage.querySelector('#log-panel');
   log?.append(el('h2', 'fixed-region-label', 'Log'), el('div', 'game-log fixed-game-log', '', 'game-log'));
 
+  if (scenario === 'diagnostics') {
+    stage.querySelector('#game-canvas')?.append(buildDiagnosticsBoard(profile));
+  }
+
   for (const [buttonId, button] of Object.entries(profile.buttons) as [FixedButtonId, FixedSkinButton][]) {
     stage.append(createButton(buttonId, button));
   }
@@ -198,6 +207,70 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile): HTMLElement {
   viewport.append(stage);
   app.append(viewport);
   return stage;
+}
+
+function buildDiagnosticsBoard(profile: FixedSkinProfile): HTMLElement {
+  const board = document.createElement('div');
+  board.className = 'fixed-diagnostics-board';
+  board.dataset.diagnostics = 'fixed-skin';
+
+  const heading = document.createElement('h2');
+  heading.textContent = `${profile.label} diagnostics`;
+
+  const grid = document.createElement('div');
+  grid.className = 'fixed-diagnostics-grid';
+  appendDiagnosticHeader(grid);
+
+  for (const [buttonId, button] of Object.entries(profile.buttons) as [FixedButtonId, FixedSkinButton][]) {
+    appendDiagnosticRow(grid, buttonId, [
+      button.states.idle,
+      button.states.hover,
+      button.states.pressed,
+      button.states.disabled
+    ]);
+  }
+
+  appendDiagnosticRow(grid, 'status', [
+    profile.indicators.status.states.ready,
+    profile.indicators.status.states.thinking,
+    profile.indicators.status.states.error,
+    profile.indicators.status.states.offline
+  ]);
+  appendDiagnosticRow(grid, 'combatLed', [
+    profile.indicators.combatLed.states.on,
+    profile.indicators.combatLed.states.off
+  ]);
+
+  board.append(heading, grid);
+  return board;
+}
+
+function appendDiagnosticHeader(grid: HTMLElement): void {
+  for (const label of ['Widget', 'Idle', 'Hover', 'Pressed', 'Disabled']) {
+    const cell = document.createElement('strong');
+    cell.textContent = label;
+    grid.append(cell);
+  }
+}
+
+function appendDiagnosticRow(grid: HTMLElement, label: string, assets: (string | undefined)[]): void {
+  const name = document.createElement('span');
+  name.className = 'fixed-diagnostic-name';
+  name.textContent = label;
+  grid.append(name);
+
+  for (let index = 0; index < 4; index += 1) {
+    const cell = document.createElement('span');
+    cell.className = 'fixed-diagnostic-asset';
+    const asset = assets[index];
+    if (asset) {
+      const image = document.createElement('img');
+      image.src = asset;
+      image.alt = `${label} state ${index + 1}`;
+      cell.append(image);
+    }
+    grid.append(cell);
+  }
 }
 
 function region(id: string, className: string, rect: FixedSkinRect): HTMLElement {

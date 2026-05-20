@@ -18,6 +18,8 @@ export interface FixedSkinRect {
   height: number;
 }
 
+export type FixedSkinProfileKind = 'mobilePortrait' | 'desktopWide';
+
 export type FixedSkinButtonState = 'idle' | 'hover' | 'pressed' | 'disabled';
 
 export interface FixedSkinButton {
@@ -38,6 +40,7 @@ export interface FixedSkinIndicator {
 export interface FixedSkinProfile {
   id: string;
   label: string;
+  kind: FixedSkinProfileKind;
   width: number;
   height: number;
   background: string;

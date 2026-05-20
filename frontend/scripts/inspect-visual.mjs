@@ -91,6 +91,12 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=movement`
   },
   {
+    name: 'mobile-reference-v2-fixed-workbench-diagnostics',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-diagnostics',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=diagnostics`
+  },
+  {
     name: 'desktop-ready',
     viewport: { width: 1280, height: 900 },
     mode: 'ready'
@@ -187,6 +193,10 @@ async function runScenario(page, scenario) {
     await waitForFixedMovement(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-diagnostics') {
+    await waitForFixedDiagnostics(page);
+  }
+
   await page.waitForTimeout(300);
 
   const screenshotPath = path.join(outDir, `${scenario.name}.png`);
@@ -268,6 +278,13 @@ async function waitForFixedMovement(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedDiagnostics(page) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.fixedScenario === 'diagnostics' &&
+      document.querySelectorAll('.fixed-diagnostics-board img').length >= 30;
+  }, null, { timeout: 20_000 });
+}
+
 async function collectMetrics(page) {
   return page.evaluate(() => {
     const selectorMap = {
@@ -287,7 +304,8 @@ async function collectMetrics(page) {
       attackButton: '#attack',
       runButton: '#run',
       moveEastButton: '#move-e',
-      endStateOverlay: '#end-state-overlay'
+      endStateOverlay: '#end-state-overlay',
+      diagnosticsBoard: '.fixed-diagnostics-board'
     };
 
     const rectFor = (selector) => {
@@ -337,6 +355,7 @@ async function collectMetrics(page) {
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
+      diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       rects
     };
   });
@@ -486,6 +505,7 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
+  const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
 
   if (metrics.workbench !== 'fixed-skin') {
     failures.push(`expected fixed skin workbench mode, got ${metrics.workbench ?? 'none'}`);
@@ -508,6 +528,19 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!metrics.latestText.includes('moved E')) {
       failures.push('movement scenario did not move east');
+    }
+  }
+
+  if (isDiagnosticsScenario) {
+    if (metrics.fixedScenario !== 'diagnostics') {
+      failures.push(`expected diagnostics scenario, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (metrics.diagnosticAssetCount < 30) {
+      failures.push(`diagnostics board is missing assets: ${metrics.diagnosticAssetCount}`);
+    }
+    const diagnostics = metrics.rects.diagnosticsBoard;
+    if (!diagnostics || diagnostics.visibleHeight < 240 || diagnostics.visibleWidth < 300) {
+      failures.push(`diagnostics board is too small: ${diagnostics?.visibleWidth ?? 0}x${diagnostics?.visibleHeight ?? 0}`);
     }
   }
 
