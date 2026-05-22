@@ -981,6 +981,24 @@ async function collectMetrics(page) {
       Object.entries(selectorMap).map(([name, selector]) => [name, rectFor(selector)])
     );
 
+    const collectMapIconStacks = () => {
+      const groups = new Map();
+      for (const icon of document.querySelectorAll('.map-icon-overlay i[data-map-role]')) {
+        const box = icon.getBoundingClientRect();
+        const tile = `${icon.dataset.mapX},${icon.dataset.mapY}`;
+        const entry = {
+          role: icon.dataset.mapRole,
+          centerX: Math.round(box.left + box.width / 2),
+          centerY: Math.round(box.top + box.height / 2)
+        };
+        groups.set(tile, [...(groups.get(tile) ?? []), entry]);
+      }
+
+      return Array.from(groups.entries())
+        .filter(([, icons]) => icons.length > 1)
+        .map(([tile, icons]) => ({ tile, icons }));
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1009,6 +1027,7 @@ async function collectMetrics(page) {
       unsafeMarkupCount: document.querySelectorAll('#fixed-title img, #fixed-title script, #fixed-player-stats b, #game-log script, #enemy-name script').length,
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
+      mapIconStacks: collectMapIconStacks(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
         runDisabled: document.getElementById('run')?.disabled ?? null,
@@ -1121,6 +1140,31 @@ function validateMetrics(scenario, metrics) {
   }
 
   failures.push(...validateAssetUsage(metrics));
+  failures.push(...validateMapIconStacking(metrics));
+  return failures;
+}
+
+function validateMapIconStacking(metrics) {
+  const failures = [];
+
+  for (const stack of metrics.mapIconStacks ?? []) {
+    const cell = stack.icons.find((icon) => icon.role === 'cell');
+    if (!cell) {
+      continue;
+    }
+
+    for (const icon of stack.icons) {
+      if (icon.role === 'cell') {
+        continue;
+      }
+
+      const delta = Math.hypot(icon.centerX - cell.centerX, icon.centerY - cell.centerY);
+      if (delta < 4) {
+        failures.push(`map ${icon.role} icon overlaps cell icon center at ${stack.tile}: delta=${delta.toFixed(1)}px`);
+      }
+    }
+  }
+
   return failures;
 }
 

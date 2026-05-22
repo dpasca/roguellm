@@ -119,10 +119,16 @@ button:disabled {
 
 .map-icon-overlay .item-map-icon {
   color: var(--skin-warning);
+  text-shadow:
+    0 0 5px color-mix(in srgb, var(--skin-warning) 54%, transparent),
+    0 2px 3px rgba(0, 0, 0, 0.78);
 }
 
 .map-icon-overlay .enemy-map-icon {
   color: var(--skin-danger);
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--skin-danger) 56%, transparent),
+    0 2px 3px rgba(0, 0, 0, 0.78);
 }
 
 .map-icon-overlay .enemy-map-icon.defeated {

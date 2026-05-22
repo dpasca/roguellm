@@ -7,6 +7,8 @@ export interface TileLayout {
   tileSize: number;
 }
 
+type IconSlot = 'cell' | 'item' | 'enemy';
+
 export class IconOverlay {
   private readonly root: HTMLDivElement;
 
@@ -31,7 +33,8 @@ export class IconOverlay {
           x,
           y,
           layout,
-          'cell-map-icon'
+          'cell-map-icon',
+          'cell'
         ));
       }
     }
@@ -46,7 +49,8 @@ export class IconOverlay {
         item.x,
         item.y,
         layout,
-        'item-map-icon'
+        'item-map-icon',
+        'item'
       ));
     }
 
@@ -60,7 +64,8 @@ export class IconOverlay {
         enemy.x,
         enemy.y,
         layout,
-        enemy.is_defeated ? 'enemy-map-icon defeated' : 'enemy-map-icon'
+        enemy.is_defeated ? 'enemy-map-icon defeated' : 'enemy-map-icon',
+        'enemy'
       ));
     }
 
@@ -72,17 +77,34 @@ export class IconOverlay {
     x: number,
     y: number,
     layout: TileLayout,
-    extraClass: string
+    extraClass: string,
+    slot: IconSlot
   ): HTMLElement {
     const icon = document.createElement('i');
     icon.className = `${iconClass} ${extraClass}`;
-    const centerX = layout.originX + x * layout.tileSize + layout.tileSize / 2;
-    const centerY = layout.originY + y * layout.tileSize + layout.tileSize / 2;
+    const { offsetX, offsetY, scale } = iconSlotLayout(slot);
+    const centerX = layout.originX + x * layout.tileSize + layout.tileSize * (0.5 + offsetX);
+    const centerY = layout.originY + y * layout.tileSize + layout.tileSize * (0.5 + offsetY);
 
     icon.style.left = `${centerX}px`;
     icon.style.top = `${centerY}px`;
-    icon.style.fontSize = `${Math.max(12, Math.floor(layout.tileSize * 0.42))}px`;
+    icon.style.fontSize = `${Math.max(10, Math.floor(layout.tileSize * scale))}px`;
+    icon.dataset.mapX = String(x);
+    icon.dataset.mapY = String(y);
+    icon.dataset.mapRole = slot;
     icon.setAttribute('aria-hidden', 'true');
     return icon;
+  }
+}
+
+function iconSlotLayout(slot: IconSlot): { offsetX: number; offsetY: number; scale: number } {
+  switch (slot) {
+    case 'item':
+      return { offsetX: 0.22, offsetY: 0.22, scale: 0.32 };
+    case 'enemy':
+      return { offsetX: 0.22, offsetY: -0.22, scale: 0.34 };
+    case 'cell':
+    default:
+      return { offsetX: 0, offsetY: 0, scale: 0.42 };
   }
 }
