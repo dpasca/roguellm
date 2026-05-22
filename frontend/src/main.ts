@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 import './styles.css';
 import { RogueScene } from './game/RogueScene';
 import { GameSocketClient } from './protocol/socketClient';
