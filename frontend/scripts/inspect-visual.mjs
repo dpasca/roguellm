@@ -8,8 +8,13 @@ const DEFAULT_FIXED_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workb
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
 const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
 const fixedWorkbenchUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
+const withQueryParams = (url, params) => {
+  const search = new URLSearchParams(params).toString();
+  return `${url}${url.includes('?') ? '&' : '?'}${search}`;
+};
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
+const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: 'gold-mobile' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -59,6 +64,12 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-log',
     url: fixedWorkbenchUrl
+  },
+  {
+    name: 'mobile-fixed-runtime-ready',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-ready',
+    url: fixedRuntimeUrl
   },
   {
     name: 'mobile-gold-fixed-workbench-movement',
@@ -202,6 +213,8 @@ async function runScenario(page, scenario) {
   await page.goto(scenario.url ?? entryUrl, { waitUntil: 'domcontentloaded' });
   if (scenario.mode.startsWith('fixed-workbench')) {
     await waitForFixedWorkbenchReady(page);
+  } else if (scenario.mode.startsWith('fixed-runtime')) {
+    await waitForFixedRuntimeReady(page);
   } else if (scenario.mode.startsWith('workbench')) {
     await waitForWorkbenchReady(page);
   } else {
@@ -307,6 +320,18 @@ async function waitForFixedWorkbenchReady(page) {
     return document.body.dataset.workbench === 'fixed-skin' &&
       document.body.classList.contains('fixed-workbench-mode') &&
       status &&
+      latest &&
+      latest !== 'Connecting...';
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedRuntimeReady(page) {
+  await page.waitForFunction(() => {
+    const status = document.getElementById('connection-status')?.textContent?.trim();
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    return document.body.dataset.ui === 'fixed-skin' &&
+      document.body.classList.contains('fixed-runtime-mode') &&
+      status === 'READY' &&
       latest &&
       latest !== 'Connecting...';
   }, null, { timeout: 20_000 });
@@ -427,6 +452,7 @@ async function collectMetrics(page) {
       overflowsX: document.documentElement.scrollWidth > innerWidth,
       skin: document.body.dataset.skin ?? null,
       workbench: document.body.dataset.workbench ?? null,
+      ui: document.body.dataset.ui ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       inCombat: document.body.classList.contains('in-combat'),
@@ -456,6 +482,7 @@ function validateMetrics(scenario, metrics) {
   const failures = [];
   const isMobile = scenario.viewport.width <= 860;
   const isFixedWorkbench = scenario.mode.startsWith('fixed-workbench');
+  const isFixedUi = isFixedWorkbench || scenario.mode.startsWith('fixed-runtime');
 
   if (metrics.skin !== 'neo-tokyo-console') {
     failures.push(`expected neo-tokyo-console skin, got ${metrics.skin ?? 'none'}`);
@@ -481,7 +508,7 @@ function validateMetrics(scenario, metrics) {
 
   if (isMobile) {
     const latest = metrics.rects.latestMessage;
-    if (isFixedWorkbench && metrics.logOpen) {
+    if (isFixedUi && metrics.logOpen) {
       // Fixed skins swap the latest LCD for the full log module when opened.
     } else if (!latest || latest.display === 'none') {
       failures.push('mobile latest message is not visible');
@@ -489,7 +516,7 @@ function validateMetrics(scenario, metrics) {
       failures.push(`mobile latest message is too short: ${latest.visibleHeight}px visible`);
     }
 
-    if (!isFixedWorkbench) {
+    if (!isFixedUi) {
       const log = metrics.rects.logPanel;
       if (!log || log.display === 'none') {
         failures.push('mobile log drawer is missing from DOM');
@@ -535,8 +562,41 @@ function validateMetrics(scenario, metrics) {
     validateFixedWorkbenchScenario(scenario, metrics, failures);
   }
 
+  if (scenario.mode.startsWith('fixed-runtime')) {
+    validateFixedRuntimeScenario(metrics, failures);
+  }
+
   failures.push(...validateAssetUsage(metrics));
   return failures;
+}
+
+function validateFixedRuntimeScenario(metrics, failures) {
+  if (metrics.ui !== 'fixed-skin') {
+    failures.push(`expected fixed-skin runtime ui, got ${metrics.ui ?? 'none'}`);
+  }
+
+  if (metrics.workbench) {
+    failures.push(`fixed runtime should not be in workbench mode: ${metrics.workbench}`);
+  }
+
+  if (metrics.fixedProfile !== 'gold-mobile') {
+    failures.push(`expected gold-mobile runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
+  }
+
+  if (metrics.statusText !== 'READY') {
+    failures.push(`expected fixed runtime READY status, got ${metrics.statusText}`);
+  }
+
+  if (metrics.latestTextLength < 30) {
+    failures.push('fixed runtime latest message is too short to inspect');
+  }
+
+  const map = metrics.rects.map;
+  if (!map || map.visibleWidth < 300 || map.visibleHeight < 250) {
+    failures.push(`fixed runtime map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
+  }
+
+  validateGoldMobileLayout(metrics, failures);
 }
 
 function validateCombatScenario(metrics, failures) {

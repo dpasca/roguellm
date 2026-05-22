@@ -5,10 +5,20 @@ import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
 import { applySkin } from './skins/applySkin';
 import { getSkinFromLocation } from './skins/registry';
+import type { GameSkin } from './skins/types';
 import { HudController } from './ui/hud';
-import { isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
+import { createFixedSkinRuntime, isFixedSkinRuntime, isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
 import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
+
+interface RuntimeUi {
+  scene: RogueScene;
+  render(state: GameState): void;
+  setActionPending(pending: boolean): void;
+  setConnectionStatus(status: string): void;
+  addLog(message: string): void;
+  destroy(): void;
+}
 
 const activeSkin = getSkinFromLocation();
 applySkin(activeSkin);
@@ -26,7 +36,7 @@ if (isFixedSkinWorkbench()) {
       const gameUrl = new URL('/game2', getBackendOrigin());
       gameUrl.searchParams.set('game_id', generatorId);
       const currentParams = new URLSearchParams(window.location.search);
-      for (const paramName of ['fixture', 'skin']) {
+      for (const paramName of ['fixture', 'skin', 'ui', 'fixed_skin', 'profile']) {
         const paramValue = currentParams.get(paramName);
         if (paramValue) {
           gameUrl.searchParams.set(paramName, paramValue);
@@ -41,67 +51,34 @@ if (isFixedSkinWorkbench()) {
     throw new Error('Missing game session id');
   }
 
-  const scene = new RogueScene(activeSkin.map);
-  const canvasParent = document.getElementById('game-canvas');
-  const initialWidth = Math.max(320, canvasParent?.clientWidth ?? 960);
-  const initialHeight = Math.max(240, canvasParent?.clientHeight ?? 640);
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: 'game-canvas',
-    backgroundColor: activeSkin.map.canvasBackground,
-    scale: {
-      mode: Phaser.Scale.NONE,
-      parent: 'game-canvas',
-      width: initialWidth,
-      height: initialHeight
-    },
-    render: {
-      antialias: false,
-      pixelArt: true
-    },
-    scene
-  });
-
-  if (canvasParent) {
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      const width = Math.floor(entry.contentRect.width);
-      const height = Math.floor(entry.contentRect.height);
-      if (width > 0 && height > 0) {
-        game.scale.resize(width, height);
-      }
-    });
-    resizeObserver.observe(canvasParent);
-
-    window.addEventListener('beforeunload', () => {
-      resizeObserver.disconnect();
-    });
-  }
-
   let currentState: GameState | null = null;
   let actionPending = false;
   let nextClientActionId = 1;
   let pendingActionId: number | null = null;
+  const ui = isFixedSkinRuntime() && activeSkin.fixedProfiles
+    ? createFixedSkinRuntime(activeSkin, handleUserAction)
+    : createResponsiveRuntimeUi(activeSkin, handleUserAction);
 
   const socket = new GameSocketClient(sessionId, {
     onOpen() {
-      hud.setConnectionStatus('online');
+      ui.setConnectionStatus('online');
     },
     onClose() {
       actionPending = false;
-      hud.setActionPending(false);
-      hud.setConnectionStatus('closed');
+      ui.setActionPending(false);
+      ui.setConnectionStatus('closed');
     },
     onError() {
       actionPending = false;
-      hud.setActionPending(false);
-      hud.setConnectionStatus('error');
+      ui.setActionPending(false);
+      ui.setConnectionStatus('error');
     },
     onMessage(message) {
       handleServerMessage(message);
     }
   });
 
-  const hud = new HudController((action) => {
+  function handleUserAction(action: GameAction): void {
     if (actionPending && action.action !== 'restart') {
       return;
     }
@@ -111,36 +88,36 @@ if (isFixedSkinWorkbench()) {
     if (isGameplayAction(action)) {
       actionPending = true;
       pendingActionId = actionToSend.client_action_id ?? null;
-      hud.setActionPending(true);
-      hud.setConnectionStatus(optimistic ? 'revealing' : 'thinking');
+      ui.setActionPending(true);
+      ui.setConnectionStatus(optimistic ? 'revealing' : 'thinking');
       if (action.action === 'run') {
-        hud.addLog('Trying to break away...');
+        ui.addLog('Trying to break away...');
       }
     }
 
     socket.send(actionToSend);
-  });
+  }
 
   function handleServerMessage(message: GameServerMessage): void {
     switch (message.type) {
       case 'connection_established':
-        hud.setConnectionStatus('ready');
+        ui.setConnectionStatus('ready');
         socket.send({ action: 'get_initial_state' });
         break;
       case 'status':
         actionPending = false;
-        hud.setActionPending(false);
-        hud.setConnectionStatus(message.status);
-        hud.addLog(message.message);
+        ui.setActionPending(false);
+        ui.setConnectionStatus(message.status);
+        ui.addLog(message.message);
         if (message.status === 'ready') {
           socket.send({ action: 'get_initial_state' });
         }
         break;
       case 'error':
         actionPending = false;
-        hud.setActionPending(false);
-        hud.setConnectionStatus('error');
-        hud.addLog(message.message);
+        ui.setActionPending(false);
+        ui.setConnectionStatus('error');
+        ui.addLog(message.message);
         break;
       case 'update':
         if (isStaleActionResponse(message)) {
@@ -148,13 +125,12 @@ if (isFixedSkinWorkbench()) {
         }
         actionPending = false;
         pendingActionId = null;
-        hud.setActionPending(false);
+        ui.setActionPending(false);
         currentState = message.state;
-        scene.renderGameState(message.state);
-        hud.render(message.state);
-        hud.setConnectionStatus('ready');
+        ui.render(message.state);
+        ui.setConnectionStatus('ready');
         if (message.description) {
-          hud.addLog(message.description);
+          ui.addLog(message.description);
         }
         break;
     }
@@ -193,8 +169,7 @@ if (isFixedSkinWorkbench()) {
     nextState.explored[nextY][nextX] = true;
     currentState = nextState;
 
-    scene.renderGameState(nextState);
-    hud.render(nextState);
+    ui.render(nextState);
     return true;
   }
 
@@ -229,6 +204,63 @@ if (isFixedSkinWorkbench()) {
 
   window.addEventListener('beforeunload', () => {
     socket.close();
-    game.destroy(false);
+    ui.destroy();
   });
+}
+
+function createResponsiveRuntimeUi(skin: GameSkin, onAction: (action: GameAction) => void): RuntimeUi {
+  const scene = new RogueScene(skin.map);
+  const canvasParent = document.getElementById('game-canvas');
+  const initialWidth = Math.max(320, canvasParent?.clientWidth ?? 960);
+  const initialHeight = Math.max(240, canvasParent?.clientHeight ?? 640);
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game-canvas',
+    backgroundColor: skin.map.canvasBackground,
+    scale: {
+      mode: Phaser.Scale.NONE,
+      parent: 'game-canvas',
+      width: initialWidth,
+      height: initialHeight
+    },
+    render: {
+      antialias: false,
+      pixelArt: true
+    },
+    scene
+  });
+  const hud = new HudController(onAction);
+  let resizeObserver: ResizeObserver | null = null;
+
+  if (canvasParent) {
+    resizeObserver = new ResizeObserver(([entry]) => {
+      const width = Math.floor(entry.contentRect.width);
+      const height = Math.floor(entry.contentRect.height);
+      if (width > 0 && height > 0) {
+        game.scale.resize(width, height);
+      }
+    });
+    resizeObserver.observe(canvasParent);
+  }
+
+  return {
+    scene,
+    render(state: GameState): void {
+      scene.renderGameState(state);
+      hud.render(state);
+    },
+    setActionPending(pending: boolean): void {
+      hud.setActionPending(pending);
+    },
+    setConnectionStatus(status: string): void {
+      hud.setConnectionStatus(status);
+    },
+    addLog(message: string): void {
+      hud.addLog(message);
+    },
+    destroy(): void {
+      resizeObserver?.disconnect();
+      game.destroy(false);
+    }
+  };
 }

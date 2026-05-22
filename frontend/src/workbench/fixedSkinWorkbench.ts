@@ -28,9 +28,107 @@ const domIds: Record<FixedButtonId, string> = {
   restart: 'restart'
 };
 
+export interface FixedSkinRuntimeUi {
+  scene: RogueScene;
+  render(state: GameState): void;
+  setActionPending(pending: boolean): void;
+  setConnectionStatus(status: string): void;
+  addLog(message: string): void;
+  destroy(): void;
+}
+
 export function isFixedSkinWorkbench(): boolean {
   const params = new URLSearchParams(window.location.search);
   return params.get('workbench') === 'fixed-skin' || params.get('bench') === 'fixed-skin';
+}
+
+export function isFixedSkinRuntime(location: Location = window.location): boolean {
+  const params = new URL(location.href).searchParams;
+  return params.get('ui') === 'fixed-skin' || params.get('fixed_skin') === '1';
+}
+
+export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAction) => void): FixedSkinRuntimeUi {
+  const selectedProfile = selectProfile(skin);
+  if (!selectedProfile) {
+    throw new Error(`Skin ${skin.id} does not define fixed profiles`);
+  }
+  const profile = selectedProfile;
+
+  document.body.classList.add('fixed-runtime-mode', 'fixed-workbench-mode');
+  document.body.dataset.ui = 'fixed-skin';
+  document.body.dataset.fixedProfile = profile.id;
+
+  const app = document.getElementById('app');
+  if (!app) {
+    throw new Error('Missing #app');
+  }
+
+  let currentState: GameState | null = null;
+  let logs: string[] = [];
+  let logOpen = false;
+  let actionPending = false;
+  let connectionStatus = 'offline';
+  const stage = buildStage(app, profile, 'combat');
+  const scene = new RogueScene(skin.map);
+  const game = createFixedGame(scene, skin, profile);
+  const buttons = bindButtons(profile, (buttonId) => {
+    if (buttonId === 'log') {
+      logOpen = !logOpen;
+      renderAll();
+      return;
+    }
+
+    const action = buttonActions[buttonId];
+    if (action) {
+      onAction(action);
+    }
+  });
+
+  const resize = () => fitStage(stage, profile);
+  window.addEventListener('resize', resize);
+  resize();
+  renderAll();
+
+  return {
+    scene,
+    render(state: GameState): void {
+      currentState = state;
+      renderAll();
+    },
+    setActionPending(pending: boolean): void {
+      actionPending = pending;
+      renderAll();
+    },
+    setConnectionStatus(status: string): void {
+      connectionStatus = status;
+      renderAll();
+    },
+    addLog(message: string): void {
+      if (!message.trim()) {
+        return;
+      }
+      logs = [message, ...logs].slice(0, 40);
+      renderAll();
+    },
+    destroy(): void {
+      window.removeEventListener('resize', resize);
+      game.destroy(false);
+    }
+  };
+
+  function renderAll(): void {
+    applyFixedStateClasses(stage, currentState, logOpen);
+    renderStatusIndicator(profile, connectionStatus);
+    renderLogs(logs, logOpen);
+
+    if (!currentState) {
+      return;
+    }
+
+    scene.renderGameState(currentState);
+    renderTextState(profile, currentState, logs, logOpen, connectionStatus);
+    renderButtonState(profile, buttons, currentState, actionPending);
+  }
 }
 
 export function startFixedSkinWorkbench(skin: GameSkin): void {
@@ -85,13 +183,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   });
 
   function renderAll(): void {
-    document.body.classList.toggle('in-combat', state.in_combat);
-    document.body.classList.toggle('game-ended', isTerminalState(state));
-    stage.classList.toggle('fixed-terminal-state', isTerminalState(state));
-    stage.classList.toggle('fixed-victory-state', state.game_won);
-    stage.classList.toggle('fixed-defeat-state', state.game_over || state.player_hp <= 0);
-    document.body.classList.toggle('log-open', logOpen);
-    document.body.classList.toggle('fixed-log-open', logOpen);
+    applyFixedStateClasses(stage, state, logOpen);
     scene.renderGameState(state);
     renderTextState(profile, state, logs, logOpen);
     renderButtonState(profile, buttons, state);
@@ -436,9 +528,15 @@ function createFixedGame(scene: RogueScene, skin: GameSkin, profile: FixedSkinPr
   return game;
 }
 
-function renderTextState(profile: FixedSkinProfile, state: GameState, logs: string[], logOpen: boolean): void {
+function renderTextState(
+  profile: FixedSkinProfile,
+  state: GameState,
+  logs: string[],
+  logOpen: boolean,
+  connectionStatus?: string
+): void {
   setHtml('fixed-title', `<p>RogueLLM</p><h1><i class="${state.player.font_awesome_icon ?? 'fa-solid fa-user-secret'}"></i>${state.game_title}</h1>`);
-  setText('connection-status', state.in_combat ? 'READY' : 'OPEN');
+  renderStatusIndicator(profile, connectionStatus ?? (state.in_combat ? 'ready' : 'open'));
   setText('latest-message', logs[0] ?? '');
   setText('player-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
   setHtml(
@@ -457,8 +555,6 @@ function renderTextState(profile: FixedSkinProfile, state: GameState, logs: stri
   renderEndState(state);
   renderLogs(logs, logOpen);
 
-  const status = document.getElementById('connection-status');
-  status?.style.setProperty('background-image', `url("${profile.indicators.status.states.ready}")`);
   const led = document.getElementById('fixed-combat-led');
   led?.style.setProperty(
     'background-image',
@@ -469,7 +565,8 @@ function renderTextState(profile: FixedSkinProfile, state: GameState, logs: stri
 function renderButtonState(
   profile: FixedSkinProfile,
   buttons: Map<FixedButtonId, HTMLButtonElement>,
-  state: GameState
+  state: GameState,
+  actionPending = false
 ): void {
   const inCombat = state.in_combat && !!state.current_enemy;
   const terminal = isTerminalState(state);
@@ -480,8 +577,11 @@ function renderButtonState(
     if (!button) {
       continue;
     }
+    const blockedByPending = actionPending && buttonId !== 'log' && buttonId !== 'restart';
     const disabled =
-      buttonId === 'attack' || buttonId === 'run'
+      blockedByPending
+        ? true
+        : buttonId === 'attack' || buttonId === 'run'
         ? !inCombat
         : buttonId === 'restart'
           ? !terminal
@@ -492,6 +592,39 @@ function renderButtonState(
     element.disabled = disabled;
     setButtonVisual(element, button, disabled ? 'disabled' : 'idle');
   }
+}
+
+function applyFixedStateClasses(stage: HTMLElement, state: GameState | null, logOpen: boolean): void {
+  const terminal = state ? isTerminalState(state) : false;
+  document.body.classList.toggle('in-combat', state?.in_combat ?? false);
+  document.body.classList.toggle('game-ended', terminal);
+  document.body.classList.toggle('log-open', logOpen);
+  document.body.classList.toggle('fixed-log-open', logOpen);
+  stage.classList.toggle('fixed-terminal-state', terminal);
+  stage.classList.toggle('fixed-victory-state', state?.game_won ?? false);
+  stage.classList.toggle('fixed-defeat-state', state ? state.game_over || state.player_hp <= 0 : false);
+}
+
+function renderStatusIndicator(profile: FixedSkinProfile, status: string): void {
+  const element = document.getElementById('connection-status');
+  if (!element) {
+    return;
+  }
+
+  const normalized = status.trim().toLowerCase();
+  const visualState =
+    normalized === 'error'
+      ? 'error'
+      : normalized === 'closed' || normalized === 'offline'
+        ? 'offline'
+        : normalized === 'thinking' || normalized === 'creating' || normalized === 'restarting' || normalized === 'revealing'
+          ? 'thinking'
+          : 'ready';
+  element.textContent = normalized ? normalized.toUpperCase() : 'OFFLINE';
+  element.style.setProperty(
+    'background-image',
+    `url("${profile.indicators.status.states[visualState] ?? profile.indicators.status.states.ready}")`
+  );
 }
 
 function renderEndState(state: GameState): void {

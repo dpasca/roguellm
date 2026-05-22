@@ -132,6 +132,19 @@ Every skin profile needs a diagnostics scenario that shows:
 Visual inspection should capture diagnostics screenshots and fail if widgets are
 missing, clipped, or overflowing the viewport.
 
+## Playable Runtime
+
+The fixed mobile skin can be exercised against a real Game2 session with
+`ui=fixed-skin`, for example:
+
+```text
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=gold-mobile
+```
+
+The backend preserves `skin`, `ui`, `fixed_skin`, and `profile` query params
+when it creates or redirects to a Game2 session, so these links remain on the
+fixed skin after session creation.
+
 ## Current Profiles
 
 - `mobile-portrait`: early generated placeholder profile.

@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.websockets import WebSocketDisconnect
 from pydantic import BaseModel
 from typing import Dict, Optional
+from urllib.parse import urlencode
 import json
 import time
 import os
@@ -98,6 +99,7 @@ class GameSessionManager:
 game_session_manager = GameSessionManager()
 
 DEFAULT_GAME2_DEV_SERVER = "http://127.0.0.1:5273"
+GAME2_CLIENT_QUERY_PARAMS = ("skin", "ui", "fixed_skin", "profile")
 
 #==================================================================
 # Models
@@ -122,6 +124,14 @@ class GameCreationRequest(BaseModel):
 
 def get_requested_generator_id(request: Request) -> Optional[str]:
     return request.query_params.get("generator_id") or request.query_params.get("game_id")
+
+def get_game2_client_query(request: Request) -> str:
+    params = [
+        (name, value)
+        for name in GAME2_CLIENT_QUERY_PARAMS
+        for value in request.query_params.getlist(name)
+    ]
+    return f"?{urlencode(params)}" if params else ""
 
 def get_query_flag(request: Request, name: str) -> bool:
     return request.query_params.get(name, "").lower() in {"1", "true", "yes", "on"}
@@ -379,15 +389,16 @@ async def read_game_session(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/game2/{session_id}")
-async def read_game2_session(session_id: str):
+async def read_game2_session(session_id: str, request: Request):
     """Serve the Phaser/Vite spike client for an existing game session."""
     try:
         if session_id not in game_session_manager.sessions:
             return RedirectResponse(url="/?error=session_not_found")
 
         dev_server = get_game2_dev_server()
+        client_query = get_game2_client_query(request)
         if dev_server:
-            return RedirectResponse(url=f"{dev_server}/game2/{session_id}")
+            return RedirectResponse(url=f"{dev_server}/game2/{session_id}{client_query}")
 
         index_path = os.path.join("static", "game2", "index.html")
         if not os.path.exists(index_path):
@@ -429,10 +440,11 @@ async def read_game2(request: Request):
             return RedirectResponse(url="/?error=invalid_generator")
 
         dev_server = get_game2_dev_server()
+        client_query = get_game2_client_query(request)
         if dev_server:
-            return RedirectResponse(url=f"{dev_server}/game2/{session_id}")
+            return RedirectResponse(url=f"{dev_server}/game2/{session_id}{client_query}")
 
-        return RedirectResponse(url=f"/game2/{session_id}")
+        return RedirectResponse(url=f"/game2/{session_id}{client_query}")
 
     except Exception as e:
         logging.error(f"Error creating game2 session from generator: {e}")
