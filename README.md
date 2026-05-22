@@ -160,6 +160,18 @@ pnpm install
 pnpm run dev
 ```
 
+Production and UI quality gates:
+
+```bash
+pnpm run check
+pnpm run check:visual
+```
+
+`check` builds the production Game2 bundle, verifies the Phaser split chunk stays on
+the no-physics runtime, and validates the fixed skin kits. `check:visual` runs the
+mobile/desktop screenshot inspection bench; it expects the backend on `8127` and
+the Vite dev server on `5273`.
+
 Run the backend with `GAME2_DEV_SERVER=http://127.0.0.1:5273` if you want `/game2/...`
 backend links to redirect into the Vite dev server. To replay an existing generated game,
 open `http://127.0.0.1:8127/game2?game_id=<id>` or list recent IDs with
