@@ -147,6 +147,18 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=movement`
   },
   {
+    name: 'mobile-reference-v3-fixed-workbench-attack',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-attack',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v3')
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-run',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-run',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v3')
+  },
+  {
     name: 'mobile-reference-v3-fixed-workbench-diagnostics',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-diagnostics',
@@ -624,6 +636,16 @@ async function runScenario(page, scenario) {
     await waitForFixedMovement(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-attack') {
+    await page.getByRole('button', { name: 'Attack', exact: true }).click();
+    await waitForFixedAttack(page);
+  }
+
+  if (scenario.mode === 'fixed-workbench-run') {
+    await page.getByRole('button', { name: 'Run', exact: true }).click();
+    await waitForFixedRun(page);
+  }
+
   if (scenario.mode === 'fixed-workbench-diagnostics') {
     await waitForFixedDiagnostics(page);
   }
@@ -844,6 +866,30 @@ async function waitForFixedMovement(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedAttack(page) {
+  await page.waitForFunction(() => {
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    return document.body.dataset.fixedScenario === 'combat' &&
+      document.body.classList.contains('in-combat') &&
+      latest?.includes('ATTACK clicked') &&
+      document.getElementById('enemy-hp')?.textContent?.trim() === '37/82';
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedRun(page) {
+  await page.waitForFunction(() => {
+    const latest = document.getElementById('latest-message')?.textContent?.trim();
+    const map = document.getElementById('game-canvas');
+    return document.body.dataset.fixedScenario === 'combat' &&
+      !document.body.classList.contains('in-combat') &&
+      latest?.includes('RUN clicked') &&
+      map?.dataset.playerX === '5' &&
+      map?.dataset.playerY === '3' &&
+      document.getElementById('combat-mode-label')?.textContent?.trim() === 'Explore' &&
+      document.getElementById('enemy-name')?.textContent?.trim() === 'No hostile';
+  }, null, { timeout: 20_000 });
+}
+
 async function waitForFixedDiagnostics(page) {
   await page.waitForFunction(() => {
     return document.body.dataset.fixedScenario === 'diagnostics' &&
@@ -1037,6 +1083,7 @@ async function collectMetrics(page) {
       tileStatText: document.querySelector('.fixed-stat-row span:nth-child(4) strong')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
+      enemyHpText: document.getElementById('enemy-hp')?.textContent?.trim() ?? '',
       unsafeMarkupCount: document.querySelectorAll('#fixed-title img, #fixed-title script, #fixed-player-stats b, #game-log script, #enemy-name script').length,
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
@@ -1309,6 +1356,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
   const isProductionMobileProfile = isProductionFixedProfile(metrics.fixedProfileRole);
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
+  const isAttackScenario = scenario.mode === 'fixed-workbench-attack';
+  const isRunScenario = scenario.mode === 'fixed-workbench-run';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isEscapedCopyScenario = scenario.mode === 'fixed-workbench-escaped-copy';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
@@ -1332,7 +1381,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     );
   }
 
-  if (!isMovementScenario && !isEndStateScenario && !isRestartScenario && !metrics.inCombat) {
+  if (!isMovementScenario && !isRunScenario && !isEndStateScenario && !isRestartScenario && !metrics.inCombat) {
     failures.push('fixed workbench did not render the combat state');
   }
 
@@ -1351,6 +1400,42 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (metrics.combatTitleText !== 'Explore' || metrics.enemyNameText !== 'No hostile') {
       failures.push(`movement scenario should show exploration panel, got ${metrics.combatTitleText}/${metrics.enemyNameText}`);
+    }
+  }
+
+  if (isAttackScenario) {
+    if (metrics.fixedScenario !== 'combat') {
+      failures.push(`expected combat scenario for attack, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (!metrics.latestText.includes('ATTACK clicked')) {
+      failures.push('attack scenario did not report the attack action');
+    }
+    if (metrics.enemyHpText !== '37/82') {
+      failures.push(`attack scenario did not reduce enemy HP to 37/82, got ${metrics.enemyHpText || 'empty'}`);
+    }
+    if (!metrics.inCombat) {
+      failures.push('attack scenario left combat unexpectedly');
+    }
+  }
+
+  if (isRunScenario) {
+    if (metrics.fixedScenario !== 'combat') {
+      failures.push(`expected combat scenario for run, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (!metrics.latestText.includes('RUN clicked')) {
+      failures.push('run scenario did not report the run action');
+    }
+    if (metrics.inCombat) {
+      failures.push('run scenario stayed in combat');
+    }
+    if (metrics.mapPlayer?.x !== 5 || metrics.mapPlayer?.y !== 3) {
+      failures.push(`run scenario player marker did not reach 5,3: ${metrics.mapPlayer?.x},${metrics.mapPlayer?.y}`);
+    }
+    if (metrics.combatTitleText !== 'Explore' || metrics.enemyNameText !== 'No hostile') {
+      failures.push(`run scenario should show exploration panel, got ${metrics.combatTitleText}/${metrics.enemyNameText}`);
+    }
+    if (!metrics.controlStates.attackDisabled || !metrics.controlStates.runDisabled) {
+      failures.push('run scenario leaves combat buttons enabled');
     }
   }
 
