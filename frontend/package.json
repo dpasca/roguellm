@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.23.0",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5273",
+    "build:skin-kit": "node scripts/build-skin-kit.mjs",
     "build": "tsc --noEmit && vite build",
     "inspect:visual": "node scripts/inspect-visual.mjs",
     "validate:skins": "node scripts/validate-skin-kits.mjs",
