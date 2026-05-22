@@ -5,6 +5,7 @@ const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const buttonStates = ['idle', 'hover', 'pressed', 'disabled'];
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
+const mobileKitSummaries = [];
 const mobilePortrait = {
   size: { width: 390, height: 844 },
   regions: ['map', 'latest', 'log', 'inventory', 'title', 'player', 'combat', 'controls', 'endState'],
@@ -30,6 +31,8 @@ if (kitPaths.length === 0) {
 for (const kitPath of kitPaths) {
   await validateKit(kitPath);
 }
+
+validateMobileDefaultSelection();
 
 if (failures.length > 0) {
   console.error('Skin kit validation failed:');
@@ -61,6 +64,14 @@ async function validateKit(kitPath) {
   const kitDir = path.dirname(kitPath);
   const kit = JSON.parse(await fs.readFile(kitPath, 'utf8'));
   const prefix = `${kit.id ?? path.basename(kitDir)}:`;
+
+  if (kit.kind === 'mobilePortrait') {
+    mobileKitSummaries.push({
+      id: kit.id ?? path.basename(kitDir),
+      role: kit.meta?.role,
+      defaultPriority: kit.meta?.defaultPriority
+    });
+  }
 
   if (kit.kind !== 'mobilePortrait' && kit.kind !== 'desktopWide') {
     failures.push(`${prefix} invalid kind "${kit.kind}"`);
@@ -148,6 +159,10 @@ function validateRequiredContract(prefix, kit) {
       validateRect(prefix, kit, `layout ${group}.${name}`, rect);
     }
   }
+
+  if (isProductionMobileMeta(kit.meta)) {
+    validateProductionMobileGeometry(prefix, kit);
+  }
 }
 
 function validateMetadata(prefix, kit) {
@@ -173,8 +188,42 @@ function validateMetadata(prefix, kit) {
     }
   }
 
-  if (!Number.isFinite(meta.defaultPriority)) {
-    failures.push(`${prefix} meta.defaultPriority must be a finite number`);
+  if (!Number.isFinite(meta.defaultPriority) || meta.defaultPriority < 0 || meta.defaultPriority > 100) {
+    failures.push(`${prefix} meta.defaultPriority must be a finite number from 0 to 100`);
+  }
+}
+
+function validateProductionMobileGeometry(prefix, kit) {
+  validateRectSize(prefix, 'region map', kit.regions?.map, { minWidth: 320, minHeight: 250, maxHeight: 315 });
+  validateRectSize(prefix, 'region latest', kit.regions?.latest, { minWidth: 260, minHeight: 78 });
+  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: 180 });
+  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: 180 });
+  validateRectSize(prefix, 'region player', kit.regions?.player, { minWidth: 320, minHeight: 50 });
+  validateRectSize(prefix, 'region combat', kit.regions?.combat, { minWidth: 320, minHeight: 56 });
+  validateRectSize(prefix, 'region controls', kit.regions?.controls, { minWidth: 340, minHeight: 180 });
+  validateRectSize(prefix, 'region endState', kit.regions?.endState, { minWidth: 280, minHeight: 250 });
+
+  validateNoOverlap(prefix, kit, ['map', 'latest', 'title', 'player', 'combat', 'controls']);
+
+  validateContainedRect(prefix, 'layout fills.playerHp', kit.layout?.fills?.playerHp, kit.regions?.player);
+  validateContainedRect(prefix, 'layout fills.playerStats', kit.layout?.fills?.playerStats, kit.regions?.player);
+  validateContainedRect(prefix, 'layout fills.enemyHp', kit.layout?.fills?.enemyHp, kit.regions?.combat);
+  validateContainedRect(prefix, 'layout buttons.restart', kit.layout?.buttons?.restart, kit.regions?.endState);
+
+  for (const name of ['attack', 'run', 'moveN', 'moveS', 'moveE', 'moveW']) {
+    validateContainedRect(prefix, `layout buttons.${name}`, kit.layout?.buttons?.[name], kit.regions?.controls);
+  }
+
+  validateButtonSize(prefix, 'attack', kit.layout?.buttons?.attack, { minWidth: 140, minHeight: 52 });
+  validateButtonSize(prefix, 'run', kit.layout?.buttons?.run, { minWidth: 140, minHeight: 52 });
+  validateButtonSize(prefix, 'restart', kit.layout?.buttons?.restart, { minWidth: 180, minHeight: 52 });
+
+  for (const name of ['moveN', 'moveS', 'moveE', 'moveW']) {
+    validateButtonSize(prefix, name, kit.layout?.buttons?.[name], { minWidth: 52, minHeight: 52 });
+  }
+
+  for (const name of ['log', 'inventory']) {
+    validateButtonSize(prefix, name, kit.layout?.buttons?.[name], { minWidth: 38, minHeight: 24 });
   }
 }
 
@@ -236,6 +285,96 @@ function validateRect(prefix, kit, label, rect) {
   if (rect.x + rect.width > kit.size.width || rect.y + rect.height > kit.size.height) {
     failures.push(`${prefix} ${label} exceeds ${kit.size.width}x${kit.size.height}`);
   }
+}
+
+function validateRectSize(prefix, label, rect, constraints) {
+  if (!rect) {
+    return;
+  }
+
+  if (constraints.minWidth && rect.width < constraints.minWidth) {
+    failures.push(`${prefix} ${label} width ${rect.width}px < ${constraints.minWidth}px`);
+  }
+
+  if (constraints.minHeight && rect.height < constraints.minHeight) {
+    failures.push(`${prefix} ${label} height ${rect.height}px < ${constraints.minHeight}px`);
+  }
+
+  if (constraints.maxHeight && rect.height > constraints.maxHeight) {
+    failures.push(`${prefix} ${label} height ${rect.height}px > ${constraints.maxHeight}px`);
+  }
+}
+
+function validateButtonSize(prefix, name, rect, constraints) {
+  validateRectSize(prefix, `layout buttons.${name}`, rect, constraints);
+}
+
+function validateNoOverlap(prefix, kit, regionNames) {
+  for (let leftIndex = 0; leftIndex < regionNames.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < regionNames.length; rightIndex += 1) {
+      const leftName = regionNames[leftIndex];
+      const rightName = regionNames[rightIndex];
+      const left = kit.regions?.[leftName];
+      const right = kit.regions?.[rightName];
+
+      if (left && right && rectsOverlap(left, right)) {
+        failures.push(`${prefix} production regions ${leftName} and ${rightName} overlap`);
+      }
+    }
+  }
+}
+
+function validateContainedRect(prefix, label, rect, container) {
+  if (!rect || !container) {
+    return;
+  }
+
+  if (!containsRect(container, rect)) {
+    failures.push(`${prefix} ${label} must stay inside its production region`);
+  }
+}
+
+function rectsOverlap(left, right) {
+  return Math.min(left.x + left.width, right.x + right.width) > Math.max(left.x, right.x) &&
+    Math.min(left.y + left.height, right.y + right.height) > Math.max(left.y, right.y);
+}
+
+function containsRect(container, rect) {
+  return rect.x >= container.x &&
+    rect.y >= container.y &&
+    rect.x + rect.width <= container.x + container.width &&
+    rect.y + rect.height <= container.y + container.height;
+}
+
+function validateMobileDefaultSelection() {
+  if (mobileKitSummaries.length === 0) {
+    return;
+  }
+
+  const defaults = mobileKitSummaries.filter((kit) => kit.role === 'default');
+  if (defaults.length !== 1) {
+    failures.push(`Expected exactly one mobilePortrait default profile, found ${defaults.length}`);
+  }
+
+  const selected = mobileKitSummaries.reduce((best, kit) => {
+    if (!Number.isFinite(kit.defaultPriority)) {
+      return best;
+    }
+
+    if (!best || kit.defaultPriority > best.defaultPriority) {
+      return kit;
+    }
+
+    return best;
+  }, null);
+
+  if (selected && selected.role !== 'default') {
+    failures.push(`Highest-priority mobilePortrait profile must have role default, got ${selected.id} (${selected.role ?? 'none'})`);
+  }
+}
+
+function isProductionMobileMeta(meta) {
+  return meta?.role === 'default' || meta?.role === 'variant';
 }
 
 function isPositiveRect(rect) {

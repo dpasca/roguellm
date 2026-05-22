@@ -79,6 +79,15 @@ Without that override, it chooses the highest-priority `mobilePortrait` profile.
 That keeps the default choice data-driven and makes future LLM theme matching a
 metadata problem instead of another hardcoded profile id.
 
+Profiles with `role: default` or `role: variant` are treated as production
+mobile profiles by `pnpm -C frontend validate:skins`. They must satisfy compact
+layout gates: the closed-state regions cannot overlap, the map cannot reclaim
+the whole screen, log and inventory drawers need real reading space, HP fills
+must stay inside their panels, movement/action buttons must remain inside the
+control bay, and the highest-priority mobile profile must be the single
+`default`. Use `prototype` or `legacy` for reference skins that are useful to
+compare against but should not carry production geometry promises.
+
 ## Runtime Layers
 
 The fixed skin renderer should stack layers in this order:
