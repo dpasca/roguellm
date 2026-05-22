@@ -750,15 +750,23 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 
 .fixed-latest-region .latest-message,
 .fixed-game-log p {
+  min-height: 0;
+  max-height: none;
   margin: 0;
   padding: 0;
   border: 0;
+  overflow: visible;
   background: transparent;
   color: #b9ff91;
   font-size: 13px;
   font-weight: 750;
   line-height: 1.32;
+  scrollbar-gutter: auto;
   text-shadow: 0 0 8px rgba(126, 255, 96, 0.38);
+}
+
+.fixed-latest-region .latest-message {
+  overflow: hidden;
 }
 
 .fixed-log-region {
@@ -1383,11 +1391,18 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-latest-region .latest-message,
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-game-log p {
   font-size: 12px;
-  line-height: 1.25;
+  line-height: 1.2;
+}
+
+.fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-latest-region .latest-message {
+  font-size: 11px;
+  line-height: 1.18;
 }
 
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-region-label {
+  margin-bottom: 2px;
   font-size: 9px;
+  line-height: 1;
 }
 
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-hp-row {

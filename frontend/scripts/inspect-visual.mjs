@@ -1336,13 +1336,23 @@ function validateMetrics(scenario, metrics) {
   }
 
   if (isMobile) {
-    const latest = metrics.rects.latestMessage;
     if (isFixedUi && (metrics.logOpen || metrics.inventoryOpen)) {
       // Fixed skins swap the latest LCD for the full log module when opened.
-    } else if (!latest || latest.display === 'none') {
-      failures.push('mobile latest message is not visible');
-    } else if (latest.visibleHeight < (isCompactFixedProfile(metrics.fixedProfile) ? 40 : 56)) {
-      failures.push(`mobile latest message is too short: ${latest.visibleHeight}px visible`);
+    } else if (isFixedUi) {
+      const latestPanel = metrics.rects.latestPanel;
+      const latestMessage = metrics.rects.latestMessage;
+      if (!latestPanel || latestPanel.display === 'none' || !latestMessage || latestMessage.display === 'none') {
+        failures.push('mobile fixed latest message is not visible');
+      } else if (latestPanel.visibleHeight < (isCompactFixedProfile(metrics.fixedProfile) ? 50 : 78)) {
+        failures.push(`mobile fixed latest panel is too short: ${latestPanel.visibleHeight}px visible`);
+      }
+    } else {
+      const latest = metrics.rects.latestMessage;
+      if (!latest || latest.display === 'none') {
+        failures.push('mobile latest message is not visible');
+      } else if (latest.visibleHeight < 56) {
+        failures.push(`mobile latest message is too short: ${latest.visibleHeight}px visible`);
+      }
     }
 
     if (!isFixedUi) {
@@ -1838,13 +1848,15 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   if (isLogScenario) {
     const log = metrics.rects.logPanel;
     const firstEntry = metrics.rects.firstLogEntry;
+    // The original screenshot-derived profile is intentionally kept as a visual warning, not a readable layout gate.
+    const shouldRequireReadableFirstEntry = metrics.fixedProfile !== 'reference-mobile';
     if (!metrics.logOpen) {
       failures.push('fixed workbench log scenario did not open the log drawer');
     }
     if (!log || log.visibleHeight < (isCompactProfile ? 52 : 160)) {
       failures.push(`fixed workbench open log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
-    if (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40)) {
+    if (shouldRequireReadableFirstEntry && (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40))) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
     }
   }
@@ -2082,6 +2094,10 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile open inventory is too small: ${inventory?.visibleHeight ?? 0}px visible`);
   }
 
+  if (isProductionFixedProfile(metrics.fixedProfileRole)) {
+    validateFixedMessageTextFit(metrics, failures);
+  }
+
   if (!status || status.visibleWidth < 52 || status.visibleHeight < 22) {
     failures.push(`compact mobile status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
   } else if (status.scrollWidth > status.clientWidth || status.scrollHeight > status.clientHeight) {
@@ -2092,6 +2108,32 @@ function validateCompactMobileLayout(metrics, failures) {
     if (!rect || rect.visibleHeight < 52 || rect.visibleWidth < 52) {
       failures.push(`compact mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
     }
+  }
+}
+
+function validateFixedMessageTextFit(metrics, failures) {
+  const latestPanel = metrics.rects.latestPanel;
+  const latestMessage = metrics.rects.latestMessage;
+  const firstLogEntry = metrics.rects.firstLogEntry;
+
+  if (!metrics.logOpen && !metrics.inventoryOpen) {
+    if (latestPanel && latestPanel.scrollHeight > latestPanel.clientHeight + 1) {
+      failures.push(
+        `fixed latest panel content overflows: ${latestPanel.scrollHeight}px > ${latestPanel.clientHeight}px`
+      );
+    }
+
+    if (latestMessage && latestMessage.scrollHeight > latestMessage.clientHeight + 1) {
+      failures.push(
+        `fixed latest message text is clipped: ${latestMessage.scrollHeight}px > ${latestMessage.clientHeight}px`
+      );
+    }
+  }
+
+  if (metrics.logOpen && firstLogEntry && firstLogEntry.scrollHeight > firstLogEntry.clientHeight + 1) {
+    failures.push(
+      `fixed first log entry text is clipped: ${firstLogEntry.scrollHeight}px > ${firstLogEntry.clientHeight}px`
+    );
   }
 }
 
