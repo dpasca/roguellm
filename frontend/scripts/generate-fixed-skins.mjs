@@ -6,6 +6,7 @@ const fixedRootDir = path.resolve('src/skins/neo-tokyo-console/fixed');
 
 const skinRegions = {
   map: { x: 22, y: 48, width: 346, height: 281 },
+  title: { x: 32, y: 454, width: 258, height: 34 },
   latest: { x: 24, y: 344, width: 284, height: 86 },
   log: { x: 24, y: 342, width: 342, height: 204 },
   inventory: { x: 24, y: 342, width: 342, height: 204 },
@@ -148,7 +149,7 @@ function writeText(outDir, filename, content) {
 
 function writePng(outDir, filename, svgSource) {
   const output = path.join(outDir, filename);
-  execFileSync('magick', ['-background', 'none', 'svg:-', `PNG32:${output}`], { input: svgSource });
+  execFileSync('magick', ['-background', 'none', 'svg:-', '-strip', `PNG32:${output}`], { input: svgSource });
 }
 
 function chassisSvg(variant) {

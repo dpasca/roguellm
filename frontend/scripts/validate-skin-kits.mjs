@@ -4,6 +4,15 @@ import path from 'node:path';
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const buttonStates = ['idle', 'hover', 'pressed', 'disabled'];
+const mobilePortrait = {
+  size: { width: 390, height: 844 },
+  regions: ['map', 'latest', 'log', 'inventory', 'title', 'player', 'combat', 'controls', 'endState'],
+  buttons: ['attack', 'run', 'restart', 'log', 'inventory', 'moveN', 'moveS', 'moveE', 'moveW'],
+  indicators: {
+    status: ['ready', 'thinking', 'error', 'offline'],
+    combatLed: ['led-on.png', 'led-off.png']
+  }
+};
 
 const failures = [];
 const kitPaths = await findSkinKits(fixedDir);
@@ -55,6 +64,7 @@ async function validateKit(kitPath) {
     failures.push(`${prefix} missing positive size`);
   }
 
+  validateRequiredContract(prefix, kit);
   await validateAsset(kitDir, prefix, 'chassis', kit.assets?.chassis);
 
   for (const [name, asset] of Object.entries(kit.assets?.buttons ?? {})) {
@@ -83,6 +93,42 @@ async function validateKit(kitPath) {
   }
 
   validateRegions(prefix, kit);
+}
+
+function validateRequiredContract(prefix, kit) {
+  if (kit.kind !== 'mobilePortrait') {
+    return;
+  }
+
+  if (kit.size?.width !== mobilePortrait.size.width || kit.size?.height !== mobilePortrait.size.height) {
+    failures.push(`${prefix} mobilePortrait size must be ${mobilePortrait.size.width}x${mobilePortrait.size.height}`);
+  }
+
+  for (const region of mobilePortrait.regions) {
+    if (!kit.regions?.[region]) {
+      failures.push(`${prefix} missing required region ${region}`);
+    }
+  }
+
+  for (const button of mobilePortrait.buttons) {
+    if (!kit.assets?.buttons?.[button]) {
+      failures.push(`${prefix} missing required button asset ${button}`);
+    }
+  }
+
+  const statusStates = kit.assets?.indicators?.status?.states ?? [];
+  for (const state of mobilePortrait.indicators.status) {
+    if (!statusStates.includes(state)) {
+      failures.push(`${prefix} status indicator missing state ${state}`);
+    }
+  }
+
+  const combatLedFiles = kit.assets?.indicators?.combatLed?.files ?? [];
+  for (const file of mobilePortrait.indicators.combatLed) {
+    if (!combatLedFiles.includes(file)) {
+      failures.push(`${prefix} combatLed indicator missing file ${file}`);
+    }
+  }
 }
 
 async function validateAsset(kitDir, prefix, label, asset) {
