@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -379,6 +380,8 @@ function buildHtmlReport(summary) {
       metrics.logOpen ? 'log open' : null,
       metrics.inventoryOpen ? 'inventory open' : null,
       metrics.inCombat ? 'combat' : 'explore',
+      metrics.screenshot ? `mean ${metrics.screenshot.mean.toFixed(3)}` : null,
+      metrics.screenshot ? `contrast ${metrics.screenshot.standardDeviation.toFixed(3)}` : null,
       metrics.overflowsX || metrics.overflowsY ? 'overflow' : 'no overflow'
     ].filter(Boolean);
 
@@ -608,7 +611,11 @@ async function runScenario(page, scenario) {
   const screenshotPath = path.join(outDir, `${scenario.name}.png`);
   await page.screenshot({ path: screenshotPath, fullPage: false });
 
-  const metrics = await collectMetrics(page);
+  const screenshotMetrics = collectScreenshotMetrics(screenshotPath);
+  const metrics = {
+    ...await collectMetrics(page),
+    screenshot: screenshotMetrics
+  };
   failures.push(...validateMetrics(scenario, metrics));
 
   return {
@@ -618,6 +625,25 @@ async function runScenario(page, scenario) {
     screenshotPath,
     metrics,
     failures
+  };
+}
+
+function collectScreenshotMetrics(screenshotPath) {
+  const output = execFileSync(
+    'magick',
+    [
+      screenshotPath,
+      '-format',
+      '%[fx:mean]\n%[fx:standard_deviation]',
+      'info:'
+    ],
+    { encoding: 'utf8' }
+  );
+  const [mean, standardDeviation] = output.trim().split(/\s+/).map(Number);
+
+  return {
+    mean,
+    standardDeviation
   };
 }
 
@@ -1024,8 +1050,28 @@ function validateMetrics(scenario, metrics) {
     validateFixedRuntimeScenario(scenario, metrics, failures);
   }
 
+  if (isFixedUi) {
+    validateFixedScreenshotQuality(metrics, failures);
+  }
+
   failures.push(...validateAssetUsage(metrics));
   return failures;
+}
+
+function validateFixedScreenshotQuality(metrics, failures) {
+  const screenshot = metrics.screenshot;
+  if (!screenshot || !Number.isFinite(screenshot.mean) || !Number.isFinite(screenshot.standardDeviation)) {
+    failures.push('fixed skin screenshot metrics are missing');
+    return;
+  }
+
+  if (screenshot.mean < 0.045) {
+    failures.push(`fixed skin screenshot is too dark: mean=${screenshot.mean.toFixed(4)}`);
+  }
+
+  if (screenshot.standardDeviation < 0.09) {
+    failures.push(`fixed skin screenshot is too flat: contrast=${screenshot.standardDeviation.toFixed(4)}`);
+  }
 }
 
 function validateFixedRuntimeScenario(scenario, metrics, failures) {
