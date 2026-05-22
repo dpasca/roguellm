@@ -430,6 +430,9 @@ function buildHtmlReport(summary) {
       metrics.ui ? `ui ${metrics.ui}` : null,
       metrics.workbench ? `bench ${metrics.workbench}` : null,
       metrics.statusText ? `status ${metrics.statusText}` : null,
+      Number.isFinite(metrics.mapPlayer?.x) && Number.isFinite(metrics.mapPlayer?.y)
+        ? `player ${metrics.mapPlayer.x},${metrics.mapPlayer.y}`
+        : null,
       metrics.logOpen ? 'log open' : null,
       metrics.inventoryOpen ? 'inventory open' : null,
       metrics.inCombat ? 'combat' : 'explore',
@@ -832,9 +835,12 @@ async function isFixedRuntimeCombatReady(page) {
 async function waitForFixedMovement(page) {
   await page.waitForFunction(() => {
     const latest = document.getElementById('latest-message')?.textContent?.trim();
+    const map = document.getElementById('game-canvas');
     return document.body.dataset.fixedScenario === 'movement' &&
       !document.body.classList.contains('in-combat') &&
-      latest?.includes('moved E');
+      latest?.includes('moved E') &&
+      map?.dataset.playerX === '6' &&
+      map?.dataset.playerY === '3';
   }, null, { timeout: 20_000 });
 }
 
@@ -1021,6 +1027,13 @@ async function collectMetrics(page) {
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
       playerHpText: document.getElementById('player-hp')?.textContent?.trim() ?? '',
+      mapPlayer: {
+        x: Number(document.getElementById('game-canvas')?.dataset.playerX ?? NaN),
+        y: Number(document.getElementById('game-canvas')?.dataset.playerY ?? NaN),
+        width: Number(document.getElementById('game-canvas')?.dataset.mapWidth ?? NaN),
+        height: Number(document.getElementById('game-canvas')?.dataset.mapHeight ?? NaN),
+        inCombat: document.getElementById('game-canvas')?.dataset.inCombat ?? null
+      },
       tileStatText: document.querySelector('.fixed-stat-row span:nth-child(4) strong')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
@@ -1332,6 +1345,9 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!metrics.latestText.includes('moved E')) {
       failures.push('movement scenario did not move east');
+    }
+    if (metrics.mapPlayer?.x !== 6 || metrics.mapPlayer?.y !== 3) {
+      failures.push(`movement scenario player marker did not reach 6,3: ${metrics.mapPlayer?.x},${metrics.mapPlayer?.y}`);
     }
     if (metrics.combatTitleText !== 'Explore' || metrics.enemyNameText !== 'No hostile') {
       failures.push(`movement scenario should show exploration panel, got ${metrics.combatTitleText}/${metrics.enemyNameText}`);

@@ -37,7 +37,22 @@ export class RogueScene extends Phaser.Scene {
 
   renderGameState(state: GameState): void {
     this.state = state;
+    this.updateCanvasDataset(state);
     this.redraw();
+  }
+
+  private updateCanvasDataset(state: GameState): void {
+    const canvasParent = document.getElementById('game-canvas');
+    if (!canvasParent) {
+      return;
+    }
+
+    const [playerX, playerY] = state.player_pos;
+    canvasParent.dataset.playerX = String(playerX);
+    canvasParent.dataset.playerY = String(playerY);
+    canvasParent.dataset.mapWidth = String(state.map_width);
+    canvasParent.dataset.mapHeight = String(state.map_height);
+    canvasParent.dataset.inCombat = state.in_combat ? '1' : '0';
   }
 
   private redraw(): void {
