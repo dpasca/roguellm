@@ -22,6 +22,13 @@ const GAME2_SESSION_QUERY_PARAMS = [
   'skin_palette'
 ];
 
+function showFatal(message: string): void {
+  const element = document.createElement('div');
+  element.className = 'fatal';
+  element.textContent = message;
+  document.body.replaceChildren(element);
+}
+
 interface RuntimeUi {
   scene: RogueScene;
   render(state: GameState): void;
@@ -55,11 +62,11 @@ if (isFixedSkinWorkbench()) {
         }
       }
       window.location.replace(gameUrl.toString());
-      document.body.innerHTML = '<div class="fatal">Creating session from game id...</div>';
+      showFatal('Creating session from game id...');
       throw new Error('Redirecting to create a session from game id');
     }
 
-    document.body.innerHTML = '<div class="fatal">Missing game session id. Open /game2/&lt;session_id&gt;.</div>';
+    showFatal('Missing game session id. Open /game2/<session_id>.');
     throw new Error('Missing game session id');
   }
 
