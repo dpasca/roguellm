@@ -100,6 +100,18 @@ const scenarios = [
     expectedFixedProfile: defaultFixedProfile
   },
   {
+    name: 'mobile-themed-amber-fixed-runtime-ready',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-ready',
+    url: withQueryParams(entryUrl, {
+      ui: 'fixed-skin',
+      skin_tags: 'industrial,relay',
+      skin_mood: 'nocturnal',
+      skin_palette: 'amber'
+    }),
+    expectedFixedProfile: 'amber-mobile'
+  },
+  {
     name: 'mobile-gold-fixed-workbench-movement',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-movement',
