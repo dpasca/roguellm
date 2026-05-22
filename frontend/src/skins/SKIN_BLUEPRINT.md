@@ -166,6 +166,7 @@ the older responsive HUD while comparing behavior.
   widget contract can support theme variants without layout changes.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
-  controls; useful comparison profile.
+  controls; completed with inventory and restart widgets, but not promoted to
+  default until its proportions meet the compact mobile gates.
 - `desktop-wide`: placeholder desktop profile kept only to preserve the future
   profile shape.

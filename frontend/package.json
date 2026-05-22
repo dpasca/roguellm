@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5273",
     "build:skin-kit": "node scripts/build-skin-kit.mjs",
-    "build:fixed-skins": "node scripts/generate-fixed-skins.mjs",
+    "build:fixed-skins": "node scripts/generate-fixed-skins.mjs && node scripts/generate-reference-v2-addons.mjs",
     "build:gold-mobile-skin": "pnpm run build:fixed-skins",
     "build": "tsc --noEmit && vite build",
     "inspect:visual": "node scripts/inspect-visual.mjs",

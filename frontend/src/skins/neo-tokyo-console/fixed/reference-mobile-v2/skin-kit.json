@@ -1,0 +1,148 @@
+{
+  "id": "reference-mobile-v2",
+  "kind": "mobilePortrait",
+  "size": {
+    "width": 390,
+    "height": 844
+  },
+  "regions": {
+    "map": {
+      "x": 31,
+      "y": 55,
+      "width": 328,
+      "height": 353
+    },
+    "title": {
+      "x": 27,
+      "y": 538,
+      "width": 270,
+      "height": 36
+    },
+    "latest": {
+      "x": 27,
+      "y": 456,
+      "width": 276,
+      "height": 50
+    },
+    "log": {
+      "x": 20,
+      "y": 444,
+      "width": 342,
+      "height": 204
+    },
+    "inventory": {
+      "x": 20,
+      "y": 444,
+      "width": 342,
+      "height": 204
+    },
+    "player": {
+      "x": 27,
+      "y": 574,
+      "width": 338,
+      "height": 48
+    },
+    "combat": {
+      "x": 31,
+      "y": 623,
+      "width": 318,
+      "height": 34
+    },
+    "controls": {
+      "x": 16,
+      "y": 646,
+      "width": 352,
+      "height": 185
+    },
+    "endState": {
+      "x": 38,
+      "y": 360,
+      "width": 314,
+      "height": 292
+    }
+  },
+  "assets": {
+    "chassis": {
+      "path": "chassis.png",
+      "width": 390,
+      "height": 844
+    },
+    "buttons": {
+      "attack": {
+        "prefix": "attack",
+        "width": 156,
+        "height": 69,
+        "alpha": true
+      },
+      "run": {
+        "prefix": "run",
+        "width": 150,
+        "height": 68,
+        "alpha": true
+      },
+      "restart": {
+        "prefix": "restart",
+        "width": 226,
+        "height": 66,
+        "alpha": true
+      },
+      "log": {
+        "prefix": "log",
+        "width": 43,
+        "height": 31,
+        "alpha": true
+      },
+      "inventory": {
+        "prefix": "inventory",
+        "width": 43,
+        "height": 31,
+        "alpha": true
+      },
+      "moveN": {
+        "prefix": "dpad-n",
+        "width": 55,
+        "height": 55,
+        "alpha": true
+      },
+      "moveS": {
+        "prefix": "dpad-s",
+        "width": 55,
+        "height": 55,
+        "alpha": true
+      },
+      "moveE": {
+        "prefix": "dpad-e",
+        "width": 55,
+        "height": 55,
+        "alpha": true
+      },
+      "moveW": {
+        "prefix": "dpad-w",
+        "width": 55,
+        "height": 55,
+        "alpha": true
+      }
+    },
+    "indicators": {
+      "status": {
+        "prefix": "status",
+        "states": [
+          "ready",
+          "thinking",
+          "error",
+          "offline"
+        ],
+        "width": 52,
+        "height": 24
+      },
+      "combatLed": {
+        "files": [
+          "led-on.png",
+          "led-off.png"
+        ],
+        "width": 18,
+        "height": 18
+      }
+    }
+  }
+}

@@ -14,7 +14,8 @@ const withQueryParams = (url, params) => {
 };
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
-const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: 'gold-mobile' });
+const defaultFixedProfile = 'gold-mobile';
+const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
@@ -74,25 +75,29 @@ const scenarios = [
     name: 'mobile-default-fixed-runtime-ready',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-runtime-ready',
-    url: entryUrl
+    url: entryUrl,
+    expectedFixedProfile: defaultFixedProfile
   },
   {
     name: 'mobile-fixed-runtime-ready',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-runtime-ready',
-    url: fixedRuntimeUrl
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
   },
   {
     name: 'mobile-fixed-runtime-log',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-runtime-log',
-    url: fixedRuntimeUrl
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
   },
   {
     name: 'mobile-fixed-runtime-combat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-runtime-combat',
-    url: fixedRuntimeUrl
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
   },
   {
     name: 'mobile-gold-fixed-workbench-movement',
@@ -189,6 +194,36 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-movement',
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=movement`
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v2')
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-drawer-switch',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-drawer-switch',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v2')
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-defeat',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-defeat',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=defeat`
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-victory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-victory',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=victory`
+  },
+  {
+    name: 'mobile-reference-v2-fixed-workbench-restart',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-restart',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v2')}&scenario=defeat`
   },
   {
     name: 'mobile-reference-v2-fixed-workbench-diagnostics',
@@ -943,8 +978,9 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`fixed runtime should not be in workbench mode: ${metrics.workbench}`);
   }
 
-  if (metrics.fixedProfile !== 'gold-mobile') {
-    failures.push(`expected gold-mobile runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
+  const expectedProfile = scenario.expectedFixedProfile ?? defaultFixedProfile;
+  if (metrics.fixedProfile !== expectedProfile) {
+    failures.push(`expected ${expectedProfile} runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
   }
 
   if (metrics.statusText !== 'READY') {

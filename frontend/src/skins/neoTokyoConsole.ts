@@ -321,12 +321,14 @@ const fixedProfiles: FixedSkinProfile[] = [
       map: { x: 31, y: 55, width: 328, height: 353 },
       title: { x: 27, y: 538, width: 270, height: 36 },
       latest: { x: 27, y: 456, width: 276, height: 50 },
-      log: { x: 25, y: 452, width: 280, height: 56 },
+      log: { x: 20, y: 444, width: 342, height: 204 },
+      inventory: { x: 20, y: 444, width: 342, height: 204 },
       playerHp: { x: 27, y: 574, width: 338, height: 48 },
       playerHpFill: { x: 84, y: 594, width: 177, height: 8 },
       playerStats: { x: 32, y: 614, width: 310, height: 20 },
       combat: { x: 31, y: 623, width: 318, height: 34 },
-      enemyHpFill: { x: 178, y: 644, width: 112, height: 8 }
+      enemyHpFill: { x: 178, y: 644, width: 112, height: 8 },
+      endState: { x: 38, y: 360, width: 314, height: 292 }
     },
     buttons: {
       attack: {
@@ -346,6 +348,12 @@ const fixedProfiles: FixedSkinProfile[] = [
         label: 'Log',
         hideLabel: true,
         states: fixedButton('reference-mobile-v2', 'log')
+      },
+      inventory: {
+        rect: { x: 316, y: 474, width: 43, height: 31 },
+        label: 'Inventory',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'inventory')
       },
       moveN: {
         rect: { x: 74, y: 675, width: 55, height: 55 },
@@ -370,6 +378,12 @@ const fixedProfiles: FixedSkinProfile[] = [
         label: 'W',
         hideLabel: true,
         states: fixedButton('reference-mobile-v2', 'dpad-w')
+      },
+      restart: {
+        rect: { x: 82, y: 578, width: 226, height: 66 },
+        label: 'Restart',
+        hideLabel: true,
+        states: fixedButton('reference-mobile-v2', 'restart')
       }
     },
     indicators: {
