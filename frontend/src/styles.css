@@ -1074,6 +1074,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
   pointer-events: none;
   background: linear-gradient(90deg, #65e560, #b8ff7f);
   box-shadow: 0 0 12px rgba(122, 255, 126, 0.35);
+  transition: width 180ms ease-out;
 }
 
 .fixed-enemy-hp-fill {
@@ -1492,6 +1493,12 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixe
   padding: 24px;
   border: 1px solid color-mix(in srgb, var(--skin-danger) 56%, var(--skin-border));
   background: var(--skin-panel-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fixed-meter-fill {
+    transition: none;
+  }
 }
 
 @media (max-width: 860px) {
