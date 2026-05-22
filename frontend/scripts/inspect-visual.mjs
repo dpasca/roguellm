@@ -154,6 +154,17 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('amber-mobile')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-themed-amber-fixed-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench',
+    url: withQueryParams(fixedWorkbenchUrl, {
+      skin_tags: 'industrial,relay',
+      skin_mood: 'nocturnal',
+      skin_palette: 'amber'
+    }),
+    expectedFixedProfile: 'amber-mobile'
+  },
+  {
     name: 'mobile-gold-fixed-workbench-status',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-status',
@@ -1134,6 +1145,12 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (!metrics.fixedProfile) {
     failures.push('fixed workbench did not select a fixed profile');
+  }
+
+  if (scenario.expectedFixedProfile && metrics.fixedProfile !== scenario.expectedFixedProfile) {
+    failures.push(
+      `expected ${scenario.expectedFixedProfile} workbench profile, got ${metrics.fixedProfile ?? 'none'}`
+    );
   }
 
   if (!isMovementScenario && !isEndStateScenario && !isRestartScenario && !metrics.inCombat) {

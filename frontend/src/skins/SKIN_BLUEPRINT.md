@@ -79,6 +79,11 @@ Without that override, it chooses the highest-priority `mobilePortrait` profile.
 That keeps the default choice data-driven and makes future LLM theme matching a
 metadata problem instead of another hardcoded profile id.
 
+For structured theme experiments, pass comma-separated metadata tokens with
+`skin_tags`, `skin_mood`, and `skin_palette`. These are exact manifest tokens,
+not free-text classification. For example, `skin_tags=industrial,relay` plus
+`skin_palette=amber` selects the amber profile unless `profile=` overrides it.
+
 Profiles with `role: default` or `role: variant` are treated as production
 mobile profiles by `pnpm -C frontend validate:skins`. They must satisfy compact
 layout gates: the closed-state regions cannot overlap, the map cannot reclaim
@@ -181,10 +186,11 @@ also be forced with `ui=fixed-skin`, for example:
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-v3
 ```
 
-The backend preserves `skin`, `ui`, `fixed_skin`, and `profile` query params
-when it creates or redirects to a Game2 session, so these links remain on the
-fixed skin after session creation. Use `ui=classic` or `ui=responsive` to force
-the older responsive HUD while comparing behavior.
+The backend preserves `skin`, `ui`, `fixed_skin`, `profile`, `skin_tags`,
+`skin_mood`, and `skin_palette` query params when it creates or redirects to a
+Game2 session, so these links remain on the fixed skin after session creation.
+Use `ui=classic` or `ui=responsive` to force the older responsive HUD while
+comparing behavior.
 
 ## Current Profiles
 

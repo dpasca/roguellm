@@ -99,7 +99,15 @@ class GameSessionManager:
 game_session_manager = GameSessionManager()
 
 DEFAULT_GAME2_DEV_SERVER = "http://127.0.0.1:5273"
-GAME2_CLIENT_QUERY_PARAMS = ("skin", "ui", "fixed_skin", "profile")
+GAME2_CLIENT_QUERY_PARAMS = (
+    "skin",
+    "ui",
+    "fixed_skin",
+    "profile",
+    "skin_tags",
+    "skin_mood",
+    "skin_palette",
+)
 
 #==================================================================
 # Models
