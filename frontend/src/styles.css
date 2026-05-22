@@ -941,7 +941,8 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
   border-color: rgba(255, 200, 87, 0.48);
 }
 
-.fixed-inventory-item-body {
+.fixed-inventory-item .fixed-inventory-item-body {
+  display: block;
   min-width: 0;
 }
 
