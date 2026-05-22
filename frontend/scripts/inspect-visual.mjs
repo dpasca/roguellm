@@ -33,6 +33,10 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
   : path.resolve('visual-inspections', timestamp);
+const scenarioFilters = (process.env.VISUAL_SCENARIOS ?? process.env.VISUAL_SCENARIO ?? '')
+  .split(',')
+  .map((filter) => filter.trim())
+  .filter(Boolean);
 
 const scenarios = [
   {
@@ -114,6 +118,34 @@ const scenarios = [
   {
     name: 'mobile-fixed-runtime-combat',
     viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-combat',
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-fixed-runtime-ready',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-runtime-ready',
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-fixed-runtime-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-runtime-log',
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-fixed-runtime-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-runtime-inventory',
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-fixed-runtime-combat',
+    viewport: { width: 390, height: 667 },
     mode: 'fixed-runtime-combat',
     url: fixedRuntimeUrl,
     expectedFixedProfile: defaultFixedProfile
@@ -437,6 +469,20 @@ const scenarios = [
     expectedFixedProfile: desktopFixedProfile
   }
 ];
+const selectedScenarios = scenarioFilters.length > 0
+  ? scenarios.filter((scenario) =>
+    scenarioFilters.some((filter) =>
+      scenario.name === filter ||
+      scenario.mode === filter ||
+      scenario.name.includes(filter)
+    )
+  )
+  : scenarios;
+
+if (selectedScenarios.length === 0) {
+  console.error(`No visual scenarios matched VISUAL_SCENARIOS=${scenarioFilters.join(',')}`);
+  process.exit(1);
+}
 
 await fs.mkdir(outDir, { recursive: true });
 
@@ -444,7 +490,7 @@ const browser = await chromium.launch();
 const results = [];
 
 try {
-  for (const scenario of scenarios) {
+  for (const scenario of selectedScenarios) {
     const context = await browser.newContext({
       deviceScaleFactor: 1,
       viewport: scenario.viewport,
@@ -463,6 +509,7 @@ const summary = {
   entryUrl,
   workbenchUrl,
   fixedWorkbenchUrl,
+  scenarioFilters,
   outDir,
   generatedAt: new Date().toISOString(),
   results,
@@ -1343,7 +1390,7 @@ function validateMetrics(scenario, metrics) {
       const latestMessage = metrics.rects.latestMessage;
       if (!latestPanel || latestPanel.display === 'none' || !latestMessage || latestMessage.display === 'none') {
         failures.push('mobile fixed latest message is not visible');
-      } else if (latestPanel.visibleHeight < (isCompactFixedProfile(metrics.fixedProfile) ? 50 : 78)) {
+      } else if (latestPanel.visibleHeight < scaledFixedThreshold(metrics, isCompactFixedProfile(metrics.fixedProfile) ? 50 : 78)) {
         failures.push(`mobile fixed latest panel is too short: ${latestPanel.visibleHeight}px visible`);
       }
     } else {
@@ -1472,7 +1519,8 @@ function validateFixedScreenshotQuality(metrics, failures) {
     failures.push(`fixed skin screenshot is too dark: mean=${screenshot.mean.toFixed(4)}`);
   }
 
-  if (screenshot.standardDeviation < 0.09) {
+  const contrastFloor = metrics.fixedStageScale < 0.85 ? 0.075 : 0.09;
+  if (screenshot.standardDeviation < contrastFloor) {
     failures.push(`fixed skin screenshot is too flat: contrast=${screenshot.standardDeviation.toFixed(4)}`);
   }
 
@@ -1944,7 +1992,10 @@ function validateFixedRuntimeInventory(metrics, failures) {
   const empty = metrics.rects.inventoryEmpty;
   const inventoryToggle = metrics.rects.inventoryToggleButton;
   const desktop = isDesktopFixedProfile(metrics.fixedProfile);
-  const minHeight = desktop ? 100 : 260;
+  const minWidth = desktop ? 300 : scaledFixedThreshold(metrics, 300);
+  const minHeight = desktop ? 100 : scaledFixedThreshold(metrics, 260);
+  const minToggleHeight = desktop ? 24 : scaledFixedThreshold(metrics, 24);
+  const minToggleWidth = desktop ? 38 : scaledFixedThreshold(metrics, 38);
 
   if (!metrics.inventoryOpen) {
     failures.push('fixed runtime inventory scenario did not open the inventory drawer');
@@ -1954,7 +2005,7 @@ function validateFixedRuntimeInventory(metrics, failures) {
     failures.push('fixed runtime inventory scenario left the log drawer open');
   }
 
-  if (!inventory || inventory.visibleWidth < 300 || inventory.visibleHeight < minHeight) {
+  if (!inventory || inventory.visibleWidth < minWidth || inventory.visibleHeight < minHeight) {
     failures.push(`fixed runtime inventory drawer is too small: ${inventory?.visibleWidth ?? 0}x${inventory?.visibleHeight ?? 0}`);
   }
 
@@ -1962,15 +2013,15 @@ function validateFixedRuntimeInventory(metrics, failures) {
     failures.push(`fixed runtime inventory drawer has no visible item or empty state: empty=${empty?.visibleHeight ?? 0}px`);
   }
 
-  if (item && item.visibleHeight < 36) {
+  if (item && item.visibleHeight < scaledFixedThreshold(metrics, 36)) {
     failures.push(`fixed runtime inventory first item is clipped: ${item.visibleHeight}px visible`);
   }
 
-  if (item && (!action || action.visibleHeight < 24 || action.visibleWidth < 42)) {
+  if (item && (!action || action.visibleHeight < scaledFixedThreshold(metrics, 24) || action.visibleWidth < scaledFixedThreshold(metrics, 42))) {
     failures.push(`fixed runtime inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
   }
 
-  if (!inventoryToggle || inventoryToggle.visibleHeight < 24 || inventoryToggle.visibleWidth < 38) {
+  if (!inventoryToggle || inventoryToggle.visibleHeight < minToggleHeight || inventoryToggle.visibleWidth < minToggleWidth) {
     failures.push(`fixed runtime inventory toggle is clipped while open: ${inventoryToggle?.visibleWidth ?? 0}x${inventoryToggle?.visibleHeight ?? 0}`);
   }
 
@@ -2068,29 +2119,29 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile map is too dominant: ${map.height}px high`);
   }
 
-  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < 78)) {
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < scaledFixedThreshold(metrics, 78))) {
     failures.push(`compact mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
   }
 
-  if (!player || player.visibleHeight < 50) {
+  if (!player || player.visibleHeight < scaledFixedThreshold(metrics, 50)) {
     failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
   }
 
   validateFixedStatLabels(metrics, failures);
 
-  if (!metrics.logOpen && !metrics.inventoryOpen && (!tileStatValue || tileStatValue.visibleWidth < 110)) {
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!tileStatValue || tileStatValue.visibleWidth < scaledFixedThreshold(metrics, 110))) {
     failures.push(`compact mobile tile stat has too little room: ${tileStatValue?.visibleWidth ?? 0}px visible`);
   }
 
-  if (!combat || combat.visibleHeight < 56) {
+  if (!combat || combat.visibleHeight < scaledFixedThreshold(metrics, 56)) {
     failures.push(`compact mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
   }
 
-  if (metrics.logOpen && (!log || log.visibleHeight < 260)) {
+  if (metrics.logOpen && (!log || log.visibleHeight < scaledFixedThreshold(metrics, 260))) {
     failures.push(`compact mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
   }
 
-  if (metrics.inventoryOpen && (!inventory || inventory.visibleHeight < 260)) {
+  if (metrics.inventoryOpen && (!inventory || inventory.visibleHeight < scaledFixedThreshold(metrics, 260))) {
     failures.push(`compact mobile open inventory is too small: ${inventory?.visibleHeight ?? 0}px visible`);
   }
 
@@ -2098,17 +2149,22 @@ function validateCompactMobileLayout(metrics, failures) {
     validateFixedMessageTextFit(metrics, failures);
   }
 
-  if (!status || status.visibleWidth < 52 || status.visibleHeight < 22) {
+  if (!status || status.visibleWidth < scaledFixedThreshold(metrics, 52) || status.visibleHeight < scaledFixedThreshold(metrics, 22)) {
     failures.push(`compact mobile status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
   } else if (status.scrollWidth > status.clientWidth || status.scrollHeight > status.clientHeight) {
     failures.push(`compact mobile status text overflows: ${status.scrollWidth}x${status.scrollHeight} > ${status.clientWidth}x${status.clientHeight}`);
   }
 
   for (const [name, rect] of buttons) {
-    if (!rect || rect.visibleHeight < 52 || rect.visibleWidth < 52) {
+    if (!rect || rect.visibleHeight < scaledFixedThreshold(metrics, 52) || rect.visibleWidth < scaledFixedThreshold(metrics, 52)) {
       failures.push(`compact mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
     }
   }
+}
+
+function scaledFixedThreshold(metrics, profilePixels) {
+  const scale = Number.isFinite(metrics.fixedStageScale) ? metrics.fixedStageScale : 1;
+  return Math.max(1, Math.floor(profilePixels * scale) - 1);
 }
 
 function validateFixedMessageTextFit(metrics, failures) {

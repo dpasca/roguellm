@@ -1182,6 +1182,9 @@ function currentTileName(state: GameState): string {
 function fitStage(stage: HTMLElement, profile: FixedSkinProfile): void {
   const scale = Math.min(1, window.innerWidth / profile.width, window.innerHeight / profile.height);
   stage.style.transform = `scale(${scale})`;
+  stage.style.transformOrigin = 'top left';
+  stage.style.marginRight = `${Math.round(profile.width * (scale - 1))}px`;
+  stage.style.marginBottom = `${Math.round(profile.height * (scale - 1))}px`;
   stage.dataset.scale = scale.toFixed(3);
 }
 
