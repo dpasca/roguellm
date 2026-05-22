@@ -1180,8 +1180,9 @@ function currentTileName(state: GameState): string {
 }
 
 function fitStage(stage: HTMLElement, profile: FixedSkinProfile): void {
-  const scale = Math.min(window.innerWidth / profile.width, window.innerHeight / profile.height);
+  const scale = Math.min(1, window.innerWidth / profile.width, window.innerHeight / profile.height);
   stage.style.transform = `scale(${scale})`;
+  stage.dataset.scale = scale.toFixed(3);
 }
 
 function applyRect(element: HTMLElement, rect: FixedSkinRect): void {

@@ -1183,6 +1183,7 @@ async function collectMetrics(page) {
       ui: document.body.dataset.ui ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
       fixedProfileRole: document.querySelector('.fixed-skin-stage')?.dataset.profileRole ?? null,
+      fixedStageScale: Number(document.querySelector('.fixed-skin-stage')?.dataset.scale ?? NaN),
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       inCombat: document.body.classList.contains('in-combat'),
@@ -1330,6 +1331,11 @@ function validateMetrics(scenario, metrics) {
   }
 
   if (isFixedUi) {
+    if (!Number.isFinite(metrics.fixedStageScale)) {
+      failures.push('fixed skin stage scale metric is missing');
+    } else if (metrics.fixedStageScale > 1.001) {
+      failures.push(`fixed skin stage is being upscaled: scale=${metrics.fixedStageScale}`);
+    }
     validateFixedScreenshotQuality(metrics, failures);
   }
 
