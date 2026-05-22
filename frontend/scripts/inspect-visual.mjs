@@ -239,6 +239,12 @@ await fs.writeFile(
   'utf8'
 );
 
+await fs.writeFile(
+  path.join(outDir, 'report.html'),
+  buildHtmlReport(summary),
+  'utf8'
+);
+
 const reportLines = results.flatMap((result) => {
   const status = result.failures.length === 0 ? 'PASS' : 'FAIL';
   const header = `${status} ${result.name} -> ${path.relative(process.cwd(), result.screenshotPath)}`;
@@ -252,6 +258,167 @@ console.log(reportLines.join('\n'));
 
 if (!summary.ok) {
   process.exitCode = 1;
+}
+
+function buildHtmlReport(summary) {
+  const cards = summary.results.map((result) => {
+    const passed = result.failures.length === 0;
+    const image = path.basename(result.screenshotPath);
+    const metrics = result.metrics;
+    const chips = [
+      metrics.fixedProfile ? `profile ${metrics.fixedProfile}` : null,
+      metrics.ui ? `ui ${metrics.ui}` : null,
+      metrics.workbench ? `bench ${metrics.workbench}` : null,
+      metrics.statusText ? `status ${metrics.statusText}` : null,
+      metrics.logOpen ? 'log open' : null,
+      metrics.inventoryOpen ? 'inventory open' : null,
+      metrics.inCombat ? 'combat' : 'explore',
+      metrics.overflowsX || metrics.overflowsY ? 'overflow' : 'no overflow'
+    ].filter(Boolean);
+
+    return `
+      <article class="card ${passed ? 'pass' : 'fail'}">
+        <header>
+          <span class="badge">${passed ? 'PASS' : 'FAIL'}</span>
+          <div>
+            <h2>${escapeHtml(result.name)}</h2>
+            <p>${escapeHtml(result.mode)} / ${result.viewport.width}x${result.viewport.height}</p>
+          </div>
+        </header>
+        <a href="${escapeHtml(image)}"><img src="${escapeHtml(image)}" alt="${escapeHtml(result.name)} screenshot"></a>
+        <div class="chips">${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join('')}</div>
+        ${passed ? '' : `<ul>${result.failures.map((failure) => `<li>${escapeHtml(failure)}</li>`).join('')}</ul>`}
+      </article>
+    `;
+  }).join('\n');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RogueLLM Visual Inspection</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #070a0a;
+      color: #edf7ef;
+    }
+    body {
+      margin: 0;
+      padding: 24px;
+      background:
+        linear-gradient(90deg, rgba(108, 255, 91, 0.05), transparent 28%),
+        radial-gradient(circle at 80% 0%, rgba(255, 156, 33, 0.09), transparent 30%),
+        #070a0a;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0 22px;
+      color: #a8b7b4;
+      font-size: 13px;
+    }
+    .summary span {
+      padding: 5px 8px;
+      border: 1px solid #263938;
+      background: #0c1313;
+    }
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      min-width: 0;
+      border: 1px solid #253737;
+      background: #0b1111;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+    }
+    .card header {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #1d2a2a;
+    }
+    .badge {
+      padding: 4px 7px;
+      color: #071007;
+      font-size: 11px;
+      font-weight: 900;
+      background: #73ff63;
+    }
+    .fail .badge {
+      background: #ff6679;
+    }
+    h2 {
+      overflow: hidden;
+      margin: 0 0 2px;
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    p {
+      margin: 0;
+      color: #8d9b99;
+      font-size: 12px;
+    }
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #040707;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 10px;
+    }
+    .chips span {
+      padding: 3px 6px;
+      border: 1px solid #203332;
+      color: #bfffc0;
+      font-size: 11px;
+      background: #07100e;
+    }
+    ul {
+      margin: 0;
+      padding: 0 14px 14px 28px;
+      color: #ffc3cb;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>RogueLLM Visual Inspection</h1>
+  <div class="summary">
+    <span>${summary.ok ? 'All scenarios passed' : 'Failures detected'}</span>
+    <span>${summary.results.length} scenarios</span>
+    <span>${escapeHtml(summary.generatedAt)}</span>
+  </div>
+  <main>${cards}</main>
+</body>
+</html>
+`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 async function runScenario(page, scenario) {
