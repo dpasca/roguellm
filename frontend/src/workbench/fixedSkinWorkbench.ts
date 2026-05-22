@@ -83,8 +83,22 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
       onAction(action);
     }
   });
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.repeat || actionPending || !currentState || currentState.in_combat || isTerminalState(currentState)) {
+      return;
+    }
+
+    const direction = directionFromKey(event.key);
+    if (!direction || !canMoveDirection(currentState, moveButtonId(direction))) {
+      return;
+    }
+
+    event.preventDefault();
+    onAction({ action: 'move', direction });
+  };
 
   const resize = () => fitStage(stage, profile);
+  window.addEventListener('keydown', onKeyDown);
   window.addEventListener('resize', resize);
   resize();
   renderAll();
@@ -111,6 +125,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
       renderAll();
     },
     destroy(): void {
+      window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', resize);
       game.destroy(false);
     }
@@ -699,6 +714,42 @@ function canMoveDirection(state: GameState, buttonId: FixedButtonId): boolean {
       return x < state.map_width - 1;
     case 'w':
       return x > 0;
+  }
+}
+
+function directionFromKey(key: string): Direction | null {
+  switch (key) {
+    case 'ArrowUp':
+    case 'w':
+    case 'W':
+      return 'n';
+    case 'ArrowDown':
+    case 's':
+    case 'S':
+      return 's';
+    case 'ArrowLeft':
+    case 'a':
+    case 'A':
+      return 'w';
+    case 'ArrowRight':
+    case 'd':
+    case 'D':
+      return 'e';
+    default:
+      return null;
+  }
+}
+
+function moveButtonId(direction: Direction): FixedButtonId {
+  switch (direction) {
+    case 'n':
+      return 'moveN';
+    case 's':
+      return 'moveS';
+    case 'e':
+      return 'moveE';
+    case 'w':
+      return 'moveW';
   }
 }
 

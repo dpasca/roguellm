@@ -72,6 +72,12 @@ const scenarios = [
     url: fixedRuntimeUrl
   },
   {
+    name: 'mobile-fixed-runtime-log',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-log',
+    url: fixedRuntimeUrl
+  },
+  {
     name: 'mobile-gold-fixed-workbench-movement',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-movement',
@@ -226,7 +232,12 @@ async function runScenario(page, scenario) {
     await waitForCombatReady(page);
   }
 
-  if (scenario.mode === 'log' || scenario.mode === 'workbench-log' || scenario.mode === 'fixed-workbench-log') {
+  if (
+    scenario.mode === 'log' ||
+    scenario.mode === 'workbench-log' ||
+    scenario.mode === 'fixed-workbench-log' ||
+    scenario.mode === 'fixed-runtime-log'
+  ) {
     await page.getByRole('button', { name: 'Log', exact: true }).click();
     await waitForLogOpen(page);
   }
