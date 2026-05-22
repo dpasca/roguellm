@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -87,28 +88,42 @@ async function validateKit(kitPath) {
   await validateAsset(kitDir, prefix, 'chassis', kit.assets?.chassis);
 
   for (const [name, asset] of Object.entries(kit.assets?.buttons ?? {})) {
+    const stateAssets = [];
     for (const state of buttonStates) {
-      await validateAsset(kitDir, prefix, `${name}.${state}`, {
+      const png = await validateAsset(kitDir, prefix, `${name}.${state}`, {
         ...asset,
         path: `${asset.prefix}-${state}.png`
       });
+      if (png) {
+        stateAssets.push({ state, sha256: png.sha256 });
+      }
     }
+    validateDistinctStateAssets(prefix, `button ${name}`, stateAssets);
   }
 
   for (const [name, asset] of Object.entries(kit.assets?.indicators ?? {})) {
+    const stateAssets = [];
     if (asset.files) {
       for (const file of asset.files) {
-        await validateAsset(kitDir, prefix, `${name}.${file}`, { ...asset, path: file });
+        const png = await validateAsset(kitDir, prefix, `${name}.${file}`, { ...asset, path: file });
+        if (png) {
+          stateAssets.push({ state: file, sha256: png.sha256 });
+        }
       }
+      validateDistinctStateAssets(prefix, `indicator ${name}`, stateAssets);
       continue;
     }
 
     for (const state of asset.states ?? []) {
-      await validateAsset(kitDir, prefix, `${name}.${state}`, {
+      const png = await validateAsset(kitDir, prefix, `${name}.${state}`, {
         ...asset,
         path: `${asset.prefix}-${state}.png`
       });
+      if (png) {
+        stateAssets.push({ state, sha256: png.sha256 });
+      }
     }
+    validateDistinctStateAssets(prefix, `indicator ${name}`, stateAssets);
   }
 
   validateRegions(prefix, kit);
@@ -312,6 +327,8 @@ async function validateAsset(kitDir, prefix, label, asset) {
   if (asset.alpha && !png.hasAlpha) {
     failures.push(`${prefix} ${label} expected alpha channel`);
   }
+
+  return png;
 }
 
 async function readPngHeader(assetPath) {
@@ -325,8 +342,22 @@ async function readPngHeader(assetPath) {
     width: data.readUInt32BE(16),
     height: data.readUInt32BE(20),
     colorType: data[25],
-    hasAlpha: data[25] === 4 || data[25] === 6
+    hasAlpha: data[25] === 4 || data[25] === 6,
+    sha256: createHash('sha256').update(data).digest('hex')
   };
+}
+
+function validateDistinctStateAssets(prefix, label, assets) {
+  const seen = new Map();
+
+  for (const asset of assets) {
+    const existingState = seen.get(asset.sha256);
+    if (existingState) {
+      failures.push(`${prefix} ${label} states ${existingState} and ${asset.state} use identical PNG data`);
+    } else {
+      seen.set(asset.sha256, asset.state);
+    }
+  }
 }
 
 function validateRegions(prefix, kit) {

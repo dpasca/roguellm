@@ -275,6 +275,7 @@ function generateDesktopPrototypeAddons() {
 
   fs.mkdirSync(outDir, { recursive: true });
   for (const state of Object.keys(buttonStates)) {
+    writePng(outDir, `log-${state}.png`, desktopToggleSvg('LOG', state, variant));
     writePng(outDir, `inventory-${state}.png`, desktopToggleSvg('BAG', state, variant));
     writePng(outDir, `restart-${state}.png`, desktopActionButtonSvg(state, variant.action.restart));
   }
