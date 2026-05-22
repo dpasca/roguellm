@@ -145,17 +145,17 @@ const variants = [
     premium: true,
     accent: '#82ff6b',
     accentSoft: '#c8ff9c',
-    accentDim: '#214f36',
-    accentLine: '#226a3f',
+    accentDim: '#2f7047',
+    accentLine: '#329356',
     secondary: '#ff8d24',
-    textMuted: '#9cacaa',
-    textDim: '#647371',
-    shellTop: '#313637',
-    shellMid: '#101414',
-    shellStroke: '#626966',
-    panelStroke: '#50615b',
-    panelInset: '#090f0d',
-    noise: '#202a28',
+    textMuted: '#b9c9c3',
+    textDim: '#7c8c87',
+    shellTop: '#48514f',
+    shellMid: '#151c1a',
+    shellStroke: '#77817d',
+    panelStroke: '#687a73',
+    panelInset: '#101f1a',
+    noise: '#2c3835',
     action: {
       attack: { main: '#cf3927', dark: '#280706', light: '#ffb18a', text: '#ffe7cb' },
       run: { main: '#39d32f', dark: '#082b12', light: '#baff8a', text: '#e6ffdc' },
@@ -327,10 +327,10 @@ function premiumChassisSvg(variant) {
     <defs>
       ${defs(variant)}
       <linearGradient id="premiumShell" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#363b3d"/>
-        <stop offset="0.16" stop-color="#171c1c"/>
-        <stop offset="0.54" stop-color="#090d0d"/>
-        <stop offset="1" stop-color="#252b2a"/>
+        <stop offset="0" stop-color="${variant.shellTop}"/>
+        <stop offset="0.16" stop-color="#252c2a"/>
+        <stop offset="0.54" stop-color="#0b1110"/>
+        <stop offset="1" stop-color="#303836"/>
       </linearGradient>
       <linearGradient id="edgeHot" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0" stop-color="#ff4b18"/>
@@ -339,12 +339,23 @@ function premiumChassisSvg(variant) {
         <stop offset="1" stop-color="#5cff5a"/>
       </linearGradient>
       <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#082315"/>
-        <stop offset="0.52" stop-color="#020806"/>
-        <stop offset="1" stop-color="#010302"/>
+        <stop offset="0" stop-color="#123625"/>
+        <stop offset="0.42" stop-color="#05110d"/>
+        <stop offset="1" stop-color="#010403"/>
       </linearGradient>
+      <linearGradient id="sideRail" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${variant.secondary}" stop-opacity="0.9"/>
+        <stop offset="0.42" stop-color="${variant.accent}" stop-opacity="0.36"/>
+        <stop offset="0.8" stop-color="#1a2421" stop-opacity="0.5"/>
+        <stop offset="1" stop-color="${variant.secondary}" stop-opacity="0.78"/>
+      </linearGradient>
+      <radialGradient id="consoleBloom" cx="0.5" cy="0.18" r="0.82">
+        <stop offset="0" stop-color="${variant.accent}" stop-opacity="0.13"/>
+        <stop offset="0.42" stop-color="${variant.secondary}" stop-opacity="0.05"/>
+        <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+      </radialGradient>
       <pattern id="brushed" width="8" height="8" patternUnits="userSpaceOnUse">
-        <path d="M0 1H8M0 4H8M0 7H8" stroke="#53605c" stroke-opacity="0.18"/>
+        <path d="M0 1H8M0 4H8M0 7H8" stroke="#77837d" stroke-opacity="0.16"/>
         <path d="M2 0V8M6 0V8" stroke="#030606" stroke-opacity="0.42"/>
       </pattern>
       <pattern id="speaker" width="8" height="8" patternUnits="userSpaceOnUse">
@@ -363,17 +374,19 @@ function premiumChassisSvg(variant) {
     <rect x="1" y="1" width="388" height="842" rx="14" fill="#050707" stroke="#33403d" stroke-width="2"/>
     <rect x="5" y="5" width="380" height="834" rx="12" fill="url(#premiumShell)" stroke="#0b0f0f" stroke-width="2"/>
     <rect x="10" y="10" width="370" height="824" rx="10" fill="url(#brushed)" opacity="0.72"/>
+    <rect x="10" y="10" width="370" height="824" rx="10" fill="url(#consoleBloom)" opacity="0.92"/>
     <rect x="13" y="14" width="364" height="816" rx="8" fill="none" stroke="#59635f" stroke-opacity="0.24"/>
-    <rect x="18" y="44" width="4" height="584" fill="url(#edgeHot)" opacity="0.82"/>
-    <rect x="368" y="44" width="4" height="584" fill="url(#edgeHot)" opacity="0.32"/>
+    <rect x="16" y="44" width="7" height="584" rx="3" fill="url(#sideRail)" opacity="0.88" filter="url(#premiumGlow)"/>
+    <rect x="367" y="44" width="6" height="584" rx="3" fill="url(#sideRail)" opacity="0.36"/>
     <rect x="18" y="44" width="4" height="584" fill="url(#scan)" opacity="0.24"/>
     ${Array.from({ length: 18 }, (_, index) => `<rect x="${21 + index * 19}" y="826" width="10" height="4" rx="2" fill="${index % 3 === 0 ? variant.secondary : index % 3 === 1 ? variant.accent : '#293331'}" opacity="${index % 4 === 0 ? 0.9 : 0.42}"/>`).join('')}
 
     <rect x="17" y="18" width="356" height="22" rx="5" fill="#151a1a" stroke="#38433f"/>
-    <rect x="22" y="22" width="27" height="12" rx="6" fill="#090d0c" stroke="#424b48"/>
+    <rect x="18" y="19" width="354" height="5" rx="2" fill="#ffffff" opacity="0.06"/>
+    <rect x="22" y="22" width="27" height="12" rx="6" fill="#090d0c" stroke="#5b6763"/>
     <rect x="25" y="25" width="18" height="6" rx="3" fill="${variant.secondary}" filter="url(#premiumGlow)"/>
-    <text x="58" y="32" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="#aeb9b5">ROGUELLM</text>
-    <text x="151" y="31" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#697570">${variant.label}</text>
+    <text x="58" y="32" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="#d4dfda">ROGUELLM</text>
+    <text x="151" y="31" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#94a09c">${variant.label}</text>
     <g transform="translate(322 18)">
       <rect x="0" y="17" width="5" height="3" fill="${variant.accent}"/>
       <rect x="8" y="12" width="5" height="8" fill="${variant.accent}"/>
@@ -396,29 +409,34 @@ function premiumChassisSvg(variant) {
       <rect x="191" y="818" width="10" height="3" rx="1.5" fill="${variant.secondary}" opacity="0.55"/>
       <rect x="206" y="818" width="10" height="3" rx="1.5" fill="${variant.accent}" opacity="0.65"/>
     </g>
-    <rect x="66" y="665" width="74" height="166" rx="10" fill="#111818" stroke="#475550" stroke-width="2"/>
-    <rect x="78" y="704" width="50" height="88" rx="7" fill="#070b0b" stroke="#293631"/>
-    <rect x="86" y="716" width="34" height="56" rx="5" fill="#020504" stroke="#111a18"/>
-    <rect x="196" y="660" width="168" height="78" rx="9" fill="#080d0c" stroke="#3b4845" stroke-width="2"/>
-    <rect x="200" y="664" width="160" height="70" rx="8" fill="none" stroke="#111b18"/>
-    <rect x="196" y="740" width="168" height="78" rx="9" fill="#080d0c" stroke="#3b4845" stroke-width="2"/>
-    <rect x="200" y="744" width="160" height="70" rx="8" fill="none" stroke="#111b18"/>
-    <text x="27" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#65716e">${variant.footer}</text>
-    <text x="330" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#65716e">${variant.version}</text>
+    <rect x="66" y="665" width="74" height="166" rx="10" fill="#151f1e" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="69" y="668" width="68" height="24" rx="8" fill="#ffffff" opacity="0.035"/>
+    <rect x="78" y="704" width="50" height="88" rx="7" fill="#08100f" stroke="#3c4b45"/>
+    <rect x="86" y="716" width="34" height="56" rx="5" fill="#020504" stroke="#1b2823"/>
+    <rect x="196" y="660" width="168" height="78" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="200" y="664" width="160" height="70" rx="8" fill="none" stroke="#1c2b25"/>
+    <rect x="204" y="668" width="152" height="12" rx="5" fill="#ffffff" opacity="0.035"/>
+    <rect x="196" y="740" width="168" height="78" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="200" y="744" width="160" height="70" rx="8" fill="none" stroke="#1c2b25"/>
+    <rect x="204" y="748" width="152" height="12" rx="5" fill="#ffffff" opacity="0.035"/>
+    <text x="27" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.footer}</text>
+    <text x="330" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.version}</text>
   `);
 }
 
 function premiumFrame(x, y, w, h, label, variant, mode) {
   const led = mode === 'large' ? variant.secondary : variant.accent;
   const labelOpacity = mode === 'thin' ? 0.34 : 0.84;
+  const frameOpacity = mode === 'large' ? 0.32 : 0.22;
   return `
     <g>
       <rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}" rx="7" fill="#020303" stroke="#101716"/>
-      <rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="6" fill="#0c1111" stroke="#4b5653" stroke-width="1.4"/>
-      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#glass)" stroke="${variant.accent}" stroke-width="1.2"/>
+      <rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="6" fill="#111817" stroke="${variant.shellStroke}" stroke-width="1.4"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#glass)" stroke="${variant.accent}" stroke-width="1.4"/>
+      <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${h - 2}" rx="4" fill="none" stroke="${variant.accentSoft}" stroke-width="0.8" opacity="${frameOpacity}"/>
       <rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="3" fill="url(#scan)" opacity="0.15"/>
-      <rect x="${x + 6}" y="${y + 6}" width="${w - 12}" height="${Math.max(8, Math.floor(h * 0.18))}" rx="3" fill="#ffffff" opacity="0.025"/>
-      <line x1="${x + 3}" y1="${y + h - 9}" x2="${x + w - 3}" y2="${y + h - 9}" stroke="${variant.accentLine}" stroke-width="1"/>
+      <rect x="${x + 6}" y="${y + 6}" width="${w - 12}" height="${Math.max(8, Math.floor(h * 0.18))}" rx="3" fill="#ffffff" opacity="0.045"/>
+      <line x1="${x + 3}" y1="${y + h - 9}" x2="${x + w - 3}" y2="${y + h - 9}" stroke="${variant.accentLine}" stroke-width="1.2"/>
       <text x="${x + 10}" y="${y + 16}" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="${labelOpacity}">${label}</text>
       <circle cx="${x + w - 12}" cy="${y + 12}" r="4" fill="${led}" opacity="0.9" filter="url(#premiumGlow)"/>
     </g>
@@ -463,11 +481,11 @@ function actionButtonSvg(label, width, height, state, palette) {
 
 function premiumActionButtonSvg(label, width, height, state, palette) {
   const style = buttonStates[state];
-  const alpha = state === 'disabled' ? 0.62 : 1;
+  const alpha = state === 'disabled' ? 0.72 : 1;
   const main = shift(palette.main, style.shade);
   const dark = shift(palette.dark, style.shade);
   const light = shift(palette.light, style.shade);
-  const text = state === 'disabled' ? '#6a7470' : palette.text;
+  const text = state === 'disabled' ? '#87948f' : palette.text;
   const led = label === 'RUN' ? '#74ff55' : '#ff542f';
   const fontSize = width > 180 ? 20 : 22;
 
@@ -493,7 +511,7 @@ function premiumActionButtonSvg(label, width, height, state, palette) {
     </defs>
     <g transform="translate(0 ${style.y})" opacity="${alpha}">
       <rect x="3" y="9" width="${width - 6}" height="${height - 12}" rx="8" fill="#010202" opacity="0.94"/>
-      <rect x="6" y="3" width="${width - 12}" height="${height - 13}" rx="8" fill="#111716" stroke="#485551" stroke-width="2"/>
+      <rect x="6" y="3" width="${width - 12}" height="${height - 13}" rx="8" fill="#151d1b" stroke="#62706b" stroke-width="2"/>
       <rect x="11" y="9" width="${width - 22}" height="${height - 24}" rx="6" fill="url(#premiumButton)" stroke="${light}" stroke-width="1.4"/>
       <rect x="15" y="13" width="${width - 30}" height="${height - 32}" rx="5" fill="url(#buttonScan)" opacity="${state === 'disabled' ? 0.10 : 0.45}"/>
       <rect x="18" y="15" width="${width - 36}" height="8" rx="4" fill="none" stroke="${light}" stroke-width="1.3" opacity="${style.glow}"/>
@@ -526,7 +544,7 @@ function premiumToggleSvg(label, state, variant) {
   const active = state === 'pressed';
   const stroke = state === 'disabled' ? '#46524f' : active ? '#d8ffd0' : variant.accentSoft;
   const fill = state === 'disabled' ? '#111716' : active ? '#145d2a' : '#050908';
-  const text = state === 'disabled' ? '#5e6965' : variant.accentSoft;
+  const text = state === 'disabled' ? '#72807b' : variant.accentSoft;
 
   return svg(46, 32, `
     <defs>
@@ -569,9 +587,9 @@ function premiumDpadButtonSvg(direction, state, variant) {
   const style = buttonStates[state];
   const arrow = arrowPoints(direction);
   const disabled = state === 'disabled';
-  const stroke = disabled ? '#3f4a47' : variant.accentSoft;
-  const fill = disabled ? '#121918' : state === 'pressed' ? '#07100e' : '#1b2524';
-  const arrowFill = disabled ? '#59635f' : variant.accentSoft;
+  const stroke = disabled ? '#4e5c57' : variant.accentSoft;
+  const fill = disabled ? '#17201e' : state === 'pressed' ? '#07100e' : '#1f2c29';
+  const arrowFill = disabled ? '#74817c' : variant.accentSoft;
 
   return svg(58, 58, `
     <defs>
@@ -588,12 +606,12 @@ function premiumDpadButtonSvg(direction, state, variant) {
         </feMerge>
       </filter>
     </defs>
-    <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
+    <g transform="translate(0 ${style.y})" opacity="${disabled ? 0.78 : style.alpha}">
       <rect x="1" y="8" width="56" height="48" rx="8" fill="#010202" opacity="0.9"/>
-      <rect x="4" y="3" width="50" height="50" rx="8" fill="url(#dpadFace)" stroke="#53615d" stroke-width="2"/>
-      <rect x="7" y="6" width="44" height="44" rx="6" fill="none" stroke="${stroke}" stroke-width="1.4" opacity="${disabled ? 0.32 : 0.74}"/>
+      <rect x="4" y="3" width="50" height="50" rx="8" fill="url(#dpadFace)" stroke="#66736f" stroke-width="2"/>
+      <rect x="7" y="6" width="44" height="44" rx="6" fill="none" stroke="${stroke}" stroke-width="1.4" opacity="${disabled ? 0.44 : 0.74}"/>
       <rect x="10" y="9" width="38" height="13" rx="5" fill="none" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow}"/>
-      <polygon points="${arrow}" fill="${arrowFill}" opacity="${disabled ? 0.42 : 0.96}" filter="url(#dpadGlow)"/>
+      <polygon points="${arrow}" fill="${arrowFill}" opacity="${disabled ? 0.58 : 0.96}" filter="url(#dpadGlow)"/>
     </g>
   `);
 }
