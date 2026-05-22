@@ -7,6 +7,10 @@ import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './sk
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory' | 'escaped-copy';
+type DrawerState = {
+  logOpen: boolean;
+  inventoryOpen: boolean;
+};
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
@@ -103,8 +107,35 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
       onAction(action);
     }
   });
+  const handleDrawerKey = (event: KeyboardEvent) => {
+    const nextState = nextDrawerStateForKey(event, { logOpen, inventoryOpen });
+    if (!nextState) {
+      return false;
+    }
+
+    logOpen = nextState.logOpen;
+    inventoryOpen = nextState.inventoryOpen;
+    renderAll();
+    event.preventDefault();
+    return true;
+  };
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.repeat || actionPending || !currentState || currentState.in_combat || isTerminalState(currentState)) {
+    if (event.repeat) {
+      return;
+    }
+
+    if (handleDrawerKey(event)) {
+      return;
+    }
+
+    if (
+      actionPending ||
+      logOpen ||
+      inventoryOpen ||
+      !currentState ||
+      currentState.in_combat ||
+      isTerminalState(currentState)
+    ) {
       return;
     }
 
@@ -214,6 +245,23 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
 
     dispatchAction(action);
   });
+  const handleDrawerKey = (event: KeyboardEvent) => {
+    const nextState = nextDrawerStateForKey(event, { logOpen, inventoryOpen });
+    if (!nextState) {
+      return false;
+    }
+
+    logOpen = nextState.logOpen;
+    inventoryOpen = nextState.inventoryOpen;
+    renderAll();
+    event.preventDefault();
+    return true;
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!event.repeat) {
+      handleDrawerKey(event);
+    }
+  };
 
   function dispatchAction(action: GameAction): void {
     state = applyWorkbenchAction(state, action);
@@ -222,11 +270,13 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   }
 
   const resize = () => fitStage(stage, profile);
+  window.addEventListener('keydown', onKeyDown);
   window.addEventListener('resize', resize);
   resize();
   renderAll();
 
   window.addEventListener('beforeunload', () => {
+    window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('resize', resize);
     game.destroy(false);
   });
@@ -263,6 +313,25 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
   }
 
   return selectPreferredProfile(profiles, 'mobilePortrait') ?? profiles[0] ?? null;
+}
+
+function nextDrawerStateForKey(event: KeyboardEvent, current: DrawerState): DrawerState | null {
+  if (event.key === 'Escape') {
+    return current.logOpen || current.inventoryOpen
+      ? { logOpen: false, inventoryOpen: false }
+      : null;
+  }
+
+  const key = event.key.toLowerCase();
+  if (key === 'l') {
+    return { logOpen: !current.logOpen, inventoryOpen: false };
+  }
+
+  if (key === 'b' || key === 'i') {
+    return { logOpen: false, inventoryOpen: !current.inventoryOpen };
+  }
+
+  return null;
 }
 
 function selectThemedProfile(
@@ -611,6 +680,15 @@ function createButton(buttonId: FixedButtonId, button: FixedSkinButton): HTMLBut
     label.textContent = button.label;
     element.append(label);
   }
+  if (buttonId === 'log') {
+    element.setAttribute('aria-controls', 'log-panel');
+    element.setAttribute('aria-expanded', 'false');
+    element.setAttribute('aria-pressed', 'false');
+  } else if (buttonId === 'inventory') {
+    element.setAttribute('aria-controls', 'inventory-panel');
+    element.setAttribute('aria-expanded', 'false');
+    element.setAttribute('aria-pressed', 'false');
+  }
   setButtonVisual(element, button, 'idle');
   return element;
 }
@@ -834,6 +912,11 @@ function renderButtonState(
           : !canMove || !canMoveDirection(state, buttonId);
     element.hidden = buttonId === 'restart' && !terminal;
     element.disabled = disabled;
+    if (buttonId === 'log' || buttonId === 'inventory') {
+      const active = activeButtons[buttonId] ? 'true' : 'false';
+      element.setAttribute('aria-expanded', active);
+      element.setAttribute('aria-pressed', active);
+    }
     setButtonVisual(element, button, disabled ? 'disabled' : activeButtons[buttonId] ? 'pressed' : 'idle');
   }
 }

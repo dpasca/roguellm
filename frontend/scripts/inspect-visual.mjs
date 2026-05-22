@@ -271,6 +271,12 @@ const scenarios = [
     url: fixedWorkbenchProfileUrl('gold-mobile')
   },
   {
+    name: 'mobile-reference-v3-fixed-workbench-drawer-escape',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-drawer-escape',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v3')
+  },
+  {
     name: 'mobile-gold-fixed-workbench-defeat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-defeat',
@@ -672,6 +678,13 @@ async function runScenario(page, scenario) {
     await waitForFixedDrawerSwitch(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-drawer-escape') {
+    await page.getByRole('button', { name: 'Log', exact: true }).click();
+    await waitForLogOpen(page);
+    await page.keyboard.press('Escape');
+    await waitForFixedDrawerClosed(page);
+  }
+
   if (
     scenario.mode === 'fixed-workbench-defeat' ||
     scenario.mode === 'fixed-workbench-victory' ||
@@ -953,6 +966,19 @@ async function waitForFixedDrawerSwitch(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedDrawerClosed(page) {
+  await page.waitForFunction(() => {
+    const logToggle = document.getElementById('fixed-log-toggle');
+    return !document.body.classList.contains('fixed-log-open') &&
+      !document.body.classList.contains('log-open') &&
+      !document.body.classList.contains('fixed-inventory-open') &&
+      logToggle instanceof HTMLButtonElement &&
+      logToggle.dataset.visualState === 'idle' &&
+      logToggle.getAttribute('aria-expanded') === 'false' &&
+      logToggle.getAttribute('aria-pressed') === 'false';
+  }, null, { timeout: 20_000 });
+}
+
 async function waitForFixedEndState(page, expected) {
   await page.waitForFunction((expectedState) => {
     const overlay = document.getElementById('end-state-overlay');
@@ -1048,6 +1074,8 @@ async function collectMetrics(page) {
         borderImageSource: style.borderImageSource,
         borderImageRepeat: style.borderImageRepeat,
         borderImageSlice: style.borderImageSlice,
+        ariaExpanded: element instanceof HTMLElement ? element.getAttribute('aria-expanded') : null,
+        ariaPressed: element instanceof HTMLElement ? element.getAttribute('aria-pressed') : null,
         visualState: element instanceof HTMLElement ? element.dataset.visualState ?? null : null
       };
     };
@@ -1428,6 +1456,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
   const isInventoryScenario = scenario.mode === 'fixed-workbench-inventory' || scenario.mode === 'fixed-workbench-inventory-use';
   const isDrawerSwitchScenario = scenario.mode === 'fixed-workbench-drawer-switch';
+  const isDrawerEscapeScenario = scenario.mode === 'fixed-workbench-drawer-escape';
   const isLogScenario = scenario.mode === 'fixed-workbench-log' || isDrawerSwitchScenario;
   const isEndStateScenario = scenario.mode === 'fixed-workbench-defeat' || scenario.mode === 'fixed-workbench-victory';
   const isRestartScenario = scenario.mode === 'fixed-workbench-restart';
@@ -1582,6 +1611,9 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (inventoryToggle?.visualState !== 'pressed') {
       failures.push(`fixed inventory toggle should use pressed state while open, got ${inventoryToggle?.visualState ?? 'none'}`);
     }
+    if (inventoryToggle?.ariaPressed !== 'true' || inventoryToggle?.ariaExpanded !== 'true') {
+      failures.push('fixed inventory toggle does not expose pressed/expanded state while open');
+    }
     if (scenario.mode === 'fixed-workbench-inventory-use' && !metrics.playerHpText?.startsWith('55/100')) {
       failures.push(`fixed inventory use did not update HP, got ${metrics.playerHpText || 'empty'}`);
     }
@@ -1592,6 +1624,25 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   }
   if (isDrawerSwitchScenario && metrics.rects.logToggleButton?.visualState !== 'pressed') {
     failures.push(`fixed log toggle should use pressed state after drawer switch, got ${metrics.rects.logToggleButton?.visualState ?? 'none'}`);
+  }
+  if (isDrawerSwitchScenario) {
+    const logToggle = metrics.rects.logToggleButton;
+    if (logToggle?.ariaPressed !== 'true' || logToggle?.ariaExpanded !== 'true') {
+      failures.push('fixed log toggle does not expose pressed/expanded state while open');
+    }
+  }
+
+  if (isDrawerEscapeScenario) {
+    if (metrics.logOpen || metrics.inventoryOpen) {
+      failures.push('fixed Escape shortcut left a drawer open');
+    }
+    const logToggle = metrics.rects.logToggleButton;
+    if (logToggle?.visualState !== 'idle') {
+      failures.push(`fixed Escape shortcut should return log toggle to idle, got ${logToggle?.visualState ?? 'none'}`);
+    }
+    if (logToggle?.ariaPressed !== 'false' || logToggle?.ariaExpanded !== 'false') {
+      failures.push('fixed Escape shortcut does not reset log toggle pressed/expanded state');
+    }
   }
 
   if (isEndStateScenario) {
