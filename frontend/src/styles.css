@@ -765,12 +765,14 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 }
 
 .fixed-log-open .fixed-log-region {
-  display: block;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   z-index: 5;
 }
 
 .fixed-inventory-open .fixed-inventory-region {
-  display: block;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   z-index: 5;
 }
 
@@ -782,6 +784,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 }
 
 .fixed-log-open .fixed-game-log {
+  min-height: 0;
   overflow: auto;
   padding-right: 4px;
 }
@@ -919,7 +922,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 .fixed-inventory-list {
   display: flex;
   min-height: 0;
-  max-height: 168px;
+  max-height: none;
   flex-direction: column;
   gap: 7px;
   overflow: auto;

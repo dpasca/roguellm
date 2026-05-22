@@ -217,8 +217,8 @@ function validateMetadataTokens(prefix, key, tokens) {
 function validateProductionMobileGeometry(prefix, kit) {
   validateRectSize(prefix, 'region map', kit.regions?.map, { minWidth: 320, minHeight: 250, maxHeight: 315 });
   validateRectSize(prefix, 'region latest', kit.regions?.latest, { minWidth: 260, minHeight: 78 });
-  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: 180 });
-  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: 180 });
+  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: 260 });
+  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: 260 });
   validateRectSize(prefix, 'region player', kit.regions?.player, { minWidth: 320, minHeight: 50 });
   validateRectSize(prefix, 'region combat', kit.regions?.combat, { minWidth: 320, minHeight: 56 });
   validateRectSize(prefix, 'region controls', kit.regions?.controls, { minWidth: 340, minHeight: 180 });

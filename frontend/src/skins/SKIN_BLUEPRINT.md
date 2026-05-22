@@ -26,8 +26,9 @@ The current gold layout target uses this hierarchy:
   longer dominant.
 - Latest message: about `284x86`, readable as a primary story surface while
   reserving a fixed log-toggle well.
-- Expanded log: about `342x204`, allowed to overlay the player panel while open.
-- Expanded inventory: about `342x204`, sharing the drawer space with the log
+- Expanded log: about `342x284`, allowed to overlay the title, player, and
+  combat panels while open so story text has real reading space.
+- Expanded inventory: about `342x284`, sharing the drawer space with the log
   and showing item rows plus fixed action affordances.
 - Title/status band plus player panel: title and model status sit above a
   compact `342x54` HP/stat block.

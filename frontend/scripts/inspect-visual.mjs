@@ -1700,6 +1700,7 @@ function validateCompactMobileLayout(metrics, failures) {
   const tileStatValue = metrics.rects.tileStatValue;
   const combat = metrics.rects.combatPanel;
   const log = metrics.rects.logPanel;
+  const inventory = metrics.rects.inventoryPanel;
   const status = metrics.rects.statusPill;
   const buttons = [
     ['move-n', metrics.rects.moveNorthButton],
@@ -1732,8 +1733,12 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
   }
 
-  if (metrics.logOpen && (!log || log.visibleHeight < 180)) {
+  if (metrics.logOpen && (!log || log.visibleHeight < 260)) {
     failures.push(`compact mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (metrics.inventoryOpen && (!inventory || inventory.visibleHeight < 260)) {
+    failures.push(`compact mobile open inventory is too small: ${inventory?.visibleHeight ?? 0}px visible`);
   }
 
   if (!status || status.visibleWidth < 52 || status.visibleHeight < 22) {
