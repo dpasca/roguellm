@@ -11,6 +11,7 @@
     "build:gold-mobile-skin": "pnpm run build:fixed-skins",
     "build": "tsc --noEmit && vite build",
     "inspect:visual": "node scripts/inspect-visual.mjs",
+    "validate:bundle": "node scripts/validate-bundle.mjs",
     "validate:skins": "node scripts/validate-skin-kits.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4273"
   },
