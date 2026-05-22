@@ -33,6 +33,9 @@ Hard rules:
 - Do not include gameplay map tiles, item icons, enemy icons, player marker, HP
   values, stat numbers, enemy names, log text, chat text, or sample UI content.
 - Do not include labels that will change at runtime.
+- Do not bake decorative labels inside live text zones such as player HP/stats,
+  combat/enemy, latest message, log, inventory, or end-state copy. Those zones
+  must stay clean for runtime DOM text.
 - Stable decorative labels are allowed only if small and nonessential.
 - Leave all dynamic apertures clean and empty enough for live DOM/Phaser content.
 - Make button wells clean enough to crop separate transparent sprites for idle,

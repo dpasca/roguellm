@@ -483,7 +483,8 @@ function premiumChassisSvg(variant) {
 
 function premiumFrame(x, y, w, h, label, variant, mode) {
   const led = mode === 'large' ? variant.secondary : variant.accent;
-  const labelOpacity = mode === 'thin' ? 0.34 : 0.84;
+  const showLabel = mode !== 'thin';
+  const labelOpacity = 0.84;
   const frameOpacity = mode === 'large' ? 0.32 : 0.22;
   return `
     <g>
@@ -494,7 +495,7 @@ function premiumFrame(x, y, w, h, label, variant, mode) {
       <rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="3" fill="url(#scan)" opacity="0.15"/>
       <rect x="${x + 6}" y="${y + 6}" width="${w - 12}" height="${Math.max(8, Math.floor(h * 0.18))}" rx="3" fill="#ffffff" opacity="0.045"/>
       <line x1="${x + 3}" y1="${y + h - 9}" x2="${x + w - 3}" y2="${y + h - 9}" stroke="${variant.accentLine}" stroke-width="1.2"/>
-      <text x="${x + 10}" y="${y + 16}" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="${labelOpacity}">${label}</text>
+      ${showLabel ? `<text x="${x + 10}" y="${y + 16}" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="${labelOpacity}">${label}</text>` : ''}
       <circle cx="${x + w - 12}" cy="${y + 12}" r="4" fill="${led}" opacity="0.9" filter="url(#premiumGlow)"/>
     </g>
   `;

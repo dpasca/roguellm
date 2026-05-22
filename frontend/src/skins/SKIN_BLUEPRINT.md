@@ -155,6 +155,9 @@ When generating a new skin, request a blank mobile cyberdeck UI kit:
 - Empty player/combat panels.
 - Physical D-pad and action-button wells.
 - No baked dynamic labels except stable decorative labels.
+- No baked labels inside live text zones such as player HP/stats, combat/enemy,
+  latest message, log, inventory, or end-state copy. Runtime text must own those
+  surfaces so labels never collide with generated art.
 - No sample HP values, enemy names, chat text, map icons, or active game state.
 - Clean enough control areas to slice into separate transparent state sprites.
 
