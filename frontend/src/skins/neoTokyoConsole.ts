@@ -378,11 +378,13 @@ const fixedProfiles: FixedSkinProfile[] = [
       title: { x: 874, y: 24, width: 300, height: 40 },
       latest: { x: 892, y: 746, width: 334, height: 78 },
       log: { x: 892, y: 746, width: 334, height: 106 },
+      inventory: { x: 892, y: 542, width: 334, height: 282 },
       playerHp: { x: 890, y: 86, width: 336, height: 86 },
       playerHpFill: { x: 956, y: 116, width: 220, height: 11 },
       playerStats: { x: 892, y: 136, width: 326, height: 28 },
       combat: { x: 892, y: 220, width: 332, height: 48 },
-      enemyHpFill: { x: 1028, y: 254, width: 154, height: 10 }
+      enemyHpFill: { x: 1028, y: 254, width: 154, height: 10 },
+      endState: { x: 886, y: 502, width: 346, height: 326 }
     },
     buttons: {
       attack: {
@@ -402,6 +404,19 @@ const fixedProfiles: FixedSkinProfile[] = [
         label: 'Log',
         icon: 'fa-solid fa-list',
         states: fixedButton('desktop', 'log')
+      },
+      inventory: {
+        rect: { x: 1088, y: 714, width: 72, height: 36 },
+        label: 'Inventory',
+        icon: 'fa-solid fa-bag-shopping',
+        hideLabel: true,
+        states: fixedButton('desktop', 'inventory')
+      },
+      restart: {
+        rect: { x: 939, y: 760, width: 240, height: 58 },
+        label: 'Restart',
+        icon: 'fa-solid fa-rotate-right',
+        states: fixedButton('desktop', 'restart')
       },
       moveN: {
         rect: { x: 916, y: 332, width: 44, height: 44 },

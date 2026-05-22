@@ -217,6 +217,7 @@ const buttonStates = {
 for (const variant of variants) {
   generateVariant(variant);
 }
+generateDesktopPrototypeAddons();
 
 function generateVariant(variant) {
   const outDir = path.join(fixedRootDir, variant.id);
@@ -258,6 +259,25 @@ function generateVariant(variant) {
   writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
   writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
   writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
+}
+
+function generateDesktopPrototypeAddons() {
+  const outDir = path.join(fixedRootDir, 'desktop');
+  const variant = {
+    accent: '#77ff55',
+    accentSoft: '#d7ffcb',
+    accentDim: '#1f6841',
+    panelStroke: '#4f6561',
+    action: {
+      restart: { main: '#6cf052', dark: '#10351a', light: '#e4ffc8', text: '#f2ffe0' }
+    }
+  };
+
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const state of Object.keys(buttonStates)) {
+    writePng(outDir, `inventory-${state}.png`, desktopToggleSvg('BAG', state, variant));
+    writePng(outDir, `restart-${state}.png`, desktopActionButtonSvg(state, variant.action.restart));
+  }
 }
 
 function skinMeta(variant) {
@@ -599,6 +619,64 @@ function premiumToggleSvg(label, state, variant) {
       <rect x="6" y="5" width="34" height="18" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.1"/>
       <line x1="9" y1="20" x2="37" y2="20" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow * 0.7}"/>
       <text x="23" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${text}" filter="url(#toggleGlow)">${label}</text>
+    </g>
+  `);
+}
+
+function desktopToggleSvg(label, state, variant) {
+  const style = buttonStates[state];
+  const active = state === 'pressed';
+  const stroke = state === 'disabled' ? '#536060' : active ? '#fff1c7' : variant.accentSoft;
+  const fill = state === 'disabled' ? '#111819' : active ? shift(variant.accentDim, -24) : '#06130b';
+  const text = state === 'disabled' ? '#5c6868' : variant.accentSoft;
+
+  return svg(72, 36, `
+    <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
+      <rect x="1" y="5" width="70" height="29" rx="5" fill="#020505" opacity="0.82"/>
+      <rect x="3" y="1" width="66" height="29" rx="4" fill="#111716" stroke="#485551" stroke-width="1.4"/>
+      <rect x="7" y="5" width="58" height="20" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
+      <rect x="11" y="8" width="50" height="5" rx="2.5" fill="none" stroke="${stroke}" opacity="${style.glow}"/>
+      <line x1="12" y1="22" x2="60" y2="22" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow * 0.7}"/>
+      <text x="36" y="21" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="10" fill="${text}">${label}</text>
+    </g>
+  `);
+}
+
+function desktopActionButtonSvg(state, palette) {
+  const style = buttonStates[state];
+  const disabled = state === 'disabled';
+  const main = disabled ? '#22302c' : shift(palette.main, style.shade);
+  const dark = disabled ? '#0d1212' : shift(palette.dark, style.shade);
+  const light = disabled ? '#4f5d58' : shift(palette.light, style.shade);
+  const led = disabled ? '#3c4844' : '#6cff4f';
+
+  return svg(240, 58, `
+    <defs>
+      <linearGradient id="desktopButtonFace" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2f3836"/>
+        <stop offset="0.18" stop-color="${main}"/>
+        <stop offset="0.72" stop-color="${dark}"/>
+        <stop offset="1" stop-color="#060707"/>
+      </linearGradient>
+      <pattern id="desktopButtonScan" width="4" height="4" patternUnits="userSpaceOnUse">
+        <path d="M0 1H4" stroke="#ffffff" stroke-opacity="${disabled ? '0.04' : '0.08'}"/>
+      </pattern>
+      <filter id="desktopButtonGlow" x="-30%" y="-35%" width="160%" height="170%">
+        <feGaussianBlur stdDeviation="1.6" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
+      <rect x="1" y="7" width="238" height="49" rx="9" fill="#010202" opacity="0.9"/>
+      <rect x="4" y="2" width="232" height="48" rx="8" fill="#101716" stroke="#4d5d59" stroke-width="1.6"/>
+      <rect x="8" y="6" width="224" height="38" rx="6" fill="url(#desktopButtonFace)" stroke="${light}" stroke-width="1.8"/>
+      <rect x="9" y="7" width="222" height="36" rx="5" fill="url(#desktopButtonScan)" opacity="0.9"/>
+      <rect x="14" y="10" width="142" height="12" rx="5" fill="#ffffff" opacity="${disabled ? '0.05' : '0.14'}"/>
+      <rect x="14" y="36" width="168" height="4" rx="2" fill="${light}" opacity="${disabled ? '0.12' : '0.36'}"/>
+      <circle cx="225" cy="13" r="7" fill="${led}" opacity="${disabled ? '0.58' : '0.9'}" filter="url(#desktopButtonGlow)"/>
     </g>
   `);
 }

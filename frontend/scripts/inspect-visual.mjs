@@ -401,6 +401,13 @@ const scenarios = [
     expectedFixedProfile: 'desktop-wide'
   },
   {
+    name: 'desktop-fixed-runtime-inventory',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-runtime-inventory',
+    url: desktopFixedRuntimeUrl,
+    expectedFixedProfile: 'desktop-wide'
+  },
+  {
     name: 'desktop-fixed-runtime-combat',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-runtime-combat',
@@ -412,6 +419,20 @@ const scenarios = [
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-workbench',
     url: fixedWorkbenchUrl,
+    expectedFixedProfile: 'desktop-wide'
+  },
+  {
+    name: 'desktop-fixed-workbench-defeat',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-workbench-defeat',
+    url: `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}scenario=defeat`,
+    expectedFixedProfile: 'desktop-wide'
+  },
+  {
+    name: 'desktop-fixed-workbench-restart',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-workbench-restart',
+    url: `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}scenario=defeat`,
     expectedFixedProfile: 'desktop-wide'
   }
 ];

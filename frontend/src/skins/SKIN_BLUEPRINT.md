@@ -214,4 +214,5 @@ comparing behavior.
   controls; completed with inventory and restart widgets, but not promoted to
   default until its proportions meet the compact mobile gates.
 - `desktop-wide`: prototype desktop profile kept to preserve the future desktop
-  profile shape and covered by a basic fixed-workbench visual selection check.
+  profile shape, now covered for runtime ready/log/inventory/combat plus
+  terminal restart flow.
