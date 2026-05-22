@@ -85,6 +85,11 @@ Required status states:
 - `error`
 - `offline`
 
+Fixed mobile status text must use short runtime labels that fit inside the
+status sprite. Current labels are `READY`, `OPEN`, `NET`, `WAIT`, `MAKE`,
+`BOOT`, `ERR`, and `OFF`; longer raw transport/status strings should never be
+rendered directly into the fixed indicator.
+
 Required binary indicator states:
 
 - `on`

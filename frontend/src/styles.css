@@ -689,11 +689,13 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 
 .fixed-status-indicator {
   display: grid;
+  overflow: hidden;
   place-items: center;
   color: #d7ffcb;
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
+  white-space: nowrap;
   background-repeat: no-repeat;
   background-size: 100% 100%;
   text-shadow: 0 0 8px rgba(126, 255, 96, 0.7);

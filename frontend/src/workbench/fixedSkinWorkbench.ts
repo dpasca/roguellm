@@ -5,7 +5,7 @@ import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkin
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
-type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'defeat' | 'victory';
+type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
@@ -200,8 +200,8 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   function renderAll(): void {
     applyFixedStateClasses(stage, state, logOpen);
     scene.renderGameState(state);
-    renderTextState(profile, state, logs, logOpen);
-    renderButtonState(profile, buttons, state);
+    renderTextState(profile, state, logs, logOpen, scenario === 'status' ? 'revealing' : undefined);
+    renderButtonState(profile, buttons, state, scenario === 'status');
   }
 }
 
@@ -232,14 +232,14 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
 
 function selectScenario(): FixedWorkbenchScenario {
   const scenario = new URLSearchParams(window.location.search).get('scenario');
-  return scenario === 'movement' || scenario === 'diagnostics' || scenario === 'defeat' || scenario === 'victory'
+  return scenario === 'movement' || scenario === 'diagnostics' || scenario === 'status' || scenario === 'defeat' || scenario === 'victory'
     ? scenario
     : 'combat';
 }
 
 function createInitialState(scenario: FixedWorkbenchScenario): GameState {
   const state = createWorkbenchState();
-  if (scenario === 'combat' || scenario === 'diagnostics') {
+  if (scenario === 'combat' || scenario === 'diagnostics' || scenario === 'status') {
     return state;
   }
 
@@ -287,6 +287,10 @@ function createInitialLogs(scenario: FixedWorkbenchScenario): string[] {
 
   if (scenario === 'diagnostics') {
     return ['Diagnostics: every fixed skin sprite state is visible in the map aperture.', ...baseLogs];
+  }
+
+  if (scenario === 'status') {
+    return ['Status test: compact WAIT label, thinking indicator sprite, and disabled pending controls must fit cleanly.', ...baseLogs];
   }
 
   if (scenario === 'defeat') {
@@ -627,19 +631,36 @@ function renderStatusIndicator(profile: FixedSkinProfile, status: string): void 
   }
 
   const normalized = status.trim().toLowerCase();
-  const visualState =
-    normalized === 'error'
-      ? 'error'
-      : normalized === 'closed' || normalized === 'offline'
-        ? 'offline'
-        : normalized === 'thinking' || normalized === 'creating' || normalized === 'restarting' || normalized === 'revealing'
-          ? 'thinking'
-          : 'ready';
-  element.textContent = normalized ? normalized.toUpperCase() : 'OFFLINE';
+  const { label, visualState } = fixedStatusDisplay(normalized);
+  element.textContent = label;
   element.style.setProperty(
     'background-image',
     `url("${profile.indicators.status.states[visualState] ?? profile.indicators.status.states.ready}")`
   );
+}
+
+function fixedStatusDisplay(status: string): { label: string; visualState: 'ready' | 'thinking' | 'error' | 'offline' } {
+  switch (status) {
+    case 'error':
+      return { label: 'ERR', visualState: 'error' };
+    case 'closed':
+    case 'offline':
+      return { label: 'OFF', visualState: 'offline' };
+    case 'creating':
+      return { label: 'MAKE', visualState: 'thinking' };
+    case 'restarting':
+      return { label: 'BOOT', visualState: 'thinking' };
+    case 'thinking':
+    case 'revealing':
+      return { label: 'WAIT', visualState: 'thinking' };
+    case 'open':
+      return { label: 'OPEN', visualState: 'ready' };
+    case 'online':
+      return { label: 'NET', visualState: 'ready' };
+    case 'ready':
+    default:
+      return { label: 'READY', visualState: 'ready' };
+  }
 }
 
 function renderEndState(state: GameState): void {

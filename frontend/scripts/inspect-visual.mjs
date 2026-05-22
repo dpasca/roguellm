@@ -90,6 +90,12 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-gold-fixed-workbench-status',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-status',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=status`
+  },
+  {
     name: 'mobile-gold-fixed-workbench-defeat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-defeat',
@@ -251,6 +257,10 @@ async function runScenario(page, scenario) {
     await waitForFixedDiagnostics(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-status') {
+    await waitForFixedStatus(page);
+  }
+
   if (
     scenario.mode === 'fixed-workbench-defeat' ||
     scenario.mode === 'fixed-workbench-victory' ||
@@ -364,6 +374,15 @@ async function waitForFixedDiagnostics(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedStatus(page) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.fixedScenario === 'status' &&
+      document.getElementById('connection-status')?.textContent?.trim() === 'WAIT' &&
+      document.getElementById('attack')?.disabled &&
+      document.getElementById('run')?.disabled;
+  }, null, { timeout: 20_000 });
+}
+
 async function waitForFixedEndState(page, expected) {
   await page.waitForFunction((expectedState) => {
     const overlay = document.getElementById('end-state-overlay');
@@ -440,6 +459,10 @@ async function collectMetrics(page) {
         height: Math.round(box.height),
         visibleHeight: Math.round(Math.max(0, Math.min(box.bottom, innerHeight) - Math.max(box.top, 0))),
         visibleWidth: Math.round(Math.max(0, Math.min(box.right, innerWidth) - Math.max(box.left, 0))),
+        clientWidth: element.clientWidth,
+        clientHeight: element.clientHeight,
+        scrollWidth: element.scrollWidth,
+        scrollHeight: element.scrollHeight,
         display: style.display,
         opacity: style.opacity,
         backgroundImage: style.backgroundImage,
@@ -669,6 +692,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isGoldProfile = metrics.fixedProfile === 'gold-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
+  const isStatusScenario = scenario.mode === 'fixed-workbench-status';
   const isEndStateScenario = scenario.mode === 'fixed-workbench-defeat' || scenario.mode === 'fixed-workbench-victory';
   const isRestartScenario = scenario.mode === 'fixed-workbench-restart';
 
@@ -706,6 +730,18 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     const diagnostics = metrics.rects.diagnosticsBoard;
     if (!diagnostics || diagnostics.visibleHeight < 240 || diagnostics.visibleWidth < 300) {
       failures.push(`diagnostics board is too small: ${diagnostics?.visibleWidth ?? 0}x${diagnostics?.visibleHeight ?? 0}`);
+    }
+  }
+
+  if (isStatusScenario) {
+    if (metrics.fixedScenario !== 'status') {
+      failures.push(`expected status scenario, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (metrics.statusText !== 'WAIT') {
+      failures.push(`expected compact WAIT status text, got ${metrics.statusText}`);
+    }
+    if (!metrics.controlStates.attackDisabled || !metrics.controlStates.runDisabled) {
+      failures.push('status scenario did not disable pending combat controls');
     }
   }
 
@@ -816,6 +852,7 @@ function validateGoldMobileLayout(metrics, failures) {
   const player = metrics.rects.playerPanel;
   const combat = metrics.rects.combatPanel;
   const log = metrics.rects.logPanel;
+  const status = metrics.rects.statusPill;
   const buttons = [
     ['move-n', metrics.rects.moveNorthButton],
     ['move-s', metrics.rects.moveSouthButton],
@@ -843,6 +880,12 @@ function validateGoldMobileLayout(metrics, failures) {
 
   if (metrics.logOpen && (!log || log.visibleHeight < 180)) {
     failures.push(`gold mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (!status || status.visibleWidth < 52 || status.visibleHeight < 22) {
+    failures.push(`gold mobile status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
+  } else if (status.scrollWidth > status.clientWidth || status.scrollHeight > status.clientHeight) {
+    failures.push(`gold mobile status text overflows: ${status.scrollWidth}x${status.scrollHeight} > ${status.clientWidth}x${status.clientHeight}`);
   }
 
   for (const [name, rect] of buttons) {
