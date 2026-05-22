@@ -1159,6 +1159,13 @@ async function collectMetrics(page) {
         height: Number(document.getElementById('game-canvas')?.dataset.mapHeight ?? NaN),
         inCombat: document.getElementById('game-canvas')?.dataset.inCombat ?? null
       },
+      mapMarker: {
+        animated: document.getElementById('game-canvas')?.dataset.markerAnimated ?? null,
+        visualX: Number(document.getElementById('game-canvas')?.dataset.markerVisualX ?? NaN),
+        visualY: Number(document.getElementById('game-canvas')?.dataset.markerVisualY ?? NaN),
+        targetX: Number(document.getElementById('game-canvas')?.dataset.markerTargetX ?? NaN),
+        targetY: Number(document.getElementById('game-canvas')?.dataset.markerTargetY ?? NaN)
+      },
       tileStatText: document.querySelector('.fixed-stat-row span:nth-child(4) strong')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
@@ -1491,6 +1498,23 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (metrics.mapPlayer?.x !== 6 || metrics.mapPlayer?.y !== 3) {
       failures.push(`movement scenario player marker did not reach 6,3: ${metrics.mapPlayer?.x},${metrics.mapPlayer?.y}`);
+    }
+    if (metrics.mapMarker?.animated !== '1') {
+      failures.push('movement scenario did not animate the player marker');
+    }
+    if (
+      Number.isFinite(metrics.mapMarker?.visualX) &&
+      Number.isFinite(metrics.mapMarker?.targetX) &&
+      Math.abs(metrics.mapMarker.visualX - metrics.mapMarker.targetX) > 1
+    ) {
+      failures.push(`movement scenario marker animation did not settle on target x: ${metrics.mapMarker.visualX} !== ${metrics.mapMarker.targetX}`);
+    }
+    if (
+      Number.isFinite(metrics.mapMarker?.visualY) &&
+      Number.isFinite(metrics.mapMarker?.targetY) &&
+      Math.abs(metrics.mapMarker.visualY - metrics.mapMarker.targetY) > 1
+    ) {
+      failures.push(`movement scenario marker animation did not settle on target y: ${metrics.mapMarker.visualY} !== ${metrics.mapMarker.targetY}`);
     }
     if (metrics.combatTitleText !== 'Explore' || metrics.enemyNameText !== 'No hostile') {
       failures.push(`movement scenario should show exploration panel, got ${metrics.combatTitleText}/${metrics.enemyNameText}`);

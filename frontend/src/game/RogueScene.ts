@@ -10,10 +10,20 @@ interface MapLayout {
   tileSize: number;
 }
 
+interface TilePosition {
+  x: number;
+  y: number;
+}
+
 export class RogueScene extends Phaser.Scene {
   private state: GameState | null = null;
   private mapGraphics?: Phaser.GameObjects.Graphics;
   private markerGraphics?: Phaser.GameObjects.Graphics;
+  private markerTween?: Phaser.Tweens.Tween;
+  private markerTargetTile?: [number, number];
+  private markerVisualMode?: string;
+  private markerLayoutKey = '';
+  private lastPlayerTile?: [number, number];
   private labelLayer?: Phaser.GameObjects.Container;
   private iconOverlay?: IconOverlay;
   private layout: MapLayout = { originX: 24, originY: 24, tileSize: 48 };
@@ -62,7 +72,6 @@ export class RogueScene extends Phaser.Scene {
 
     this.layout = this.calculateLayout(this.state);
     this.mapGraphics.clear();
-    this.markerGraphics.clear();
     this.labelLayer.removeAll(true);
 
     this.drawTiles(this.state);
@@ -187,38 +196,151 @@ export class RogueScene extends Phaser.Scene {
     }
 
     const [x, y] = state.player_pos;
-    const { originX, originY, tileSize } = this.layout;
-    const tileX = originX + x * tileSize;
-    const tileY = originY + y * tileSize;
+    const targetTile: [number, number] = [x, y];
+    const targetPosition = this.tilePosition(targetTile);
+    const layoutKey = this.currentLayoutKey();
+    const visualMode = this.playerMarkerMode(state);
+    const canKeepActiveTween =
+      this.markerTween &&
+      sameTile(this.markerTargetTile, targetTile) &&
+      this.markerLayoutKey === layoutKey &&
+      this.markerVisualMode === visualMode;
+
+    if (canKeepActiveTween) {
+      this.updateMarkerDataset(state, this.markerGraphics, true, targetPosition);
+      return;
+    }
+
+    this.markerTween?.stop();
+    this.markerTween = undefined;
+    this.markerTargetTile = targetTile;
+    this.markerVisualMode = visualMode;
+    this.markerLayoutKey = layoutKey;
+    this.markerGraphics.clear();
+
+    const { tileSize } = this.layout;
     const inset = Math.max(2, Math.floor(tileSize * 0.08));
     const lineWidth = Math.max(2, Math.floor(tileSize * 0.06));
     const cornerSize = Math.max(7, Math.floor(tileSize * 0.22));
-    const color = state.game_over || state.player_hp <= 0
-      ? this.mapSkin.defeatedPlayerMarker
-      : state.game_won
-        ? this.mapSkin.victoryPlayerMarker
-        : this.mapSkin.playerMarker;
+    const color = this.playerMarkerColor(visualMode);
 
     this.markerGraphics.lineStyle(lineWidth, color, 0.95);
     this.markerGraphics.strokeRect(
-      tileX + inset + 0.5,
-      tileY + inset + 0.5,
+      inset + 0.5,
+      inset + 0.5,
       tileSize - inset * 2 - 1,
       tileSize - inset * 2 - 1
     );
 
     this.markerGraphics.fillStyle(color, 0.95);
     this.markerGraphics.fillRect(
-      tileX + tileSize - inset - cornerSize,
-      tileY + tileSize - inset - lineWidth,
+      tileSize - inset - cornerSize,
+      tileSize - inset - lineWidth,
       cornerSize,
       lineWidth
     );
     this.markerGraphics.fillRect(
-      tileX + tileSize - inset - lineWidth,
-      tileY + tileSize - inset - cornerSize,
+      tileSize - inset - lineWidth,
+      tileSize - inset - cornerSize,
       lineWidth,
       cornerSize
     );
+
+    const previousTile = this.lastPlayerTile;
+    const shouldAnimate =
+      !!previousTile &&
+      !sameTile(previousTile, targetTile) &&
+      this.markerLayoutKey === layoutKey &&
+      !state.game_over &&
+      !state.game_won &&
+      state.player_hp > 0;
+    const startPosition = shouldAnimate && previousTile ? this.tilePosition(previousTile) : targetPosition;
+    this.markerGraphics.setPosition(startPosition.x, startPosition.y);
+    this.updateMarkerDataset(state, this.markerGraphics, shouldAnimate, targetPosition);
+
+    if (shouldAnimate) {
+      this.markerTween = this.tweens.add({
+        targets: this.markerGraphics,
+        x: targetPosition.x,
+        y: targetPosition.y,
+        duration: 150,
+        ease: 'Sine.easeOut',
+        onUpdate: () => {
+          if (this.markerGraphics) {
+            this.updateMarkerDataset(state, this.markerGraphics, true, targetPosition);
+          }
+        },
+        onComplete: () => {
+          this.markerTween = undefined;
+          if (this.markerGraphics) {
+            this.markerGraphics.setPosition(targetPosition.x, targetPosition.y);
+            this.updateMarkerDataset(state, this.markerGraphics, true, targetPosition);
+          }
+        }
+      });
+    }
+
+    this.lastPlayerTile = targetTile;
   }
+
+  private tilePosition(tile: [number, number]): TilePosition {
+    const { originX, originY, tileSize } = this.layout;
+    return {
+      x: originX + tile[0] * tileSize,
+      y: originY + tile[1] * tileSize
+    };
+  }
+
+  private currentLayoutKey(): string {
+    return `${this.layout.originX}:${this.layout.originY}:${this.layout.tileSize}`;
+  }
+
+  private playerMarkerMode(state: GameState): string {
+    if (state.game_over || state.player_hp <= 0) {
+      return 'defeated';
+    }
+
+    if (state.game_won) {
+      return 'victory';
+    }
+
+    return 'active';
+  }
+
+  private playerMarkerColor(mode: string): number {
+    switch (mode) {
+      case 'defeated':
+        return this.mapSkin.defeatedPlayerMarker;
+      case 'victory':
+        return this.mapSkin.victoryPlayerMarker;
+      case 'active':
+      default:
+        return this.mapSkin.playerMarker;
+    }
+  }
+
+  private updateMarkerDataset(
+    state: GameState,
+    marker: Phaser.GameObjects.Graphics,
+    animated: boolean,
+    target: TilePosition
+  ): void {
+    const canvasParent = document.getElementById('game-canvas');
+    if (!canvasParent) {
+      return;
+    }
+
+    const [playerX, playerY] = state.player_pos;
+    canvasParent.dataset.markerAnimated = animated ? '1' : '0';
+    canvasParent.dataset.markerTargetX = String(Math.round(target.x));
+    canvasParent.dataset.markerTargetY = String(Math.round(target.y));
+    canvasParent.dataset.markerVisualX = String(Math.round(marker.x));
+    canvasParent.dataset.markerVisualY = String(Math.round(marker.y));
+    canvasParent.dataset.markerPlayerX = String(playerX);
+    canvasParent.dataset.markerPlayerY = String(playerY);
+  }
+}
+
+function sameTile(left: [number, number] | undefined, right: [number, number] | undefined): boolean {
+  return !!left && !!right && left[0] === right[0] && left[1] === right[1];
 }
