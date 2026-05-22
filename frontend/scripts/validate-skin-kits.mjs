@@ -11,6 +11,11 @@ const mobilePortrait = {
   indicators: {
     status: ['ready', 'thinking', 'error', 'offline'],
     combatLed: ['led-on.png', 'led-off.png']
+  },
+  layout: {
+    buttons: ['attack', 'run', 'restart', 'log', 'inventory', 'moveN', 'moveS', 'moveE', 'moveW'],
+    indicators: ['status', 'combatLed'],
+    fills: ['playerHp', 'enemyHp', 'playerStats']
   }
 };
 
@@ -129,6 +134,17 @@ function validateRequiredContract(prefix, kit) {
       failures.push(`${prefix} combatLed indicator missing file ${file}`);
     }
   }
+
+  for (const [group, names] of Object.entries(mobilePortrait.layout)) {
+    for (const name of names) {
+      const rect = kit.layout?.[group]?.[name];
+      if (!rect) {
+        failures.push(`${prefix} missing required layout ${group}.${name}`);
+        continue;
+      }
+      validateRect(prefix, kit, `layout ${group}.${name}`, rect);
+    }
+  }
 }
 
 async function validateAsset(kitDir, prefix, label, asset) {
@@ -176,14 +192,18 @@ async function readPngHeader(assetPath) {
 
 function validateRegions(prefix, kit) {
   for (const [name, rect] of Object.entries(kit.regions ?? {})) {
-    if (!isPositiveRect(rect)) {
-      failures.push(`${prefix} region ${name} is not a positive rectangle`);
-      continue;
-    }
+    validateRect(prefix, kit, `region ${name}`, rect);
+  }
+}
 
-    if (rect.x + rect.width > kit.size.width || rect.y + rect.height > kit.size.height) {
-      failures.push(`${prefix} region ${name} exceeds ${kit.size.width}x${kit.size.height}`);
-    }
+function validateRect(prefix, kit, label, rect) {
+  if (!isPositiveRect(rect)) {
+    failures.push(`${prefix} ${label} is not a positive rectangle`);
+    return;
+  }
+
+  if (rect.x + rect.width > kit.size.width || rect.y + rect.height > kit.size.height) {
+    failures.push(`${prefix} ${label} exceeds ${kit.size.width}x${kit.size.height}`);
   }
 }
 

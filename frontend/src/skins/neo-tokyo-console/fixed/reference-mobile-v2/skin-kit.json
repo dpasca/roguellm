@@ -61,6 +61,98 @@
       "height": 292
     }
   },
+  "layout": {
+    "buttons": {
+      "attack": {
+        "x": 202,
+        "y": 646,
+        "width": 156,
+        "height": 69
+      },
+      "run": {
+        "x": 213,
+        "y": 723,
+        "width": 150,
+        "height": 68
+      },
+      "restart": {
+        "x": 82,
+        "y": 578,
+        "width": 226,
+        "height": 66
+      },
+      "log": {
+        "x": 316,
+        "y": 436,
+        "width": 43,
+        "height": 31
+      },
+      "inventory": {
+        "x": 316,
+        "y": 474,
+        "width": 43,
+        "height": 31
+      },
+      "moveN": {
+        "x": 74,
+        "y": 675,
+        "width": 55,
+        "height": 55
+      },
+      "moveS": {
+        "x": 74,
+        "y": 764,
+        "width": 55,
+        "height": 55
+      },
+      "moveE": {
+        "x": 116,
+        "y": 717,
+        "width": 55,
+        "height": 55
+      },
+      "moveW": {
+        "x": 27,
+        "y": 717,
+        "width": 55,
+        "height": 55
+      }
+    },
+    "indicators": {
+      "status": {
+        "x": 310,
+        "y": 529,
+        "width": 52,
+        "height": 24
+      },
+      "combatLed": {
+        "x": 344,
+        "y": 654,
+        "width": 18,
+        "height": 18
+      }
+    },
+    "fills": {
+      "playerHp": {
+        "x": 84,
+        "y": 594,
+        "width": 177,
+        "height": 8
+      },
+      "enemyHp": {
+        "x": 178,
+        "y": 644,
+        "width": 112,
+        "height": 8
+      },
+      "playerStats": {
+        "x": 32,
+        "y": 614,
+        "width": 310,
+        "height": 20
+      }
+    }
+  },
   "assets": {
     "chassis": {
       "path": "chassis.png",

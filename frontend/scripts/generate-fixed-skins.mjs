@@ -35,6 +35,29 @@ const skinAssets = {
   }
 };
 
+const skinLayout = {
+  buttons: {
+    attack: { x: 205, y: 666, width: 152, height: 66 },
+    run: { x: 205, y: 746, width: 152, height: 66 },
+    restart: { x: 82, y: 578, width: 226, height: 66 },
+    log: { x: 315, y: 348, width: 46, height: 32 },
+    inventory: { x: 315, y: 392, width: 46, height: 32 },
+    moveN: { x: 73, y: 672, width: 58, height: 58 },
+    moveS: { x: 73, y: 768, width: 58, height: 58 },
+    moveE: { x: 121, y: 720, width: 58, height: 58 },
+    moveW: { x: 25, y: 720, width: 58, height: 58 }
+  },
+  indicators: {
+    status: { x: 301, y: 454, width: 60, height: 26 },
+    combatLed: { x: 349, y: 563, width: 18, height: 18 }
+  },
+  fills: {
+    playerHp: { x: 84, y: 505, width: 196, height: 8 },
+    enemyHp: { x: 168, y: 604, width: 150, height: 8 },
+    playerStats: { x: 34, y: 523, width: 316, height: 18 }
+  }
+};
+
 const variants = [
   {
     id: 'gold-mobile',
@@ -118,7 +141,8 @@ function generateVariant(variant) {
     kind: 'mobilePortrait',
     size: { width: 390, height: 844 },
     regions: skinRegions,
-    assets: skinAssets
+    assets: skinAssets,
+    layout: skinLayout
   }, null, 2)}\n`);
 
   writePng(outDir, 'chassis.png', chassisSvg(variant));
