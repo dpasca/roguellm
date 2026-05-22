@@ -495,6 +495,8 @@ async function collectMetrics(page) {
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
+      combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
+      enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
       controlStates: {
@@ -625,6 +627,14 @@ function validateFixedRuntimeScenario(metrics, failures) {
     failures.push('fixed runtime latest message is too short to inspect');
   }
 
+  if (!metrics.inCombat && metrics.combatTitleText !== 'Explore') {
+    failures.push(`fixed runtime non-combat panel should say Explore, got ${metrics.combatTitleText || 'empty'}`);
+  }
+
+  if (!metrics.inCombat && metrics.enemyNameText !== 'No hostile') {
+    failures.push(`fixed runtime non-combat enemy row should say No hostile, got ${metrics.enemyNameText || 'empty'}`);
+  }
+
   const map = metrics.rects.map;
   if (!map || map.visibleWidth < 300 || map.visibleHeight < 250) {
     failures.push(`fixed runtime map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
@@ -717,6 +727,9 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!metrics.latestText.includes('moved E')) {
       failures.push('movement scenario did not move east');
+    }
+    if (metrics.combatTitleText !== 'Explore' || metrics.enemyNameText !== 'No hostile') {
+      failures.push(`movement scenario should show exploration panel, got ${metrics.combatTitleText}/${metrics.enemyNameText}`);
     }
   }
 

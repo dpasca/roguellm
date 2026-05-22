@@ -342,7 +342,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const combat = stage.querySelector('#combat-panel');
   combat?.append(
-    el('h2', '', 'Combat'),
+    el('h2', '', 'Combat', 'combat-mode-label'),
     el('div', 'fixed-combat-row', '<span id="enemy-name">Enemy</span><strong id="enemy-hp">--</strong>')
   );
 
@@ -567,7 +567,8 @@ function renderTextState(
   );
 
   const enemy = state.current_enemy;
-  setText('enemy-name', enemy?.name ?? 'No enemy');
+  setText('combat-mode-label', state.in_combat ? 'Combat' : 'Explore');
+  setText('enemy-name', enemy?.name ?? (state.in_combat ? 'No enemy' : 'No hostile'));
   setText('enemy-hp', enemy ? `${enemy.hp}/${enemy.max_hp}` : '--');
   setFill('fixed-player-hp-fill', state.player_hp, state.player_max_hp, profile.regions.playerHpFill.width);
   setFill('fixed-enemy-hp-fill', enemy?.hp ?? 0, enemy?.max_hp ?? 1, profile.regions.enemyHpFill.width);
@@ -615,10 +616,12 @@ function renderButtonState(
 
 function applyFixedStateClasses(stage: HTMLElement, state: GameState | null, logOpen: boolean): void {
   const terminal = state ? isTerminalState(state) : false;
+  const inCombat = state?.in_combat ?? false;
   document.body.classList.toggle('in-combat', state?.in_combat ?? false);
   document.body.classList.toggle('game-ended', terminal);
   document.body.classList.toggle('log-open', logOpen);
   document.body.classList.toggle('fixed-log-open', logOpen);
+  stage.classList.toggle('fixed-combat-state', inCombat);
   stage.classList.toggle('fixed-terminal-state', terminal);
   stage.classList.toggle('fixed-victory-state', state?.game_won ?? false);
   stage.classList.toggle('fixed-defeat-state', state ? state.game_over || state.player_hp <= 0 : false);
