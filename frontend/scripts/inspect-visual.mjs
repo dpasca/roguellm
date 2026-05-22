@@ -147,6 +147,13 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=movement`
   },
   {
+    name: 'mobile-reference-v3-fixed-workbench-movement-reduced-motion',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-movement-reduced-motion',
+    reducedMotion: 'reduce',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=movement`
+  },
+  {
     name: 'mobile-reference-v3-fixed-workbench-attack',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-attack',
@@ -389,7 +396,8 @@ try {
   for (const scenario of scenarios) {
     const context = await browser.newContext({
       deviceScaleFactor: 1,
-      viewport: scenario.viewport
+      viewport: scenario.viewport,
+      ...(scenario.reducedMotion ? { reducedMotion: scenario.reducedMotion } : {})
     });
     const page = await context.newPage();
     const result = await runScenario(page, scenario);
@@ -448,6 +456,7 @@ function buildHtmlReport(summary) {
       metrics.ui ? `ui ${metrics.ui}` : null,
       metrics.workbench ? `bench ${metrics.workbench}` : null,
       metrics.statusText ? `status ${metrics.statusText}` : null,
+      metrics.prefersReducedMotion ? 'reduced motion' : null,
       Number.isFinite(metrics.mapPlayer?.x) && Number.isFinite(metrics.mapPlayer?.y)
         ? `player ${metrics.mapPlayer.x},${metrics.mapPlayer.y}`
         : null,
@@ -638,7 +647,7 @@ async function runScenario(page, scenario) {
     await enterFixedRuntimeCombat(page);
   }
 
-  if (scenario.mode === 'fixed-workbench-movement') {
+  if (scenario.mode === 'fixed-workbench-movement' || scenario.mode === 'fixed-workbench-movement-reduced-motion') {
     await page.getByRole('button', { name: 'E', exact: true }).click();
     await waitForFixedMovement(page);
   }
@@ -1142,6 +1151,7 @@ async function collectMetrics(page) {
       fixedProfile: document.body.dataset.fixedProfile ?? null,
       fixedProfileRole: document.querySelector('.fixed-skin-stage')?.dataset.profileRole ?? null,
       fixedScenario: document.body.dataset.fixedScenario ?? null,
+      prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       inCombat: document.body.classList.contains('in-combat'),
       gameEnded: document.body.classList.contains('game-ended'),
       logOpen: document.body.classList.contains('log-open'),
@@ -1198,6 +1208,10 @@ function validateMetrics(scenario, metrics) {
 
   if (metrics.skin !== 'neo-tokyo-console') {
     failures.push(`expected neo-tokyo-console skin, got ${metrics.skin ?? 'none'}`);
+  }
+
+  if (scenario.reducedMotion === 'reduce' && !metrics.prefersReducedMotion) {
+    failures.push('scenario requested reduced motion but browser media query did not match');
   }
 
   if (metrics.overflowsY) {
@@ -1455,7 +1469,8 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
   const isProductionMobileProfile = isProductionFixedProfile(metrics.fixedProfileRole);
-  const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
+  const isReducedMotionMovementScenario = scenario.mode === 'fixed-workbench-movement-reduced-motion';
+  const isMovementScenario = scenario.mode === 'fixed-workbench-movement' || isReducedMotionMovementScenario;
   const isAttackScenario = scenario.mode === 'fixed-workbench-attack';
   const isRunScenario = scenario.mode === 'fixed-workbench-run';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
@@ -1499,8 +1514,11 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (metrics.mapPlayer?.x !== 6 || metrics.mapPlayer?.y !== 3) {
       failures.push(`movement scenario player marker did not reach 6,3: ${metrics.mapPlayer?.x},${metrics.mapPlayer?.y}`);
     }
-    if (metrics.mapMarker?.animated !== '1') {
-      failures.push('movement scenario did not animate the player marker');
+    const expectedAnimatedState = isReducedMotionMovementScenario ? '0' : '1';
+    if (metrics.mapMarker?.animated !== expectedAnimatedState) {
+      failures.push(
+        `movement scenario marker animated state should be ${expectedAnimatedState}, got ${metrics.mapMarker?.animated ?? 'none'}`
+      );
     }
     if (
       Number.isFinite(metrics.mapMarker?.visualX) &&
