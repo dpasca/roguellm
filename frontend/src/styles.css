@@ -250,6 +250,27 @@ h2 {
   box-shadow: inset 3px 0 0 var(--skin-accent);
 }
 
+.latest-message.message-fresh,
+.game-log p.message-fresh {
+  animation: message-fresh-pulse 520ms ease-out;
+}
+
+@keyframes message-fresh-pulse {
+  0% {
+    filter: brightness(1.55);
+    text-shadow: 0 0 18px currentColor;
+  }
+
+  42% {
+    filter: brightness(1.22);
+    text-shadow: 0 0 12px currentColor;
+  }
+
+  100% {
+    filter: brightness(1);
+  }
+}
+
 .stat-row {
   display: flex;
   justify-content: space-between;
@@ -1498,6 +1519,11 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixe
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .latest-message.message-fresh,
+  .game-log p.message-fresh {
+    animation: none;
+  }
+
   .fixed-meter-fill {
     transition: none;
   }

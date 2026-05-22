@@ -22,6 +22,8 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   moveW: { action: 'move', direction: 'w' }
 };
 
+const messageFreshClass = 'message-fresh';
+
 const domIds: Record<FixedButtonId, string> = {
   attack: 'attack',
   run: 'run',
@@ -823,7 +825,7 @@ function renderTextState(
 ): void {
   renderTitleState(state);
   renderStatusIndicator(profile, connectionStatus ?? 'ready');
-  setText('latest-message', logs[0] ?? '');
+  setLatestMessage(logs[0] ?? '');
   setText('player-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
   renderPlayerStatsState(state);
 
@@ -1057,16 +1059,23 @@ function renderLogs(logs: string[], logOpen: boolean): void {
   }
 
   const visibleLogs = logOpen ? logs : logs.slice(0, 1);
+  const latestMessage = visibleLogs[0] ?? '';
+  const latestChanged = Boolean(latestMessage) && latestMessage !== (log.dataset.latestMessage ?? '');
   log.replaceChildren(
     ...visibleLogs.map((message, index) => {
       const row = document.createElement('p');
       if (index === 0) {
         row.className = 'latest';
+        if (latestChanged) {
+          row.classList.add(messageFreshClass);
+          window.setTimeout(() => row.classList.remove(messageFreshClass), 520);
+        }
       }
       row.textContent = message;
       return row;
     })
   );
+  log.dataset.latestMessage = latestMessage;
 }
 
 function setButtonVisual(element: HTMLButtonElement, button: FixedSkinButton, state: FixedSkinButtonState): void {
@@ -1197,6 +1206,27 @@ function setText(id: string, value: string): void {
   if (element) {
     element.textContent = value;
   }
+}
+
+function setLatestMessage(value: string): void {
+  const element = document.getElementById('latest-message');
+  if (!element) {
+    return;
+  }
+
+  const changed = Boolean(value) && value !== (element.dataset.latestMessage ?? '');
+  element.textContent = value;
+  element.dataset.latestMessage = value;
+  if (changed) {
+    flashMessageElement(element);
+  }
+}
+
+function flashMessageElement(element: HTMLElement): void {
+  element.classList.remove(messageFreshClass);
+  void element.offsetWidth;
+  element.classList.add(messageFreshClass);
+  window.setTimeout(() => element.classList.remove(messageFreshClass), 520);
 }
 
 function el(tagName: string, className: string, text: string, id?: string): HTMLElement {

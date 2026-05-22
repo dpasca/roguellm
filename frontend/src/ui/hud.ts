@@ -3,6 +3,8 @@ import { normalizeFontAwesomeClass } from './icons';
 
 type SendAction = (action: GameAction) => void;
 
+const messageFreshClass = 'message-fresh';
+
 const movementButtons: Record<Direction, string> = {
   n: 'move-n',
   s: 'move-s',
@@ -39,13 +41,16 @@ export class HudController {
 
     this.logs.unshift(message);
     this.logs = this.logs.slice(0, 40);
-    this.setText('latest-message', this.logs[0]);
+    const latest = this.requireElement('latest-message');
+    latest.textContent = this.logs[0];
+    flashMessageElement(latest);
     const log = this.requireElement('game-log');
     log.replaceChildren(
       ...this.logs.map((entry, index) => {
         const row = document.createElement('p');
         if (index === 0) {
           row.className = 'latest';
+          flashMessageElement(row);
         }
         row.textContent = entry;
         return row;
@@ -310,4 +315,11 @@ export class HudController {
     }
     return element;
   }
+}
+
+function flashMessageElement(element: HTMLElement): void {
+  element.classList.remove(messageFreshClass);
+  void element.offsetWidth;
+  element.classList.add(messageFreshClass);
+  window.setTimeout(() => element.classList.remove(messageFreshClass), 520);
 }
