@@ -125,6 +125,12 @@ const scenarios = [
     url: fixedWorkbenchProfileUrl('gold-mobile')
   },
   {
+    name: 'mobile-gold-fixed-workbench-drawer-switch',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-drawer-switch',
+    url: fixedWorkbenchProfileUrl('gold-mobile')
+  },
+  {
     name: 'mobile-gold-fixed-workbench-defeat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-defeat',
@@ -278,8 +284,7 @@ async function runScenario(page, scenario) {
   }
 
   if (scenario.mode === 'fixed-runtime-combat') {
-    await page.getByRole('button', { name: 'E', exact: true }).click();
-    await waitForFixedRuntimeCombat(page);
+    await enterFixedRuntimeCombat(page);
   }
 
   if (scenario.mode === 'fixed-workbench-movement') {
@@ -303,6 +308,13 @@ async function runScenario(page, scenario) {
   if (scenario.mode === 'fixed-workbench-inventory-use') {
     await page.getByRole('button', { name: 'Use', exact: true }).click();
     await waitForFixedInventoryUse(page);
+  }
+
+  if (scenario.mode === 'fixed-workbench-drawer-switch') {
+    await page.getByRole('button', { name: 'Inventory', exact: true }).click();
+    await waitForFixedInventory(page);
+    await page.getByRole('button', { name: 'Log', exact: true }).click();
+    await waitForFixedDrawerSwitch(page);
   }
 
   if (
@@ -403,6 +415,37 @@ async function waitForFixedRuntimeReady(page) {
 }
 
 async function waitForFixedRuntimeCombat(page) {
+  await waitForFixedRuntimeCombatReady(page, 20_000);
+}
+
+async function enterFixedRuntimeCombat(page) {
+  if (await isFixedRuntimeCombatReady(page)) {
+    return;
+  }
+
+  for (const direction of ['E', 'S', 'N', 'W', 'E', 'S', 'W', 'N']) {
+    const button = page.getByRole('button', { name: direction, exact: true });
+    const enabled = await button.isEnabled().catch(() => false);
+    if (!enabled) {
+      continue;
+    }
+
+    await button.click();
+    try {
+      await waitForFixedRuntimeCombatReady(page, 7_000);
+      return;
+    } catch {
+      await waitForFixedRuntimeReady(page);
+      if (await isFixedRuntimeCombatReady(page)) {
+        return;
+      }
+    }
+  }
+
+  await waitForFixedRuntimeCombatReady(page, 10_000);
+}
+
+async function waitForFixedRuntimeCombatReady(page, timeout) {
   await page.waitForFunction(() => {
     const status = document.getElementById('connection-status')?.textContent?.trim();
     const attack = document.getElementById('attack');
@@ -415,7 +458,23 @@ async function waitForFixedRuntimeCombat(page) {
       run instanceof HTMLButtonElement &&
       !attack.disabled &&
       !run.disabled;
-  }, null, { timeout: 20_000 });
+  }, null, { timeout });
+}
+
+async function isFixedRuntimeCombatReady(page) {
+  return page.evaluate(() => {
+    const status = document.getElementById('connection-status')?.textContent?.trim();
+    const attack = document.getElementById('attack');
+    const run = document.getElementById('run');
+    return document.body.dataset.ui === 'fixed-skin' &&
+      document.body.classList.contains('fixed-runtime-mode') &&
+      document.body.classList.contains('in-combat') &&
+      status === 'READY' &&
+      attack instanceof HTMLButtonElement &&
+      run instanceof HTMLButtonElement &&
+      !attack.disabled &&
+      !run.disabled;
+  });
 }
 
 async function waitForFixedMovement(page) {
@@ -455,6 +514,15 @@ async function waitForFixedInventoryUse(page) {
   await page.waitForFunction(() => {
     return document.body.classList.contains('fixed-inventory-open') &&
       document.getElementById('player-hp')?.textContent?.trim() === '55/100';
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedDrawerSwitch(page) {
+  await page.waitForFunction(() => {
+    return document.body.classList.contains('fixed-log-open') &&
+      document.body.classList.contains('log-open') &&
+      !document.body.classList.contains('fixed-inventory-open') &&
+      document.querySelector('#game-log p.latest');
   }, null, { timeout: 20_000 });
 }
 
@@ -548,7 +616,8 @@ async function collectMetrics(page) {
         backgroundSize: style.backgroundSize,
         borderImageSource: style.borderImageSource,
         borderImageRepeat: style.borderImageRepeat,
-        borderImageSlice: style.borderImageSlice
+        borderImageSlice: style.borderImageSlice,
+        visualState: element instanceof HTMLElement ? element.dataset.visualState ?? null : null
       };
     };
 
@@ -800,6 +869,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
   const isInventoryScenario = scenario.mode === 'fixed-workbench-inventory' || scenario.mode === 'fixed-workbench-inventory-use';
+  const isDrawerSwitchScenario = scenario.mode === 'fixed-workbench-drawer-switch';
+  const isLogScenario = scenario.mode === 'fixed-workbench-log' || isDrawerSwitchScenario;
   const isEndStateScenario = scenario.mode === 'fixed-workbench-defeat' || scenario.mode === 'fixed-workbench-victory';
   const isRestartScenario = scenario.mode === 'fixed-workbench-restart';
 
@@ -879,9 +950,19 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!inventoryToggle || inventoryToggle.visibleHeight < 24 || inventoryToggle.visibleWidth < 38) {
       failures.push(`fixed inventory toggle is clipped while drawer is open: ${inventoryToggle?.visibleWidth ?? 0}x${inventoryToggle?.visibleHeight ?? 0}`);
     }
+    if (inventoryToggle?.visualState !== 'pressed') {
+      failures.push(`fixed inventory toggle should use pressed state while open, got ${inventoryToggle?.visualState ?? 'none'}`);
+    }
     if (scenario.mode === 'fixed-workbench-inventory-use' && !metrics.playerHpText?.startsWith('55/100')) {
       failures.push(`fixed inventory use did not update HP, got ${metrics.playerHpText || 'empty'}`);
     }
+  }
+
+  if (isDrawerSwitchScenario && metrics.inventoryOpen) {
+    failures.push('fixed drawer switch left the inventory drawer open after opening log');
+  }
+  if (isDrawerSwitchScenario && metrics.rects.logToggleButton?.visualState !== 'pressed') {
+    failures.push(`fixed log toggle should use pressed state after drawer switch, got ${metrics.rects.logToggleButton?.visualState ?? 'none'}`);
   }
 
   if (isEndStateScenario) {
@@ -912,7 +993,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench action buttons are clipped: attack=${attack?.visibleHeight ?? 0}, run=${run?.visibleHeight ?? 0}`);
   }
 
-  if (scenario.mode === 'fixed-workbench-log') {
+  if (isLogScenario) {
     const log = metrics.rects.logPanel;
     const firstEntry = metrics.rects.firstLogEntry;
     if (!metrics.logOpen) {

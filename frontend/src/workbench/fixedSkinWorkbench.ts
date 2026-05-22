@@ -162,7 +162,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
     scene.renderGameState(currentState);
     renderTextState(profile, currentState, logs, logOpen, connectionStatus);
     renderInventoryState(currentState, onAction, !actionPending);
-    renderButtonState(profile, buttons, currentState, actionPending);
+    renderButtonState(profile, buttons, currentState, actionPending, { log: logOpen, inventory: inventoryOpen });
   }
 }
 
@@ -235,7 +235,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
     scene.renderGameState(state);
     renderTextState(profile, state, logs, logOpen, scenario === 'status' ? 'revealing' : undefined);
     renderInventoryState(state, dispatchAction, true);
-    renderButtonState(profile, buttons, state, scenario === 'status');
+    renderButtonState(profile, buttons, state, scenario === 'status', { log: logOpen, inventory: inventoryOpen });
   }
 }
 
@@ -624,7 +624,8 @@ function renderButtonState(
   profile: FixedSkinProfile,
   buttons: Map<FixedButtonId, HTMLButtonElement>,
   state: GameState,
-  actionPending = false
+  actionPending = false,
+  activeButtons: Partial<Record<FixedButtonId, boolean>> = {}
 ): void {
   const inCombat = state.in_combat && !!state.current_enemy;
   const terminal = isTerminalState(state);
@@ -648,7 +649,7 @@ function renderButtonState(
           : !canMove || !canMoveDirection(state, buttonId);
     element.hidden = buttonId === 'restart' && !terminal;
     element.disabled = disabled;
-    setButtonVisual(element, button, disabled ? 'disabled' : 'idle');
+    setButtonVisual(element, button, disabled ? 'disabled' : activeButtons[buttonId] ? 'pressed' : 'idle');
   }
 }
 
