@@ -4,14 +4,23 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_URL = 'http://127.0.0.1:8127/game2?game_id=159e473b&fixture=1';
+const DEFAULT_VITE_GAME_ID_URL = 'http://127.0.0.1:5273/game2?game_id=159e473b&fixture=1';
 const DEFAULT_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=skin';
 const DEFAULT_FIXED_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin';
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
+const viteGameIdUrl = process.env.GAME2_VITE_GAME_ID_URL ?? DEFAULT_VITE_GAME_ID_URL;
 const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
 const fixedWorkbenchUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
 const withQueryParams = (url, params) => {
   const search = new URLSearchParams(params).toString();
   return `${url}${url.includes('?') ? '&' : '?'}${search}`;
+};
+const withQueryEntries = (url, entries) => {
+  const nextUrl = new URL(url);
+  for (const [key, value] of entries) {
+    nextUrl.searchParams.append(key, value);
+  }
+  return nextUrl.toString();
 };
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
@@ -111,6 +120,19 @@ const scenarios = [
       skin_palette: 'amber'
     }),
     expectedFixedProfile: 'amber-mobile'
+  },
+  {
+    name: 'mobile-themed-signal-vite-redirect-runtime-ready',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-ready',
+    url: withQueryEntries(viteGameIdUrl, [
+      ['ui', 'fixed-skin'],
+      ['skin_tags', 'noir'],
+      ['skin_tags', 'signal'],
+      ['skin_mood', 'sleek'],
+      ['skin_palette', 'cyan']
+    ]),
+    expectedFixedProfile: 'signal-noir-mobile'
   },
   {
     name: 'mobile-gold-fixed-workbench-movement',
@@ -1209,11 +1231,7 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
-  const isCompactMobileProfile =
-    metrics.fixedProfile === 'reference-mobile-v3' ||
-    metrics.fixedProfile === 'gold-mobile' ||
-    metrics.fixedProfile === 'amber-mobile' ||
-    metrics.fixedProfile === 'signal-noir-mobile';
+  const isProductionMobileProfile = isProductionFixedProfile(metrics.fixedProfileRole);
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
@@ -1338,7 +1356,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
 
-  if (isCompactMobileProfile) {
+  if (isProductionMobileProfile) {
     validateCompactMobileLayout(metrics, failures);
   }
 
@@ -1472,6 +1490,10 @@ function validateCompactMobileLayout(metrics, failures) {
 
 function isCompactFixedProfile(fixedProfile) {
   return fixedProfile === 'reference-mobile' || fixedProfile === 'reference-mobile-v2';
+}
+
+function isProductionFixedProfile(profileRole) {
+  return profileRole === 'default' || profileRole === 'variant';
 }
 
 function validateAssetUsage(metrics) {

@@ -11,6 +11,17 @@ import { createFixedSkinRuntime, isFixedSkinRuntime, isFixedSkinWorkbench, start
 import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
+const GAME2_SESSION_QUERY_PARAMS = [
+  'fixture',
+  'skin',
+  'ui',
+  'fixed_skin',
+  'profile',
+  'skin_tags',
+  'skin_mood',
+  'skin_palette'
+];
+
 interface RuntimeUi {
   scene: RogueScene;
   render(state: GameState): void;
@@ -36,10 +47,11 @@ if (isFixedSkinWorkbench()) {
       const gameUrl = new URL('/game2', getBackendOrigin());
       gameUrl.searchParams.set('game_id', generatorId);
       const currentParams = new URLSearchParams(window.location.search);
-      for (const paramName of ['fixture', 'skin', 'ui', 'fixed_skin', 'profile']) {
-        const paramValue = currentParams.get(paramName);
-        if (paramValue) {
-          gameUrl.searchParams.set(paramName, paramValue);
+      for (const paramName of GAME2_SESSION_QUERY_PARAMS) {
+        for (const paramValue of currentParams.getAll(paramName)) {
+          if (paramValue) {
+            gameUrl.searchParams.append(paramName, paramValue);
+          }
         }
       }
       window.location.replace(gameUrl.toString());
