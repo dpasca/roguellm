@@ -466,6 +466,8 @@ function buildHtmlReport(summary) {
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.screenshot ? `mean ${metrics.screenshot.mean.toFixed(3)}` : null,
       metrics.screenshot ? `contrast ${metrics.screenshot.standardDeviation.toFixed(3)}` : null,
+      metrics.screenshot ? `sat ${metrics.screenshot.saturationMean.toFixed(3)}` : null,
+      metrics.screenshot ? `colors ${metrics.screenshot.sampledUniqueColors}` : null,
       metrics.overflowsX || metrics.overflowsY ? 'overflow' : 'no overflow'
     ].filter(Boolean);
 
@@ -731,7 +733,7 @@ async function runScenario(page, scenario) {
 }
 
 function collectScreenshotMetrics(screenshotPath) {
-  const output = execFileSync(
+  const luminanceOutput = execFileSync(
     'magick',
     [
       screenshotPath,
@@ -741,11 +743,42 @@ function collectScreenshotMetrics(screenshotPath) {
     ],
     { encoding: 'utf8' }
   );
-  const [mean, standardDeviation] = output.trim().split(/\s+/).map(Number);
+  const [mean, standardDeviation] = luminanceOutput.trim().split(/\s+/).map(Number);
+  const saturationOutput = execFileSync(
+    'magick',
+    [
+      screenshotPath,
+      '-colorspace',
+      'HSL',
+      '-channel',
+      'G',
+      '-separate',
+      '-format',
+      '%[fx:mean]\n%[fx:standard_deviation]',
+      'info:'
+    ],
+    { encoding: 'utf8' }
+  );
+  const [saturationMean, saturationStandardDeviation] = saturationOutput.trim().split(/\s+/).map(Number);
+  const sampledUniqueColors = Number(execFileSync(
+    'magick',
+    [
+      screenshotPath,
+      '-resize',
+      '64x64!',
+      '-format',
+      '%k',
+      'info:'
+    ],
+    { encoding: 'utf8' }
+  ).trim());
 
   return {
     mean,
-    standardDeviation
+    standardDeviation,
+    saturationMean,
+    saturationStandardDeviation,
+    sampledUniqueColors
   };
 }
 
@@ -1355,6 +1388,14 @@ function validateFixedScreenshotQuality(metrics, failures) {
 
   if (screenshot.standardDeviation < 0.09) {
     failures.push(`fixed skin screenshot is too flat: contrast=${screenshot.standardDeviation.toFixed(4)}`);
+  }
+
+  if (!Number.isFinite(screenshot.saturationMean) || screenshot.saturationMean < 0.16) {
+    failures.push(`fixed skin screenshot is too monochrome: saturation=${screenshot.saturationMean?.toFixed(4) ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(screenshot.sampledUniqueColors) || screenshot.sampledUniqueColors < 2200) {
+    failures.push(`fixed skin screenshot has too little material variety: sampled colors=${screenshot.sampledUniqueColors ?? 'none'}`);
   }
 }
 
