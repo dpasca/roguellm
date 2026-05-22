@@ -74,6 +74,11 @@ Each production `mobilePortrait` skin kit must include a `meta` block:
 - `defaultPriority`: numeric preference used by runtime profile selection.
 - `generation`: optional provenance such as `deterministic-svg-premium`.
 
+Metadata tokens in `tags`, `mood`, and `palette` must be unique lowercase
+kebab-case strings. Runtime selection treats them as exact structured tokens,
+so generated manifests should use stable tags like `rain-city` instead of
+display phrases like `Rain City`.
+
 The fixed mobile runtime first honors an explicit `profile=` query parameter.
 Without that override, it chooses the highest-priority `mobilePortrait` profile.
 That keeps the default choice data-driven and makes future LLM theme matching a

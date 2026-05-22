@@ -5,6 +5,7 @@ const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const buttonStates = ['idle', 'hover', 'pressed', 'disabled'];
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
+const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const mobileKitSummaries = [];
 const mobilePortrait = {
   size: { width: 390, height: 844 },
@@ -187,11 +188,29 @@ function validateMetadata(prefix, kit) {
   for (const key of ['tags', 'mood', 'palette']) {
     if (!isNonEmptyStringArray(meta[key])) {
       failures.push(`${prefix} meta.${key} must be a non-empty string array`);
+    } else {
+      validateMetadataTokens(prefix, key, meta[key]);
     }
   }
 
   if (!Number.isFinite(meta.defaultPriority) || meta.defaultPriority < 0 || meta.defaultPriority > 100) {
     failures.push(`${prefix} meta.defaultPriority must be a finite number from 0 to 100`);
+  }
+}
+
+function validateMetadataTokens(prefix, key, tokens) {
+  const seen = new Set();
+
+  for (const token of tokens) {
+    if (!metadataTokenPattern.test(token)) {
+      failures.push(`${prefix} meta.${key} token "${token}" must be lowercase kebab-case`);
+    }
+
+    if (seen.has(token)) {
+      failures.push(`${prefix} meta.${key} token "${token}" is duplicated`);
+    }
+
+    seen.add(token);
   }
 }
 
