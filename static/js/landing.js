@@ -172,6 +172,15 @@ const app = Vue.createApp({
         launchDevGame2Fixed(generatorId, profile = 'reference-mobile-v3') {
             window.location.href = `/game2?game_id=${encodeURIComponent(generatorId)}&fixture=1&ui=fixed-skin&profile=${encodeURIComponent(profile)}`;
         },
+        launchDevGame2FixedTheme(generatorId, themeParams) {
+            const params = new URLSearchParams({
+                game_id: generatorId,
+                fixture: '1',
+                ui: 'fixed-skin',
+                ...themeParams
+            });
+            window.location.href = `/game2?${params.toString()}`;
+        },
         async launchGame() {
             this.clearError();
 

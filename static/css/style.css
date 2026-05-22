@@ -309,7 +309,7 @@
 
 .dev-skin-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(68px, 1fr));
+    grid-template-columns: repeat(2, minmax(72px, 1fr));
     gap: 6px;
 }
 
@@ -362,6 +362,18 @@
 
 .dev-generator-fixed-btn-amber i {
     color: #ffb84a;
+}
+
+.dev-generator-fixed-btn-theme {
+    color: #d9f6ff;
+}
+
+.dev-generator-fixed-btn-theme:hover {
+    border-color: #38e6d5;
+}
+
+.dev-generator-fixed-btn-theme i {
+    color: #38e6d5;
 }
 
 .dev-generator-title {
