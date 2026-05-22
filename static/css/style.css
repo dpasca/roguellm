@@ -300,24 +300,50 @@
     gap: 8px;
 }
 
-.dev-generator-btn {
+.dev-generator-card {
     width: 100%;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.dev-generator-btn,
+.dev-generator-fixed-btn {
+    display: grid;
     align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
     border: 1px solid #333b49;
     border-radius: 6px;
     background: #1e2430;
     color: #f4f7fb;
     cursor: pointer;
+}
+
+.dev-generator-btn {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 10px 12px;
     text-align: left;
 }
 
-.dev-generator-btn:hover {
+.dev-generator-fixed-btn {
+    grid-template-columns: auto auto;
+    gap: 7px;
+    justify-content: center;
+    min-width: 114px;
+    padding: 10px 11px;
+    color: #d9ffe0;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.dev-generator-btn:hover,
+.dev-generator-fixed-btn:hover {
     border-color: #6cd978;
     background: #252d3a;
+}
+
+.dev-generator-fixed-btn i {
+    color: #80f18b;
 }
 
 .dev-generator-title {

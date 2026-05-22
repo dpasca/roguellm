@@ -215,22 +215,32 @@
                     <div v-else-if="devToolsLoading" class="dev-empty">Loading recent game IDs...</div>
                     <div v-else-if="!devGenerators.length" class="dev-empty">No saved game IDs yet.</div>
                     <div v-else class="dev-generator-list">
-                        <button
+                        <div
                             v-for="generator in devGenerators"
                             :key="generator.id"
-                            @click="launchDevGame2(generator.id)"
-                            class="dev-generator-btn"
-                            type="button">
-                            <span class="dev-generator-title">
-                                <i class="fas fa-vial"></i>
-                                {{ generator.title }}
-                            </span>
-                            <span class="dev-generator-meta">
-                                <code>{{ generator.id }}</code>
-                                <span>{{ generator.language }}</span>
-                                <span v-if="generator.has_fixture" class="dev-fixture-badge">cached</span>
-                            </span>
-                        </button>
+                            class="dev-generator-card">
+                            <button
+                                @click="launchDevGame2(generator.id)"
+                                class="dev-generator-btn"
+                                type="button">
+                                <span class="dev-generator-title">
+                                    <i class="fas fa-vial"></i>
+                                    {{ generator.title }}
+                                </span>
+                                <span class="dev-generator-meta">
+                                    <code>{{ generator.id }}</code>
+                                    <span>{{ generator.language }}</span>
+                                    <span v-if="generator.has_fixture" class="dev-fixture-badge">cached</span>
+                                </span>
+                            </button>
+                            <button
+                                @click="launchDevGame2Fixed(generator.id)"
+                                class="dev-generator-fixed-btn"
+                                type="button">
+                                <i class="fas fa-mobile-screen-button"></i>
+                                <span>Fixed skin</span>
+                            </button>
+                        </div>
                     </div>
                 </section>
             </div>
