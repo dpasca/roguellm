@@ -19,10 +19,60 @@ type FixedButtonAssetName =
   | 'dpad-w'
   | 'log'
   | 'inventory';
+type ManifestButtonId = 'attack' | 'run' | 'restart' | 'log' | 'inventory' | 'moveN' | 'moveS' | 'moveE' | 'moveW';
+type SkinKitRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+type FixedSkinKit = {
+  id: FixedAssetProfile;
+  kind: FixedSkinProfile['kind'];
+  size: {
+    width: number;
+    height: number;
+  };
+  regions: {
+    map: SkinKitRect;
+    title: SkinKitRect;
+    latest: SkinKitRect;
+    log: SkinKitRect;
+    inventory: SkinKitRect;
+    player: SkinKitRect;
+    combat: SkinKitRect;
+    endState: SkinKitRect;
+  };
+  layout: {
+    buttons: Record<ManifestButtonId, SkinKitRect>;
+    indicators: {
+      status: SkinKitRect;
+      combatLed: SkinKitRect;
+    };
+    fills: {
+      playerHp: SkinKitRect;
+      enemyHp: SkinKitRect;
+      playerStats: SkinKitRect;
+    };
+  };
+  assets: {
+    chassis: {
+      path: string;
+    };
+    buttons: Record<ManifestButtonId, {
+      prefix: FixedButtonAssetName;
+    }>;
+  };
+};
 
 const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
   eager: true,
   query: '?url',
+  import: 'default'
+});
+const fixedSkinKitSources = import.meta.glob<string>('./neo-tokyo-console/fixed/**/skin-kit.json', {
+  eager: true,
+  query: '?raw',
   import: 'default'
 });
 
@@ -64,109 +114,88 @@ function fixedIndicators(profile: FixedAssetProfile) {
 const mobileIndicators = fixedIndicators('mobile');
 const desktopIndicators = fixedIndicators('desktop');
 const referenceMobileIndicators = fixedIndicators('reference-mobile');
-const referenceMobileV2Indicators = fixedIndicators('reference-mobile-v2');
-const referenceMobileV3Indicators = fixedIndicators('reference-mobile-v3');
-const goldMobileIndicators = fixedIndicators('gold-mobile');
-const amberMobileIndicators = fixedIndicators('amber-mobile');
 
-function createCompactMobileProfile(
-  id: 'gold-mobile' | 'amber-mobile' | 'reference-mobile-v3',
-  label: string,
-  indicators: ReturnType<typeof fixedIndicators>
-): FixedSkinProfile {
+const buttonLabels: Record<ManifestButtonId, string> = {
+  attack: 'Attack',
+  run: 'Run',
+  restart: 'Restart',
+  log: 'Log',
+  inventory: 'Inventory',
+  moveN: 'N',
+  moveS: 'S',
+  moveE: 'E',
+  moveW: 'W'
+};
+
+function fixedSkinKit(profile: FixedAssetProfile): FixedSkinKit {
+  const source = fixedSkinKitSources[`./neo-tokyo-console/fixed/${profile}/skin-kit.json`];
+  if (!source) {
+    throw new Error(`Missing fixed skin kit: ${profile}/skin-kit.json`);
+  }
+  return JSON.parse(source) as FixedSkinKit;
+}
+
+function createManifestProfile(id: FixedAssetProfile, label: string): FixedSkinProfile {
+  const kit = fixedSkinKit(id);
+  const indicators = fixedIndicators(id);
+
   return {
     id,
     label,
-    kind: 'mobilePortrait',
-    width: 390,
-    height: 844,
-    background: fixedAsset(`${id}/chassis.png`),
+    kind: kit.kind,
+    width: kit.size.width,
+    height: kit.size.height,
+    background: fixedAsset(`${id}/${kit.assets.chassis.path}`),
     regions: {
-      map: { x: 22, y: 48, width: 346, height: 281 },
-      title: { x: 32, y: 454, width: 258, height: 34 },
-      latest: { x: 24, y: 344, width: 284, height: 86 },
-      log: { x: 24, y: 342, width: 342, height: 204 },
-      playerHp: { x: 24, y: 488, width: 342, height: 54 },
-      playerHpFill: { x: 84, y: 505, width: 196, height: 8 },
-      playerStats: { x: 34, y: 523, width: 316, height: 18 },
-      combat: { x: 24, y: 562, width: 342, height: 64 },
-      enemyHpFill: { x: 168, y: 604, width: 150, height: 8 },
-      endState: { x: 38, y: 360, width: 314, height: 292 },
-      inventory: { x: 24, y: 342, width: 342, height: 204 }
+      map: kit.regions.map,
+      title: kit.regions.title,
+      latest: kit.regions.latest,
+      log: kit.regions.log,
+      playerHp: kit.regions.player,
+      playerHpFill: kit.layout.fills.playerHp,
+      playerStats: kit.layout.fills.playerStats,
+      combat: kit.regions.combat,
+      enemyHpFill: kit.layout.fills.enemyHp,
+      endState: kit.regions.endState,
+      inventory: kit.regions.inventory
     },
     buttons: {
-      attack: {
-        rect: { x: 205, y: 666, width: 152, height: 66 },
-        label: 'Attack',
-        hideLabel: true,
-        states: fixedButton(id, 'attack')
-      },
-      run: {
-        rect: { x: 205, y: 746, width: 152, height: 66 },
-        label: 'Run',
-        hideLabel: true,
-        states: fixedButton(id, 'run')
-      },
-      log: {
-        rect: { x: 315, y: 348, width: 46, height: 32 },
-        label: 'Log',
-        hideLabel: true,
-        states: fixedButton(id, 'log')
-      },
-      inventory: {
-        rect: { x: 315, y: 392, width: 46, height: 32 },
-        label: 'Inventory',
-        hideLabel: true,
-        states: fixedButton(id, 'inventory')
-      },
-      moveN: {
-        rect: { x: 73, y: 672, width: 58, height: 58 },
-        label: 'N',
-        hideLabel: true,
-        states: fixedButton(id, 'dpad-n')
-      },
-      moveS: {
-        rect: { x: 73, y: 768, width: 58, height: 58 },
-        label: 'S',
-        hideLabel: true,
-        states: fixedButton(id, 'dpad-s')
-      },
-      moveE: {
-        rect: { x: 121, y: 720, width: 58, height: 58 },
-        label: 'E',
-        hideLabel: true,
-        states: fixedButton(id, 'dpad-e')
-      },
-      moveW: {
-        rect: { x: 25, y: 720, width: 58, height: 58 },
-        label: 'W',
-        hideLabel: true,
-        states: fixedButton(id, 'dpad-w')
-      },
-      restart: {
-        rect: { x: 82, y: 578, width: 226, height: 66 },
-        label: 'Restart',
-        hideLabel: true,
-        states: fixedButton(id, 'restart')
-      }
+      attack: manifestButton(id, kit, 'attack'),
+      run: manifestButton(id, kit, 'run'),
+      log: manifestButton(id, kit, 'log'),
+      inventory: manifestButton(id, kit, 'inventory'),
+      moveN: manifestButton(id, kit, 'moveN'),
+      moveS: manifestButton(id, kit, 'moveS'),
+      moveE: manifestButton(id, kit, 'moveE'),
+      moveW: manifestButton(id, kit, 'moveW'),
+      restart: manifestButton(id, kit, 'restart')
     },
     indicators: {
       status: {
-        rect: { x: 301, y: 454, width: 60, height: 26 },
+        rect: kit.layout.indicators.status,
         states: indicators.status
       },
       combatLed: {
-        rect: { x: 349, y: 563, width: 18, height: 18 },
+        rect: kit.layout.indicators.combatLed,
         states: indicators.combatLed
       }
     }
   };
 }
 
+function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId: ManifestButtonId) {
+  return {
+    rect: kit.layout.buttons[buttonId],
+    label: buttonLabels[buttonId],
+    hideLabel: true,
+    states: fixedButton(profile, kit.assets.buttons[buttonId].prefix)
+  };
+}
+
 const fixedProfiles: FixedSkinProfile[] = [
-  createCompactMobileProfile('reference-mobile-v3', 'Reference Compact V3', referenceMobileV3Indicators),
-  createCompactMobileProfile('gold-mobile', 'Gold Mobile Cyberdeck', goldMobileIndicators),
-  createCompactMobileProfile('amber-mobile', 'Amber Relay Cyberdeck', amberMobileIndicators),
+  createManifestProfile('reference-mobile-v3', 'Reference Compact V3'),
+  createManifestProfile('gold-mobile', 'Gold Mobile Cyberdeck'),
+  createManifestProfile('amber-mobile', 'Amber Relay Cyberdeck'),
   {
     id: 'mobile-portrait',
     label: 'Mobile Portrait Cyberdeck',
@@ -313,93 +342,7 @@ const fixedProfiles: FixedSkinProfile[] = [
       }
     }
   },
-  {
-    id: 'reference-mobile-v2',
-    label: 'Reference Cyberdeck Mobile V2',
-    kind: 'mobilePortrait',
-    width: 390,
-    height: 844,
-    background: fixedAsset('reference-mobile-v2/chassis.png'),
-    regions: {
-      map: { x: 31, y: 55, width: 328, height: 353 },
-      title: { x: 27, y: 538, width: 270, height: 36 },
-      latest: { x: 27, y: 456, width: 276, height: 50 },
-      log: { x: 20, y: 444, width: 342, height: 204 },
-      inventory: { x: 20, y: 444, width: 342, height: 204 },
-      playerHp: { x: 27, y: 574, width: 338, height: 48 },
-      playerHpFill: { x: 84, y: 594, width: 177, height: 8 },
-      playerStats: { x: 32, y: 614, width: 310, height: 20 },
-      combat: { x: 31, y: 623, width: 318, height: 34 },
-      enemyHpFill: { x: 178, y: 644, width: 112, height: 8 },
-      endState: { x: 38, y: 360, width: 314, height: 292 }
-    },
-    buttons: {
-      attack: {
-        rect: { x: 202, y: 646, width: 156, height: 69 },
-        label: 'Attack',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'attack')
-      },
-      run: {
-        rect: { x: 213, y: 723, width: 150, height: 68 },
-        label: 'Run',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'run')
-      },
-      log: {
-        rect: { x: 316, y: 436, width: 43, height: 31 },
-        label: 'Log',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'log')
-      },
-      inventory: {
-        rect: { x: 316, y: 474, width: 43, height: 31 },
-        label: 'Inventory',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'inventory')
-      },
-      moveN: {
-        rect: { x: 74, y: 675, width: 55, height: 55 },
-        label: 'N',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'dpad-n')
-      },
-      moveS: {
-        rect: { x: 74, y: 764, width: 55, height: 55 },
-        label: 'S',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'dpad-s')
-      },
-      moveE: {
-        rect: { x: 116, y: 717, width: 55, height: 55 },
-        label: 'E',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'dpad-e')
-      },
-      moveW: {
-        rect: { x: 27, y: 717, width: 55, height: 55 },
-        label: 'W',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'dpad-w')
-      },
-      restart: {
-        rect: { x: 82, y: 578, width: 226, height: 66 },
-        label: 'Restart',
-        hideLabel: true,
-        states: fixedButton('reference-mobile-v2', 'restart')
-      }
-    },
-    indicators: {
-      status: {
-        rect: { x: 310, y: 529, width: 52, height: 24 },
-        states: referenceMobileV2Indicators.status
-      },
-      combatLed: {
-        rect: { x: 344, y: 654, width: 18, height: 18 },
-        states: referenceMobileV2Indicators.combatLed
-      }
-    }
-  },
+  createManifestProfile('reference-mobile-v2', 'Reference Cyberdeck Mobile V2'),
   {
     id: 'desktop-wide',
     label: 'Desktop Wide Cyberdeck',
