@@ -744,7 +744,7 @@ function renderTextState(
   connectionStatus?: string
 ): void {
   renderTitleState(state);
-  renderStatusIndicator(profile, connectionStatus ?? (state.in_combat ? 'ready' : 'open'));
+  renderStatusIndicator(profile, connectionStatus ?? 'ready');
   setText('latest-message', logs[0] ?? '');
   setText('player-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
   renderPlayerStatsState(state);

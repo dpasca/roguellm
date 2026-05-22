@@ -1551,6 +1551,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!metrics.controlStates.attackDisabled || !metrics.controlStates.runDisabled) {
       failures.push('status scenario did not disable pending combat controls');
     }
+  } else if (metrics.statusText !== 'READY') {
+    failures.push(`fixed workbench steady state should show READY status, got ${metrics.statusText || 'empty'}`);
   }
 
   if (isInventoryScenario) {
