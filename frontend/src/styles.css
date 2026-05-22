@@ -1680,6 +1680,23 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixe
     transform: translateY(0);
   }
 
+  .fixed-skin-stage .fixed-log-region,
+  .fixed-skin-stage .fixed-inventory-region {
+    right: auto;
+    bottom: auto;
+    display: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    transition: none;
+  }
+
+  body.fixed-log-open .fixed-skin-stage .fixed-log-region,
+  body.fixed-inventory-open .fixed-skin-stage .fixed-inventory-region {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
   .log-backdrop:not([hidden]) {
     position: absolute;
     inset: 0;

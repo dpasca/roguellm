@@ -1626,6 +1626,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench steady state should show READY status, got ${metrics.statusText || 'empty'}`);
   }
 
+  validateFixedDrawerVisibility(metrics, failures);
+
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {
       failures.push('fixed inventory scenario did not open the inventory drawer');
@@ -1727,6 +1729,21 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
     }
+  }
+}
+
+function validateFixedDrawerVisibility(metrics, failures) {
+  const log = metrics.rects.logPanel;
+  const inventory = metrics.rects.inventoryPanel;
+
+  if (!metrics.logOpen && log && log.visibleHeight > 0) {
+    failures.push(`fixed closed log drawer still occupies visible space: ${log.visibleWidth}x${log.visibleHeight}`);
+  }
+
+  if (!metrics.inventoryOpen && inventory && inventory.visibleHeight > 0) {
+    failures.push(
+      `fixed closed inventory drawer still occupies visible space: ${inventory.visibleWidth}x${inventory.visibleHeight}`
+    );
   }
 }
 
