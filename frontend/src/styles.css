@@ -1003,7 +1003,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 
 .fixed-stat-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 0.58fr 0.58fr 0.58fr minmax(0, 2.26fr);
   gap: 6px;
   margin-top: 19px;
   color: #ffffff;
@@ -1034,6 +1034,20 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 .fixed-stat-row strong {
   margin-left: 4px;
   color: #ffffff;
+}
+
+.fixed-stat-row span:nth-child(4) {
+  display: flex;
+  gap: 4px;
+}
+
+.fixed-stat-row span:nth-child(4) strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixed-meter-fill {

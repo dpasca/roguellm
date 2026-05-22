@@ -911,6 +911,7 @@ async function collectMetrics(page) {
       latestPanel: '.latest-message-panel',
       latestMessage: '#latest-message',
       playerPanel: '.player-panel',
+      tileStatValue: '.fixed-stat-row span:nth-child(4) strong',
       combatPanel: '#combat-panel',
       controlsPanel: '.controls-panel',
       logPanel: '#log-panel',
@@ -1443,6 +1444,7 @@ function validateCompactMobileLayout(metrics, failures) {
   const map = metrics.rects.map;
   const latest = metrics.rects.latestPanel;
   const player = metrics.rects.playerPanel;
+  const tileStatValue = metrics.rects.tileStatValue;
   const combat = metrics.rects.combatPanel;
   const log = metrics.rects.logPanel;
   const status = metrics.rects.statusPill;
@@ -1465,6 +1467,10 @@ function validateCompactMobileLayout(metrics, failures) {
 
   if (!player || player.visibleHeight < 50) {
     failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!tileStatValue || tileStatValue.visibleWidth < 110)) {
+    failures.push(`compact mobile tile stat has too little room: ${tileStatValue?.visibleWidth ?? 0}px visible`);
   }
 
   if (!combat || combat.visibleHeight < 56) {
