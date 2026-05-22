@@ -19,6 +19,19 @@ The first production target is a `390x844` portrait artboard. The renderer may
 scale the whole artboard uniformly to fit the viewport, but it must not stretch
 individual bitmap widgets.
 
+The current gold layout target uses this hierarchy:
+
+- Header/status chrome: `0-44`.
+- Map aperture: about `346x281`, large enough to inspect the board but no
+  longer dominant.
+- Latest message: about `284x86`, readable as a primary story surface while
+  reserving a fixed log-toggle well.
+- Expanded log: about `342x204`, allowed to overlay the player panel while open.
+- Title/status band plus player panel: title and model status sit above a
+  compact `342x54` HP/stat block.
+- Combat panel: about `342x64`, compact but readable.
+- Controls: bottom `190px`, D-pad left and action buttons right.
+
 Every mobile skin profile must define:
 
 - `chassis`: full-size background art with empty apertures.
@@ -112,6 +125,7 @@ missing, clipped, or overflowing the viewport.
 ## Current Profiles
 
 - `mobile-portrait`: early generated placeholder profile.
+- `gold-mobile`: deterministic layout target and current mobile default.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
   controls; current best mobile test profile.

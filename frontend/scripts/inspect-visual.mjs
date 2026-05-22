@@ -61,6 +61,18 @@ const scenarios = [
     url: fixedWorkbenchUrl
   },
   {
+    name: 'mobile-gold-fixed-workbench-movement',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-movement',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=movement`
+  },
+  {
+    name: 'mobile-gold-fixed-workbench-diagnostics',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-diagnostics',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=diagnostics`
+  },
+  {
     name: 'mobile-reference-fixed-workbench',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench',
@@ -303,7 +315,10 @@ async function collectMetrics(page) {
       statusPill: '#connection-status',
       attackButton: '#attack',
       runButton: '#run',
+      moveNorthButton: '#move-n',
+      moveSouthButton: '#move-s',
       moveEastButton: '#move-e',
+      moveWestButton: '#move-w',
       endStateOverlay: '#end-state-overlay',
       diagnosticsBoard: '.fixed-diagnostics-board'
     };
@@ -504,6 +519,7 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
+  const isGoldProfile = metrics.fixedProfile === 'gold-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
 
@@ -554,6 +570,10 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
 
+  if (isGoldProfile) {
+    validateGoldMobileLayout(metrics, failures);
+  }
+
   const attack = metrics.rects.attackButton;
   const run = metrics.rects.runButton;
   if (!attack || attack.visibleHeight < 40 || !run || run.visibleHeight < 40) {
@@ -571,6 +591,48 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
+    }
+  }
+}
+
+function validateGoldMobileLayout(metrics, failures) {
+  const map = metrics.rects.map;
+  const latest = metrics.rects.latestPanel;
+  const player = metrics.rects.playerPanel;
+  const combat = metrics.rects.combatPanel;
+  const log = metrics.rects.logPanel;
+  const buttons = [
+    ['move-n', metrics.rects.moveNorthButton],
+    ['move-s', metrics.rects.moveSouthButton],
+    ['move-e', metrics.rects.moveEastButton],
+    ['move-w', metrics.rects.moveWestButton],
+    ['attack', metrics.rects.attackButton],
+    ['run', metrics.rects.runButton]
+  ];
+
+  if (map && map.height > 315) {
+    failures.push(`gold mobile map is too dominant: ${map.height}px high`);
+  }
+
+  if (!metrics.logOpen && (!latest || latest.visibleHeight < 78)) {
+    failures.push(`gold mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (!player || player.visibleHeight < 50) {
+    failures.push(`gold mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (!combat || combat.visibleHeight < 56) {
+    failures.push(`gold mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
+  }
+
+  if (metrics.logOpen && (!log || log.visibleHeight < 180)) {
+    failures.push(`gold mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+  }
+
+  for (const [name, rect] of buttons) {
+    if (!rect || rect.visibleHeight < 52 || rect.visibleWidth < 52) {
+      failures.push(`gold mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
     }
   }
 }

@@ -1,6 +1,6 @@
 import type { FixedSkinProfile, GameSkin } from './types';
 
-type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2';
+type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2' | 'gold-mobile';
 type FixedButtonAssetName = 'attack' | 'run' | 'dpad' | 'dpad-n' | 'dpad-s' | 'dpad-e' | 'dpad-w' | 'log';
 
 const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
@@ -48,8 +48,82 @@ const mobileIndicators = fixedIndicators('mobile');
 const desktopIndicators = fixedIndicators('desktop');
 const referenceMobileIndicators = fixedIndicators('reference-mobile');
 const referenceMobileV2Indicators = fixedIndicators('reference-mobile-v2');
+const goldMobileIndicators = fixedIndicators('gold-mobile');
 
 const fixedProfiles: FixedSkinProfile[] = [
+  {
+    id: 'gold-mobile',
+    label: 'Gold Mobile Wireframe',
+    kind: 'mobilePortrait',
+    width: 390,
+    height: 844,
+    background: fixedAsset('gold-mobile/chassis.png'),
+    regions: {
+      map: { x: 22, y: 48, width: 346, height: 281 },
+      title: { x: 32, y: 454, width: 258, height: 34 },
+      latest: { x: 24, y: 344, width: 284, height: 86 },
+      log: { x: 24, y: 342, width: 342, height: 204 },
+      playerHp: { x: 24, y: 488, width: 342, height: 54 },
+      playerHpFill: { x: 84, y: 505, width: 196, height: 8 },
+      playerStats: { x: 34, y: 523, width: 316, height: 18 },
+      combat: { x: 24, y: 562, width: 342, height: 64 },
+      enemyHpFill: { x: 168, y: 604, width: 150, height: 8 }
+    },
+    buttons: {
+      attack: {
+        rect: { x: 205, y: 666, width: 152, height: 66 },
+        label: 'Attack',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'attack')
+      },
+      run: {
+        rect: { x: 205, y: 746, width: 152, height: 66 },
+        label: 'Run',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'run')
+      },
+      log: {
+        rect: { x: 315, y: 348, width: 46, height: 32 },
+        label: 'Log',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'log')
+      },
+      moveN: {
+        rect: { x: 73, y: 672, width: 58, height: 58 },
+        label: 'N',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'dpad-n')
+      },
+      moveS: {
+        rect: { x: 73, y: 768, width: 58, height: 58 },
+        label: 'S',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'dpad-s')
+      },
+      moveE: {
+        rect: { x: 121, y: 720, width: 58, height: 58 },
+        label: 'E',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'dpad-e')
+      },
+      moveW: {
+        rect: { x: 25, y: 720, width: 58, height: 58 },
+        label: 'W',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'dpad-w')
+      }
+    },
+    indicators: {
+      status: {
+        rect: { x: 301, y: 454, width: 60, height: 26 },
+        states: goldMobileIndicators.status
+      },
+      combatLed: {
+        rect: { x: 349, y: 563, width: 18, height: 18 },
+        states: goldMobileIndicators.combatLed
+      }
+    }
+  },
   {
     id: 'mobile-portrait',
     label: 'Mobile Portrait Cyberdeck',
