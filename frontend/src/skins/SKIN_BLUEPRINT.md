@@ -186,6 +186,12 @@ Every skin profile needs a diagnostics scenario that shows:
 Visual inspection should capture diagnostics screenshots and fail if widgets are
 missing, clipped, or overflowing the viewport.
 
+`pnpm -C frontend inspect:visual` discovers every production `mobilePortrait`
+profile (`role: default` or `variant`) and adds movement, log, inventory,
+defeat, victory, restart, and diagnostics scenarios automatically. Use
+`VISUAL_SCENARIOS=production` when you want only this scalable production-skin
+sweep.
+
 ## Playable Runtime
 
 The fixed mobile skin is the default Game2 UI on mobile-width viewports. It can

@@ -39,8 +39,10 @@ const scenarioFilters = (process.env.VISUAL_SCENARIOS ?? process.env.VISUAL_SCEN
   .split(',')
   .map((filter) => filter.trim())
   .filter(Boolean);
+const fixedSkinDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
+const productionMobileProfiles = await loadProductionMobileProfiles(fixedSkinDir);
 
-const scenarios = [
+const baseScenarios = [
   {
     name: 'mobile-ready',
     viewport: { width: 390, height: 844 },
@@ -471,6 +473,7 @@ const scenarios = [
     expectedFixedProfile: desktopFixedProfile
   }
 ];
+const scenarios = withProductionProfileCoverage(baseScenarios, productionMobileProfiles);
 const selectedScenarios = scenarioFilters.length > 0
   ? scenarios.filter((scenario) =>
     scenarioFilters.some((filter) =>
@@ -517,6 +520,7 @@ const summary = {
   workbenchUrl,
   fixedWorkbenchUrl,
   scenarioFilters,
+  productionMobileProfiles,
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
@@ -706,6 +710,7 @@ function buildHtmlReport(summary) {
   <div class="summary">
     <span>${summary.ok ? 'All scenarios passed' : 'Failures detected'}</span>
     <span>${summary.results.length} scenarios</span>
+    <span>${summary.productionMobileProfiles.length} production mobile profiles</span>
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
   <main>${cards}</main>
@@ -720,6 +725,120 @@ function escapeHtml(value) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+async function loadProductionMobileProfiles(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const profiles = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const kitPath = path.join(dir, entry.name, 'skin-kit.json');
+    let kit;
+    try {
+      kit = JSON.parse(await fs.readFile(kitPath, 'utf8'));
+    } catch {
+      continue;
+    }
+
+    if (kit.kind !== 'mobilePortrait' || (kit.meta?.role !== 'default' && kit.meta?.role !== 'variant')) {
+      continue;
+    }
+
+    profiles.push({
+      id: kit.id ?? entry.name,
+      role: kit.meta.role,
+      defaultPriority: kit.meta.defaultPriority ?? 0
+    });
+  }
+
+  return profiles.sort((left, right) =>
+    right.defaultPriority - left.defaultPriority ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function withProductionProfileCoverage(base, profiles) {
+  const scenarios = [...base];
+  const existingCoverage = new Set(
+    base.map((scenario) => scenarioKey(scenario.mode, scenario.url ?? entryUrl, scenario.expectedFixedProfile))
+  );
+
+  for (const profile of profiles) {
+    for (const scenario of productionProfileScenarios(profile.id)) {
+      const key = scenarioKey(scenario.mode, scenario.url ?? entryUrl, scenario.expectedFixedProfile);
+      if (existingCoverage.has(key)) {
+        continue;
+      }
+
+      existingCoverage.add(key);
+      scenarios.push(scenario);
+    }
+  }
+
+  return scenarios;
+}
+
+function productionProfileScenarios(profile) {
+  const url = fixedWorkbenchProfileUrl(profile);
+  return [
+    {
+      name: `mobile-${profile}-production-movement`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-movement',
+      url: `${url}&scenario=movement`,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-log`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-log',
+      url,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-inventory`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-inventory',
+      url,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-defeat`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-defeat',
+      url: `${url}&scenario=defeat`,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-victory`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-victory',
+      url: `${url}&scenario=victory`,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-restart`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-restart',
+      url: `${url}&scenario=defeat`,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-diagnostics`,
+      viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-diagnostics',
+      url: `${url}&scenario=diagnostics`,
+      expectedFixedProfile: profile
+    }
+  ];
+}
+
+function scenarioKey(mode, url, expectedFixedProfile) {
+  return `${mode}\n${url}\n${expectedFixedProfile ?? ''}`;
 }
 
 async function ensureViteServer(selected) {
