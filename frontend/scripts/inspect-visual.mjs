@@ -153,6 +153,12 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-reference-v3-fixed-workbench-escaped-copy',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-escaped-copy',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=escaped-copy`
+  },
+  {
     name: 'mobile-signal-noir-fixed-workbench-diagnostics',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-diagnostics',
@@ -988,11 +994,15 @@ async function collectMetrics(page) {
       logOpen: document.body.classList.contains('log-open'),
       inventoryOpen: document.body.classList.contains('fixed-inventory-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
+      titleText: document.getElementById('fixed-title')?.textContent?.trim() ?? '',
+      titleIconClass: document.querySelector('#fixed-title i')?.className ?? '',
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
       playerHpText: document.getElementById('player-hp')?.textContent?.trim() ?? '',
+      tileStatText: document.querySelector('.fixed-stat-row span:nth-child(4) strong')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
+      unsafeMarkupCount: document.querySelectorAll('#fixed-title img, #fixed-title script, #fixed-player-stats b, #game-log script, #enemy-name script').length,
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
       controlStates: {
@@ -1235,6 +1245,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isProductionMobileProfile = isProductionFixedProfile(metrics.fixedProfileRole);
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
+  const isEscapedCopyScenario = scenario.mode === 'fixed-workbench-escaped-copy';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
   const isInventoryScenario = scenario.mode === 'fixed-workbench-inventory' || scenario.mode === 'fixed-workbench-inventory-use';
   const isDrawerSwitchScenario = scenario.mode === 'fixed-workbench-drawer-switch';
@@ -1285,6 +1296,30 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     const diagnostics = metrics.rects.diagnosticsBoard;
     if (!diagnostics || diagnostics.visibleHeight < 240 || diagnostics.visibleWidth < 300) {
       failures.push(`diagnostics board is too small: ${diagnostics?.visibleWidth ?? 0}x${diagnostics?.visibleHeight ?? 0}`);
+    }
+  }
+
+  if (isEscapedCopyScenario) {
+    if (metrics.fixedScenario !== 'escaped-copy') {
+      failures.push(`expected escaped-copy scenario, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (!metrics.titleText.includes('<img>')) {
+      failures.push(`escaped title markup was not preserved as text: ${metrics.titleText || 'empty'}`);
+    }
+    if (!metrics.titleIconClass.includes('fa-user-secret')) {
+      failures.push(`malformed title icon did not fall back to a visible Font Awesome icon: ${metrics.titleIconClass || 'empty'}`);
+    }
+    if (metrics.tileStatText !== 'Glass <Hotel>') {
+      failures.push(`escaped tile markup was not preserved as text: ${metrics.tileStatText || 'empty'}`);
+    }
+    if (metrics.enemyNameText !== 'Chrome <Oni>') {
+      failures.push(`escaped enemy markup was not preserved as text: ${metrics.enemyNameText || 'empty'}`);
+    }
+    if (!metrics.latestText.includes('<script>')) {
+      failures.push(`escaped log markup was not preserved as text: ${metrics.latestText || 'empty'}`);
+    }
+    if (metrics.unsafeMarkupCount !== 0) {
+      failures.push(`escaped copy created unsafe markup nodes: ${metrics.unsafeMarkupCount}`);
     }
   }
 

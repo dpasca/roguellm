@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import { RogueScene } from '../game/RogueScene';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
+import { normalizeFontAwesomeClass } from '../ui/icons';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
-type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
+type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory' | 'escaped-copy';
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
@@ -342,12 +343,37 @@ function readTokenParams(params: URLSearchParams, key: string): string[] {
 function selectScenario(): FixedWorkbenchScenario {
   const scenario = new URLSearchParams(window.location.search).get('scenario');
   return scenario === 'movement' || scenario === 'diagnostics' || scenario === 'status' || scenario === 'defeat' || scenario === 'victory'
+    || scenario === 'escaped-copy'
     ? scenario
     : 'combat';
 }
 
 function createInitialState(scenario: FixedWorkbenchScenario): GameState {
   const state = createWorkbenchState();
+  if (scenario === 'escaped-copy') {
+    const [x, y] = state.player_pos;
+    const cellTypes = state.cell_types.map((row, rowIndex) =>
+      row.map((cell, columnIndex) =>
+        rowIndex === y && columnIndex === x
+          ? { ...cell, name: 'Glass <Hotel>' }
+          : cell
+      )
+    );
+
+    return {
+      ...state,
+      game_title: 'Neo <img> Tokyo',
+      player: {
+        ...state.player,
+        font_awesome_icon: 'fa-solid fa-user-secret"><img src=x>'
+      },
+      cell_types: cellTypes,
+      current_enemy: state.current_enemy
+        ? { ...state.current_enemy, name: 'Chrome <Oni>' }
+        : state.current_enemy
+    };
+  }
+
   if (scenario === 'combat' || scenario === 'diagnostics' || scenario === 'status') {
     return state;
   }
@@ -410,6 +436,10 @@ function createInitialLogs(scenario: FixedWorkbenchScenario): string[] {
     return ['End-state test: victory overlay, gold marker, disabled controls, and fixed restart sprite are visible.', ...baseLogs];
   }
 
+  if (scenario === 'escaped-copy') {
+    return ['Escaped copy test: <script> stays readable text inside the fixed skin.', ...baseLogs];
+  }
+
   return ['Movement test: D-pad is unlocked; tap an arrow to verify movement hitboxes.', ...baseLogs];
 }
 
@@ -447,14 +477,14 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const player = stage.querySelector('#player-panel');
   player?.append(
-    el('div', 'fixed-hp-row', '<span>HP</span><strong id="player-hp">--</strong>'),
+    createPlayerHpRow(),
     el('div', 'fixed-stat-row', '', 'fixed-player-stats')
   );
 
   const combat = stage.querySelector('#combat-panel');
   combat?.append(
     el('h2', '', 'Combat', 'combat-mode-label'),
-    el('div', 'fixed-combat-row', '<span id="enemy-name">Enemy</span><strong id="enemy-hp">--</strong>')
+    createCombatRow()
   );
 
   const log = stage.querySelector('#log-panel');
@@ -465,19 +495,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const endState = stage.querySelector('#end-state-overlay');
   endState?.setAttribute('hidden', '');
-  endState?.append(
-    el(
-      'div',
-      'fixed-end-state-panel',
-      '<p class="end-state-kicker" id="end-state-kicker">Mission ended</p>' +
-        '<h2 id="end-state-title">RogueLLM</h2>' +
-        '<p id="end-state-message"></p>' +
-        '<dl class="end-state-stats">' +
-        '<div><dt>HP</dt><dd id="end-state-hp">--</dd></div>' +
-        '<div><dt>XP</dt><dd id="end-state-xp">--</dd></div>' +
-        '</dl>'
-    )
-  );
+  endState?.append(createEndStatePanel());
 
   if (scenario === 'diagnostics') {
     stage.querySelector('#game-canvas')?.append(buildDiagnosticsBoard(profile));
@@ -597,6 +615,63 @@ function createButton(buttonId: FixedButtonId, button: FixedSkinButton): HTMLBut
   return element;
 }
 
+function createPlayerHpRow(): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'fixed-hp-row';
+
+  const label = document.createElement('span');
+  label.textContent = 'HP';
+
+  const value = document.createElement('strong');
+  value.id = 'player-hp';
+  value.textContent = '--';
+
+  row.append(label, value);
+  return row;
+}
+
+function createCombatRow(): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'fixed-combat-row';
+
+  const name = document.createElement('span');
+  name.id = 'enemy-name';
+  name.textContent = 'Enemy';
+
+  const hp = document.createElement('strong');
+  hp.id = 'enemy-hp';
+  hp.textContent = '--';
+
+  row.append(name, hp);
+  return row;
+}
+
+function createEndStatePanel(): HTMLElement {
+  const panel = document.createElement('div');
+  panel.className = 'fixed-end-state-panel';
+
+  const kicker = el('p', 'end-state-kicker', 'Mission ended', 'end-state-kicker');
+  const title = el('h2', '', 'RogueLLM', 'end-state-title');
+  const message = el('p', '', '', 'end-state-message');
+  const stats = document.createElement('dl');
+  stats.className = 'end-state-stats';
+  stats.append(createEndStateStat('HP', 'end-state-hp'), createEndStateStat('XP', 'end-state-xp'));
+
+  panel.append(kicker, title, message, stats);
+  return panel;
+}
+
+function createEndStateStat(label: string, id: string): HTMLElement {
+  const wrapper = document.createElement('div');
+  const term = document.createElement('dt');
+  term.textContent = label;
+  const value = document.createElement('dd');
+  value.id = id;
+  value.textContent = '--';
+  wrapper.append(term, value);
+  return wrapper;
+}
+
 function bindButtons(
   profile: FixedSkinProfile,
   onClick: (buttonId: FixedButtonId) => void
@@ -668,17 +743,11 @@ function renderTextState(
   logOpen: boolean,
   connectionStatus?: string
 ): void {
-  setHtml('fixed-title', `<p>RogueLLM</p><h1><i class="${state.player.font_awesome_icon ?? 'fa-solid fa-user-secret'}"></i>${state.game_title}</h1>`);
+  renderTitleState(state);
   renderStatusIndicator(profile, connectionStatus ?? (state.in_combat ? 'ready' : 'open'));
   setText('latest-message', logs[0] ?? '');
   setText('player-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
-  setHtml(
-    'fixed-player-stats',
-    `<span>ATK <strong>${state.player_attack}</strong></span>` +
-      `<span>DEF <strong>${state.player_defense}</strong></span>` +
-      `<span>XP <strong>${state.player_xp}</strong></span>` +
-      `<span>TILE <strong>${currentTileName(state)}</strong></span>`
-  );
+  renderPlayerStatsState(state);
 
   const enemy = state.current_enemy;
   setText('combat-mode-label', state.in_combat ? 'Combat' : 'Explore');
@@ -694,6 +763,46 @@ function renderTextState(
     'background-image',
     `url("${state.in_combat ? profile.indicators.combatLed.states.on : profile.indicators.combatLed.states.off}")`
   );
+}
+
+function renderTitleState(state: GameState): void {
+  const title = document.getElementById('fixed-title');
+  if (!title) {
+    return;
+  }
+
+  const kicker = document.createElement('p');
+  kicker.textContent = 'RogueLLM';
+
+  const heading = document.createElement('h1');
+  const icon = document.createElement('i');
+  icon.className = normalizeFontAwesomeClass(state.player.font_awesome_icon, 'fa-solid fa-user-secret');
+  icon.setAttribute('aria-hidden', 'true');
+  heading.append(icon, document.createTextNode(state.game_title));
+
+  title.replaceChildren(kicker, heading);
+}
+
+function renderPlayerStatsState(state: GameState): void {
+  const stats = document.getElementById('fixed-player-stats');
+  if (!stats) {
+    return;
+  }
+
+  stats.replaceChildren(
+    createStatCell('ATK', state.player_attack),
+    createStatCell('DEF', state.player_defense),
+    createStatCell('XP', state.player_xp),
+    createStatCell('TILE', currentTileName(state))
+  );
+}
+
+function createStatCell(label: string, value: number | string): HTMLElement {
+  const cell = document.createElement('span');
+  const strong = document.createElement('strong');
+  strong.textContent = String(value);
+  cell.append(`${label} `, strong);
+  return cell;
 }
 
 function renderButtonState(
@@ -955,7 +1064,6 @@ function describeAction(action: GameAction): string {
       return `Fixed-skin D-pad state: moved ${action.direction.toUpperCase()} on a fixed artboard.`;
     case 'equip_item':
     case 'use_item':
-    case 'restart':
     case 'get_initial_state':
       return 'Fixed-skin workbench action received.';
   }
@@ -1008,19 +1116,12 @@ function setText(id: string, value: string): void {
   }
 }
 
-function setHtml(id: string, value: string): void {
-  const element = document.getElementById(id);
-  if (element) {
-    element.innerHTML = value;
-  }
-}
-
-function el(tagName: string, className: string, html: string, id?: string): HTMLElement {
+function el(tagName: string, className: string, text: string, id?: string): HTMLElement {
   const element = document.createElement(tagName);
   element.className = className;
   if (id) {
     element.id = id;
   }
-  element.innerHTML = html;
+  element.textContent = text;
   return element;
 }
