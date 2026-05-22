@@ -307,6 +307,12 @@
     gap: 8px;
 }
 
+.dev-skin-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(68px, 1fr));
+    gap: 6px;
+}
+
 .dev-generator-btn,
 .dev-generator-fixed-btn {
     display: grid;
@@ -329,7 +335,7 @@
     grid-template-columns: auto auto;
     gap: 7px;
     justify-content: center;
-    min-width: 114px;
+    min-width: 0;
     padding: 10px 11px;
     color: #d9ffe0;
     font-weight: 800;
@@ -344,6 +350,18 @@
 
 .dev-generator-fixed-btn i {
     color: #80f18b;
+}
+
+.dev-generator-fixed-btn-amber {
+    color: #ffe0a1;
+}
+
+.dev-generator-fixed-btn-amber:hover {
+    border-color: #ffb84a;
+}
+
+.dev-generator-fixed-btn-amber i {
+    color: #ffb84a;
 }
 
 .dev-generator-title {

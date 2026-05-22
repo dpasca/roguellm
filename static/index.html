@@ -233,13 +233,22 @@
                                     <span v-if="generator.has_fixture" class="dev-fixture-badge">cached</span>
                                 </span>
                             </button>
-                            <button
-                                @click="launchDevGame2Fixed(generator.id)"
-                                class="dev-generator-fixed-btn"
-                                type="button">
-                                <i class="fas fa-mobile-screen-button"></i>
-                                <span>Fixed skin</span>
-                            </button>
+                            <div class="dev-skin-actions" aria-label="Fixed skin profiles">
+                                <button
+                                    @click="launchDevGame2Fixed(generator.id, 'gold-mobile')"
+                                    class="dev-generator-fixed-btn"
+                                    type="button">
+                                    <i class="fas fa-mobile-screen-button"></i>
+                                    <span>Gold</span>
+                                </button>
+                                <button
+                                    @click="launchDevGame2Fixed(generator.id, 'amber-mobile')"
+                                    class="dev-generator-fixed-btn dev-generator-fixed-btn-amber"
+                                    type="button">
+                                    <i class="fas fa-mobile-screen-button"></i>
+                                    <span>Amber</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
