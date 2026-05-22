@@ -251,6 +251,7 @@ export class RogueScene extends Phaser.Scene {
       !!previousTile &&
       !sameTile(previousTile, targetTile) &&
       this.markerLayoutKey === layoutKey &&
+      !prefersReducedMotion() &&
       !state.game_over &&
       !state.game_won &&
       state.player_hp > 0;
@@ -343,4 +344,8 @@ export class RogueScene extends Phaser.Scene {
 
 function sameTile(left: [number, number] | undefined, right: [number, number] | undefined): boolean {
   return !!left && !!right && left[0] === right[0] && left[1] === right[1];
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
