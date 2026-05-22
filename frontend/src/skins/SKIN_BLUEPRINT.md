@@ -124,7 +124,9 @@ material. It should not become the production chassis without cleanup.
 Use `SKIN_GENERATION_PROMPT.md` as the starting prompt for the next generated
 artboard. Once an artboard exists, add crop targets to that skin's
 `skin-kit.json`, run `pnpm -C frontend build:skin-kit <skin-dir>`, then run
-`pnpm -C frontend validate:skins`.
+`pnpm -C frontend validate:skins`. The current deterministic `gold-mobile`
+baseline can be rebuilt with `pnpm -C frontend build:gold-mobile-skin`; use it
+as the fallback quality floor when generated art is not clean enough to slice.
 
 ## Diagnostics
 

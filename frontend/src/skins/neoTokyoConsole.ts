@@ -63,7 +63,7 @@ const goldMobileIndicators = fixedIndicators('gold-mobile');
 const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'gold-mobile',
-    label: 'Gold Mobile Wireframe',
+    label: 'Gold Mobile Cyberdeck',
     kind: 'mobilePortrait',
     width: 390,
     height: 844,
