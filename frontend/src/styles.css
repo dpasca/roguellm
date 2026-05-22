@@ -953,10 +953,29 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 }
 
 .fixed-inventory-empty {
-  margin: 0;
-  color: #b9ff91;
-  font-size: 13px;
-  font-weight: 800;
+  display: grid;
+  min-height: 108px;
+  margin: 2px 0 0;
+  padding: 14px;
+  place-items: center;
+  border: 2px solid rgba(140, 255, 141, 0.62);
+  color: #ecffd9;
+  font-size: 18px;
+  font-weight: 950;
+  text-align: center;
+  text-transform: uppercase;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(194, 255, 137, 0.22), transparent 34%),
+    linear-gradient(90deg, rgba(140, 255, 141, 0.30) 0 4px, transparent 4px calc(100% - 4px), rgba(140, 255, 141, 0.30) calc(100% - 4px)),
+    repeating-linear-gradient(135deg, rgba(140, 255, 141, 0.18) 0 2px, rgba(140, 255, 141, 0.04) 2px 7px, transparent 7px 16px),
+    linear-gradient(180deg, rgba(36, 104, 36, 0.58), rgba(4, 16, 8, 0.88));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    inset 0 0 34px rgba(126, 255, 96, 0.18),
+    0 0 18px rgba(126, 255, 96, 0.12);
+  text-shadow:
+    0 0 12px rgba(126, 255, 96, 0.66),
+    0 2px 0 rgba(0, 0, 0, 0.82);
 }
 
 .fixed-inventory-item {

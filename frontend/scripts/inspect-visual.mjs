@@ -104,6 +104,13 @@ const scenarios = [
     expectedFixedProfile: defaultFixedProfile
   },
   {
+    name: 'mobile-fixed-runtime-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-inventory',
+    url: fixedRuntimeUrl,
+    expectedFixedProfile: defaultFixedProfile
+  },
+  {
     name: 'mobile-fixed-runtime-combat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-runtime-combat',
@@ -667,6 +674,11 @@ async function runScenario(page, scenario) {
     await waitForLogOpen(page);
   }
 
+  if (scenario.mode === 'fixed-runtime-inventory') {
+    await page.getByRole('button', { name: 'Inventory', exact: true }).click();
+    await waitForFixedRuntimeInventory(page);
+  }
+
   if (scenario.mode === 'fixed-runtime-combat') {
     await enterFixedRuntimeCombat(page);
   }
@@ -1014,6 +1026,18 @@ async function waitForFixedInventory(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedRuntimeInventory(page) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.ui === 'fixed-skin' &&
+      document.body.classList.contains('fixed-runtime-mode') &&
+      document.body.classList.contains('fixed-inventory-open') &&
+      (
+        document.querySelector('#inventory-list .fixed-inventory-empty') ||
+        document.querySelector('#inventory-list .fixed-inventory-item')
+      );
+  }, null, { timeout: 20_000 });
+}
+
 async function waitForFixedInventoryUse(page) {
   await page.waitForFunction(() => {
     return document.body.classList.contains('fixed-inventory-open') &&
@@ -1094,6 +1118,7 @@ async function collectMetrics(page) {
       inventoryPanel: '.inventory-panel',
       firstInventoryItem: '#inventory-list .inventory-item',
       firstInventoryAction: '#inventory-list button',
+      inventoryEmpty: '#inventory-list .fixed-inventory-empty',
       statusPill: '#connection-status',
       attackButton: '#attack',
       runButton: '#run',
@@ -1472,6 +1497,10 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (!metrics.inCombat && metrics.enemyNameText !== 'No hostile') {
     failures.push(`fixed runtime non-combat enemy row should say No hostile, got ${metrics.enemyNameText || 'empty'}`);
+  }
+
+  if (scenario.mode === 'fixed-runtime-inventory') {
+    validateFixedRuntimeInventory(metrics, failures);
   }
 
   if (isDesktopFixedProfile(metrics.fixedProfile)) {
@@ -1871,6 +1900,52 @@ function validateDesktopFixedLayout(metrics, failures) {
     if (!rect || rect.visibleWidth < 40 || rect.visibleHeight < 40) {
       failures.push(`desktop fixed ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
     }
+  }
+}
+
+function validateFixedRuntimeInventory(metrics, failures) {
+  const inventory = metrics.rects.inventoryPanel;
+  const item = metrics.rects.firstInventoryItem;
+  const action = metrics.rects.firstInventoryAction;
+  const empty = metrics.rects.inventoryEmpty;
+  const inventoryToggle = metrics.rects.inventoryToggleButton;
+  const desktop = isDesktopFixedProfile(metrics.fixedProfile);
+  const minHeight = desktop ? 100 : 260;
+
+  if (!metrics.inventoryOpen) {
+    failures.push('fixed runtime inventory scenario did not open the inventory drawer');
+  }
+
+  if (metrics.logOpen) {
+    failures.push('fixed runtime inventory scenario left the log drawer open');
+  }
+
+  if (!inventory || inventory.visibleWidth < 300 || inventory.visibleHeight < minHeight) {
+    failures.push(`fixed runtime inventory drawer is too small: ${inventory?.visibleWidth ?? 0}x${inventory?.visibleHeight ?? 0}`);
+  }
+
+  if (!item && (!empty || empty.visibleHeight < 20)) {
+    failures.push(`fixed runtime inventory drawer has no visible item or empty state: empty=${empty?.visibleHeight ?? 0}px`);
+  }
+
+  if (item && item.visibleHeight < 36) {
+    failures.push(`fixed runtime inventory first item is clipped: ${item.visibleHeight}px visible`);
+  }
+
+  if (item && (!action || action.visibleHeight < 24 || action.visibleWidth < 42)) {
+    failures.push(`fixed runtime inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
+  }
+
+  if (!inventoryToggle || inventoryToggle.visibleHeight < 24 || inventoryToggle.visibleWidth < 38) {
+    failures.push(`fixed runtime inventory toggle is clipped while open: ${inventoryToggle?.visibleWidth ?? 0}x${inventoryToggle?.visibleHeight ?? 0}`);
+  }
+
+  if (inventoryToggle?.visualState !== 'pressed') {
+    failures.push(`fixed runtime inventory toggle should use pressed state while open, got ${inventoryToggle?.visualState ?? 'none'}`);
+  }
+
+  if (inventoryToggle?.ariaPressed !== 'true' || inventoryToggle?.ariaExpanded !== 'true') {
+    failures.push('fixed runtime inventory toggle does not expose pressed/expanded state while open');
   }
 }
 
