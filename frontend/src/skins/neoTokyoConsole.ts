@@ -360,6 +360,15 @@ const fixedProfiles: FixedSkinProfile[] = [
   {
     id: 'desktop-wide',
     label: 'Desktop Wide Cyberdeck',
+    meta: {
+      family: 'Neo Tokyo Console',
+      role: 'prototype',
+      tags: ['cyberpunk', 'desktop', 'wide', 'technology'],
+      mood: ['tactical', 'console', 'prototype'],
+      palette: ['green', 'graphite'],
+      defaultPriority: 10,
+      generation: 'deterministic-svg-prototype'
+    },
     kind: 'desktopWide',
     width: 1280,
     height: 900,

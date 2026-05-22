@@ -207,5 +207,5 @@ comparing behavior.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
   controls; completed with inventory and restart widgets, but not promoted to
   default until its proportions meet the compact mobile gates.
-- `desktop-wide`: placeholder desktop profile kept only to preserve the future
-  profile shape.
+- `desktop-wide`: prototype desktop profile kept to preserve the future desktop
+  profile shape and covered by a basic fixed-workbench visual selection check.

@@ -357,7 +357,8 @@ const scenarios = [
     name: 'desktop-fixed-workbench',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-workbench',
-    url: fixedWorkbenchUrl
+    url: fixedWorkbenchUrl,
+    expectedFixedProfile: 'desktop-wide'
   }
 ];
 
