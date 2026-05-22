@@ -1806,6 +1806,7 @@ function validateFixedEndStateScenario(scenario, metrics, failures) {
 }
 
 function validateCompactMobileLayout(metrics, failures) {
+  const shell = metrics.rects.shell;
   const map = metrics.rects.map;
   const latest = metrics.rects.latestPanel;
   const player = metrics.rects.playerPanel;
@@ -1822,6 +1823,10 @@ function validateCompactMobileLayout(metrics, failures) {
     ['attack', metrics.rects.attackButton],
     ['run', metrics.rects.runButton]
   ];
+
+  if (shell && shell.scrollHeight > shell.clientHeight + 1) {
+    failures.push(`compact mobile fixed shell scrolls vertically: ${shell.scrollHeight}px > ${shell.clientHeight}px`);
+  }
 
   if (map && map.height > 315) {
     failures.push(`compact mobile map is too dominant: ${map.height}px high`);
