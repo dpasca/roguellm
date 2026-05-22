@@ -124,9 +124,9 @@ material. It should not become the production chassis without cleanup.
 Use `SKIN_GENERATION_PROMPT.md` as the starting prompt for the next generated
 artboard. Once an artboard exists, add crop targets to that skin's
 `skin-kit.json`, run `pnpm -C frontend build:skin-kit <skin-dir>`, then run
-`pnpm -C frontend validate:skins`. The current deterministic `gold-mobile`
-baseline can be rebuilt with `pnpm -C frontend build:gold-mobile-skin`; use it
-as the fallback quality floor when generated art is not clean enough to slice.
+`pnpm -C frontend validate:skins`. The current deterministic mobile baselines
+can be rebuilt with `pnpm -C frontend build:fixed-skins`; use them as the
+fallback quality floor when generated art is not clean enough to slice.
 
 ## Diagnostics
 
@@ -162,6 +162,8 @@ the older responsive HUD while comparing behavior.
 - `mobile-portrait`: early generated placeholder profile.
 - `gold-mobile`: deterministic layout target, current mobile default, and
   terminal-flow quality gate.
+- `amber-mobile`: second deterministic mobile profile proving the same fixed
+  widget contract can support theme variants without layout changes.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
   controls; useful comparison profile.

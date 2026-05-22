@@ -1272,7 +1272,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #run {
   white-space: nowrap;
 }
 
-body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed-log-region {
+body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-log-region {
   padding: 10px 66px 10px 10px;
   border: 1px solid rgba(140, 255, 141, 0.7);
   background:
@@ -1283,7 +1283,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed
     0 10px 22px rgba(0, 0, 0, 0.36);
 }
 
-body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed-inventory-region {
+body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-inventory-region {
   padding: 10px 66px 10px 10px;
   border: 1px solid rgba(140, 255, 141, 0.7);
   background:
@@ -1294,44 +1294,94 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed
     0 10px 22px rgba(0, 0, 0, 0.36);
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-title-region h1 {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-title-region h1 {
   font-size: 18px;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-latest-region .latest-message,
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-game-log p {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-latest-region .latest-message,
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-game-log p {
   font-size: 12px;
   line-height: 1.25;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-region-label {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-region-label {
   font-size: 9px;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-hp-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-hp-row {
   font-size: 16px;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-stat-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-stat-row {
   margin-top: 18px;
   font-size: 11px;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-combat-region h2 {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-combat-region h2 {
   margin-bottom: 4px;
   font-size: 12px;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-combat-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-combat-row {
   font-size: 14px;
   line-height: 1.1;
 }
 
-.fixed-skin-stage[data-profile="gold-mobile"] .fixed-combat-row span {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"]) .fixed-combat-row span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixed-log-region,
+body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixed-inventory-region {
+  border-color: rgba(255, 184, 74, 0.72);
+  background:
+    linear-gradient(180deg, #140d05, #050302),
+    repeating-linear-gradient(180deg, rgba(255, 184, 74, 0.08) 0 1px, transparent 1px 4px);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-title-region {
+  color: #ffd477;
+  text-shadow: 0 0 10px rgba(255, 184, 74, 0.42);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-region-label,
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-combat-region h2 {
+  color: #ffbd54;
+}
+
+.fixed-combat-state[data-profile="amber-mobile"] .fixed-combat-region h2 {
+  color: #ff8a66;
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-latest-region .latest-message,
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-game-log p {
+  color: #ffd477;
+  text-shadow: 0 0 8px rgba(255, 184, 74, 0.34);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-meter-fill {
+  background: linear-gradient(90deg, #ffb84a, #fff0a8);
+  box-shadow: 0 0 12px rgba(255, 184, 74, 0.35);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-enemy-hp-fill {
+  background: linear-gradient(90deg, #ff5f76, #ff9b66);
+  box-shadow: 0 0 12px rgba(255, 95, 118, 0.35);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-inventory-action {
+  color: #fff4c6;
+  border-color: rgba(255, 184, 74, 0.52);
+  background: rgba(102, 62, 12, 0.72);
+}
+
+.fixed-skin-stage[data-profile="amber-mobile"] .fixed-inventory-action:disabled {
+  color: #806f5b;
+  border-color: rgba(128, 111, 91, 0.35);
+  background: rgba(28, 22, 16, 0.72);
 }
 
 .fixed-skin-button:disabled {

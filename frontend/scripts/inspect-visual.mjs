@@ -107,6 +107,12 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-amber-fixed-workbench-diagnostics',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-diagnostics',
+    url: `${fixedWorkbenchProfileUrl('amber-mobile')}&scenario=diagnostics`
+  },
+  {
     name: 'mobile-gold-fixed-workbench-status',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-status',
@@ -117,6 +123,12 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-inventory',
     url: fixedWorkbenchProfileUrl('gold-mobile')
+  },
+  {
+    name: 'mobile-amber-fixed-workbench-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory',
+    url: fixedWorkbenchProfileUrl('amber-mobile')
   },
   {
     name: 'mobile-gold-fixed-workbench-inventory-use',
@@ -972,7 +984,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`fixed runtime map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
 
-  validateGoldMobileLayout(metrics, failures);
+  validateCompactMobileLayout(metrics, failures);
 }
 
 function validateCombatScenario(metrics, failures) {
@@ -1031,7 +1043,7 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
-  const isGoldProfile = metrics.fixedProfile === 'gold-mobile';
+  const isCompactMobileProfile = metrics.fixedProfile === 'gold-mobile' || metrics.fixedProfile === 'amber-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
@@ -1150,8 +1162,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
 
-  if (isGoldProfile) {
-    validateGoldMobileLayout(metrics, failures);
+  if (isCompactMobileProfile) {
+    validateCompactMobileLayout(metrics, failures);
   }
 
   const attack = metrics.rects.attackButton;
@@ -1233,7 +1245,7 @@ function validateFixedEndStateScenario(scenario, metrics, failures) {
   }
 }
 
-function validateGoldMobileLayout(metrics, failures) {
+function validateCompactMobileLayout(metrics, failures) {
   const map = metrics.rects.map;
   const latest = metrics.rects.latestPanel;
   const player = metrics.rects.playerPanel;
@@ -1250,34 +1262,34 @@ function validateGoldMobileLayout(metrics, failures) {
   ];
 
   if (map && map.height > 315) {
-    failures.push(`gold mobile map is too dominant: ${map.height}px high`);
+    failures.push(`compact mobile map is too dominant: ${map.height}px high`);
   }
 
   if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < 78)) {
-    failures.push(`gold mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
+    failures.push(`compact mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
   }
 
   if (!player || player.visibleHeight < 50) {
-    failures.push(`gold mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
+    failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
   }
 
   if (!combat || combat.visibleHeight < 56) {
-    failures.push(`gold mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
+    failures.push(`compact mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
   }
 
   if (metrics.logOpen && (!log || log.visibleHeight < 180)) {
-    failures.push(`gold mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
+    failures.push(`compact mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
   }
 
   if (!status || status.visibleWidth < 52 || status.visibleHeight < 22) {
-    failures.push(`gold mobile status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
+    failures.push(`compact mobile status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
   } else if (status.scrollWidth > status.clientWidth || status.scrollHeight > status.clientHeight) {
-    failures.push(`gold mobile status text overflows: ${status.scrollWidth}x${status.scrollHeight} > ${status.clientWidth}x${status.clientHeight}`);
+    failures.push(`compact mobile status text overflows: ${status.scrollWidth}x${status.scrollHeight} > ${status.clientWidth}x${status.clientHeight}`);
   }
 
   for (const [name, rect] of buttons) {
     if (!rect || rect.visibleHeight < 52 || rect.visibleWidth < 52) {
-      failures.push(`gold mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
+      failures.push(`compact mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
     }
   }
 }

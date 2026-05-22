@@ -1,6 +1,12 @@
 import type { FixedSkinProfile, GameSkin } from './types';
 
-type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2' | 'gold-mobile';
+type FixedAssetProfile =
+  | 'mobile'
+  | 'desktop'
+  | 'reference-mobile'
+  | 'reference-mobile-v2'
+  | 'gold-mobile'
+  | 'amber-mobile';
 type FixedButtonAssetName =
   | 'attack'
   | 'run'
@@ -59,15 +65,20 @@ const desktopIndicators = fixedIndicators('desktop');
 const referenceMobileIndicators = fixedIndicators('reference-mobile');
 const referenceMobileV2Indicators = fixedIndicators('reference-mobile-v2');
 const goldMobileIndicators = fixedIndicators('gold-mobile');
+const amberMobileIndicators = fixedIndicators('amber-mobile');
 
-const fixedProfiles: FixedSkinProfile[] = [
-  {
-    id: 'gold-mobile',
-    label: 'Gold Mobile Cyberdeck',
+function createCompactMobileProfile(
+  id: 'gold-mobile' | 'amber-mobile',
+  label: string,
+  indicators: ReturnType<typeof fixedIndicators>
+): FixedSkinProfile {
+  return {
+    id,
+    label,
     kind: 'mobilePortrait',
     width: 390,
     height: 844,
-    background: fixedAsset('gold-mobile/chassis.png'),
+    background: fixedAsset(`${id}/chassis.png`),
     regions: {
       map: { x: 22, y: 48, width: 346, height: 281 },
       title: { x: 32, y: 454, width: 258, height: 34 },
@@ -86,68 +97,73 @@ const fixedProfiles: FixedSkinProfile[] = [
         rect: { x: 205, y: 666, width: 152, height: 66 },
         label: 'Attack',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'attack')
+        states: fixedButton(id, 'attack')
       },
       run: {
         rect: { x: 205, y: 746, width: 152, height: 66 },
         label: 'Run',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'run')
+        states: fixedButton(id, 'run')
       },
       log: {
         rect: { x: 315, y: 348, width: 46, height: 32 },
         label: 'Log',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'log')
+        states: fixedButton(id, 'log')
       },
       inventory: {
         rect: { x: 315, y: 392, width: 46, height: 32 },
         label: 'Inventory',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'inventory')
+        states: fixedButton(id, 'inventory')
       },
       moveN: {
         rect: { x: 73, y: 672, width: 58, height: 58 },
         label: 'N',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'dpad-n')
+        states: fixedButton(id, 'dpad-n')
       },
       moveS: {
         rect: { x: 73, y: 768, width: 58, height: 58 },
         label: 'S',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'dpad-s')
+        states: fixedButton(id, 'dpad-s')
       },
       moveE: {
         rect: { x: 121, y: 720, width: 58, height: 58 },
         label: 'E',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'dpad-e')
+        states: fixedButton(id, 'dpad-e')
       },
       moveW: {
         rect: { x: 25, y: 720, width: 58, height: 58 },
         label: 'W',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'dpad-w')
+        states: fixedButton(id, 'dpad-w')
       },
       restart: {
         rect: { x: 82, y: 578, width: 226, height: 66 },
         label: 'Restart',
         hideLabel: true,
-        states: fixedButton('gold-mobile', 'restart')
+        states: fixedButton(id, 'restart')
       }
     },
     indicators: {
       status: {
         rect: { x: 301, y: 454, width: 60, height: 26 },
-        states: goldMobileIndicators.status
+        states: indicators.status
       },
       combatLed: {
         rect: { x: 349, y: 563, width: 18, height: 18 },
-        states: goldMobileIndicators.combatLed
+        states: indicators.combatLed
       }
     }
-  },
+  };
+}
+
+const fixedProfiles: FixedSkinProfile[] = [
+  createCompactMobileProfile('gold-mobile', 'Gold Mobile Cyberdeck', goldMobileIndicators),
+  createCompactMobileProfile('amber-mobile', 'Amber Relay Cyberdeck', amberMobileIndicators),
   {
     id: 'mobile-portrait',
     label: 'Mobile Portrait Cyberdeck',
