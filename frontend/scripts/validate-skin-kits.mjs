@@ -4,6 +4,7 @@ import path from 'node:path';
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const buttonStates = ['idle', 'hover', 'pressed', 'disabled'];
+const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
 const mobilePortrait = {
   size: { width: 390, height: 844 },
   regions: ['map', 'latest', 'log', 'inventory', 'title', 'player', 'combat', 'controls', 'endState'],
@@ -109,6 +110,8 @@ function validateRequiredContract(prefix, kit) {
     failures.push(`${prefix} mobilePortrait size must be ${mobilePortrait.size.width}x${mobilePortrait.size.height}`);
   }
 
+  validateMetadata(prefix, kit);
+
   for (const region of mobilePortrait.regions) {
     if (!kit.regions?.[region]) {
       failures.push(`${prefix} missing required region ${region}`);
@@ -144,6 +147,34 @@ function validateRequiredContract(prefix, kit) {
       }
       validateRect(prefix, kit, `layout ${group}.${name}`, rect);
     }
+  }
+}
+
+function validateMetadata(prefix, kit) {
+  const meta = kit.meta;
+  if (!meta) {
+    failures.push(`${prefix} missing required mobilePortrait meta`);
+    return;
+  }
+
+  for (const key of ['label', 'family']) {
+    if (!isNonEmptyString(meta[key])) {
+      failures.push(`${prefix} meta.${key} must be a non-empty string`);
+    }
+  }
+
+  if (!profileRoles.has(meta.role)) {
+    failures.push(`${prefix} meta.role must be one of ${Array.from(profileRoles).join(', ')}`);
+  }
+
+  for (const key of ['tags', 'mood', 'palette']) {
+    if (!isNonEmptyStringArray(meta[key])) {
+      failures.push(`${prefix} meta.${key} must be a non-empty string array`);
+    }
+  }
+
+  if (!Number.isFinite(meta.defaultPriority)) {
+    failures.push(`${prefix} meta.defaultPriority must be a finite number`);
   }
 }
 
@@ -213,4 +244,14 @@ function isPositiveRect(rect) {
     rect.y >= 0 &&
     rect.width > 0 &&
     rect.height > 0;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonEmptyStringArray(value) {
+  return Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => isNonEmptyString(entry));
 }

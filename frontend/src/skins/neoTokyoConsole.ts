@@ -1,4 +1,4 @@
-import type { FixedSkinProfile, GameSkin } from './types';
+import type { FixedSkinProfile, FixedSkinProfileMeta, GameSkin } from './types';
 
 type FixedAssetProfile =
   | 'mobile'
@@ -28,6 +28,9 @@ type SkinKitRect = {
 };
 type FixedSkinKit = {
   id: FixedAssetProfile;
+  meta?: FixedSkinProfileMeta & {
+    label: string;
+  };
   kind: FixedSkinProfile['kind'];
   size: {
     width: number;
@@ -135,13 +138,22 @@ function fixedSkinKit(profile: FixedAssetProfile): FixedSkinKit {
   return JSON.parse(source) as FixedSkinKit;
 }
 
-function createManifestProfile(id: FixedAssetProfile, label: string): FixedSkinProfile {
+function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): FixedSkinProfile {
   const kit = fixedSkinKit(id);
   const indicators = fixedIndicators(id);
 
   return {
     id,
-    label,
+    label: kit.meta?.label ?? fallbackLabel ?? id,
+    meta: kit.meta ? {
+      family: kit.meta.family,
+      role: kit.meta.role,
+      tags: kit.meta.tags,
+      mood: kit.meta.mood,
+      palette: kit.meta.palette,
+      defaultPriority: kit.meta.defaultPriority,
+      generation: kit.meta.generation
+    } : undefined,
     kind: kit.kind,
     width: kit.size.width,
     height: kit.size.height,
@@ -193,9 +205,9 @@ function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId:
 }
 
 const fixedProfiles: FixedSkinProfile[] = [
-  createManifestProfile('reference-mobile-v3', 'Reference Compact V3'),
-  createManifestProfile('gold-mobile', 'Gold Mobile Cyberdeck'),
-  createManifestProfile('amber-mobile', 'Amber Relay Cyberdeck'),
+  createManifestProfile('reference-mobile-v3'),
+  createManifestProfile('gold-mobile'),
+  createManifestProfile('amber-mobile'),
   {
     id: 'mobile-portrait',
     label: 'Mobile Portrait Cyberdeck',
@@ -342,7 +354,7 @@ const fixedProfiles: FixedSkinProfile[] = [
       }
     }
   },
-  createManifestProfile('reference-mobile-v2', 'Reference Cyberdeck Mobile V2'),
+  createManifestProfile('reference-mobile-v2'),
   {
     id: 'desktop-wide',
     label: 'Desktop Wide Cyberdeck',

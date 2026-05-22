@@ -1,5 +1,31 @@
 {
   "id": "gold-mobile",
+  "meta": {
+    "label": "Gold Mobile Cyberdeck",
+    "family": "Neo Tokyo Console",
+    "role": "variant",
+    "tags": [
+      "cyberpunk",
+      "city",
+      "neon",
+      "technology",
+      "crime",
+      "modern"
+    ],
+    "mood": [
+      "dense",
+      "electric",
+      "tactical",
+      "premium"
+    ],
+    "palette": [
+      "green",
+      "gold",
+      "graphite"
+    ],
+    "defaultPriority": 70,
+    "generation": "deterministic-svg"
+  },
   "kind": "mobilePortrait",
   "size": {
     "width": 390,

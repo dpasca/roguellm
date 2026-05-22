@@ -1115,7 +1115,10 @@ function validateWorkbenchScenario(scenario, metrics, failures) {
 
 function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactProfile = isCompactFixedProfile(metrics.fixedProfile);
-  const isCompactMobileProfile = metrics.fixedProfile === 'gold-mobile' || metrics.fixedProfile === 'amber-mobile';
+  const isCompactMobileProfile =
+    metrics.fixedProfile === 'reference-mobile-v3' ||
+    metrics.fixedProfile === 'gold-mobile' ||
+    metrics.fixedProfile === 'amber-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';

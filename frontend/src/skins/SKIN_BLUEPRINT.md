@@ -38,6 +38,7 @@ The current gold layout target uses this hierarchy:
 
 Every mobile skin profile must define:
 
+- `meta`: label, family, role, tags, mood, palette, and default priority.
 - `chassis`: full-size background art with empty apertures.
 - `map`: live Phaser map aperture.
 - `latest`: compact top-first message LCD.
@@ -58,6 +59,25 @@ Every mobile skin profile must define:
 
 Desktop may later add or reposition widgets, but it should not rename these
 core widgets.
+
+## Metadata And Selection
+
+Each production `mobilePortrait` skin kit must include a `meta` block:
+
+- `label`: human-readable profile name.
+- `family`: broader UI family, currently `Neo Tokyo Console`.
+- `role`: one of `default`, `variant`, `prototype`, or `legacy`.
+- `tags`: setting or genre hints such as `cyberpunk`, `industrial`, or
+  `underground`.
+- `mood`: aesthetic feel such as `premium`, `tactical`, or `nocturnal`.
+- `palette`: dominant color words.
+- `defaultPriority`: numeric preference used by runtime profile selection.
+- `generation`: optional provenance such as `deterministic-svg-premium`.
+
+The fixed mobile runtime first honors an explicit `profile=` query parameter.
+Without that override, it chooses the highest-priority `mobilePortrait` profile.
+That keeps the default choice data-driven and makes future LLM theme matching a
+metadata problem instead of another hardcoded profile id.
 
 ## Runtime Layers
 

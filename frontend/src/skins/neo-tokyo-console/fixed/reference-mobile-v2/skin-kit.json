@@ -1,5 +1,28 @@
 {
   "id": "reference-mobile-v2",
+  "meta": {
+    "label": "Reference Cyberdeck Mobile V2",
+    "family": "Neo Tokyo Console",
+    "role": "prototype",
+    "tags": [
+      "cyberpunk",
+      "neon",
+      "technology",
+      "reference"
+    ],
+    "mood": [
+      "dense",
+      "experimental",
+      "tactical"
+    ],
+    "palette": [
+      "green",
+      "red",
+      "graphite"
+    ],
+    "defaultPriority": 25,
+    "generation": "reference-slice-cleanup"
+  },
   "kind": "mobilePortrait",
   "size": {
     "width": 390,

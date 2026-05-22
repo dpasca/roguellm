@@ -1,5 +1,31 @@
 {
   "id": "reference-mobile-v3",
+  "meta": {
+    "label": "Reference Compact V3",
+    "family": "Neo Tokyo Console",
+    "role": "default",
+    "tags": [
+      "cyberpunk",
+      "neon",
+      "urban",
+      "technology",
+      "crime",
+      "modern"
+    ],
+    "mood": [
+      "dense",
+      "electric",
+      "premium",
+      "tactical"
+    ],
+    "palette": [
+      "green",
+      "orange",
+      "graphite"
+    ],
+    "defaultPriority": 100,
+    "generation": "deterministic-svg-premium"
+  },
   "kind": "mobilePortrait",
   "size": {
     "width": 390,

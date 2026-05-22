@@ -1,5 +1,30 @@
 {
   "id": "amber-mobile",
+  "meta": {
+    "label": "Amber Relay Cyberdeck",
+    "family": "Neo Tokyo Console",
+    "role": "variant",
+    "tags": [
+      "industrial",
+      "relay",
+      "retro",
+      "technology",
+      "underground"
+    ],
+    "mood": [
+      "warm",
+      "mechanical",
+      "tactical",
+      "nocturnal"
+    ],
+    "palette": [
+      "amber",
+      "cyan",
+      "charcoal"
+    ],
+    "defaultPriority": 60,
+    "generation": "deterministic-svg"
+  },
   "kind": "mobilePortrait",
   "size": {
     "width": 390,

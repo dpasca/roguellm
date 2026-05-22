@@ -61,7 +61,13 @@ const skinLayout = {
 const variants = [
   {
     id: 'gold-mobile',
+    displayLabel: 'Gold Mobile Cyberdeck',
     label: 'GOLD MOBILE CYBERDECK',
+    role: 'variant',
+    defaultPriority: 70,
+    tags: ['cyberpunk', 'city', 'neon', 'technology', 'crime', 'modern'],
+    mood: ['dense', 'electric', 'tactical', 'premium'],
+    palette: ['green', 'gold', 'graphite'],
     footer: 'MOBILE PROFILE',
     version: 'v0.3',
     accent: '#79ff69',
@@ -91,7 +97,13 @@ const variants = [
   },
   {
     id: 'amber-mobile',
+    displayLabel: 'Amber Relay Cyberdeck',
     label: 'AMBER RELAY CYBERDECK',
+    role: 'variant',
+    defaultPriority: 60,
+    tags: ['industrial', 'relay', 'retro', 'technology', 'underground'],
+    mood: ['warm', 'mechanical', 'tactical', 'nocturnal'],
+    palette: ['amber', 'cyan', 'charcoal'],
     footer: 'AMBER PROFILE',
     version: 'v0.1',
     accent: '#ffb84a',
@@ -121,7 +133,13 @@ const variants = [
   },
   {
     id: 'reference-mobile-v3',
+    displayLabel: 'Reference Compact V3',
     label: 'REFERENCE COMPACT V3',
+    role: 'default',
+    defaultPriority: 100,
+    tags: ['cyberpunk', 'neon', 'urban', 'technology', 'crime', 'modern'],
+    mood: ['dense', 'electric', 'premium', 'tactical'],
+    palette: ['green', 'orange', 'graphite'],
     footer: 'CYBERDECK V3',
     version: 'v0.1',
     premium: true,
@@ -169,6 +187,7 @@ function generateVariant(variant) {
 
   writeText(outDir, 'skin-kit.json', `${JSON.stringify({
     id: variant.id,
+    meta: skinMeta(variant),
     kind: 'mobilePortrait',
     size: { width: 390, height: 844 },
     regions: skinRegions,
@@ -202,6 +221,19 @@ function generateVariant(variant) {
   writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
   writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
   writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
+}
+
+function skinMeta(variant) {
+  return {
+    label: variant.displayLabel,
+    family: 'Neo Tokyo Console',
+    role: variant.role,
+    tags: variant.tags,
+    mood: variant.mood,
+    palette: variant.palette,
+    defaultPriority: variant.defaultPriority,
+    generation: variant.premium ? 'deterministic-svg-premium' : 'deterministic-svg'
+  };
 }
 
 function writeText(outDir, filename, content) {

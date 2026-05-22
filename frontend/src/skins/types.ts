@@ -37,9 +37,22 @@ export interface FixedSkinIndicator {
   states: Partial<Record<FixedSkinIndicatorState, string>>;
 }
 
+export type FixedSkinProfileRole = 'default' | 'variant' | 'prototype' | 'legacy';
+
+export interface FixedSkinProfileMeta {
+  family: string;
+  role: FixedSkinProfileRole;
+  tags: string[];
+  mood: string[];
+  palette: string[];
+  defaultPriority: number;
+  generation?: string;
+}
+
 export interface FixedSkinProfile {
   id: string;
   label: string;
+  meta?: FixedSkinProfileMeta;
   kind: FixedSkinProfileKind;
   width: number;
   height: number;

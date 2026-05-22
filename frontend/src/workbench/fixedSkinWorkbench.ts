@@ -252,17 +252,29 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
   }
 
   if (window.innerWidth >= 900) {
-    return profiles.find((profile) => profile.kind === 'desktopWide') ?? profiles[0] ?? null;
+    return selectPreferredProfile(profiles, 'desktopWide') ?? profiles[0] ?? null;
   }
 
-  return (
-    profiles.find((profile) => profile.id === 'reference-mobile-v3') ??
-    profiles.find((profile) => profile.id === 'gold-mobile') ??
-    profiles.find((profile) => profile.id === 'reference-mobile-v2') ??
-    profiles.find((profile) => profile.kind === 'mobilePortrait') ??
-    profiles[0] ??
-    null
-  );
+  return selectPreferredProfile(profiles, 'mobilePortrait') ?? profiles[0] ?? null;
+}
+
+function selectPreferredProfile(
+  profiles: FixedSkinProfile[],
+  kind: FixedSkinProfile['kind']
+): FixedSkinProfile | null {
+  return profiles
+    .filter((profile) => profile.kind === kind)
+    .reduce<FixedSkinProfile | null>((best, profile) => {
+      if (!best) {
+        return profile;
+      }
+
+      return profilePriority(profile) > profilePriority(best) ? profile : best;
+    }, null);
+}
+
+function profilePriority(profile: FixedSkinProfile): number {
+  return profile.meta?.defaultPriority ?? 0;
 }
 
 function selectScenario(): FixedWorkbenchScenario {
