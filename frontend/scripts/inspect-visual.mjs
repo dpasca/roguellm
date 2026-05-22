@@ -25,7 +25,7 @@ const withQueryEntries = (url, entries) => {
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const defaultFixedProfile = 'reference-mobile-v3';
-const desktopFixedProfile = 'desktop';
+const desktopFixedProfile = 'desktop-wide';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });

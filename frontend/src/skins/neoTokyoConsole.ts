@@ -146,7 +146,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
   const indicators = fixedIndicators(id);
 
   return {
-    id,
+    id: kit.id ?? id,
     label: kit.meta?.label ?? fallbackLabel ?? id,
     meta: kit.meta ? {
       family: kit.meta.family,

@@ -213,6 +213,6 @@ comparing behavior.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
   controls; completed with inventory and restart widgets, but not promoted to
   default until its proportions meet the compact mobile gates.
-- `desktop`: prototype desktop profile kept to preserve the future desktop
+- `desktop-wide`: prototype desktop profile kept to preserve the future desktop
   profile shape through the same skin-kit contract, now covered for runtime
   ready/log/inventory/combat plus terminal restart flow.
