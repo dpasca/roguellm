@@ -78,6 +78,12 @@ const scenarios = [
     url: fixedRuntimeUrl
   },
   {
+    name: 'mobile-fixed-runtime-combat',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-combat',
+    url: fixedRuntimeUrl
+  },
+  {
     name: 'mobile-gold-fixed-workbench-movement',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-movement',
@@ -248,6 +254,11 @@ async function runScenario(page, scenario) {
     await waitForLogOpen(page);
   }
 
+  if (scenario.mode === 'fixed-runtime-combat') {
+    await page.getByRole('button', { name: 'E', exact: true }).click();
+    await waitForFixedRuntimeCombat(page);
+  }
+
   if (scenario.mode === 'fixed-workbench-movement') {
     await page.getByRole('button', { name: 'E', exact: true }).click();
     await waitForFixedMovement(page);
@@ -355,6 +366,22 @@ async function waitForFixedRuntimeReady(page) {
       status === 'READY' &&
       latest &&
       latest !== 'Connecting...';
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedRuntimeCombat(page) {
+  await page.waitForFunction(() => {
+    const status = document.getElementById('connection-status')?.textContent?.trim();
+    const attack = document.getElementById('attack');
+    const run = document.getElementById('run');
+    return document.body.dataset.ui === 'fixed-skin' &&
+      document.body.classList.contains('fixed-runtime-mode') &&
+      document.body.classList.contains('in-combat') &&
+      status === 'READY' &&
+      attack instanceof HTMLButtonElement &&
+      run instanceof HTMLButtonElement &&
+      !attack.disabled &&
+      !run.disabled;
   }, null, { timeout: 20_000 });
 }
 
@@ -599,14 +626,14 @@ function validateMetrics(scenario, metrics) {
   }
 
   if (scenario.mode.startsWith('fixed-runtime')) {
-    validateFixedRuntimeScenario(metrics, failures);
+    validateFixedRuntimeScenario(scenario, metrics, failures);
   }
 
   failures.push(...validateAssetUsage(metrics));
   return failures;
 }
 
-function validateFixedRuntimeScenario(metrics, failures) {
+function validateFixedRuntimeScenario(scenario, metrics, failures) {
   if (metrics.ui !== 'fixed-skin') {
     failures.push(`expected fixed-skin runtime ui, got ${metrics.ui ?? 'none'}`);
   }
@@ -625,6 +652,22 @@ function validateFixedRuntimeScenario(metrics, failures) {
 
   if (metrics.latestTextLength < 30) {
     failures.push('fixed runtime latest message is too short to inspect');
+  }
+
+  if (scenario.mode === 'fixed-runtime-combat' && !metrics.inCombat) {
+    failures.push('fixed runtime combat scenario did not enter combat');
+  }
+
+  if (metrics.inCombat && metrics.combatTitleText !== 'Combat') {
+    failures.push(`fixed runtime combat panel should say Combat, got ${metrics.combatTitleText || 'empty'}`);
+  }
+
+  if (metrics.inCombat && (!metrics.enemyNameText || metrics.enemyNameText === 'No hostile' || metrics.enemyNameText === 'No enemy')) {
+    failures.push(`fixed runtime combat enemy row is not populated: ${metrics.enemyNameText || 'empty'}`);
+  }
+
+  if (metrics.inCombat && (metrics.controlStates.attackDisabled || metrics.controlStates.runDisabled)) {
+    failures.push('fixed runtime combat controls are unexpectedly disabled');
   }
 
   if (!metrics.inCombat && metrics.combatTitleText !== 'Explore') {
