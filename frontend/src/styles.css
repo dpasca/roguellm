@@ -1050,6 +1050,16 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
   white-space: nowrap;
 }
 
+.fixed-skin-stage[data-profile="desktop-wide"] .fixed-stat-row {
+  grid-template-columns: 64px 52px 64px minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.fixed-skin-stage[data-profile="desktop-wide"] .fixed-stat-row strong {
+  margin-left: 2px;
+}
+
 .fixed-meter-fill {
   height: 10px;
   pointer-events: none;

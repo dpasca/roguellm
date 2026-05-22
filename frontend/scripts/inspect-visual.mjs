@@ -917,6 +917,9 @@ async function collectMetrics(page) {
       latestPanel: '.latest-message-panel',
       latestMessage: '#latest-message',
       playerPanel: '.player-panel',
+      statAttack: '.fixed-stat-row span:nth-child(1)',
+      statDefense: '.fixed-stat-row span:nth-child(2)',
+      statXp: '.fixed-stat-row span:nth-child(3)',
       tileStatValue: '.fixed-stat-row span:nth-child(4) strong',
       combatPanel: '#combat-panel',
       controlsPanel: '.controls-panel',
@@ -1089,6 +1092,10 @@ function validateMetrics(scenario, metrics) {
     const log = metrics.rects.logPanel;
     if (!isFixedWorkbench && (!log || log.visibleHeight < 160)) {
       failures.push(`desktop log is too small: ${log?.visibleHeight ?? 0}px visible`);
+    }
+
+    if (scenario.mode === 'desktop-fixed-workbench') {
+      validateFixedStatLabels(metrics, failures);
     }
   }
 
@@ -1504,6 +1511,8 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
   }
 
+  validateFixedStatLabels(metrics, failures);
+
   if (!metrics.logOpen && !metrics.inventoryOpen && (!tileStatValue || tileStatValue.visibleWidth < 110)) {
     failures.push(`compact mobile tile stat has too little room: ${tileStatValue?.visibleWidth ?? 0}px visible`);
   }
@@ -1525,6 +1534,20 @@ function validateCompactMobileLayout(metrics, failures) {
   for (const [name, rect] of buttons) {
     if (!rect || rect.visibleHeight < 52 || rect.visibleWidth < 52) {
       failures.push(`compact mobile ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
+    }
+  }
+}
+
+function validateFixedStatLabels(metrics, failures) {
+  for (const [label, rect] of [
+    ['attack', metrics.rects.statAttack],
+    ['defense', metrics.rects.statDefense],
+    ['xp', metrics.rects.statXp]
+  ]) {
+    if (!rect) {
+      failures.push(`fixed ${label} stat label is missing`);
+    } else if (rect.scrollWidth > rect.clientWidth + 1) {
+      failures.push(`fixed ${label} stat label is clipped: ${rect.scrollWidth}px > ${rect.clientWidth}px`);
     }
   }
 }
