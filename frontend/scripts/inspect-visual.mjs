@@ -14,7 +14,7 @@ const withQueryParams = (url, params) => {
 };
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
-const defaultFixedProfile = 'gold-mobile';
+const defaultFixedProfile = 'reference-mobile-v3';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -104,6 +104,42 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-movement',
     url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=movement`
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-movement',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-movement',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=movement`
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-diagnostics',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-diagnostics',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=diagnostics`
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory',
+    url: fixedWorkbenchProfileUrl('reference-mobile-v3')
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-defeat',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-defeat',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=defeat`
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-victory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-victory',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=victory`
+  },
+  {
+    name: 'mobile-reference-v3-fixed-workbench-restart',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-restart',
+    url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=defeat`
   },
   {
     name: 'mobile-gold-fixed-workbench-diagnostics',

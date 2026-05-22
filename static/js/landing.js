@@ -169,7 +169,7 @@ const app = Vue.createApp({
         launchDevGame2(generatorId) {
             window.location.href = `/game2?game_id=${encodeURIComponent(generatorId)}&fixture=1`;
         },
-        launchDevGame2Fixed(generatorId, profile = 'gold-mobile') {
+        launchDevGame2Fixed(generatorId, profile = 'reference-mobile-v3') {
             window.location.href = `/game2?game_id=${encodeURIComponent(generatorId)}&fixture=1&ui=fixed-skin&profile=${encodeURIComponent(profile)}`;
         },
         async launchGame() {

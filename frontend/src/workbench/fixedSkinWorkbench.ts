@@ -256,6 +256,7 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
   }
 
   return (
+    profiles.find((profile) => profile.id === 'reference-mobile-v3') ??
     profiles.find((profile) => profile.id === 'gold-mobile') ??
     profiles.find((profile) => profile.id === 'reference-mobile-v2') ??
     profiles.find((profile) => profile.kind === 'mobilePortrait') ??

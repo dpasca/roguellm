@@ -118,6 +118,37 @@ const variants = [
       error: ['#ff5f76', '#4a1018'],
       offline: ['#8a8175', '#171411']
     }
+  },
+  {
+    id: 'reference-mobile-v3',
+    label: 'REFERENCE COMPACT V3',
+    footer: 'CYBERDECK V3',
+    version: 'v0.1',
+    premium: true,
+    accent: '#82ff6b',
+    accentSoft: '#c8ff9c',
+    accentDim: '#214f36',
+    accentLine: '#226a3f',
+    secondary: '#ff8d24',
+    textMuted: '#9cacaa',
+    textDim: '#647371',
+    shellTop: '#313637',
+    shellMid: '#101414',
+    shellStroke: '#626966',
+    panelStroke: '#50615b',
+    panelInset: '#090f0d',
+    noise: '#202a28',
+    action: {
+      attack: { main: '#cf3927', dark: '#280706', light: '#ffb18a', text: '#ffe7cb' },
+      run: { main: '#39d32f', dark: '#082b12', light: '#baff8a', text: '#e6ffdc' },
+      restart: { main: '#d54632', dark: '#2c0807', light: '#ffb07d', text: '#fff2d7' }
+    },
+    status: {
+      ready: ['#91ff64', '#0c2d12'],
+      thinking: ['#ffb942', '#432c08'],
+      error: ['#ff6679', '#451018'],
+      offline: ['#7d8a85', '#111616']
+    }
   }
 ];
 
@@ -145,26 +176,32 @@ function generateVariant(variant) {
     layout: skinLayout
   }, null, 2)}\n`);
 
-  writePng(outDir, 'chassis.png', chassisSvg(variant));
+  writePng(outDir, 'chassis.png', variant.premium ? premiumChassisSvg(variant) : chassisSvg(variant));
 
   for (const state of Object.keys(buttonStates)) {
-    writePng(outDir, `attack-${state}.png`, actionButtonSvg('ATTACK', 152, 66, state, variant.action.attack));
-    writePng(outDir, `run-${state}.png`, actionButtonSvg('RUN', 152, 66, state, variant.action.run));
-    writePng(outDir, `restart-${state}.png`, actionButtonSvg('RESTART', 226, 66, state, variant.action.restart));
-    writePng(outDir, `log-${state}.png`, smallToggleSvg('LOG', state, variant));
-    writePng(outDir, `inventory-${state}.png`, smallToggleSvg('BAG', state, variant));
-    writePng(outDir, `dpad-n-${state}.png`, dpadButtonSvg('n', state, variant));
-    writePng(outDir, `dpad-s-${state}.png`, dpadButtonSvg('s', state, variant));
-    writePng(outDir, `dpad-e-${state}.png`, dpadButtonSvg('e', state, variant));
-    writePng(outDir, `dpad-w-${state}.png`, dpadButtonSvg('w', state, variant));
+    writePng(outDir, `attack-${state}.png`, variant.premium
+      ? premiumActionButtonSvg('ATTACK', 152, 66, state, variant.action.attack)
+      : actionButtonSvg('ATTACK', 152, 66, state, variant.action.attack));
+    writePng(outDir, `run-${state}.png`, variant.premium
+      ? premiumActionButtonSvg('RUN', 152, 66, state, variant.action.run)
+      : actionButtonSvg('RUN', 152, 66, state, variant.action.run));
+    writePng(outDir, `restart-${state}.png`, variant.premium
+      ? premiumActionButtonSvg('RESTART', 226, 66, state, variant.action.restart)
+      : actionButtonSvg('RESTART', 226, 66, state, variant.action.restart));
+    writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
+    writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
+    writePng(outDir, `dpad-n-${state}.png`, variant.premium ? premiumDpadButtonSvg('n', state, variant) : dpadButtonSvg('n', state, variant));
+    writePng(outDir, `dpad-s-${state}.png`, variant.premium ? premiumDpadButtonSvg('s', state, variant) : dpadButtonSvg('s', state, variant));
+    writePng(outDir, `dpad-e-${state}.png`, variant.premium ? premiumDpadButtonSvg('e', state, variant) : dpadButtonSvg('e', state, variant));
+    writePng(outDir, `dpad-w-${state}.png`, variant.premium ? premiumDpadButtonSvg('w', state, variant) : dpadButtonSvg('w', state, variant));
   }
 
-  writePng(outDir, 'status-ready.png', statusSvg(...variant.status.ready));
-  writePng(outDir, 'status-thinking.png', statusSvg(...variant.status.thinking));
-  writePng(outDir, 'status-error.png', statusSvg(...variant.status.error));
-  writePng(outDir, 'status-offline.png', statusSvg(...variant.status.offline));
-  writePng(outDir, 'led-on.png', ledSvg(true, variant));
-  writePng(outDir, 'led-off.png', ledSvg(false, variant));
+  writePng(outDir, 'status-ready.png', variant.premium ? premiumStatusSvg(...variant.status.ready) : statusSvg(...variant.status.ready));
+  writePng(outDir, 'status-thinking.png', variant.premium ? premiumStatusSvg(...variant.status.thinking) : statusSvg(...variant.status.thinking));
+  writePng(outDir, 'status-error.png', variant.premium ? premiumStatusSvg(...variant.status.error) : statusSvg(...variant.status.error));
+  writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
+  writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
+  writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
 }
 
 function writeText(outDir, filename, content) {
@@ -245,6 +282,117 @@ function chassisSvg(variant) {
   `);
 }
 
+function premiumChassisSvg(variant) {
+  const panels = [
+    premiumFrame(18, 44, 354, 289, 'MAP', variant, 'large'),
+    premiumFrame(20, 340, 292, 94, 'MSG-01', variant, 'drawer'),
+    premiumFrame(20, 484, 350, 62, 'PLAYER', variant, 'thin'),
+    premiumFrame(20, 558, 350, 72, 'COMBAT', variant, 'thin'),
+    premiumFrame(14, 642, 362, 195, 'CONTROL', variant, 'deck')
+  ].join('\n');
+
+  return svg(390, 844, `
+    <defs>
+      ${defs(variant)}
+      <linearGradient id="premiumShell" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#363b3d"/>
+        <stop offset="0.16" stop-color="#171c1c"/>
+        <stop offset="0.54" stop-color="#090d0d"/>
+        <stop offset="1" stop-color="#252b2a"/>
+      </linearGradient>
+      <linearGradient id="edgeHot" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff4b18"/>
+        <stop offset="0.32" stop-color="#ffb320"/>
+        <stop offset="0.66" stop-color="#3bcbff"/>
+        <stop offset="1" stop-color="#5cff5a"/>
+      </linearGradient>
+      <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#082315"/>
+        <stop offset="0.52" stop-color="#020806"/>
+        <stop offset="1" stop-color="#010302"/>
+      </linearGradient>
+      <pattern id="brushed" width="8" height="8" patternUnits="userSpaceOnUse">
+        <path d="M0 1H8M0 4H8M0 7H8" stroke="#53605c" stroke-opacity="0.18"/>
+        <path d="M2 0V8M6 0V8" stroke="#030606" stroke-opacity="0.42"/>
+      </pattern>
+      <pattern id="speaker" width="8" height="8" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1" fill="#0a100f"/>
+        <circle cx="6" cy="6" r="1" fill="#0a100f"/>
+      </pattern>
+      <filter id="premiumGlow" x="-35%" y="-35%" width="170%" height="170%">
+        <feGaussianBlur stdDeviation="2.2" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect width="390" height="844" fill="#010303"/>
+    <rect x="1" y="1" width="388" height="842" rx="14" fill="#050707" stroke="#33403d" stroke-width="2"/>
+    <rect x="5" y="5" width="380" height="834" rx="12" fill="url(#premiumShell)" stroke="#0b0f0f" stroke-width="2"/>
+    <rect x="10" y="10" width="370" height="824" rx="10" fill="url(#brushed)" opacity="0.72"/>
+    <rect x="13" y="14" width="364" height="816" rx="8" fill="none" stroke="#59635f" stroke-opacity="0.24"/>
+    <rect x="18" y="44" width="4" height="584" fill="url(#edgeHot)" opacity="0.82"/>
+    <rect x="368" y="44" width="4" height="584" fill="url(#edgeHot)" opacity="0.32"/>
+    <rect x="18" y="44" width="4" height="584" fill="url(#scan)" opacity="0.24"/>
+    ${Array.from({ length: 18 }, (_, index) => `<rect x="${21 + index * 19}" y="826" width="10" height="4" rx="2" fill="${index % 3 === 0 ? variant.secondary : index % 3 === 1 ? variant.accent : '#293331'}" opacity="${index % 4 === 0 ? 0.9 : 0.42}"/>`).join('')}
+
+    <rect x="17" y="18" width="356" height="22" rx="5" fill="#151a1a" stroke="#38433f"/>
+    <rect x="22" y="22" width="27" height="12" rx="6" fill="#090d0c" stroke="#424b48"/>
+    <rect x="25" y="25" width="18" height="6" rx="3" fill="${variant.secondary}" filter="url(#premiumGlow)"/>
+    <text x="58" y="32" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="#aeb9b5">ROGUELLM</text>
+    <text x="151" y="31" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#697570">${variant.label}</text>
+    <g transform="translate(322 18)">
+      <rect x="0" y="17" width="5" height="3" fill="${variant.accent}"/>
+      <rect x="8" y="12" width="5" height="8" fill="${variant.accent}"/>
+      <rect x="16" y="7" width="5" height="13" fill="${variant.accent}"/>
+      <rect x="24" y="3" width="5" height="17" fill="${variant.accent}"/>
+      <rect x="36" y="6" width="18" height="11" rx="2" fill="#24411f" stroke="#6aff48"/>
+    </g>
+    ${screw(24, 26, variant)}
+    ${screw(365, 26, variant)}
+    ${screw(25, 817, variant)}
+    ${screw(365, 817, variant)}
+
+    ${panels}
+
+    <g opacity="0.72">
+      <rect x="21" y="650" width="42" height="164" rx="5" fill="url(#speaker)" stroke="#27322f"/>
+      <rect x="327" y="650" width="40" height="164" rx="5" fill="url(#speaker)" stroke="#27322f"/>
+      <rect x="167" y="814" width="64" height="11" rx="5" fill="#080b0b" stroke="#2d3936"/>
+      <rect x="176" y="818" width="10" height="3" rx="1.5" fill="${variant.secondary}"/>
+      <rect x="191" y="818" width="10" height="3" rx="1.5" fill="${variant.secondary}" opacity="0.55"/>
+      <rect x="206" y="818" width="10" height="3" rx="1.5" fill="${variant.accent}" opacity="0.65"/>
+    </g>
+    <rect x="66" y="665" width="74" height="166" rx="10" fill="#111818" stroke="#475550" stroke-width="2"/>
+    <rect x="78" y="704" width="50" height="88" rx="7" fill="#070b0b" stroke="#293631"/>
+    <rect x="86" y="716" width="34" height="56" rx="5" fill="#020504" stroke="#111a18"/>
+    <rect x="196" y="660" width="168" height="78" rx="9" fill="#080d0c" stroke="#3b4845" stroke-width="2"/>
+    <rect x="200" y="664" width="160" height="70" rx="8" fill="none" stroke="#111b18"/>
+    <rect x="196" y="740" width="168" height="78" rx="9" fill="#080d0c" stroke="#3b4845" stroke-width="2"/>
+    <rect x="200" y="744" width="160" height="70" rx="8" fill="none" stroke="#111b18"/>
+    <text x="27" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#65716e">${variant.footer}</text>
+    <text x="330" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#65716e">${variant.version}</text>
+  `);
+}
+
+function premiumFrame(x, y, w, h, label, variant, mode) {
+  const led = mode === 'large' ? variant.secondary : variant.accent;
+  const labelOpacity = mode === 'thin' ? 0.34 : 0.84;
+  return `
+    <g>
+      <rect x="${x - 5}" y="${y - 5}" width="${w + 10}" height="${h + 10}" rx="7" fill="#020303" stroke="#101716"/>
+      <rect x="${x - 2}" y="${y - 2}" width="${w + 4}" height="${h + 4}" rx="6" fill="#0c1111" stroke="#4b5653" stroke-width="1.4"/>
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#glass)" stroke="${variant.accent}" stroke-width="1.2"/>
+      <rect x="${x + 4}" y="${y + 4}" width="${w - 8}" height="${h - 8}" rx="3" fill="url(#scan)" opacity="0.15"/>
+      <rect x="${x + 6}" y="${y + 6}" width="${w - 12}" height="${Math.max(8, Math.floor(h * 0.18))}" rx="3" fill="#ffffff" opacity="0.025"/>
+      <line x1="${x + 3}" y1="${y + h - 9}" x2="${x + w - 3}" y2="${y + h - 9}" stroke="${variant.accentLine}" stroke-width="1"/>
+      <text x="${x + 10}" y="${y + 16}" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="${labelOpacity}">${label}</text>
+      <circle cx="${x + w - 12}" cy="${y + 12}" r="4" fill="${led}" opacity="0.9" filter="url(#premiumGlow)"/>
+    </g>
+  `;
+}
+
 function frame(x, y, w, h, label, variant) {
   const showLabel = label === 'MAP' || label === 'CONTROL';
   return `
@@ -281,6 +429,49 @@ function actionButtonSvg(label, width, height, state, palette) {
   `);
 }
 
+function premiumActionButtonSvg(label, width, height, state, palette) {
+  const style = buttonStates[state];
+  const alpha = state === 'disabled' ? 0.62 : 1;
+  const main = shift(palette.main, style.shade);
+  const dark = shift(palette.dark, style.shade);
+  const light = shift(palette.light, style.shade);
+  const text = state === 'disabled' ? '#6a7470' : palette.text;
+  const led = label === 'RUN' ? '#74ff55' : '#ff542f';
+  const fontSize = width > 180 ? 20 : 22;
+
+  return svg(width, height, `
+    <defs>
+      <linearGradient id="premiumButton" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2f3836"/>
+        <stop offset="0.12" stop-color="${light}"/>
+        <stop offset="0.22" stop-color="${main}"/>
+        <stop offset="0.72" stop-color="${dark}"/>
+        <stop offset="1" stop-color="#060707"/>
+      </linearGradient>
+      <pattern id="buttonScan" width="4" height="4" patternUnits="userSpaceOnUse">
+        <path d="M0 1H4" stroke="#ffffff" stroke-opacity="0.08"/>
+      </pattern>
+      <filter id="buttonGlow" x="-35%" y="-60%" width="170%" height="220%">
+        <feGaussianBlur stdDeviation="2.2" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <g transform="translate(0 ${style.y})" opacity="${alpha}">
+      <rect x="3" y="9" width="${width - 6}" height="${height - 12}" rx="8" fill="#010202" opacity="0.94"/>
+      <rect x="6" y="3" width="${width - 12}" height="${height - 13}" rx="8" fill="#111716" stroke="#485551" stroke-width="2"/>
+      <rect x="11" y="9" width="${width - 22}" height="${height - 24}" rx="6" fill="url(#premiumButton)" stroke="${light}" stroke-width="1.4"/>
+      <rect x="15" y="13" width="${width - 30}" height="${height - 32}" rx="5" fill="url(#buttonScan)" opacity="${state === 'disabled' ? 0.10 : 0.45}"/>
+      <rect x="18" y="15" width="${width - 36}" height="8" rx="4" fill="none" stroke="${light}" stroke-width="1.3" opacity="${style.glow}"/>
+      <line x1="22" y1="${height - 20}" x2="${width - 22}" y2="${height - 20}" stroke="${main}" stroke-width="4" opacity="${style.glow * 0.5}"/>
+      <circle cx="${width - 12}" cy="10" r="4" fill="${state === 'disabled' ? '#38413f' : led}" stroke="#160302" stroke-width="2" filter="url(#buttonGlow)"/>
+      <text x="${width / 2}" y="${height / 2 + 8}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" letter-spacing="1" fill="${text}" stroke="${dark}" stroke-width="1.2" filter="url(#buttonGlow)">${label}</text>
+    </g>
+  `);
+}
+
 function smallToggleSvg(label, state, variant) {
   const style = buttonStates[state];
   const active = state === 'pressed';
@@ -294,6 +485,33 @@ function smallToggleSvg(label, state, variant) {
       <rect x="3" y="1" width="40" height="26" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
       <rect x="8" y="6" width="30" height="6" rx="3" fill="none" stroke="${stroke}" opacity="${style.glow}"/>
       <text x="23" y="20" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="10" fill="${text}">${label}</text>
+    </g>
+  `);
+}
+
+function premiumToggleSvg(label, state, variant) {
+  const style = buttonStates[state];
+  const active = state === 'pressed';
+  const stroke = state === 'disabled' ? '#46524f' : active ? '#d8ffd0' : variant.accentSoft;
+  const fill = state === 'disabled' ? '#111716' : active ? '#145d2a' : '#050908';
+  const text = state === 'disabled' ? '#5e6965' : variant.accentSoft;
+
+  return svg(46, 32, `
+    <defs>
+      <filter id="toggleGlow" x="-40%" y="-50%" width="180%" height="200%">
+        <feGaussianBlur stdDeviation="1.4" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
+      <rect x="1" y="5" width="44" height="25" rx="4" fill="#010202" opacity="0.88"/>
+      <rect x="3" y="2" width="40" height="24" rx="3" fill="#111716" stroke="#485551" stroke-width="1.2"/>
+      <rect x="6" y="5" width="34" height="18" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.1"/>
+      <line x1="9" y1="20" x2="37" y2="20" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow * 0.7}"/>
+      <text x="23" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${text}" filter="url(#toggleGlow)">${label}</text>
     </g>
   `);
 }
@@ -315,6 +533,39 @@ function dpadButtonSvg(direction, state, variant) {
   `);
 }
 
+function premiumDpadButtonSvg(direction, state, variant) {
+  const style = buttonStates[state];
+  const arrow = arrowPoints(direction);
+  const disabled = state === 'disabled';
+  const stroke = disabled ? '#3f4a47' : variant.accentSoft;
+  const fill = disabled ? '#121918' : state === 'pressed' ? '#07100e' : '#1b2524';
+  const arrowFill = disabled ? '#59635f' : variant.accentSoft;
+
+  return svg(58, 58, `
+    <defs>
+      <linearGradient id="dpadFace" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#313b39"/>
+        <stop offset="0.55" stop-color="${fill}"/>
+        <stop offset="1" stop-color="#050707"/>
+      </linearGradient>
+      <filter id="dpadGlow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="1.8" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
+      <rect x="1" y="8" width="56" height="48" rx="8" fill="#010202" opacity="0.9"/>
+      <rect x="4" y="3" width="50" height="50" rx="8" fill="url(#dpadFace)" stroke="#53615d" stroke-width="2"/>
+      <rect x="7" y="6" width="44" height="44" rx="6" fill="none" stroke="${stroke}" stroke-width="1.4" opacity="${disabled ? 0.32 : 0.74}"/>
+      <rect x="10" y="9" width="38" height="13" rx="5" fill="none" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow}"/>
+      <polygon points="${arrow}" fill="${arrowFill}" opacity="${disabled ? 0.42 : 0.96}" filter="url(#dpadGlow)"/>
+    </g>
+  `);
+}
+
 function statusSvg(accent, base) {
   return svg(60, 26, `
     <rect x="1" y="4" width="58" height="20" rx="4" fill="#020505" opacity="0.88"/>
@@ -324,11 +575,47 @@ function statusSvg(accent, base) {
   `);
 }
 
+function premiumStatusSvg(accent, base) {
+  return svg(60, 26, `
+    <defs>
+      <filter id="statusGlow" x="-40%" y="-50%" width="180%" height="200%">
+        <feGaussianBlur stdDeviation="1.4" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect x="1" y="4" width="58" height="20" rx="4" fill="#010202" opacity="0.9"/>
+    <rect x="2" y="1" width="56" height="21" rx="4" fill="#101716" stroke="#46524f" stroke-width="1"/>
+    <rect x="6" y="5" width="45" height="13" rx="3" fill="${base}" stroke="${accent}" stroke-width="1"/>
+    <rect x="9" y="8" width="24" height="3" rx="1.5" fill="${accent}" opacity="0.58" filter="url(#statusGlow)"/>
+    <circle cx="48" cy="11.5" r="4" fill="${accent}" opacity="0.92" filter="url(#statusGlow)"/>
+  `);
+}
+
 function ledSvg(on, variant) {
   return svg(18, 18, `
     <circle cx="9" cy="9" r="8" fill="#020505" opacity="0.9"/>
     <circle cx="9" cy="9" r="6" fill="${on ? variant.accent : '#13201b'}" stroke="${on ? variant.accentSoft : '#31413c'}"/>
     <circle cx="7" cy="6" r="2" fill="#ffffff" opacity="${on ? 0.72 : 0.16}"/>
+  `);
+}
+
+function premiumLedSvg(on, variant) {
+  return svg(18, 18, `
+    <defs>
+      <filter id="ledGlow" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <circle cx="9" cy="9" r="8" fill="#010202" stroke="#46524f"/>
+    <circle cx="9" cy="9" r="5.5" fill="${on ? variant.accent : '#14211a'}" stroke="${on ? variant.accentSoft : '#33413c'}" filter="${on ? 'url(#ledGlow)' : 'none'}"/>
+    <circle cx="7" cy="6" r="1.8" fill="#ffffff" opacity="${on ? 0.78 : 0.16}"/>
   `);
 }
 

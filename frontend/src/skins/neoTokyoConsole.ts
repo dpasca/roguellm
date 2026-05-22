@@ -5,6 +5,7 @@ type FixedAssetProfile =
   | 'desktop'
   | 'reference-mobile'
   | 'reference-mobile-v2'
+  | 'reference-mobile-v3'
   | 'gold-mobile'
   | 'amber-mobile';
 type FixedButtonAssetName =
@@ -64,11 +65,12 @@ const mobileIndicators = fixedIndicators('mobile');
 const desktopIndicators = fixedIndicators('desktop');
 const referenceMobileIndicators = fixedIndicators('reference-mobile');
 const referenceMobileV2Indicators = fixedIndicators('reference-mobile-v2');
+const referenceMobileV3Indicators = fixedIndicators('reference-mobile-v3');
 const goldMobileIndicators = fixedIndicators('gold-mobile');
 const amberMobileIndicators = fixedIndicators('amber-mobile');
 
 function createCompactMobileProfile(
-  id: 'gold-mobile' | 'amber-mobile',
+  id: 'gold-mobile' | 'amber-mobile' | 'reference-mobile-v3',
   label: string,
   indicators: ReturnType<typeof fixedIndicators>
 ): FixedSkinProfile {
@@ -162,6 +164,7 @@ function createCompactMobileProfile(
 }
 
 const fixedProfiles: FixedSkinProfile[] = [
+  createCompactMobileProfile('reference-mobile-v3', 'Reference Compact V3', referenceMobileV3Indicators),
   createCompactMobileProfile('gold-mobile', 'Gold Mobile Cyberdeck', goldMobileIndicators),
   createCompactMobileProfile('amber-mobile', 'Amber Relay Cyberdeck', amberMobileIndicators),
   {

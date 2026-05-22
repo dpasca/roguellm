@@ -149,7 +149,7 @@ The fixed mobile skin is the default Game2 UI on mobile-width viewports. It can
 also be forced with `ui=fixed-skin`, for example:
 
 ```text
-http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=gold-mobile
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-v3
 ```
 
 The backend preserves `skin`, `ui`, `fixed_skin`, and `profile` query params
@@ -160,8 +160,10 @@ the older responsive HUD while comparing behavior.
 ## Current Profiles
 
 - `mobile-portrait`: early generated placeholder profile.
-- `gold-mobile`: deterministic layout target, current mobile default, and
-  terminal-flow quality gate.
+- `reference-mobile-v3`: compact mobile default, using the gold layout
+  proportions with richer reference-style chrome and full terminal/drawer
+  coverage.
+- `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
