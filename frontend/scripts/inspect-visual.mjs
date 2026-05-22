@@ -397,6 +397,7 @@ function buildHtmlReport(summary) {
     const metrics = result.metrics;
     const chips = [
       metrics.fixedProfile ? `profile ${metrics.fixedProfile}` : null,
+      metrics.fixedProfileRole ? `role ${metrics.fixedProfileRole}` : null,
       metrics.ui ? `ui ${metrics.ui}` : null,
       metrics.workbench ? `bench ${metrics.workbench}` : null,
       metrics.statusText ? `status ${metrics.statusText}` : null,
@@ -957,6 +958,7 @@ async function collectMetrics(page) {
       workbench: document.body.dataset.workbench ?? null,
       ui: document.body.dataset.ui ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
+      fixedProfileRole: document.querySelector('.fixed-skin-stage')?.dataset.profileRole ?? null,
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       inCombat: document.body.classList.contains('in-combat'),
       gameEnded: document.body.classList.contains('game-ended'),

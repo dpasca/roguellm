@@ -425,6 +425,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
   stage.style.height = `${profile.height}px`;
   stage.style.backgroundImage = `url("${profile.background}")`;
   stage.dataset.profile = profile.id;
+  stage.dataset.profileRole = profile.meta?.role ?? 'legacy';
 
   stage.append(
     region('game-canvas', 'fixed-map-region', profile.regions.map),
