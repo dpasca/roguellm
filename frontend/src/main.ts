@@ -199,7 +199,19 @@ if (isFixedSkinWorkbench()) {
 
     const [x, y] = state.player_pos;
     const [nextX, nextY] = nextPosition(x, y, direction);
-    return nextX >= 0 && nextX < state.map_width && nextY >= 0 && nextY < state.map_height;
+    return nextX >= 0 &&
+      nextX < state.map_width &&
+      nextY >= 0 &&
+      nextY < state.map_height &&
+      !hasKnownUndefeatedEnemyAt(state, nextX, nextY);
+  }
+
+  function hasKnownUndefeatedEnemyAt(state: GameState, x: number, y: number): boolean {
+    if (!state.explored[y]?.[x]) {
+      return false;
+    }
+
+    return state.enemies.some((enemy) => enemy.x === x && enemy.y === y && !enemy.is_defeated);
   }
 
   function nextPosition(x: number, y: number, direction: Direction): [number, number] {
