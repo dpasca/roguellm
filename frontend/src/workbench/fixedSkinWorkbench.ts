@@ -42,9 +42,18 @@ export function isFixedSkinWorkbench(): boolean {
   return params.get('workbench') === 'fixed-skin' || params.get('bench') === 'fixed-skin';
 }
 
-export function isFixedSkinRuntime(location: Location = window.location): boolean {
+export function isFixedSkinRuntime(location: Location = window.location, viewportWidth = window.innerWidth): boolean {
   const params = new URL(location.href).searchParams;
-  return params.get('ui') === 'fixed-skin' || params.get('fixed_skin') === '1';
+  const requestedUi = params.get('ui')?.toLowerCase();
+  if (requestedUi === 'classic' || requestedUi === 'responsive') {
+    return false;
+  }
+
+  if (requestedUi === 'fixed-skin' || params.get('fixed_skin') === '1') {
+    return true;
+  }
+
+  return viewportWidth <= 860;
 }
 
 export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAction) => void): FixedSkinRuntimeUi {

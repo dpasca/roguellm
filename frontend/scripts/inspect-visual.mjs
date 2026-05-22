@@ -15,6 +15,7 @@ const withQueryParams = (url, params) => {
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: 'gold-mobile' });
+const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -24,22 +25,26 @@ const scenarios = [
   {
     name: 'mobile-ready',
     viewport: { width: 390, height: 844 },
-    mode: 'ready'
+    mode: 'ready',
+    url: classicRuntimeUrl
   },
   {
     name: 'mobile-combat',
     viewport: { width: 390, height: 844 },
-    mode: 'combat'
+    mode: 'combat',
+    url: classicRuntimeUrl
   },
   {
     name: 'mobile-log-open',
     viewport: { width: 390, height: 844 },
-    mode: 'log'
+    mode: 'log',
+    url: classicRuntimeUrl
   },
   {
     name: 'mobile-short-ready',
     viewport: { width: 390, height: 667 },
-    mode: 'ready'
+    mode: 'ready',
+    url: classicRuntimeUrl
   },
   {
     name: 'mobile-workbench',
@@ -64,6 +69,12 @@ const scenarios = [
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-log',
     url: fixedWorkbenchUrl
+  },
+  {
+    name: 'mobile-default-fixed-runtime-ready',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-runtime-ready',
+    url: entryUrl
   },
   {
     name: 'mobile-fixed-runtime-ready',

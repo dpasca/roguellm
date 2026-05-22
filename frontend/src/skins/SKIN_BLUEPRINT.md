@@ -139,8 +139,8 @@ missing, clipped, or overflowing the viewport.
 
 ## Playable Runtime
 
-The fixed mobile skin can be exercised against a real Game2 session with
-`ui=fixed-skin`, for example:
+The fixed mobile skin is the default Game2 UI on mobile-width viewports. It can
+also be forced with `ui=fixed-skin`, for example:
 
 ```text
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=gold-mobile
@@ -148,7 +148,8 @@ http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=gold-mo
 
 The backend preserves `skin`, `ui`, `fixed_skin`, and `profile` query params
 when it creates or redirects to a Game2 session, so these links remain on the
-fixed skin after session creation.
+fixed skin after session creation. Use `ui=classic` or `ui=responsive` to force
+the older responsive HUD while comparing behavior.
 
 ## Current Profiles
 
