@@ -26,6 +26,7 @@ const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const defaultFixedProfile = 'reference-mobile-v3';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
+const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
@@ -377,6 +378,27 @@ const scenarios = [
     viewport: { width: 1280, height: 900 },
     mode: 'workbench',
     url: workbenchUrl
+  },
+  {
+    name: 'desktop-fixed-runtime-ready',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-runtime-ready',
+    url: desktopFixedRuntimeUrl,
+    expectedFixedProfile: 'desktop-wide'
+  },
+  {
+    name: 'desktop-fixed-runtime-log',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-runtime-log',
+    url: desktopFixedRuntimeUrl,
+    expectedFixedProfile: 'desktop-wide'
+  },
+  {
+    name: 'desktop-fixed-runtime-combat',
+    viewport: { width: 1280, height: 900 },
+    mode: 'fixed-runtime-combat',
+    url: desktopFixedRuntimeUrl,
+    expectedFixedProfile: 'desktop-wide'
   },
   {
     name: 'desktop-fixed-workbench',
@@ -1300,12 +1322,12 @@ function validateMetrics(scenario, metrics) {
     }
   } else {
     const latestPanel = metrics.rects.latestPanel;
-    if (!isFixedWorkbench && latestPanel && latestPanel.display !== 'none') {
+    if (!isFixedUi && latestPanel && latestPanel.display !== 'none') {
       failures.push('desktop should hide mobile latest panel');
     }
 
     const log = metrics.rects.logPanel;
-    if (!isFixedWorkbench && (!log || log.visibleHeight < 160)) {
+    if (!isFixedUi && (!log || log.visibleHeight < 160)) {
       failures.push(`desktop log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
 
@@ -1336,6 +1358,7 @@ function validateMetrics(scenario, metrics) {
     } else if (metrics.fixedStageScale > 1.001) {
       failures.push(`fixed skin stage is being upscaled: scale=${metrics.fixedStageScale}`);
     }
+    validateFixedDrawerVisibility(metrics, failures);
     validateFixedScreenshotQuality(metrics, failures);
   }
 
@@ -1451,12 +1474,11 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`fixed runtime non-combat enemy row should say No hostile, got ${metrics.enemyNameText || 'empty'}`);
   }
 
-  const map = metrics.rects.map;
-  if (!map || map.visibleWidth < 300 || map.visibleHeight < 250) {
-    failures.push(`fixed runtime map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
+  if (isDesktopFixedProfile(metrics.fixedProfile)) {
+    validateDesktopFixedLayout(metrics, failures);
+  } else {
+    validateCompactMobileLayout(metrics, failures);
   }
-
-  validateCompactMobileLayout(metrics, failures);
 }
 
 function validateCombatScenario(metrics, failures) {
@@ -1673,8 +1695,6 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`fixed workbench steady state should show READY status, got ${metrics.statusText || 'empty'}`);
   }
 
-  validateFixedDrawerVisibility(metrics, failures);
-
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {
       failures.push('fixed inventory scenario did not open the inventory drawer');
@@ -1791,6 +1811,66 @@ function validateFixedDrawerVisibility(metrics, failures) {
     failures.push(
       `fixed closed inventory drawer still occupies visible space: ${inventory.visibleWidth}x${inventory.visibleHeight}`
     );
+  }
+}
+
+function validateDesktopFixedLayout(metrics, failures) {
+  const shell = metrics.rects.shell;
+  const map = metrics.rects.map;
+  const latest = metrics.rects.latestPanel;
+  const log = metrics.rects.logPanel;
+  const player = metrics.rects.playerPanel;
+  const combat = metrics.rects.combatPanel;
+  const status = metrics.rects.statusPill;
+  const attack = metrics.rects.attackButton;
+  const run = metrics.rects.runButton;
+  const movementButtons = [
+    ['move-n', metrics.rects.moveNorthButton],
+    ['move-s', metrics.rects.moveSouthButton],
+    ['move-e', metrics.rects.moveEastButton],
+    ['move-w', metrics.rects.moveWestButton]
+  ];
+
+  if (!shell || shell.visibleWidth < 1100 || shell.visibleHeight < 760) {
+    failures.push(`desktop fixed shell is too small: ${shell?.visibleWidth ?? 0}x${shell?.visibleHeight ?? 0}`);
+  }
+
+  if (!map || map.visibleWidth < 760 || map.visibleHeight < 700) {
+    failures.push(`desktop fixed map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
+  }
+
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleWidth < 300 || latest.visibleHeight < 70)) {
+    failures.push(`desktop fixed latest panel is too small: ${latest?.visibleWidth ?? 0}x${latest?.visibleHeight ?? 0}`);
+  }
+
+  if (metrics.logOpen && (!log || log.visibleWidth < 300 || log.visibleHeight < 100)) {
+    failures.push(`desktop fixed open log is too small: ${log?.visibleWidth ?? 0}x${log?.visibleHeight ?? 0}`);
+  }
+
+  if (!player || player.visibleWidth < 320 || player.visibleHeight < 76) {
+    failures.push(`desktop fixed player panel is too small: ${player?.visibleWidth ?? 0}x${player?.visibleHeight ?? 0}`);
+  }
+
+  if (!combat || combat.visibleWidth < 320 || combat.visibleHeight < 44) {
+    failures.push(`desktop fixed combat panel is too small: ${combat?.visibleWidth ?? 0}x${combat?.visibleHeight ?? 0}`);
+  }
+
+  if (!status || status.visibleWidth < 80 || status.visibleHeight < 30) {
+    failures.push(`desktop fixed status indicator is clipped: ${status?.visibleWidth ?? 0}x${status?.visibleHeight ?? 0}`);
+  }
+
+  if (!attack || attack.visibleWidth < 220 || attack.visibleHeight < 52) {
+    failures.push(`desktop fixed attack button is clipped: ${attack?.visibleWidth ?? 0}x${attack?.visibleHeight ?? 0}`);
+  }
+
+  if (!run || run.visibleWidth < 220 || run.visibleHeight < 52) {
+    failures.push(`desktop fixed run button is clipped: ${run?.visibleWidth ?? 0}x${run?.visibleHeight ?? 0}`);
+  }
+
+  for (const [name, rect] of movementButtons) {
+    if (!rect || rect.visibleWidth < 40 || rect.visibleHeight < 40) {
+      failures.push(`desktop fixed ${name} hitbox is too small: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
+    }
   }
 }
 
@@ -1938,6 +2018,10 @@ function isCompactFixedProfile(fixedProfile) {
 
 function isProductionFixedProfile(profileRole) {
   return profileRole === 'default' || profileRole === 'variant';
+}
+
+function isDesktopFixedProfile(fixedProfile) {
+  return fixedProfile === 'desktop-wide';
 }
 
 function validateAssetUsage(metrics) {
