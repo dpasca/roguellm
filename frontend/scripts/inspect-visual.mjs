@@ -1,8 +1,10 @@
 import { chromium } from 'playwright';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
+import net from 'node:net';
 import path from 'node:path';
 
+const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const DEFAULT_URL = 'http://127.0.0.1:8127/game2?game_id=159e473b&fixture=1';
 const DEFAULT_VITE_GAME_ID_URL = 'http://127.0.0.1:5273/game2?game_id=159e473b&fixture=1';
 const DEFAULT_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=skin';
@@ -486,10 +488,12 @@ if (selectedScenarios.length === 0) {
 
 await fs.mkdir(outDir, { recursive: true });
 
-const browser = await chromium.launch();
+const managedViteServer = await ensureViteServer(selectedScenarios);
+let browser = null;
 const results = [];
 
 try {
+  browser = await chromium.launch();
   for (const scenario of selectedScenarios) {
     const context = await browser.newContext({
       deviceScaleFactor: 1,
@@ -502,7 +506,10 @@ try {
     await context.close();
   }
 } finally {
-  await browser.close();
+  if (browser) {
+    await browser.close();
+  }
+  stopManagedServer(managedViteServer);
 }
 
 const summary = {
@@ -510,6 +517,7 @@ const summary = {
   workbenchUrl,
   fixedWorkbenchUrl,
   scenarioFilters,
+  managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
   results,
@@ -712,6 +720,73 @@ function escapeHtml(value) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
+}
+
+async function ensureViteServer(selected) {
+  if (process.env.VISUAL_NO_DEV_SERVER === '1' || !selected.some((scenario) => usesDefaultViteServer(scenario.url ?? entryUrl))) {
+    return null;
+  }
+
+  if (await canConnect(5273)) {
+    return null;
+  }
+
+  const server = spawn('npx', ['-y', 'pnpm@10.23.0', '-C', rootDir, 'dev'], {
+    cwd: rootDir,
+    stdio: 'ignore'
+  });
+
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (await canConnect(5273)) {
+      return server;
+    }
+    await delay(250);
+  }
+
+  stopManagedServer(server);
+  throw new Error('Timed out waiting for Vite dev server on 127.0.0.1:5273');
+}
+
+function usesDefaultViteServer(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.port === '5273' &&
+      (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost');
+  } catch {
+    return false;
+  }
+}
+
+function canConnect(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    let settled = false;
+
+    const finish = (value) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+
+    socket.setTimeout(500, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+  });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function stopManagedServer(server) {
+  if (!server || server.killed) {
+    return;
+  }
+
+  server.kill('SIGTERM');
 }
 
 async function runScenario(page, scenario) {
