@@ -113,6 +113,18 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=status`
   },
   {
+    name: 'mobile-gold-fixed-workbench-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory',
+    url: fixedWorkbenchProfileUrl('gold-mobile')
+  },
+  {
+    name: 'mobile-gold-fixed-workbench-inventory-use',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory-use',
+    url: fixedWorkbenchProfileUrl('gold-mobile')
+  },
+  {
     name: 'mobile-gold-fixed-workbench-defeat',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-defeat',
@@ -283,6 +295,16 @@ async function runScenario(page, scenario) {
     await waitForFixedStatus(page);
   }
 
+  if (scenario.mode === 'fixed-workbench-inventory' || scenario.mode === 'fixed-workbench-inventory-use') {
+    await page.getByRole('button', { name: 'Inventory', exact: true }).click();
+    await waitForFixedInventory(page);
+  }
+
+  if (scenario.mode === 'fixed-workbench-inventory-use') {
+    await page.getByRole('button', { name: 'Use', exact: true }).click();
+    await waitForFixedInventoryUse(page);
+  }
+
   if (
     scenario.mode === 'fixed-workbench-defeat' ||
     scenario.mode === 'fixed-workbench-victory' ||
@@ -421,6 +443,21 @@ async function waitForFixedStatus(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedInventory(page) {
+  await page.waitForFunction(() => {
+    return document.body.classList.contains('fixed-inventory-open') &&
+      document.querySelectorAll('#inventory-list .fixed-inventory-item').length >= 3 &&
+      Array.from(document.querySelectorAll('#inventory-list button')).some((button) => button.textContent?.trim() === 'Use');
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForFixedInventoryUse(page) {
+  await page.waitForFunction(() => {
+    return document.body.classList.contains('fixed-inventory-open') &&
+      document.getElementById('player-hp')?.textContent?.trim() === '55/100';
+  }, null, { timeout: 20_000 });
+}
+
 async function waitForFixedEndState(page, expected) {
   await page.waitForFunction((expectedState) => {
     const overlay = document.getElementById('end-state-overlay');
@@ -467,9 +504,12 @@ async function collectMetrics(page) {
       firstLogEntry: '#game-log p.latest',
       inventoryPanel: '.inventory-panel',
       firstInventoryItem: '#inventory-list .inventory-item',
+      firstInventoryAction: '#inventory-list button',
       statusPill: '#connection-status',
       attackButton: '#attack',
       runButton: '#run',
+      logToggleButton: '#fixed-log-toggle',
+      inventoryToggleButton: '#fixed-inventory-toggle',
       moveNorthButton: '#move-n',
       moveSouthButton: '#move-s',
       moveEastButton: '#move-e',
@@ -530,9 +570,11 @@ async function collectMetrics(page) {
       inCombat: document.body.classList.contains('in-combat'),
       gameEnded: document.body.classList.contains('game-ended'),
       logOpen: document.body.classList.contains('log-open'),
+      inventoryOpen: document.body.classList.contains('fixed-inventory-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
+      playerHpText: document.getElementById('player-hp')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
@@ -582,7 +624,7 @@ function validateMetrics(scenario, metrics) {
 
   if (isMobile) {
     const latest = metrics.rects.latestMessage;
-    if (isFixedUi && metrics.logOpen) {
+    if (isFixedUi && (metrics.logOpen || metrics.inventoryOpen)) {
       // Fixed skins swap the latest LCD for the full log module when opened.
     } else if (!latest || latest.display === 'none') {
       failures.push('mobile latest message is not visible');
@@ -757,6 +799,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';
+  const isInventoryScenario = scenario.mode === 'fixed-workbench-inventory' || scenario.mode === 'fixed-workbench-inventory-use';
   const isEndStateScenario = scenario.mode === 'fixed-workbench-defeat' || scenario.mode === 'fixed-workbench-victory';
   const isRestartScenario = scenario.mode === 'fixed-workbench-restart';
 
@@ -809,6 +852,35 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!metrics.controlStates.attackDisabled || !metrics.controlStates.runDisabled) {
       failures.push('status scenario did not disable pending combat controls');
+    }
+  }
+
+  if (isInventoryScenario) {
+    if (!metrics.inventoryOpen) {
+      failures.push('fixed inventory scenario did not open the inventory drawer');
+    }
+    const inventory = metrics.rects.inventoryPanel;
+    const item = metrics.rects.firstInventoryItem;
+    const action = metrics.rects.firstInventoryAction;
+    const logToggle = metrics.rects.logToggleButton;
+    const inventoryToggle = metrics.rects.inventoryToggleButton;
+    if (!inventory || inventory.visibleHeight < 180 || inventory.visibleWidth < 300) {
+      failures.push(`fixed inventory drawer is too small: ${inventory?.visibleWidth ?? 0}x${inventory?.visibleHeight ?? 0}`);
+    }
+    if (!item || item.visibleHeight < 36) {
+      failures.push(`fixed inventory first item is clipped: ${item?.visibleHeight ?? 0}px visible`);
+    }
+    if (!action || action.visibleHeight < 24 || action.visibleWidth < 42) {
+      failures.push(`fixed inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
+    }
+    if (action && logToggle && action.right > logToggle.left - 4) {
+      failures.push(`fixed inventory first action overlaps drawer toggles: action right=${action.right}, toggle left=${logToggle.left}`);
+    }
+    if (!inventoryToggle || inventoryToggle.visibleHeight < 24 || inventoryToggle.visibleWidth < 38) {
+      failures.push(`fixed inventory toggle is clipped while drawer is open: ${inventoryToggle?.visibleWidth ?? 0}x${inventoryToggle?.visibleHeight ?? 0}`);
+    }
+    if (scenario.mode === 'fixed-workbench-inventory-use' && !metrics.playerHpText?.startsWith('55/100')) {
+      failures.push(`fixed inventory use did not update HP, got ${metrics.playerHpText || 'empty'}`);
     }
   }
 
@@ -933,7 +1005,7 @@ function validateGoldMobileLayout(metrics, failures) {
     failures.push(`gold mobile map is too dominant: ${map.height}px high`);
   }
 
-  if (!metrics.logOpen && (!latest || latest.visibleHeight < 78)) {
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < 78)) {
     failures.push(`gold mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
   }
 

@@ -17,6 +17,8 @@ Layout:
 - Empty live map aperture at x=22 y=48 w=346 h=281.
 - Empty latest-message LCD area at x=24 y=344 w=284 h=86.
 - Fixed log-toggle button well at x=315 y=348 w=46 h=32.
+- Fixed inventory-toggle button well at x=315 y=392 w=46 h=32, sharing the
+  expanded drawer surface with the log.
 - Title/model status band around y=454.
 - Empty player HP/stat area at x=24 y=488 w=342 h=54.
 - Empty combat/enemy area at x=24 y=562 w=342 h=64.

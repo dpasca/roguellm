@@ -736,7 +736,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 
 .fixed-log-region {
   display: none;
-  padding: 8px;
+  padding: 8px 66px 8px 8px;
   border: 1px solid rgba(126, 255, 96, 0.64);
   background:
     linear-gradient(180deg, rgba(12, 32, 16, 0.94), rgba(3, 10, 5, 0.96)),
@@ -746,9 +746,33 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
     0 0 18px rgba(0, 0, 0, 0.62);
 }
 
+.fixed-inventory-region {
+  display: none;
+  padding: 10px 66px 10px 10px;
+  border: 1px solid rgba(140, 255, 141, 0.7);
+  background:
+    linear-gradient(180deg, #041008, #010504),
+    repeating-linear-gradient(180deg, rgba(126, 255, 96, 0.08) 0 1px, transparent 1px 4px);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.75),
+    0 10px 22px rgba(0, 0, 0, 0.36);
+}
+
 .fixed-log-open .fixed-log-region {
   display: block;
   z-index: 5;
+}
+
+.fixed-inventory-open .fixed-inventory-region {
+  display: block;
+  z-index: 5;
+}
+
+.fixed-log-open .fixed-log,
+.fixed-log-open .fixed-inventory,
+.fixed-inventory-open .fixed-log,
+.fixed-inventory-open .fixed-inventory {
+  z-index: 6;
 }
 
 .fixed-log-open .fixed-game-log {
@@ -756,7 +780,8 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
   padding-right: 4px;
 }
 
-.fixed-log-open .fixed-latest-region {
+.fixed-log-open .fixed-latest-region,
+.fixed-inventory-open .fixed-latest-region {
   display: none;
 }
 
@@ -883,6 +908,79 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 .fixed-game-log p {
   padding-bottom: 9px;
   border-bottom: 1px solid rgba(122, 255, 126, 0.24);
+}
+
+.fixed-inventory-list {
+  display: flex;
+  min-height: 0;
+  max-height: 168px;
+  flex-direction: column;
+  gap: 7px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.fixed-inventory-empty {
+  margin: 0;
+  color: #b9ff91;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.fixed-inventory-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  gap: 8px;
+  align-items: center;
+  padding: 7px;
+  border: 1px solid rgba(122, 255, 126, 0.28);
+  background: rgba(4, 14, 7, 0.78);
+}
+
+.fixed-inventory-item.equipped {
+  border-color: rgba(255, 200, 87, 0.48);
+}
+
+.fixed-inventory-item-body {
+  min-width: 0;
+}
+
+.fixed-inventory-item strong,
+.fixed-inventory-item span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-inventory-item strong {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fixed-inventory-item span {
+  margin-top: 2px;
+  color: #b7c1bd;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.fixed-inventory-action {
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid rgba(140, 255, 141, 0.5);
+  color: #d7ffcb;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(20, 80, 26, 0.72);
+}
+
+.fixed-inventory-action:disabled {
+  color: #6f7d70;
+  border-color: rgba(111, 125, 112, 0.35);
+  background: rgba(20, 28, 22, 0.72);
 }
 
 .fixed-hp-row,
@@ -1174,7 +1272,18 @@ body.skin-neo-tokyo-console .fixed-skin-stage #run {
 }
 
 body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed-log-region {
-  padding: 10px;
+  padding: 10px 66px 10px 10px;
+  border: 1px solid rgba(140, 255, 141, 0.7);
+  background:
+    linear-gradient(180deg, #041008, #010504),
+    repeating-linear-gradient(180deg, rgba(126, 255, 96, 0.08) 0 1px, transparent 1px 4px);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.75),
+    0 10px 22px rgba(0, 0, 0, 0.36);
+}
+
+body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="gold-mobile"] .fixed-inventory-region {
+  padding: 10px 66px 10px 10px;
   border: 1px solid rgba(140, 255, 141, 0.7);
   background:
     linear-gradient(180deg, #041008, #010504),

@@ -55,6 +55,7 @@ export interface FixedSkinProfile {
     combat: FixedSkinRect;
     enemyHpFill: FixedSkinRect;
     endState?: FixedSkinRect;
+    inventory?: FixedSkinRect;
   };
   buttons: {
     attack: FixedSkinButton;
@@ -65,6 +66,7 @@ export interface FixedSkinProfile {
     moveE: FixedSkinButton;
     moveW: FixedSkinButton;
     restart?: FixedSkinButton;
+    inventory?: FixedSkinButton;
   };
   indicators: {
     status: FixedSkinIndicator;

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { RogueScene } from '../game/RogueScene';
-import type { Direction, GameAction, GameState } from '../protocol/types';
+import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
@@ -21,6 +21,7 @@ const domIds: Record<FixedButtonId, string> = {
   attack: 'attack',
   run: 'run',
   log: 'fixed-log-toggle',
+  inventory: 'fixed-inventory-toggle',
   moveN: 'move-n',
   moveS: 'move-s',
   moveE: 'move-e',
@@ -75,6 +76,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
   let currentState: GameState | null = null;
   let logs: string[] = [];
   let logOpen = false;
+  let inventoryOpen = false;
   let actionPending = false;
   let connectionStatus = 'offline';
   const stage = buildStage(app, profile, 'combat');
@@ -83,6 +85,14 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
   const buttons = bindButtons(profile, (buttonId) => {
     if (buttonId === 'log') {
       logOpen = !logOpen;
+      inventoryOpen = false;
+      renderAll();
+      return;
+    }
+
+    if (buttonId === 'inventory') {
+      inventoryOpen = !inventoryOpen;
+      logOpen = false;
       renderAll();
       return;
     }
@@ -141,7 +151,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
   };
 
   function renderAll(): void {
-    applyFixedStateClasses(stage, currentState, logOpen);
+    applyFixedStateClasses(stage, currentState, logOpen, inventoryOpen);
     renderStatusIndicator(profile, connectionStatus);
     renderLogs(logs, logOpen);
 
@@ -151,6 +161,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
 
     scene.renderGameState(currentState);
     renderTextState(profile, currentState, logs, logOpen, connectionStatus);
+    renderInventoryState(currentState, onAction, !actionPending);
     renderButtonState(profile, buttons, currentState, actionPending);
   }
 }
@@ -176,12 +187,21 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   let state = createInitialState(scenario);
   let logs = createInitialLogs(scenario);
   let logOpen = false;
+  let inventoryOpen = false;
   const stage = buildStage(app, profile, scenario);
   const scene = new RogueScene(skin.map);
   const game = createFixedGame(scene, skin, profile);
   const buttons = bindButtons(profile, (buttonId) => {
     if (buttonId === 'log') {
       logOpen = !logOpen;
+      inventoryOpen = false;
+      renderAll();
+      return;
+    }
+
+    if (buttonId === 'inventory') {
+      inventoryOpen = !inventoryOpen;
+      logOpen = false;
       renderAll();
       return;
     }
@@ -191,10 +211,14 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
       return;
     }
 
+    dispatchAction(action);
+  });
+
+  function dispatchAction(action: GameAction): void {
     state = applyWorkbenchAction(state, action);
     logs = action.action === 'restart' ? createInitialLogs('combat') : [describeAction(action), ...logs].slice(0, 8);
     renderAll();
-  });
+  }
 
   const resize = () => fitStage(stage, profile);
   window.addEventListener('resize', resize);
@@ -207,9 +231,10 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   });
 
   function renderAll(): void {
-    applyFixedStateClasses(stage, state, logOpen);
+    applyFixedStateClasses(stage, state, logOpen, inventoryOpen);
     scene.renderGameState(state);
     renderTextState(profile, state, logs, logOpen, scenario === 'status' ? 'revealing' : undefined);
+    renderInventoryState(state, dispatchAction, true);
     renderButtonState(profile, buttons, state, scenario === 'status');
   }
 }
@@ -333,6 +358,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
     region('player-panel', 'panel player-panel fixed-player-region', profile.regions.playerHp),
     region('combat-panel', 'panel combat-panel fixed-combat-region', profile.regions.combat),
     region('log-panel', 'panel log-panel fixed-log-region', profile.regions.log),
+    region('inventory-panel', 'panel inventory-panel fixed-inventory-region', profile.regions.inventory ?? profile.regions.log),
     region('end-state-overlay', 'fixed-end-state-overlay', profile.regions.endState ?? defaultEndStateRect(profile)),
     region('fixed-player-hp-fill', 'fixed-meter-fill fixed-player-hp-fill', profile.regions.playerHpFill),
     region('fixed-enemy-hp-fill', 'fixed-meter-fill fixed-enemy-hp-fill', profile.regions.enemyHpFill),
@@ -357,6 +383,9 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const log = stage.querySelector('#log-panel');
   log?.append(el('h2', 'fixed-region-label', 'Log'), el('div', 'game-log fixed-game-log', '', 'game-log'));
+
+  const inventory = stage.querySelector('#inventory-panel');
+  inventory?.append(el('h2', 'fixed-region-label', 'Inventory'), el('div', 'fixed-inventory-list', '', 'inventory-list'));
 
   const endState = stage.querySelector('#end-state-overlay');
   endState?.setAttribute('hidden', '');
@@ -606,7 +635,7 @@ function renderButtonState(
     if (!button) {
       continue;
     }
-    const blockedByPending = actionPending && buttonId !== 'log' && buttonId !== 'restart';
+    const blockedByPending = actionPending && buttonId !== 'log' && buttonId !== 'inventory' && buttonId !== 'restart';
     const disabled =
       blockedByPending
         ? true
@@ -614,7 +643,7 @@ function renderButtonState(
         ? !inCombat
         : buttonId === 'restart'
           ? !terminal
-          : buttonId === 'log'
+          : buttonId === 'log' || buttonId === 'inventory'
           ? false
           : !canMove || !canMoveDirection(state, buttonId);
     element.hidden = buttonId === 'restart' && !terminal;
@@ -623,13 +652,64 @@ function renderButtonState(
   }
 }
 
-function applyFixedStateClasses(stage: HTMLElement, state: GameState | null, logOpen: boolean): void {
+function renderInventoryState(state: GameState, onAction: (action: GameAction) => void, actionsEnabled: boolean): void {
+  const list = document.getElementById('inventory-list');
+  if (!list) {
+    return;
+  }
+
+  if (state.inventory.length === 0) {
+    list.replaceChildren(el('p', 'fixed-inventory-empty', 'Empty'));
+    return;
+  }
+
+  list.replaceChildren(
+    ...state.inventory.map((item) => createInventoryRow(item, onAction, actionsEnabled && !isTerminalState(state)))
+  );
+}
+
+function createInventoryRow(item: Item, onAction: (action: GameAction) => void, actionsEnabled: boolean): HTMLElement {
+  const row = document.createElement('div');
+  row.className = item.is_equipped ? 'inventory-item fixed-inventory-item equipped' : 'inventory-item fixed-inventory-item';
+
+  const body = document.createElement('div');
+  body.className = 'fixed-inventory-item-body';
+
+  const name = document.createElement('strong');
+  name.textContent = item.name;
+  const detail = document.createElement('span');
+  detail.textContent = item.description;
+  body.append(name, detail);
+
+  const action = document.createElement('button');
+  action.type = 'button';
+  action.className = 'fixed-inventory-action';
+  action.disabled = !actionsEnabled;
+
+  if (item.type === 'consumable') {
+    action.textContent = 'Use';
+    action.addEventListener('click', () => onAction({ action: 'use_item', item_id: item.id }));
+  } else if (item.type === 'weapon' || item.type === 'armor') {
+    action.textContent = item.is_equipped ? 'On' : 'Equip';
+    action.disabled = action.disabled || item.is_equipped;
+    action.addEventListener('click', () => onAction({ action: 'equip_item', item_id: item.id }));
+  } else {
+    action.textContent = item.type;
+    action.disabled = true;
+  }
+
+  row.append(body, action);
+  return row;
+}
+
+function applyFixedStateClasses(stage: HTMLElement, state: GameState | null, logOpen: boolean, inventoryOpen: boolean): void {
   const terminal = state ? isTerminalState(state) : false;
   const inCombat = state?.in_combat ?? false;
   document.body.classList.toggle('in-combat', state?.in_combat ?? false);
   document.body.classList.toggle('game-ended', terminal);
   document.body.classList.toggle('log-open', logOpen);
   document.body.classList.toggle('fixed-log-open', logOpen);
+  document.body.classList.toggle('fixed-inventory-open', inventoryOpen);
   stage.classList.toggle('fixed-combat-state', inCombat);
   stage.classList.toggle('fixed-terminal-state', terminal);
   stage.classList.toggle('fixed-victory-state', state?.game_won ?? false);

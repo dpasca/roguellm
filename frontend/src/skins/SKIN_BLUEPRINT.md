@@ -27,6 +27,8 @@ The current gold layout target uses this hierarchy:
 - Latest message: about `284x86`, readable as a primary story surface while
   reserving a fixed log-toggle well.
 - Expanded log: about `342x204`, allowed to overlay the player panel while open.
+- Expanded inventory: about `342x204`, sharing the drawer space with the log
+  and showing item rows plus fixed action affordances.
 - Title/status band plus player panel: title and model status sit above a
   compact `342x54` HP/stat block.
 - Combat panel: about `342x64`, compact but readable.
@@ -40,6 +42,7 @@ Every mobile skin profile must define:
 - `map`: live Phaser map aperture.
 - `latest`: compact top-first message LCD.
 - `log`: expanded log aperture or drawer.
+- `inventory`: expanded inventory aperture or drawer.
 - `title`: game/player title region.
 - `player`: HP, stats, XP, current tile.
 - `combat`: enemy name and enemy HP region.
@@ -48,6 +51,7 @@ Every mobile skin profile must define:
 - `run`: secondary combat button.
 - `restart`: terminal-state restart button.
 - `logToggle`: log open/close button.
+- `inventoryToggle`: inventory open/close button.
 - `moveN`, `moveS`, `moveE`, `moveW`: D-pad buttons.
 - `status`: connection/model state indicator.
 - `combatLed`: combat on/off indicator.

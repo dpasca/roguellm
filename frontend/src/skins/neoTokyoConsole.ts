@@ -1,7 +1,17 @@
 import type { FixedSkinProfile, GameSkin } from './types';
 
 type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2' | 'gold-mobile';
-type FixedButtonAssetName = 'attack' | 'run' | 'restart' | 'dpad' | 'dpad-n' | 'dpad-s' | 'dpad-e' | 'dpad-w' | 'log';
+type FixedButtonAssetName =
+  | 'attack'
+  | 'run'
+  | 'restart'
+  | 'dpad'
+  | 'dpad-n'
+  | 'dpad-s'
+  | 'dpad-e'
+  | 'dpad-w'
+  | 'log'
+  | 'inventory';
 
 const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
   eager: true,
@@ -68,7 +78,8 @@ const fixedProfiles: FixedSkinProfile[] = [
       playerStats: { x: 34, y: 523, width: 316, height: 18 },
       combat: { x: 24, y: 562, width: 342, height: 64 },
       enemyHpFill: { x: 168, y: 604, width: 150, height: 8 },
-      endState: { x: 38, y: 360, width: 314, height: 292 }
+      endState: { x: 38, y: 360, width: 314, height: 292 },
+      inventory: { x: 24, y: 342, width: 342, height: 204 }
     },
     buttons: {
       attack: {
@@ -88,6 +99,12 @@ const fixedProfiles: FixedSkinProfile[] = [
         label: 'Log',
         hideLabel: true,
         states: fixedButton('gold-mobile', 'log')
+      },
+      inventory: {
+        rect: { x: 315, y: 392, width: 46, height: 32 },
+        label: 'Inventory',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'inventory')
       },
       moveN: {
         rect: { x: 73, y: 672, width: 58, height: 58 },
