@@ -448,6 +448,7 @@ function buildHtmlReport(summary) {
       metrics.logOpen ? 'log open' : null,
       metrics.inventoryOpen ? 'inventory open' : null,
       metrics.inCombat ? 'combat' : 'explore',
+      metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.screenshot ? `mean ${metrics.screenshot.mean.toFixed(3)}` : null,
       metrics.screenshot ? `contrast ${metrics.screenshot.standardDeviation.toFixed(3)}` : null,
       metrics.overflowsX || metrics.overflowsY ? 'overflow' : 'no overflow'
@@ -684,6 +685,7 @@ async function runScenario(page, scenario) {
     await waitForFixedRestarted(page);
   }
 
+  await waitForFontAwesome(page);
   await page.waitForTimeout(300);
 
   const screenshotPath = path.join(outDir, `${scenario.name}.png`);
@@ -836,6 +838,27 @@ async function waitForFixedRuntimeCombatReady(page, timeout) {
       !attack.disabled &&
       !run.disabled;
   }, null, { timeout });
+}
+
+async function waitForFontAwesome(page) {
+  await page.waitForFunction(() => {
+    return Array.from(document.querySelectorAll('i[class*="fa-"]')).some((icon) => {
+      const box = icon.getBoundingClientRect();
+      const style = getComputedStyle(icon);
+      const before = getComputedStyle(icon, '::before');
+      const content = before.content;
+      return box.width > 0 &&
+        box.height > 0 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        Number(style.opacity) > 0 &&
+        content &&
+        content !== 'none' &&
+        content !== 'normal' &&
+        content !== '""' &&
+        before.fontFamily.toLowerCase().includes('font awesome');
+    });
+  }, null, { timeout: 20_000 });
 }
 
 async function isFixedRuntimeCombatReady(page) {
@@ -1051,6 +1074,34 @@ async function collectMetrics(page) {
         .map(([tile, icons]) => ({ tile, icons }));
     };
 
+    const collectFontAwesomeMetrics = () => {
+      const visibleIcons = Array.from(document.querySelectorAll('i[class*="fa-"]'))
+        .filter((icon) => {
+          const box = icon.getBoundingClientRect();
+          const style = getComputedStyle(icon);
+          return box.width > 0 &&
+            box.height > 0 &&
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            Number(style.opacity) > 0;
+        });
+      const renderedIcons = visibleIcons.filter((icon) => {
+        const before = getComputedStyle(icon, '::before');
+        const content = before.content;
+        return content &&
+          content !== 'none' &&
+          content !== 'normal' &&
+          content !== '""' &&
+          before.fontFamily.toLowerCase().includes('font awesome');
+      });
+
+      return {
+        visible: visibleIcons.length,
+        rendered: renderedIcons.length,
+        missing: visibleIcons.length - renderedIcons.length
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1088,6 +1139,7 @@ async function collectMetrics(page) {
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
       mapIconStacks: collectMapIconStacks(),
+      fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
         runDisabled: document.getElementById('run')?.disabled ?? null,
@@ -1199,9 +1251,22 @@ function validateMetrics(scenario, metrics) {
     validateFixedScreenshotQuality(metrics, failures);
   }
 
+  validateFontAwesome(metrics, failures);
   failures.push(...validateAssetUsage(metrics));
   failures.push(...validateMapIconStacking(metrics));
   return failures;
+}
+
+function validateFontAwesome(metrics, failures) {
+  const fontAwesome = metrics.fontAwesome;
+  if (!fontAwesome || fontAwesome.visible === 0) {
+    failures.push('no visible Font Awesome icons were available to inspect');
+    return;
+  }
+
+  if (fontAwesome.missing > 0) {
+    failures.push(`Font Awesome icons failed to render: ${fontAwesome.missing}/${fontAwesome.visible} missing`);
+  }
 }
 
 function validateMapIconStacking(metrics) {
