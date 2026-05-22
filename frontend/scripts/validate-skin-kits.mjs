@@ -160,6 +160,8 @@ function validateRequiredContract(prefix, kit) {
     }
   }
 
+  validateFixedAssetGeometry(prefix, kit);
+
   if (isProductionMobileMeta(kit.meta)) {
     validateProductionMobileGeometry(prefix, kit);
   }
@@ -224,6 +226,49 @@ function validateProductionMobileGeometry(prefix, kit) {
 
   for (const name of ['log', 'inventory']) {
     validateButtonSize(prefix, name, kit.layout?.buttons?.[name], { minWidth: 38, minHeight: 24 });
+  }
+}
+
+function validateFixedAssetGeometry(prefix, kit) {
+  validateDeclaredAssetSize(prefix, 'assets.chassis', kit.assets?.chassis, kit.size);
+
+  for (const name of mobilePortrait.buttons) {
+    validateDeclaredAssetSize(
+      prefix,
+      `assets.buttons.${name}`,
+      kit.assets?.buttons?.[name],
+      kit.layout?.buttons?.[name]
+    );
+  }
+
+  validateDeclaredAssetSize(
+    prefix,
+    'assets.indicators.status',
+    kit.assets?.indicators?.status,
+    kit.layout?.indicators?.status
+  );
+  validateDeclaredAssetSize(
+    prefix,
+    'assets.indicators.combatLed',
+    kit.assets?.indicators?.combatLed,
+    kit.layout?.indicators?.combatLed
+  );
+}
+
+function validateDeclaredAssetSize(prefix, label, asset, rect) {
+  if (!asset || !rect) {
+    return;
+  }
+
+  if (!Number.isFinite(asset.width) || !Number.isFinite(asset.height)) {
+    failures.push(`${prefix} ${label} must declare fixed width and height`);
+    return;
+  }
+
+  if (asset.width !== rect.width || asset.height !== rect.height) {
+    failures.push(
+      `${prefix} ${label} ${asset.width}x${asset.height} must match layout ${rect.width}x${rect.height}`
+    );
   }
 }
 
