@@ -65,6 +65,9 @@ type FixedSkinKit = {
     };
     buttons: Record<ManifestButtonId, {
       prefix: FixedButtonAssetName;
+      label?: string;
+      icon?: string;
+      hideLabel?: boolean;
     }>;
   };
 };
@@ -116,7 +119,6 @@ function fixedIndicators(profile: FixedAssetProfile) {
 }
 
 const mobileIndicators = fixedIndicators('mobile');
-const desktopIndicators = fixedIndicators('desktop');
 const referenceMobileIndicators = fixedIndicators('reference-mobile');
 
 const buttonLabels: Record<ManifestButtonId, string> = {
@@ -197,11 +199,14 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
 }
 
 function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId: ManifestButtonId) {
+  const asset = kit.assets.buttons[buttonId];
+
   return {
     rect: kit.layout.buttons[buttonId],
-    label: buttonLabels[buttonId],
-    hideLabel: true,
-    states: fixedButton(profile, kit.assets.buttons[buttonId].prefix)
+    label: asset.label ?? buttonLabels[buttonId],
+    icon: asset.icon,
+    hideLabel: asset.hideLabel ?? true,
+    states: fixedButton(profile, asset.prefix)
   };
 }
 
@@ -357,103 +362,7 @@ const fixedProfiles: FixedSkinProfile[] = [
     }
   },
   createManifestProfile('reference-mobile-v2'),
-  {
-    id: 'desktop-wide',
-    label: 'Desktop Wide Cyberdeck',
-    meta: {
-      family: 'Neo Tokyo Console',
-      role: 'prototype',
-      tags: ['cyberpunk', 'desktop', 'wide', 'technology'],
-      mood: ['tactical', 'console', 'prototype'],
-      palette: ['green', 'graphite'],
-      defaultPriority: 10,
-      generation: 'deterministic-svg-prototype'
-    },
-    kind: 'desktopWide',
-    width: 1280,
-    height: 900,
-    background: fixedAsset('desktop/chassis.png'),
-    regions: {
-      map: { x: 34, y: 56, width: 808, height: 792 },
-      title: { x: 874, y: 24, width: 300, height: 40 },
-      latest: { x: 892, y: 746, width: 334, height: 78 },
-      log: { x: 892, y: 746, width: 334, height: 106 },
-      inventory: { x: 892, y: 542, width: 334, height: 282 },
-      playerHp: { x: 890, y: 86, width: 336, height: 86 },
-      playerHpFill: { x: 956, y: 116, width: 220, height: 11 },
-      playerStats: { x: 892, y: 136, width: 326, height: 28 },
-      combat: { x: 892, y: 220, width: 332, height: 48 },
-      enemyHpFill: { x: 1028, y: 254, width: 154, height: 10 },
-      endState: { x: 886, y: 502, width: 346, height: 326 }
-    },
-    buttons: {
-      attack: {
-        rect: { x: 1004, y: 330, width: 240, height: 58 },
-        label: 'Attack',
-        icon: 'fa-solid fa-hand-fist',
-        states: fixedButton('desktop', 'attack')
-      },
-      run: {
-        rect: { x: 1004, y: 402, width: 240, height: 58 },
-        label: 'Run',
-        icon: 'fa-solid fa-person-running',
-        states: fixedButton('desktop', 'run')
-      },
-      log: {
-        rect: { x: 1172, y: 714, width: 72, height: 36 },
-        label: 'Log',
-        icon: 'fa-solid fa-list',
-        states: fixedButton('desktop', 'log')
-      },
-      inventory: {
-        rect: { x: 1088, y: 714, width: 72, height: 36 },
-        label: 'Inventory',
-        icon: 'fa-solid fa-bag-shopping',
-        hideLabel: true,
-        states: fixedButton('desktop', 'inventory')
-      },
-      restart: {
-        rect: { x: 939, y: 760, width: 240, height: 58 },
-        label: 'Restart',
-        icon: 'fa-solid fa-rotate-right',
-        states: fixedButton('desktop', 'restart')
-      },
-      moveN: {
-        rect: { x: 916, y: 332, width: 44, height: 44 },
-        label: 'N',
-        icon: 'fa-solid fa-caret-up',
-        states: fixedButton('desktop', 'dpad')
-      },
-      moveS: {
-        rect: { x: 916, y: 416, width: 44, height: 44 },
-        label: 'S',
-        icon: 'fa-solid fa-caret-down',
-        states: fixedButton('desktop', 'dpad')
-      },
-      moveE: {
-        rect: { x: 958, y: 374, width: 44, height: 44 },
-        label: 'E',
-        icon: 'fa-solid fa-caret-right',
-        states: fixedButton('desktop', 'dpad')
-      },
-      moveW: {
-        rect: { x: 874, y: 374, width: 44, height: 44 },
-        label: 'W',
-        icon: 'fa-solid fa-caret-left',
-        states: fixedButton('desktop', 'dpad')
-      }
-    },
-    indicators: {
-      status: {
-        rect: { x: 1176, y: 20, width: 84, height: 34 },
-        states: desktopIndicators.status
-      },
-      combatLed: {
-        rect: { x: 1228, y: 336, width: 18, height: 18 },
-        states: desktopIndicators.combatLed
-      }
-    }
-  }
+  createManifestProfile('desktop')
 ];
 
 export const neoTokyoConsoleSkin: GameSkin = {

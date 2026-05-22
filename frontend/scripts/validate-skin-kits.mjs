@@ -83,6 +83,7 @@ async function validateKit(kitPath) {
   }
 
   validateRequiredContract(prefix, kit);
+  validateFixedAssetGeometry(prefix, kit);
   await validateAsset(kitDir, prefix, 'chassis', kit.assets?.chassis);
 
   for (const [name, asset] of Object.entries(kit.assets?.buttons ?? {})) {
@@ -160,8 +161,6 @@ function validateRequiredContract(prefix, kit) {
       validateRect(prefix, kit, `layout ${group}.${name}`, rect);
     }
   }
-
-  validateFixedAssetGeometry(prefix, kit);
 
   if (isProductionMobileMeta(kit.meta)) {
     validateProductionMobileGeometry(prefix, kit);
@@ -251,7 +250,7 @@ function validateProductionMobileGeometry(prefix, kit) {
 function validateFixedAssetGeometry(prefix, kit) {
   validateDeclaredAssetSize(prefix, 'assets.chassis', kit.assets?.chassis, kit.size);
 
-  for (const name of mobilePortrait.buttons) {
+  for (const name of Object.keys(kit.assets?.buttons ?? {})) {
     validateDeclaredAssetSize(
       prefix,
       `assets.buttons.${name}`,
@@ -260,18 +259,14 @@ function validateFixedAssetGeometry(prefix, kit) {
     );
   }
 
-  validateDeclaredAssetSize(
-    prefix,
-    'assets.indicators.status',
-    kit.assets?.indicators?.status,
-    kit.layout?.indicators?.status
-  );
-  validateDeclaredAssetSize(
-    prefix,
-    'assets.indicators.combatLed',
-    kit.assets?.indicators?.combatLed,
-    kit.layout?.indicators?.combatLed
-  );
+  for (const name of Object.keys(kit.assets?.indicators ?? {})) {
+    validateDeclaredAssetSize(
+      prefix,
+      `assets.indicators.${name}`,
+      kit.assets?.indicators?.[name],
+      kit.layout?.indicators?.[name]
+    );
+  }
 }
 
 function validateDeclaredAssetSize(prefix, label, asset, rect) {

@@ -25,6 +25,7 @@ const withQueryEntries = (url, entries) => {
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const defaultFixedProfile = 'reference-mobile-v3';
+const desktopFixedProfile = 'desktop';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
@@ -391,49 +392,49 @@ const scenarios = [
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-runtime-ready',
     url: desktopFixedRuntimeUrl,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-runtime-log',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-runtime-log',
     url: desktopFixedRuntimeUrl,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-runtime-inventory',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-runtime-inventory',
     url: desktopFixedRuntimeUrl,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-runtime-combat',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-runtime-combat',
     url: desktopFixedRuntimeUrl,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-workbench',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-workbench',
     url: fixedWorkbenchUrl,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-workbench-defeat',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-workbench-defeat',
     url: `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}scenario=defeat`,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-workbench-restart',
     viewport: { width: 1280, height: 900 },
     mode: 'fixed-workbench-restart',
     url: `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}scenario=defeat`,
-    expectedFixedProfile: 'desktop-wide'
+    expectedFixedProfile: desktopFixedProfile
   }
 ];
 
@@ -1377,7 +1378,7 @@ function validateMetrics(scenario, metrics) {
       failures.push(`desktop log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
 
-    if (scenario.mode === 'desktop-fixed-workbench') {
+    if (scenario.name === 'desktop-fixed-workbench') {
       validateFixedStatLabels(metrics, failures);
     }
   }
@@ -2117,7 +2118,7 @@ function isProductionFixedProfile(profileRole) {
 }
 
 function isDesktopFixedProfile(fixedProfile) {
-  return fixedProfile === 'desktop-wide';
+  return fixedProfile === desktopFixedProfile;
 }
 
 function validateAssetUsage(metrics) {
