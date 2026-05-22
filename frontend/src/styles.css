@@ -1278,7 +1278,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="reference-mobile-v2"
   white-space: nowrap;
 }
 
-body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-log-region {
+body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-log-region {
   padding: 10px 66px 10px 10px;
   border: 1px solid rgba(140, 255, 141, 0.7);
   background:
@@ -1289,7 +1289,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [
     0 10px 22px rgba(0, 0, 0, 0.36);
 }
 
-body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-inventory-region {
+body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-inventory-region {
   padding: 10px 66px 10px 10px;
   border: 1px solid rgba(140, 255, 141, 0.7);
   background:
@@ -1300,40 +1300,40 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile="gold-mobile"], [
     0 10px 22px rgba(0, 0, 0, 0.36);
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-title-region h1 {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-title-region h1 {
   font-size: 18px;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-latest-region .latest-message,
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-game-log p {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-latest-region .latest-message,
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-game-log p {
   font-size: 12px;
   line-height: 1.25;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-region-label {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-region-label {
   font-size: 9px;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-hp-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-hp-row {
   font-size: 16px;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-stat-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-stat-row {
   margin-top: 18px;
   font-size: 11px;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-combat-region h2 {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-combat-region h2 {
   margin-bottom: 4px;
   font-size: 12px;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-combat-row {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-combat-row {
   font-size: 14px;
   line-height: 1.1;
 }
 
-.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"]) .fixed-combat-row span {
+.fixed-skin-stage:is([data-profile="gold-mobile"], [data-profile="amber-mobile"], [data-profile="reference-mobile-v3"], [data-profile="signal-noir-mobile"]) .fixed-combat-row span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1388,6 +1388,56 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixe
   color: #806f5b;
   border-color: rgba(128, 111, 91, 0.35);
   background: rgba(28, 22, 16, 0.72);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-log-region,
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-inventory-region {
+  border-color: rgba(55, 244, 223, 0.72);
+  background:
+    linear-gradient(180deg, #031112, #010506),
+    repeating-linear-gradient(180deg, rgba(55, 244, 223, 0.08) 0 1px, transparent 1px 4px);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-title-region {
+  color: #c4fff7;
+  text-shadow: 0 0 10px rgba(55, 244, 223, 0.42);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-region-label,
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-combat-region h2 {
+  color: #37f4df;
+}
+
+.fixed-combat-state[data-profile="signal-noir-mobile"] .fixed-combat-region h2 {
+  color: #ff806c;
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-latest-region .latest-message,
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-game-log p {
+  color: #c4fff7;
+  text-shadow: 0 0 8px rgba(55, 244, 223, 0.34);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-meter-fill {
+  background: linear-gradient(90deg, #37f4df, #c4fff7);
+  box-shadow: 0 0 12px rgba(55, 244, 223, 0.35);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-enemy-hp-fill {
+  background: linear-gradient(90deg, #ff5f47, #ff9a7f);
+  box-shadow: 0 0 12px rgba(255, 95, 71, 0.35);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-inventory-action {
+  color: #e4fffb;
+  border-color: rgba(55, 244, 223, 0.52);
+  background: rgba(6, 60, 62, 0.72);
+}
+
+.fixed-skin-stage[data-profile="signal-noir-mobile"] .fixed-inventory-action:disabled {
+  color: #6f8380;
+  border-color: rgba(111, 131, 128, 0.35);
+  background: rgba(15, 24, 25, 0.72);
 }
 
 .fixed-skin-button:disabled {

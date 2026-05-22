@@ -131,6 +131,29 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('reference-mobile-v3')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-signal-noir-fixed-workbench-diagnostics',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-diagnostics',
+    url: `${fixedWorkbenchProfileUrl('signal-noir-mobile')}&scenario=diagnostics`
+  },
+  {
+    name: 'mobile-signal-noir-fixed-workbench-inventory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-inventory',
+    url: fixedWorkbenchProfileUrl('signal-noir-mobile')
+  },
+  {
+    name: 'mobile-themed-signal-fixed-workbench',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench',
+    url: withQueryParams(fixedWorkbenchUrl, {
+      skin_tags: 'noir,signal',
+      skin_mood: 'sleek',
+      skin_palette: 'cyan'
+    }),
+    expectedFixedProfile: 'signal-noir-mobile'
+  },
+  {
     name: 'mobile-reference-v3-fixed-workbench-inventory',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench-inventory',
@@ -1187,7 +1210,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isCompactMobileProfile =
     metrics.fixedProfile === 'reference-mobile-v3' ||
     metrics.fixedProfile === 'gold-mobile' ||
-    metrics.fixedProfile === 'amber-mobile';
+    metrics.fixedProfile === 'amber-mobile' ||
+    metrics.fixedProfile === 'signal-noir-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
   const isStatusScenario = scenario.mode === 'fixed-workbench-status';

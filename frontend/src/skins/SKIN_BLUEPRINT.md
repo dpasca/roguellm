@@ -201,6 +201,8 @@ comparing behavior.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.
+- `signal-noir-mobile`: cyan/coral noir variant for rain-city and signal-heavy
+  themes, using the same compact production geometry as the current default.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
   controls; completed with inventory and restart widgets, but not promoted to

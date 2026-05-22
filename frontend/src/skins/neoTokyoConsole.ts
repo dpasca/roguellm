@@ -7,7 +7,8 @@ type FixedAssetProfile =
   | 'reference-mobile-v2'
   | 'reference-mobile-v3'
   | 'gold-mobile'
-  | 'amber-mobile';
+  | 'amber-mobile'
+  | 'signal-noir-mobile';
 type FixedButtonAssetName =
   | 'attack'
   | 'run'
@@ -206,6 +207,7 @@ function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId:
 
 const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('reference-mobile-v3'),
+  createManifestProfile('signal-noir-mobile'),
   createManifestProfile('gold-mobile'),
   createManifestProfile('amber-mobile'),
   {

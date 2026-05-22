@@ -167,6 +167,43 @@ const variants = [
       error: ['#ff6679', '#451018'],
       offline: ['#7d8a85', '#111616']
     }
+  },
+  {
+    id: 'signal-noir-mobile',
+    displayLabel: 'Signal Noir Cyberdeck',
+    label: 'SIGNAL NOIR CYBERDECK',
+    role: 'variant',
+    defaultPriority: 80,
+    tags: ['noir', 'signal', 'rain', 'city', 'technology', 'modern'],
+    mood: ['sleek', 'nocturnal', 'precise', 'premium'],
+    palette: ['cyan', 'coral', 'graphite'],
+    footer: 'SIGNAL PROFILE',
+    version: 'v0.1',
+    premium: true,
+    accent: '#37f4df',
+    accentSoft: '#c4fff7',
+    accentDim: '#1e6e68',
+    accentLine: '#2daea4',
+    secondary: '#ff5f47',
+    textMuted: '#b6cbc8',
+    textDim: '#768c89',
+    shellTop: '#4c5555',
+    shellMid: '#11191a',
+    shellStroke: '#7b8785',
+    panelStroke: '#637d7a',
+    panelInset: '#0d2021',
+    noise: '#293938',
+    action: {
+      attack: { main: '#ff4f38', dark: '#3b0907', light: '#ffb299', text: '#ffe3d8' },
+      run: { main: '#2bd8ca', dark: '#063a3d', light: '#b5fff5', text: '#e3fffb' },
+      restart: { main: '#ff7d3f', dark: '#3e1207', light: '#ffd19a', text: '#fff0dc' }
+    },
+    status: {
+      ready: ['#36f0dc', '#073a3a'],
+      thinking: ['#ffbd54', '#432c08'],
+      error: ['#ff6b72', '#461015'],
+      offline: ['#87918f', '#111718']
+    }
   }
 ];
 

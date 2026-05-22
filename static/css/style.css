@@ -376,6 +376,18 @@
     color: #38e6d5;
 }
 
+.dev-generator-fixed-btn-signal {
+    color: #d9fbff;
+}
+
+.dev-generator-fixed-btn-signal:hover {
+    border-color: #37f4df;
+}
+
+.dev-generator-fixed-btn-signal i {
+    color: #37f4df;
+}
+
 .dev-generator-title {
     min-width: 0;
     overflow: hidden;
