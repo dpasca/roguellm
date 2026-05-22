@@ -5,11 +5,12 @@ import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkin
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
-type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics';
+type FixedWorkbenchScenario = 'combat' | 'movement' | 'diagnostics' | 'defeat' | 'victory';
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   attack: { action: 'attack' },
   run: { action: 'run' },
+  restart: { action: 'restart' },
   moveN: { action: 'move', direction: 'n' },
   moveS: { action: 'move', direction: 's' },
   moveE: { action: 'move', direction: 'e' },
@@ -23,7 +24,8 @@ const domIds: Record<FixedButtonId, string> = {
   moveN: 'move-n',
   moveS: 'move-s',
   moveE: 'move-e',
-  moveW: 'move-w'
+  moveW: 'move-w',
+  restart: 'restart'
 };
 
 export function isFixedSkinWorkbench(): boolean {
@@ -68,7 +70,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
     }
 
     state = applyWorkbenchAction(state, action);
-    logs = [describeAction(action), ...logs].slice(0, 8);
+    logs = action.action === 'restart' ? createInitialLogs('combat') : [describeAction(action), ...logs].slice(0, 8);
     renderAll();
   });
 
@@ -84,6 +86,10 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
 
   function renderAll(): void {
     document.body.classList.toggle('in-combat', state.in_combat);
+    document.body.classList.toggle('game-ended', isTerminalState(state));
+    stage.classList.toggle('fixed-terminal-state', isTerminalState(state));
+    stage.classList.toggle('fixed-victory-state', state.game_won);
+    stage.classList.toggle('fixed-defeat-state', state.game_over || state.player_hp <= 0);
     document.body.classList.toggle('log-open', logOpen);
     document.body.classList.toggle('fixed-log-open', logOpen);
     scene.renderGameState(state);
@@ -119,13 +125,39 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
 
 function selectScenario(): FixedWorkbenchScenario {
   const scenario = new URLSearchParams(window.location.search).get('scenario');
-  return scenario === 'movement' || scenario === 'diagnostics' ? scenario : 'combat';
+  return scenario === 'movement' || scenario === 'diagnostics' || scenario === 'defeat' || scenario === 'victory'
+    ? scenario
+    : 'combat';
 }
 
 function createInitialState(scenario: FixedWorkbenchScenario): GameState {
   const state = createWorkbenchState();
   if (scenario === 'combat' || scenario === 'diagnostics') {
     return state;
+  }
+
+  if (scenario === 'defeat') {
+    return {
+      ...state,
+      player_hp: -6,
+      in_combat: false,
+      game_over: true,
+      game_won: false
+    };
+  }
+
+  if (scenario === 'victory') {
+    return {
+      ...state,
+      player_hp: 74,
+      player_xp: 420,
+      in_combat: false,
+      current_enemy: null,
+      enemies: state.enemies.map((enemy) => ({ ...enemy, is_defeated: true })),
+      defeated_enemies: state.enemies.map((enemy) => ({ ...enemy, is_defeated: true })),
+      game_over: false,
+      game_won: true
+    };
   }
 
   const explored = state.explored.map((row) => [...row]);
@@ -148,6 +180,14 @@ function createInitialLogs(scenario: FixedWorkbenchScenario): string[] {
 
   if (scenario === 'diagnostics') {
     return ['Diagnostics: every fixed skin sprite state is visible in the map aperture.', ...baseLogs];
+  }
+
+  if (scenario === 'defeat') {
+    return ['End-state test: defeat overlay, red marker, disabled controls, and fixed restart sprite are visible.', ...baseLogs];
+  }
+
+  if (scenario === 'victory') {
+    return ['End-state test: victory overlay, gold marker, disabled controls, and fixed restart sprite are visible.', ...baseLogs];
   }
 
   return ['Movement test: D-pad is unlocked; tap an arrow to verify movement hitboxes.', ...baseLogs];
@@ -173,6 +213,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
     region('player-panel', 'panel player-panel fixed-player-region', profile.regions.playerHp),
     region('combat-panel', 'panel combat-panel fixed-combat-region', profile.regions.combat),
     region('log-panel', 'panel log-panel fixed-log-region', profile.regions.log),
+    region('end-state-overlay', 'fixed-end-state-overlay', profile.regions.endState ?? defaultEndStateRect(profile)),
     region('fixed-player-hp-fill', 'fixed-meter-fill fixed-player-hp-fill', profile.regions.playerHpFill),
     region('fixed-enemy-hp-fill', 'fixed-meter-fill fixed-enemy-hp-fill', profile.regions.enemyHpFill),
     indicator('connection-status', 'fixed-status-indicator', profile.indicators.status.rect),
@@ -196,6 +237,22 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const log = stage.querySelector('#log-panel');
   log?.append(el('h2', 'fixed-region-label', 'Log'), el('div', 'game-log fixed-game-log', '', 'game-log'));
+
+  const endState = stage.querySelector('#end-state-overlay');
+  endState?.setAttribute('hidden', '');
+  endState?.append(
+    el(
+      'div',
+      'fixed-end-state-panel',
+      '<p class="end-state-kicker" id="end-state-kicker">Mission ended</p>' +
+        '<h2 id="end-state-title">RogueLLM</h2>' +
+        '<p id="end-state-message"></p>' +
+        '<dl class="end-state-stats">' +
+        '<div><dt>HP</dt><dd id="end-state-hp">--</dd></div>' +
+        '<div><dt>XP</dt><dd id="end-state-xp">--</dd></div>' +
+        '</dl>'
+    )
+  );
 
   if (scenario === 'diagnostics') {
     stage.querySelector('#game-canvas')?.append(buildDiagnosticsBoard(profile));
@@ -397,6 +454,7 @@ function renderTextState(profile: FixedSkinProfile, state: GameState, logs: stri
   setText('enemy-hp', enemy ? `${enemy.hp}/${enemy.max_hp}` : '--');
   setFill('fixed-player-hp-fill', state.player_hp, state.player_max_hp, profile.regions.playerHpFill.width);
   setFill('fixed-enemy-hp-fill', enemy?.hp ?? 0, enemy?.max_hp ?? 1, profile.regions.enemyHpFill.width);
+  renderEndState(state);
   renderLogs(logs, logOpen);
 
   const status = document.getElementById('connection-status');
@@ -414,19 +472,52 @@ function renderButtonState(
   state: GameState
 ): void {
   const inCombat = state.in_combat && !!state.current_enemy;
-  const canMove = !state.in_combat && !state.game_over && !state.game_won;
+  const terminal = isTerminalState(state);
+  const canMove = !state.in_combat && !terminal;
 
   for (const [buttonId, element] of buttons) {
     const button = profile.buttons[buttonId];
+    if (!button) {
+      continue;
+    }
     const disabled =
       buttonId === 'attack' || buttonId === 'run'
         ? !inCombat
-        : buttonId === 'log'
+        : buttonId === 'restart'
+          ? !terminal
+          : buttonId === 'log'
           ? false
           : !canMove || !canMoveDirection(state, buttonId);
+    element.hidden = buttonId === 'restart' && !terminal;
     element.disabled = disabled;
     setButtonVisual(element, button, disabled ? 'disabled' : 'idle');
   }
+}
+
+function renderEndState(state: GameState): void {
+  const overlay = document.getElementById('end-state-overlay');
+  if (!overlay) {
+    return;
+  }
+
+  const defeated = state.game_over || state.player_hp <= 0;
+  const won = state.game_won;
+  overlay.hidden = !defeated && !won;
+
+  if (overlay.hidden) {
+    return;
+  }
+
+  setText('end-state-kicker', won ? 'Case closed' : 'Down for the count');
+  setText('end-state-title', state.game_title || 'RogueLLM');
+  setText(
+    'end-state-message',
+    won
+      ? 'Every active threat on this board has been cleared.'
+      : `You were defeated${state.current_enemy ? ` by ${state.current_enemy.name}` : ''}.`
+  );
+  setText('end-state-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
+  setText('end-state-xp', String(state.player_xp));
 }
 
 function renderLogs(logs: string[], logOpen: boolean): void {
@@ -484,6 +575,8 @@ function describeAction(action: GameAction): string {
       return 'Fixed-skin button state: ATTACK clicked, sprite returned from pressed to idle.';
     case 'run':
       return 'Fixed-skin button state: RUN clicked, combat modules switch off and movement unlocks.';
+    case 'restart':
+      return 'Fixed-skin terminal state restarted into the default combat bench.';
     case 'move':
       return `Fixed-skin D-pad state: moved ${action.direction.toUpperCase()} on a fixed artboard.`;
     case 'equip_item':
@@ -492,6 +585,19 @@ function describeAction(action: GameAction): string {
     case 'get_initial_state':
       return 'Fixed-skin workbench action received.';
   }
+}
+
+function isTerminalState(state: GameState): boolean {
+  return state.game_over || state.game_won || state.player_hp <= 0;
+}
+
+function defaultEndStateRect(profile: FixedSkinProfile): FixedSkinRect {
+  return {
+    x: 24,
+    y: Math.max(24, Math.floor(profile.height * 0.42)),
+    width: Math.max(240, profile.width - 48),
+    height: Math.min(300, Math.max(180, Math.floor(profile.height * 0.32)))
+  };
 }
 
 function currentTileName(state: GameState): string {

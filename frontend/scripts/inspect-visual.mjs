@@ -73,6 +73,24 @@ const scenarios = [
     url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=diagnostics`
   },
   {
+    name: 'mobile-gold-fixed-workbench-defeat',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-defeat',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=defeat`
+  },
+  {
+    name: 'mobile-gold-fixed-workbench-victory',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-victory',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=victory`
+  },
+  {
+    name: 'mobile-gold-fixed-workbench-restart',
+    viewport: { width: 390, height: 844 },
+    mode: 'fixed-workbench-restart',
+    url: `${fixedWorkbenchProfileUrl('gold-mobile')}&scenario=defeat`
+  },
+  {
     name: 'mobile-reference-fixed-workbench',
     viewport: { width: 390, height: 844 },
     mode: 'fixed-workbench',
@@ -209,6 +227,19 @@ async function runScenario(page, scenario) {
     await waitForFixedDiagnostics(page);
   }
 
+  if (
+    scenario.mode === 'fixed-workbench-defeat' ||
+    scenario.mode === 'fixed-workbench-victory' ||
+    scenario.mode === 'fixed-workbench-restart'
+  ) {
+    await waitForFixedEndState(page, scenario.mode.endsWith('victory') ? 'victory' : 'defeat');
+  }
+
+  if (scenario.mode === 'fixed-workbench-restart') {
+    await page.getByRole('button', { name: 'Restart', exact: true }).click();
+    await waitForFixedRestarted(page);
+  }
+
   await page.waitForTimeout(300);
 
   const screenshotPath = path.join(outDir, `${scenario.name}.png`);
@@ -297,6 +328,37 @@ async function waitForFixedDiagnostics(page) {
   }, null, { timeout: 20_000 });
 }
 
+async function waitForFixedEndState(page, expected) {
+  await page.waitForFunction((expectedState) => {
+    const overlay = document.getElementById('end-state-overlay');
+    const restart = document.getElementById('restart');
+    const stage = document.querySelector('.fixed-skin-stage');
+    return document.body.dataset.fixedScenario === expectedState &&
+      document.body.classList.contains('game-ended') &&
+      overlay instanceof HTMLElement &&
+      !overlay.hidden &&
+      restart instanceof HTMLButtonElement &&
+      !restart.hidden &&
+      !restart.disabled &&
+      stage?.classList.contains(expectedState === 'victory' ? 'fixed-victory-state' : 'fixed-defeat-state');
+  }, expected, { timeout: 20_000 });
+}
+
+async function waitForFixedRestarted(page) {
+  await page.waitForFunction(() => {
+    const overlay = document.getElementById('end-state-overlay');
+    const restart = document.getElementById('restart');
+    return document.body.dataset.fixedScenario === 'defeat' &&
+      !document.body.classList.contains('game-ended') &&
+      document.body.classList.contains('in-combat') &&
+      overlay instanceof HTMLElement &&
+      overlay.hidden &&
+      restart instanceof HTMLButtonElement &&
+      restart.hidden &&
+      restart.disabled;
+  }, null, { timeout: 20_000 });
+}
+
 async function collectMetrics(page) {
   return page.evaluate(() => {
     const selectorMap = {
@@ -319,7 +381,9 @@ async function collectMetrics(page) {
       moveSouthButton: '#move-s',
       moveEastButton: '#move-e',
       moveWestButton: '#move-w',
+      restartButton: '#restart',
       endStateOverlay: '#end-state-overlay',
+      endStatePanel: '.fixed-end-state-panel',
       diagnosticsBoard: '.fixed-diagnostics-board'
     };
 
@@ -366,11 +430,23 @@ async function collectMetrics(page) {
       fixedProfile: document.body.dataset.fixedProfile ?? null,
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       inCombat: document.body.classList.contains('in-combat'),
+      gameEnded: document.body.classList.contains('game-ended'),
       logOpen: document.body.classList.contains('log-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
       latestText: document.getElementById('latest-message')?.textContent?.trim() ?? '',
       latestTextLength: document.getElementById('latest-message')?.textContent?.trim().length ?? 0,
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
+      endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
+      controlStates: {
+        attackDisabled: document.getElementById('attack')?.disabled ?? null,
+        runDisabled: document.getElementById('run')?.disabled ?? null,
+        moveNDisabled: document.getElementById('move-n')?.disabled ?? null,
+        moveSDisabled: document.getElementById('move-s')?.disabled ?? null,
+        moveEDisabled: document.getElementById('move-e')?.disabled ?? null,
+        moveWDisabled: document.getElementById('move-w')?.disabled ?? null,
+        restartDisabled: document.getElementById('restart')?.disabled ?? null,
+        restartHidden: document.getElementById('restart')?.hidden ?? null
+      },
       rects
     };
   });
@@ -522,6 +598,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   const isGoldProfile = metrics.fixedProfile === 'gold-mobile';
   const isMovementScenario = scenario.mode === 'fixed-workbench-movement';
   const isDiagnosticsScenario = scenario.mode === 'fixed-workbench-diagnostics';
+  const isEndStateScenario = scenario.mode === 'fixed-workbench-defeat' || scenario.mode === 'fixed-workbench-victory';
+  const isRestartScenario = scenario.mode === 'fixed-workbench-restart';
 
   if (metrics.workbench !== 'fixed-skin') {
     failures.push(`expected fixed skin workbench mode, got ${metrics.workbench ?? 'none'}`);
@@ -531,7 +609,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push('fixed workbench did not select a fixed profile');
   }
 
-  if (!isMovementScenario && !metrics.inCombat) {
+  if (!isMovementScenario && !isEndStateScenario && !isRestartScenario && !metrics.inCombat) {
     failures.push('fixed workbench did not render the combat state');
   }
 
@@ -558,6 +636,14 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!diagnostics || diagnostics.visibleHeight < 240 || diagnostics.visibleWidth < 300) {
       failures.push(`diagnostics board is too small: ${diagnostics?.visibleWidth ?? 0}x${diagnostics?.visibleHeight ?? 0}`);
     }
+  }
+
+  if (isEndStateScenario) {
+    validateFixedEndStateScenario(scenario, metrics, failures);
+  }
+
+  if (isRestartScenario) {
+    validateFixedRestartScenario(metrics, failures);
   }
 
   const combat = metrics.rects.combatPanel;
@@ -591,6 +677,64 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
+    }
+  }
+}
+
+function validateFixedRestartScenario(metrics, failures) {
+  if (metrics.gameEnded) {
+    failures.push('restart scenario still has game-ended state after clicking restart');
+  }
+
+  if (!metrics.inCombat) {
+    failures.push('restart scenario did not return to the default combat bench');
+  }
+
+  const overlay = metrics.rects.endStateOverlay;
+  if (overlay && overlay.display !== 'none' && overlay.visibleHeight > 0) {
+    failures.push(`restart scenario still shows end-state overlay: ${overlay.visibleWidth}x${overlay.visibleHeight}`);
+  }
+
+  if (!metrics.controlStates.restartDisabled || !metrics.controlStates.restartHidden) {
+    failures.push('restart button remains enabled or visible after restart');
+  }
+}
+
+function validateFixedEndStateScenario(scenario, metrics, failures) {
+  const expectedScenario = scenario.mode === 'fixed-workbench-victory' ? 'victory' : 'defeat';
+  if (metrics.fixedScenario !== expectedScenario) {
+    failures.push(`expected ${expectedScenario} scenario, got ${metrics.fixedScenario ?? 'none'}`);
+  }
+
+  if (!metrics.gameEnded) {
+    failures.push('fixed terminal scenario did not set game-ended state');
+  }
+
+  const overlay = metrics.rects.endStateOverlay;
+  const panel = metrics.rects.endStatePanel;
+  if (!overlay || overlay.visibleHeight < 250 || overlay.visibleWidth < 280) {
+    failures.push(`fixed end-state overlay is too small: ${overlay?.visibleWidth ?? 0}x${overlay?.visibleHeight ?? 0}`);
+  }
+  if (!panel || panel.visibleHeight < 250 || panel.visibleWidth < 280) {
+    failures.push(`fixed end-state panel is too small: ${panel?.visibleWidth ?? 0}x${panel?.visibleHeight ?? 0}`);
+  }
+
+  if (!metrics.endStateText || metrics.endStateText.length < 24) {
+    failures.push('fixed end-state message is missing or too short');
+  }
+
+  const restart = metrics.rects.restartButton;
+  if (!restart || restart.visibleWidth < 180 || restart.visibleHeight < 52) {
+    failures.push(`fixed restart button is clipped: ${restart?.visibleWidth ?? 0}x${restart?.visibleHeight ?? 0}`);
+  }
+
+  if (metrics.controlStates.restartDisabled || metrics.controlStates.restartHidden) {
+    failures.push('fixed restart button is not enabled and visible in terminal state');
+  }
+
+  for (const key of ['attackDisabled', 'runDisabled', 'moveNDisabled', 'moveSDisabled', 'moveEDisabled', 'moveWDisabled']) {
+    if (!metrics.controlStates[key]) {
+      failures.push(`terminal state leaves ${key.replace('Disabled', '')} enabled`);
     }
   }
 }

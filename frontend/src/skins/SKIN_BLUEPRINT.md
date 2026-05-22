@@ -31,6 +31,8 @@ The current gold layout target uses this hierarchy:
   compact `342x54` HP/stat block.
 - Combat panel: about `342x64`, compact but readable.
 - Controls: bottom `190px`, D-pad left and action buttons right.
+- End-state overlay: about `314x292`, large enough for defeat/victory copy,
+  HP/XP, and a fixed restart sprite without hiding the whole map.
 
 Every mobile skin profile must define:
 
@@ -41,8 +43,10 @@ Every mobile skin profile must define:
 - `title`: game/player title region.
 - `player`: HP, stats, XP, current tile.
 - `combat`: enemy name and enemy HP region.
+- `endState`: terminal defeat/victory panel region.
 - `attack`: primary combat button.
 - `run`: secondary combat button.
+- `restart`: terminal-state restart button.
 - `logToggle`: log open/close button.
 - `moveN`, `moveS`, `moveE`, `moveW`: D-pad buttons.
 - `status`: connection/model state indicator.
@@ -122,6 +126,7 @@ Every skin profile needs a diagnostics scenario that shows:
 - All indicator states.
 - A combat state.
 - A movement-unlocked state.
+- Defeat and victory terminal states.
 - Latest/log text in top-first order.
 
 Visual inspection should capture diagnostics screenshots and fail if widgets are
@@ -130,9 +135,10 @@ missing, clipped, or overflowing the viewport.
 ## Current Profiles
 
 - `mobile-portrait`: early generated placeholder profile.
-- `gold-mobile`: deterministic layout target and current mobile default.
+- `gold-mobile`: deterministic layout target, current mobile default, and
+  terminal-flow quality gate.
 - `reference-mobile`: screenshot-derived prototype, useful as a warning.
 - `reference-mobile-v2`: cleaned prototype with empty apertures and alpha
-  controls; current best mobile test profile.
+  controls; useful comparison profile.
 - `desktop-wide`: placeholder desktop profile kept only to preserve the future
   profile shape.

@@ -8,13 +8,15 @@
     "log": { "x": 24, "y": 342, "width": 342, "height": 204 },
     "player": { "x": 24, "y": 488, "width": 342, "height": 54 },
     "combat": { "x": 24, "y": 562, "width": 342, "height": 64 },
-    "controls": { "x": 18, "y": 646, "width": 354, "height": 187 }
+    "controls": { "x": 18, "y": 646, "width": 354, "height": 187 },
+    "endState": { "x": 38, "y": 360, "width": 314, "height": 292 }
   },
   "assets": {
     "chassis": { "path": "chassis.png", "width": 390, "height": 844 },
     "buttons": {
       "attack": { "prefix": "attack", "width": 152, "height": 66, "alpha": true },
       "run": { "prefix": "run", "width": 152, "height": 66, "alpha": true },
+      "restart": { "prefix": "restart", "width": 226, "height": 66, "alpha": true },
       "log": { "prefix": "log", "width": 46, "height": 32, "alpha": true },
       "moveN": { "prefix": "dpad-n", "width": 58, "height": 58, "alpha": true },
       "moveS": { "prefix": "dpad-s", "width": 58, "height": 58, "alpha": true },

@@ -20,8 +20,12 @@ Layout:
 - Title/model status band around y=454.
 - Empty player HP/stat area at x=24 y=488 w=342 h=54.
 - Empty combat/enemy area at x=24 y=562 w=342 h=64.
+- Terminal/end-state panel area at x=38 y=360 w=314 h=292; it may be a
+  reusable empty alert module or an overlay crop, but it must leave room for
+  live title, message, HP, XP, and restart button content.
 - Bottom control deck from y=646 to y=833, with D-pad well on the left and two
   large action-button wells on the right.
+- Restart button sprite target at x=82 y=578 w=226 h=66.
 
 Hard rules:
 - Do not include gameplay map tiles, item icons, enemy icons, player marker, HP
@@ -31,6 +35,8 @@ Hard rules:
 - Leave all dynamic apertures clean and empty enough for live DOM/Phaser content.
 - Make button wells clean enough to crop separate transparent sprites for idle,
   hover, pressed, and disabled states.
+- Include a restart button treatment that can be cropped into idle, hover,
+  pressed, and disabled sprites.
 - Keep edges crisp; no blur over content apertures.
 - No watermark, no brand logos.
 ```

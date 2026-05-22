@@ -1,7 +1,7 @@
 import type { FixedSkinProfile, GameSkin } from './types';
 
 type FixedAssetProfile = 'mobile' | 'desktop' | 'reference-mobile' | 'reference-mobile-v2' | 'gold-mobile';
-type FixedButtonAssetName = 'attack' | 'run' | 'dpad' | 'dpad-n' | 'dpad-s' | 'dpad-e' | 'dpad-w' | 'log';
+type FixedButtonAssetName = 'attack' | 'run' | 'restart' | 'dpad' | 'dpad-n' | 'dpad-s' | 'dpad-e' | 'dpad-w' | 'log';
 
 const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
   eager: true,
@@ -67,7 +67,8 @@ const fixedProfiles: FixedSkinProfile[] = [
       playerHpFill: { x: 84, y: 505, width: 196, height: 8 },
       playerStats: { x: 34, y: 523, width: 316, height: 18 },
       combat: { x: 24, y: 562, width: 342, height: 64 },
-      enemyHpFill: { x: 168, y: 604, width: 150, height: 8 }
+      enemyHpFill: { x: 168, y: 604, width: 150, height: 8 },
+      endState: { x: 38, y: 360, width: 314, height: 292 }
     },
     buttons: {
       attack: {
@@ -111,6 +112,12 @@ const fixedProfiles: FixedSkinProfile[] = [
         label: 'W',
         hideLabel: true,
         states: fixedButton('gold-mobile', 'dpad-w')
+      },
+      restart: {
+        rect: { x: 82, y: 578, width: 226, height: 66 },
+        label: 'Restart',
+        hideLabel: true,
+        states: fixedButton('gold-mobile', 'restart')
       }
     },
     indicators: {
