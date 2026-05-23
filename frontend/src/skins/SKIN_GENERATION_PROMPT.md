@@ -11,6 +11,12 @@ generation; create a new layout contract version first if the geometry changes.
 `validate:skins` enforces the matching machine-readable
 `SKIN_LAYOUT_CONTRACT_V1.json` geometry for production mobile profiles.
 
+Preferred handoff command:
+
+```bash
+pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
+```
+
 ```text
 Create a polished mobile cyberdeck game UI skin kit artboard.
 

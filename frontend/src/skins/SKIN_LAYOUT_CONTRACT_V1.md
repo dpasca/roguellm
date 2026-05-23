@@ -208,6 +208,20 @@ Runtime widget names are stable API. New skins may change art style, palette,
 and metadata, but should not rename widgets or change the v1 rectangles unless
 we intentionally create `Skin Layout Contract v2`.
 
+## Prompt Generator
+
+Use the prompt generator to produce an AI image-generation prompt directly from
+`SKIN_LAYOUT_CONTRACT_V1.json`:
+
+```bash
+pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
+pnpm -C frontend skin:prompt mobileCompact --theme "industrial subway relay, worn graphite, amber LEDs"
+```
+
+The generator prints the exact live-region rectangles, crop targets, indicator
+targets, and hard rules for the selected profile. Prefer it over manually
+copying tables into image-generation prompts.
+
 ## Generation Prompt Template
 
 Use this template after selecting either the portrait or compact rectangle set:
