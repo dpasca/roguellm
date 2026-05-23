@@ -289,6 +289,20 @@ const baseScenarios = [
     expectedFixedProfile: 'terminal-green-mobile-compact'
   },
   {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-hover-run',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-hover-run',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-press-run',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-press-run',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
     name: 'mobile-short-themed-amber-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
@@ -800,6 +814,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserSourceMaterialPanels) ? `source materials ${metrics.phaserSourceMaterialPanels}` : null,
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
       metrics.phaserButtonStates ? `buttons ${metrics.phaserButtonStates}` : null,
+      metrics.phaserPointerButtonState ? `pointer ${metrics.phaserPointerButtonState}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -1286,6 +1301,16 @@ async function runScenario(page, scenario) {
     await waitForPhaserFixedWorkbenchPlayer(page, 2, 1);
   }
 
+  if (scenario.mode === 'phaser-fixed-workbench-hover-run') {
+    await hoverPhaserFixedButton(page, scenario, 'run');
+    await waitForPhaserPointerButtonState(page, 'run:hover');
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-press-run') {
+    await pressPhaserFixedButton(page, scenario, 'run');
+    await waitForPhaserPointerButtonState(page, 'run:pressed');
+  }
+
   if (scenario.mode === 'phaser-fixed-workbench-defeat') {
     await waitForPhaserTerminalState(page, 'defeat');
   }
@@ -1352,6 +1377,9 @@ async function runScenario(page, scenario) {
     screenshot: screenshotMetrics
   };
   failures.push(...validateMetrics(scenario, metrics));
+  if (scenario.mode === 'phaser-fixed-workbench-press-run') {
+    await page.mouse.up().catch(() => {});
+  }
 
   return {
     name: scenario.name,
@@ -1364,6 +1392,22 @@ async function runScenario(page, scenario) {
 }
 
 async function clickPhaserFixedButton(page, scenario, buttonId) {
+  const point = await phaserFixedButtonPoint(page, scenario, buttonId);
+  await page.mouse.click(point.x, point.y);
+}
+
+async function hoverPhaserFixedButton(page, scenario, buttonId) {
+  const point = await phaserFixedButtonPoint(page, scenario, buttonId);
+  await page.mouse.move(point.x, point.y);
+}
+
+async function pressPhaserFixedButton(page, scenario, buttonId) {
+  const point = await phaserFixedButtonPoint(page, scenario, buttonId);
+  await page.mouse.move(point.x, point.y);
+  await page.mouse.down();
+}
+
+async function phaserFixedButtonPoint(page, scenario, buttonId) {
   const profileId = scenario.expectedFixedProfile ?? compactFixedProfile;
   const kit = await loadFixedProfileKit(profileId);
   const rect = kit.layout?.buttons?.[buttonId];
@@ -1371,7 +1415,7 @@ async function clickPhaserFixedButton(page, scenario, buttonId) {
     throw new Error(`${profileId} does not define layout.buttons.${buttonId}`);
   }
 
-  const point = await page.evaluate((buttonRect) => {
+  return await page.evaluate((buttonRect) => {
     const canvas = document.querySelector('#phaser-fixed-skin-workbench canvas');
     if (!(canvas instanceof HTMLCanvasElement)) {
       throw new Error('Missing Phaser fixed-skin canvas');
@@ -1383,8 +1427,6 @@ async function clickPhaserFixedButton(page, scenario, buttonId) {
       y: bounds.top + ((buttonRect.y + buttonRect.height / 2) / canvas.height) * bounds.height
     };
   }, rect);
-
-  await page.mouse.click(point.x, point.y);
 }
 
 async function loadFixedProfileKit(profileId) {
@@ -1567,6 +1609,13 @@ async function waitForPhaserFixedWorkbenchPlayer(page, x, y) {
       document.body.dataset.phaserPlayerX === String(expected.x) &&
       document.body.dataset.phaserPlayerY === String(expected.y);
   }, { x, y }, { timeout: 20_000 });
+}
+
+async function waitForPhaserPointerButtonState(page, expected) {
+  await page.waitForFunction((state) => {
+    return document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserPointerButtonState === state;
+  }, expected, { timeout: 20_000 });
 }
 
 async function waitForPhaserTerminalState(page, expected) {
@@ -2379,6 +2428,7 @@ async function collectMetrics(page) {
       phaserSourceMaterialPanels: Number(document.body.dataset.phaserSourceMaterialPanels ?? NaN),
       phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
       phaserButtonStates: document.body.dataset.phaserButtonStates ?? '',
+      phaserPointerButtonState: document.body.dataset.phaserPointerButtonState ?? '',
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2888,6 +2938,14 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     if (phaserButtonState(metrics, 'moveE') !== 'idle') {
       failures.push(`expected Phaser moveE button to be drawn and idle after pointer click, got ${phaserButtonState(metrics, 'moveE') ?? 'none'}`);
     }
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-hover-run' && metrics.phaserPointerButtonState !== 'run:hover') {
+    failures.push(`expected Phaser run hover pointer state, got ${metrics.phaserPointerButtonState || 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-press-run' && metrics.phaserPointerButtonState !== 'run:pressed') {
+    failures.push(`expected Phaser run pressed pointer state, got ${metrics.phaserPointerButtonState || 'none'}`);
   }
 
   if (scenario.mode === 'phaser-fixed-workbench-inventory-use' && metrics.phaserPlayerHp !== 55) {

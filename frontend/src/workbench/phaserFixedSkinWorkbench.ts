@@ -622,6 +622,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialPanelsDrawn = 0;
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
+    document.body.dataset.phaserPointerButtonState = '';
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
@@ -1177,9 +1178,20 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawButtonHardwareOverlay(buttonId, button, state, disabled);
     if (!disabled) {
       image.setInteractive({ useHandCursor: true });
-      image.on('pointerover', () => image.setTexture(buttonKey(this.profile, buttonId, active ? 'pressed' : 'hover')));
-      image.on('pointerout', () => image.setTexture(buttonKey(this.profile, buttonId, active ? 'pressed' : 'idle')));
-      image.on('pointerdown', () => image.setTexture(buttonKey(this.profile, buttonId, 'pressed')));
+      image.on('pointerover', () => {
+        const nextState = active ? 'pressed' : 'hover';
+        image.setTexture(buttonKey(this.profile, buttonId, nextState));
+        this.setPointerButtonState(buttonId, nextState);
+      });
+      image.on('pointerout', () => {
+        const nextState = active ? 'pressed' : 'idle';
+        image.setTexture(buttonKey(this.profile, buttonId, nextState));
+        this.setPointerButtonState(buttonId, nextState);
+      });
+      image.on('pointerdown', () => {
+        image.setTexture(buttonKey(this.profile, buttonId, 'pressed'));
+        this.setPointerButtonState(buttonId, 'pressed');
+      });
       image.on('pointerup', () => {
         if (buttonId === 'log') {
           this.onToggleLog();
@@ -1202,6 +1214,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         align: 'center'
       });
     }
+  }
+
+  private setPointerButtonState(buttonId: FixedButtonId, state: FixedSkinButtonState): void {
+    document.body.dataset.phaserPointerButtonState = `${buttonId}:${state}`;
   }
 
   private drawControlBayHardware(rect: FixedSkinRect): void {
