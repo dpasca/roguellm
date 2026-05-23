@@ -625,6 +625,7 @@ function buildHtmlReport(summary) {
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
+      metrics.title?.iconStyled ? 'title badge' : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
       metrics.gameEnded && metrics.endState?.outcome ? `terminal ${metrics.endState.outcome}` : null,
@@ -1470,6 +1471,8 @@ async function collectMetrics(page) {
       hud: '.hud',
       latestPanel: '.latest-message-panel',
       latestMessage: '#latest-message',
+      titleIcon: '#fixed-title .fixed-title-icon',
+      titleTextNode: '#fixed-title .fixed-title-text',
       playerPanel: '.player-panel',
       hpLabel: '.fixed-hp-label',
       playerHpValue: '#player-hp',
@@ -1759,6 +1762,20 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectTitleMetrics = () => {
+      const icon = document.querySelector('#fixed-title .fixed-title-icon');
+      const text = document.querySelector('#fixed-title .fixed-title-text');
+      const style = icon ? getComputedStyle(icon) : null;
+
+      return {
+        iconStyled: !!icon && style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none',
+        iconClass: icon?.className ?? '',
+        text: text?.textContent?.trim() ?? ''
+      };
+    };
+
     const collectEndStateMetrics = () => {
       const badge = document.getElementById('end-state-badge');
       if (!badge) {
@@ -1831,6 +1848,7 @@ async function collectMetrics(page) {
       inventory: collectInventoryMetrics(),
       log: collectLogMetrics(),
       latest: collectLatestMetrics(),
+      title: collectTitleMetrics(),
       combat: collectCombatMetrics(),
       stats: collectStatMetrics(),
       hp: collectHpMetrics(),
@@ -2079,6 +2097,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
   }
 
   validateFixedHpHardware(metrics, failures, 'fixed runtime');
+  validateFixedTitleHardware(metrics, failures, 'fixed runtime');
   validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
 
   if (metrics.latestTextLength < 30) {
@@ -2146,6 +2165,32 @@ function validateFixedHpHardware(metrics, failures, context) {
 
   if (!metrics.hp.labelStyled || !metrics.hp.valueStyled) {
     failures.push(`${context} HP hardware lacks physical styling`);
+  }
+}
+
+function validateFixedTitleHardware(metrics, failures, context) {
+  const icon = metrics.rects.titleIcon;
+  const text = metrics.rects.titleTextNode;
+  const minIconSize = scaledFixedThreshold(metrics, 18);
+
+  if (!icon || icon.visibleWidth < minIconSize || icon.visibleHeight < minIconSize) {
+    failures.push(`${context} title badge is clipped: ${icon?.visibleWidth ?? 0}x${icon?.visibleHeight ?? 0}`);
+  }
+
+  if (!text || text.visibleWidth < scaledFixedThreshold(metrics, 90) || text.visibleHeight < scaledFixedThreshold(metrics, 12)) {
+    failures.push(`${context} title text lane is clipped: ${text?.visibleWidth ?? 0}x${text?.visibleHeight ?? 0}`);
+  }
+
+  if (!metrics.title.iconStyled) {
+    failures.push(`${context} title badge lacks physical styling`);
+  }
+
+  if (!metrics.title.iconClass.includes('fa-')) {
+    failures.push(`${context} title badge is missing a Font Awesome icon class`);
+  }
+
+  if (!metrics.title.text) {
+    failures.push(`${context} title text is empty`);
   }
 }
 
@@ -2412,6 +2457,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   validateFixedHpHardware(metrics, failures, 'fixed workbench');
+  validateFixedTitleHardware(metrics, failures, 'fixed workbench');
 
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {

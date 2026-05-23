@@ -753,6 +753,10 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
 }
 
 .fixed-title-region h1 {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
   overflow: hidden;
   margin-top: 2px;
   font-size: 20px;
@@ -761,8 +765,29 @@ body.skin-neo-tokyo-console .fixed-skin-stage #game-canvas {
   white-space: nowrap;
 }
 
-.fixed-title-region i {
-  margin-right: 8px;
+.fixed-title-icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(140, 255, 141, 0.48);
+  color: #a8ff9a;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(218, 255, 199, 0.24), transparent 48%),
+    linear-gradient(180deg, rgba(30, 80, 27, 0.76), rgba(5, 15, 6, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.66),
+    0 0 10px rgba(126, 255, 96, 0.14);
+  font-size: 13px;
+  line-height: 1;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.fixed-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixed-status-indicator {
@@ -1667,14 +1692,18 @@ body.skin-neo-tokyo-console .fixed-skin-stage #run {
 }
 
 .fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-region h1 {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 5px;
   margin-top: 1px;
   color: #9cff7c;
   font-size: 15px;
   line-height: 1.05;
 }
 
-.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-region i {
-  margin-right: 5px;
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-title-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 10px;
 }
 
 .fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-status-indicator {
@@ -1831,7 +1860,15 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-title-region h1 {
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 6px;
   font-size: 16px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-title-icon {
+  width: 21px;
+  height: 21px;
+  font-size: 11px;
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-latest-region .latest-message {

@@ -956,9 +956,13 @@ function renderTitleState(state: GameState): void {
 
   const heading = document.createElement('h1');
   const icon = document.createElement('i');
-  icon.className = normalizeFontAwesomeClass(state.player.font_awesome_icon, 'fa-solid fa-user-secret');
+  icon.className = `${normalizeFontAwesomeClass(state.player.font_awesome_icon, 'fa-solid fa-user-secret')} fixed-title-icon`;
   icon.setAttribute('aria-hidden', 'true');
-  heading.append(icon, document.createTextNode(state.game_title));
+
+  const titleText = document.createElement('span');
+  titleText.className = 'fixed-title-text';
+  titleText.textContent = state.game_title;
+  heading.append(icon, titleText);
 
   title.replaceChildren(kicker, heading);
 }

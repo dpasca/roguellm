@@ -148,6 +148,11 @@ and visual inspection gates so they behave like part of the skin:
   and `TILE`, with fixed numeric columns and a flexible tile-value column.
 - Visual inspection must fail when fixed stat plates are missing, unstyled, or
   clipping their values.
+- Fixed title/player identity rows render the player Font Awesome icon inside a
+  stable hardware badge before the game title, so long generated titles never
+  collide with the icon.
+- Visual inspection must fail when the title badge is clipped, unstyled, or
+  missing its Font Awesome icon class.
 - Fixed HP rows use a stable `HP` label plate and HP value plate, while the HP
   fill remains a separate meter region defined by the skin profile.
 - Fixed status indicators expose their state as `ready`, `thinking`, `error`,
