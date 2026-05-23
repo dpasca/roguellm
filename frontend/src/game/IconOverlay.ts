@@ -7,7 +7,7 @@ export interface TileLayout {
   tileSize: number;
 }
 
-type IconSlot = 'cell' | 'item' | 'enemy';
+type IconSlot = 'cell' | 'cellCrowded' | 'item' | 'enemy';
 
 export class IconOverlay {
   private readonly root: HTMLDivElement;
@@ -20,6 +20,7 @@ export class IconOverlay {
 
   render(state: GameState, layout: TileLayout): void {
     const icons: HTMLElement[] = [];
+    const crowdedTiles = this.crowdedTiles(state);
 
     for (let y = 0; y < state.map_height; y += 1) {
       for (let x = 0; x < state.map_width; x += 1) {
@@ -28,13 +29,14 @@ export class IconOverlay {
         }
 
         const cell = state.cell_types[y]?.[x];
+        const crowded = crowdedTiles.has(tileKey(x, y));
         icons.push(this.createIcon(
           normalizeFontAwesomeClass(cell?.font_awesome_icon, 'fa-solid fa-square'),
           x,
           y,
           layout,
-          'cell-map-icon',
-          'cell'
+          crowded ? 'cell-map-icon crowded' : 'cell-map-icon',
+          crowded ? 'cellCrowded' : 'cell'
         ));
       }
     }
@@ -72,6 +74,26 @@ export class IconOverlay {
     this.root.replaceChildren(...icons);
   }
 
+  private crowdedTiles(state: GameState): Set<string> {
+    const tiles = new Set<string>();
+    const [playerX, playerY] = state.player_pos;
+    tiles.add(tileKey(playerX, playerY));
+
+    for (const item of state.item_placements ?? []) {
+      if (!item.is_collected && state.explored[item.y]?.[item.x]) {
+        tiles.add(tileKey(item.x, item.y));
+      }
+    }
+
+    for (const enemy of state.enemies) {
+      if (state.explored[enemy.y]?.[enemy.x]) {
+        tiles.add(tileKey(enemy.x, enemy.y));
+      }
+    }
+
+    return tiles;
+  }
+
   private createIcon(
     iconClass: string,
     x: number,
@@ -91,7 +113,8 @@ export class IconOverlay {
     icon.style.fontSize = `${Math.max(10, Math.floor(layout.tileSize * scale))}px`;
     icon.dataset.mapX = String(x);
     icon.dataset.mapY = String(y);
-    icon.dataset.mapRole = slot;
+    icon.dataset.mapRole = slot === 'cellCrowded' ? 'cell' : slot;
+    icon.dataset.mapCrowded = slot === 'cellCrowded' ? '1' : '0';
     icon.setAttribute('aria-hidden', 'true');
     return icon;
   }
@@ -99,6 +122,8 @@ export class IconOverlay {
 
 function iconSlotLayout(slot: IconSlot): { offsetX: number; offsetY: number; scale: number } {
   switch (slot) {
+    case 'cellCrowded':
+      return { offsetX: -0.24, offsetY: -0.24, scale: 0.24 };
     case 'item':
       return { offsetX: 0.22, offsetY: 0.22, scale: 0.32 };
     case 'enemy':
@@ -107,4 +132,8 @@ function iconSlotLayout(slot: IconSlot): { offsetX: number; offsetY: number; sca
     default:
       return { offsetX: 0, offsetY: 0, scale: 0.42 };
   }
+}
+
+function tileKey(x: number, y: number): string {
+  return `${x},${y}`;
 }

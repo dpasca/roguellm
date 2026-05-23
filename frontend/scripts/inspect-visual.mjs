@@ -1443,6 +1443,7 @@ async function collectMetrics(page) {
         const tile = `${icon.dataset.mapX},${icon.dataset.mapY}`;
         const entry = {
           role: icon.dataset.mapRole,
+          crowded: icon.dataset.mapCrowded === '1',
           centerX: Math.round(box.left + box.width / 2),
           centerY: Math.round(box.top + box.height / 2)
         };
@@ -1479,6 +1480,17 @@ async function collectMetrics(page) {
         visible: visibleIcons.length,
         rendered: renderedIcons.length,
         missing: visibleIcons.length - renderedIcons.length
+      };
+    };
+
+    const collectMapIconMetrics = () => {
+      const icons = Array.from(document.querySelectorAll('.map-icon-overlay i[data-map-role]'));
+      return {
+        total: icons.length,
+        terrain: icons.filter((icon) => icon.dataset.mapRole === 'cell').length,
+        crowdedTerrain: icons.filter((icon) => icon.dataset.mapRole === 'cell' && icon.dataset.mapCrowded === '1').length,
+        item: icons.filter((icon) => icon.dataset.mapRole === 'item').length,
+        enemy: icons.filter((icon) => icon.dataset.mapRole === 'enemy').length
       };
     };
 
@@ -1528,6 +1540,7 @@ async function collectMetrics(page) {
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
       mapIconStacks: collectMapIconStacks(),
+      mapIcons: collectMapIconMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -1661,6 +1674,7 @@ function validateMetrics(scenario, metrics) {
   }
 
   validateFontAwesome(metrics, failures);
+  validateMapIconMetrics(metrics, failures);
   failures.push(...validateAssetUsage(metrics));
   failures.push(...validateMapIconStacking(metrics));
   return failures;
@@ -1687,6 +1701,10 @@ function validateMapIconStacking(metrics) {
       continue;
     }
 
+    if (!cell.crowded) {
+      failures.push(`map terrain icon on crowded tile ${stack.tile} is not using crowded treatment`);
+    }
+
     for (const icon of stack.icons) {
       if (icon.role === 'cell') {
         continue;
@@ -1700,6 +1718,17 @@ function validateMapIconStacking(metrics) {
   }
 
   return failures;
+}
+
+function validateMapIconMetrics(metrics, failures) {
+  if (!metrics.mapIcons || metrics.mapIcons.total === 0) {
+    failures.push('no map icons were available to inspect');
+    return;
+  }
+
+  if (metrics.mapIcons.crowdedTerrain < 1) {
+    failures.push('map has no crowded terrain icons protecting the player/content tile');
+  }
 }
 
 function validateFixedScreenshotQuality(metrics, failures) {
