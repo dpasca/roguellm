@@ -391,6 +391,13 @@ class GameStateManager:
 
     async def create_message_description(self, message):
         """Create or enhance message description using AI."""
+        if getattr(self, 'dev_fixture_loaded', False):
+            if not message.get('description') and message.get('description_raw'):
+                message['description'] = message['description_raw']
+            elif not message.get('description'):
+                message['description'] = ""
+            return message
+
         if not message.get('description') or message.get('description') == "":
             if message.get('description_raw'):
                 adapted_description = await self._gen_adapt_sentence(message['description_raw'])

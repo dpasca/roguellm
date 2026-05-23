@@ -179,8 +179,10 @@ open `http://127.0.0.1:8127/game2?game_id=<id>` or list recent IDs with
 
 For fast local replay, append `&fixture=1`. The first run saves an initialized Game2
 state under `_data/dev_fixtures/`; later runs reuse that map, placement set, and
-opening description. On localhost, the landing screen also shows a small Local dev
-panel with one-click Game2 fixture links for recent game IDs.
+opening description. Once a fixture is loaded, follow-up action messages use their
+raw deterministic event text instead of making model calls. On localhost, the landing
+screen also shows a small Local dev panel with one-click Game2 fixture links for
+recent game IDs.
 
 See `game_config.json` and `game_items.json` for more details.
 
