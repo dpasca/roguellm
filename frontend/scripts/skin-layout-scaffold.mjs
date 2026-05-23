@@ -69,6 +69,7 @@ function buildManifest(id, kind, selectedProfile, options) {
         width: selectedProfile.size.width,
         height: selectedProfile.size.height
       },
+      materials: cloneMaterialMap(selectedProfile.materials),
       buttons: buttonAssets,
       indicators: {
         status: {
@@ -162,6 +163,19 @@ function buttonAlphaRadius(name) {
 function cloneRectMap(rects) {
   return Object.fromEntries(
     Object.entries(rects).map(([name, rect]) => [name, cloneRect(rect)])
+  );
+}
+
+function cloneMaterialMap(materials) {
+  return Object.fromEntries(
+    Object.entries(materials ?? {}).map(([name, material]) => [
+      name,
+      {
+        fill: { ...material.fill },
+        frame: { ...material.frame },
+        slice: material.slice
+      }
+    ])
   );
 }
 

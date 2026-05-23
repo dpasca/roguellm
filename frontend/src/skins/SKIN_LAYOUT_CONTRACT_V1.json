@@ -6,6 +6,23 @@
         "width": 390,
         "height": 844
       },
+      "materials": {
+        "panel": {
+          "fill": { "path": "panel-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "panel-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 14
+        },
+        "lcd": {
+          "fill": { "path": "lcd-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "lcd-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 13
+        },
+        "button": {
+          "fill": { "path": "button-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "button-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 13
+        }
+      },
       "regions": {
         "map": { "x": 22, "y": 48, "width": 346, "height": 281 },
         "latest": { "x": 24, "y": 344, "width": 284, "height": 86 },
@@ -49,6 +66,23 @@
       "size": {
         "width": 390,
         "height": 667
+      },
+      "materials": {
+        "panel": {
+          "fill": { "path": "panel-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "panel-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 14
+        },
+        "lcd": {
+          "fill": { "path": "lcd-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "lcd-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 13
+        },
+        "button": {
+          "fill": { "path": "button-fill-tile.png", "width": 96, "height": 96 },
+          "frame": { "path": "button-frame-9slice.png", "width": 48, "height": 48, "alpha": true },
+          "slice": 13
+        }
       },
       "regions": {
         "map": { "x": 22, "y": 48, "width": 346, "height": 232 },

@@ -324,10 +324,11 @@ migrated into the live runtime without inventing a second skin format.
 CSS may host the browser root, global reset, and legacy renderer only. It should
 not place, skin, size, or compose fixed-skin game widgets.
 
-Fixed skin profiles own their visual material assets. Reusable panel, LCD, and
-button materials are declared as profile data (`fill`, `frame`, and nine-slice
-metadata) and rendered by Phaser as tiled sprites/nine-slice images. The Phaser
-renderer must not hardcode a skin family's material PNGs.
+Fixed skin profiles own their visual material assets through `skin-kit.json`.
+Reusable panel, LCD, and button materials are declared as profile data (`fill`,
+`frame`, and nine-slice metadata) and rendered by Phaser as tiled
+sprites/nine-slice images. The Phaser renderer must not hardcode a skin
+family's material PNGs.
 
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
 It sets only the minimum browser-shell sizing needed to mount the canvas. Visual

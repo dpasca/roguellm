@@ -32,6 +32,18 @@ type SkinKitRect = {
   width: number;
   height: number;
 };
+type SkinKitImageAsset = {
+  path: string;
+  width?: number;
+  height?: number;
+  alpha?: boolean;
+  sourceProfile?: FixedAssetProfile;
+};
+type SkinKitMaterial = {
+  fill: SkinKitImageAsset;
+  frame: SkinKitImageAsset;
+  slice: number;
+};
 type FixedSkinKit = {
   id: FixedAssetProfile;
   meta?: FixedSkinProfileMeta & {
@@ -84,6 +96,7 @@ type FixedSkinKit = {
         sourceProfile?: FixedAssetProfile;
       };
     };
+    materials?: Record<FixedSkinMaterialKind, SkinKitMaterial>;
   };
 };
 
@@ -119,7 +132,20 @@ function materialAsset(path: string): string {
   return asset;
 }
 
-const neoTokyoMaterials = {
+function skinKitImageAsset(profile: FixedAssetProfile, asset: SkinKitImageAsset): string {
+  const normalizedPath = asset.path.replaceAll('\\', '/');
+  if (normalizedPath.startsWith('../../assets/')) {
+    return materialAsset(normalizedPath.slice('../../assets/'.length));
+  }
+
+  if (normalizedPath.includes('../')) {
+    throw new Error(`Skin kit asset path cannot escape the skin directory: ${asset.path}`);
+  }
+
+  return fixedAsset(`${asset.sourceProfile ?? profile}/${normalizedPath}`);
+}
+
+const sharedNeoTokyoMaterials = {
   panel: {
     fill: materialAsset('panel-fill-tile.png'),
     frame: materialAsset('panel-frame-9slice.png'),
@@ -136,6 +162,31 @@ const neoTokyoMaterials = {
     slice: 13
   }
 } satisfies Record<FixedSkinMaterialKind, FixedSkinMaterial>;
+
+function manifestMaterials(profile: FixedAssetProfile, kit: FixedSkinKit): Record<FixedSkinMaterialKind, FixedSkinMaterial> {
+  const materials = kit.assets.materials;
+  if (!materials) {
+    return sharedNeoTokyoMaterials;
+  }
+
+  return {
+    panel: manifestMaterial(profile, materials.panel),
+    lcd: manifestMaterial(profile, materials.lcd),
+    button: manifestMaterial(profile, materials.button)
+  };
+}
+
+function manifestMaterial(profile: FixedAssetProfile, material: SkinKitMaterial): FixedSkinMaterial {
+  if (!material?.fill || !material.frame) {
+    throw new Error(`Missing fixed skin material asset for ${profile}`);
+  }
+
+  return {
+    fill: skinKitImageAsset(profile, material.fill),
+    frame: skinKitImageAsset(profile, material.frame),
+    slice: material.slice
+  };
+}
 
 function fixedButton(
   profile: FixedAssetProfile,
@@ -210,7 +261,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
     width: kit.size.width,
     height: kit.size.height,
     background: fixedAsset(`${id}/${kit.assets.chassis.path}`),
-    materials: neoTokyoMaterials,
+    materials: manifestMaterials(id, kit),
     regions: {
       map: kit.regions.map,
       title: kit.regions.title,
@@ -279,7 +330,7 @@ const fixedProfiles: FixedSkinProfile[] = [
     width: 390,
     height: 844,
     background: fixedAsset('mobile/chassis.png'),
-    materials: neoTokyoMaterials,
+    materials: sharedNeoTokyoMaterials,
     regions: {
       map: { x: 24, y: 48, width: 342, height: 300 },
       title: { x: 26, y: 356, width: 270, height: 34 },
@@ -353,7 +404,7 @@ const fixedProfiles: FixedSkinProfile[] = [
     width: 390,
     height: 844,
     background: fixedAsset('reference-mobile/chassis.png'),
-    materials: neoTokyoMaterials,
+    materials: sharedNeoTokyoMaterials,
     regions: {
       map: { x: 24, y: 45, width: 342, height: 371 },
       title: { x: 26, y: 538, width: 268, height: 36 },

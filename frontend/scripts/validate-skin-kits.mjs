@@ -9,6 +9,7 @@ const layoutContract = JSON.parse(await fs.readFile(layoutContractPath, 'utf8'))
 const mobilePortrait = layoutContract.profiles.mobilePortrait;
 const mobileCompact = layoutContract.profiles.mobileCompact;
 const buttonStates = mobilePortrait.requiredStates.buttons;
+const materialKinds = Object.keys(mobilePortrait.materials ?? {});
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
 const cropVariantKinds = new Set(['button', 'status-indicator', 'combat-led']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -77,6 +78,7 @@ async function validateKit(kitPath) {
   validateRequiredContract(prefix, kit);
   validateFixedAssetGeometry(prefix, kit);
   await validateAsset(kitDir, prefix, 'chassis', kit.assets?.chassis);
+  await validateMaterials(kitDir, prefix, kit);
 
   for (const [name, asset] of Object.entries(kit.assets?.buttons ?? {})) {
     const stateAssets = [];
@@ -143,6 +145,12 @@ function validateRequiredContract(prefix, kit) {
   for (const button of Object.keys(contract.layout.buttons)) {
     if (!kit.assets?.buttons?.[button]) {
       failures.push(`${prefix} missing required button asset ${button}`);
+    }
+  }
+
+  for (const material of materialKinds) {
+    if (!kit.assets?.materials?.[material]) {
+      failures.push(`${prefix} missing required material asset ${material}`);
     }
   }
 
@@ -271,6 +279,33 @@ function validateExactRect(prefix, label, actual, expected) {
   }
 }
 
+async function validateMaterials(kitDir, prefix, kit) {
+  const materials = kit.assets?.materials;
+  if (!materials) {
+    return;
+  }
+
+  for (const [name, material] of Object.entries(materials)) {
+    if (!materialKinds.includes(name)) {
+      failures.push(`${prefix} unknown material asset ${name}`);
+      continue;
+    }
+
+    if (!material || typeof material !== 'object') {
+      failures.push(`${prefix} material ${name} must be an object`);
+      continue;
+    }
+
+    await validateAsset(kitDir, prefix, `material ${name}.fill`, material.fill);
+    const frame = await validateAsset(kitDir, prefix, `material ${name}.frame`, material.frame);
+    if (!Number.isFinite(material.slice) || material.slice <= 0) {
+      failures.push(`${prefix} material ${name}.slice must be a positive number`);
+    } else if (frame && material.slice * 2 >= Math.min(frame.width, frame.height)) {
+      failures.push(`${prefix} material ${name}.slice ${material.slice} is too large for frame ${frame.width}x${frame.height}`);
+    }
+  }
+}
+
 function validateFixedAssetGeometry(prefix, kit) {
   validateDeclaredAssetSize(prefix, 'assets.chassis', kit.assets?.chassis, kit.size);
 
@@ -316,9 +351,19 @@ async function validateAsset(kitDir, prefix, label, asset) {
     return;
   }
 
-  const assetPath = asset.sourceProfile
+  if (!isRelativePngPath(asset.path)) {
+    failures.push(`${prefix} ${label}.path must be a relative PNG path`);
+    return;
+  }
+
+  const assetPath = path.resolve(asset.sourceProfile
     ? path.join(fixedDir, asset.sourceProfile, asset.path)
-    : path.join(kitDir, asset.path);
+    : path.join(kitDir, asset.path));
+  if (!containsPath(rootDir, assetPath)) {
+    failures.push(`${prefix} ${label}.path must stay inside ${path.relative(process.cwd(), rootDir)}`);
+    return;
+  }
+
   let png;
   try {
     png = await readPngHeader(assetPath);

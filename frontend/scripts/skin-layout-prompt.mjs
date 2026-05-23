@@ -38,6 +38,9 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     'Indicator crop targets:',
     formatRectList(profile.layout.indicators, indicatorNotes(profile.requiredStates)),
     '',
+    'Reusable material assets to deliver as separate PNGs:',
+    formatMaterialList(profile.materials),
+    '',
     'Runtime meter rectangles:',
     formatRectList(profile.layout.fills, meterNotes()),
     '',
@@ -48,6 +51,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     '- Do not bake labels that change at runtime.',
     '- Make button and toggle wells suitable for separate transparent crops in idle, hover, pressed, and disabled states.',
     '- Make status and combat LED wells suitable for separate state sprites.',
+    '- Provide reusable panel, LCD, and button material fill tiles plus matching nine-slice frames; do not stretch decorative details into runtime panels.',
     '- Keep edges crisp. No blur over live content apertures.',
     '- No watermark, no brand logos.',
     '',
@@ -63,6 +67,16 @@ function formatRectList(rects, notes) {
     .map(([name, rect]) => {
       const note = notes[name] ? ` ${notes[name]}` : '';
       return `- ${name}: x=${rect.x} y=${rect.y} w=${rect.width} h=${rect.height}.${note}`;
+    })
+    .join('\n');
+}
+
+function formatMaterialList(materials) {
+  return Object.entries(materials ?? {})
+    .map(([name, material]) => {
+      const fill = material.fill;
+      const frame = material.frame;
+      return `- ${name}: ${fill.path} ${fill.width}x${fill.height} tile, ${frame.path} ${frame.width}x${frame.height} nine-slice frame, slice=${material.slice}.`;
     })
     .join('\n');
 }

@@ -141,7 +141,7 @@ by the chassis without baking in the fill value.
 
 ## Skin Kit Files
 
-Each generated skin profile directory must provide:
+Each generated skin profile directory must provide or explicitly reference:
 
 ```text
 chassis.png
@@ -187,6 +187,12 @@ status-error.png
 status-offline.png
 led-on.png
 led-off.png
+panel-fill-tile.png
+panel-frame-9slice.png
+lcd-fill-tile.png
+lcd-frame-9slice.png
+button-fill-tile.png
+button-frame-9slice.png
 skin-kit.json
 ```
 
@@ -203,11 +209,19 @@ skin-kit.json
 - `layout.fills.playerHp`, `layout.fills.enemyHp`, and
   `layout.fills.playerStats`
 - `assets.chassis.path`
+- `assets.materials.panel`, `assets.materials.lcd`, and
+  `assets.materials.button`, each with `fill.path`, `frame.path`, and `slice`
 - `assets.buttons.<id>.prefix` for every button/toggle
 
 Runtime widget names are stable API. New skins may change art style, palette,
 and metadata, but should not rename widgets or change the v1 rectangles unless
 we intentionally create `Skin Layout Contract v2`.
+
+Material assets are part of the skin kit rather than CSS. The `*-fill-tile.png`
+files are repeat-safe 96x96 textures. The `*-frame-9slice.png` files are 48x48
+transparent frames with the declared slice inset. Production skins can keep
+material PNGs beside the manifest or reference family-shared material files, but
+the manifest must make that choice explicit.
 
 ## Prompt Generator
 
@@ -266,6 +280,9 @@ The scaffold crop plan assumes a single full source artboard:
 - Button idle crops generate `hover`, `pressed`, and `disabled` variants.
 - `status-ready.png` generates `thinking`, `error`, and `offline` variants.
 - `led-off.png` generates `led-on.png`.
+- Material fill tiles and nine-slice frames are separate required PNGs. Keep
+  them repeat-safe and place them beside the generated skin-kit manifest before
+  promotion.
 
 For cleaned/generated skins, individual crops may declare `source` to use a
 different artboard from `build.source`. This lets a skin keep a clean chassis
@@ -300,6 +317,8 @@ Hard rules:
 - Make button and toggle wells suitable for separate transparent crops in idle,
   hover, pressed, and disabled states.
 - Make status and combat LED wells suitable for separate state sprites.
+- Provide separate repeat-safe material tiles and transparent nine-slice frames
+  for panel, LCD, and button surfaces.
 - Keep edges crisp. No blur over live content apertures.
 - No watermark, no brand logos.
 ```

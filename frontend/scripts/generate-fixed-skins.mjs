@@ -16,8 +16,27 @@ const skinRegions = {
   endState: { x: 38, y: 360, width: 314, height: 292 }
 };
 
+const sharedMaterialAssets = {
+  panel: {
+    fill: { path: '../../assets/panel-fill-tile.png', width: 96, height: 96 },
+    frame: { path: '../../assets/panel-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 14
+  },
+  lcd: {
+    fill: { path: '../../assets/lcd-fill-tile.png', width: 96, height: 96 },
+    frame: { path: '../../assets/lcd-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 13
+  },
+  button: {
+    fill: { path: '../../assets/button-fill-tile.png', width: 96, height: 96 },
+    frame: { path: '../../assets/button-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 13
+  }
+};
+
 const skinAssets = {
   chassis: { path: 'chassis.png', width: 390, height: 844 },
+  materials: sharedMaterialAssets,
   buttons: {
     attack: { prefix: 'attack', width: 152, height: 66, alpha: true },
     run: { prefix: 'run', width: 152, height: 66, alpha: true },
@@ -73,6 +92,7 @@ const compactSkinRegions = {
 function compactSkinAssets(sourceProfile = 'reference-mobile-v3') {
   return {
     chassis: { path: 'chassis.png', width: 390, height: 667 },
+    materials: sharedMaterialAssets,
     buttons: {
       attack: { prefix: 'attack', sourceProfile, width: 152, height: 66, alpha: true },
       run: { prefix: 'run', sourceProfile, width: 152, height: 66, alpha: true },

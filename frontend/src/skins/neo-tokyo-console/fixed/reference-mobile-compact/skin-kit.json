@@ -95,6 +95,50 @@
       "width": 390,
       "height": 667
     },
+    "materials": {
+      "panel": {
+        "fill": {
+          "path": "../../assets/panel-fill-tile.png",
+          "width": 96,
+          "height": 96
+        },
+        "frame": {
+          "path": "../../assets/panel-frame-9slice.png",
+          "width": 48,
+          "height": 48,
+          "alpha": true
+        },
+        "slice": 14
+      },
+      "lcd": {
+        "fill": {
+          "path": "../../assets/lcd-fill-tile.png",
+          "width": 96,
+          "height": 96
+        },
+        "frame": {
+          "path": "../../assets/lcd-frame-9slice.png",
+          "width": 48,
+          "height": 48,
+          "alpha": true
+        },
+        "slice": 13
+      },
+      "button": {
+        "fill": {
+          "path": "../../assets/button-fill-tile.png",
+          "width": 96,
+          "height": 96
+        },
+        "frame": {
+          "path": "../../assets/button-frame-9slice.png",
+          "width": 48,
+          "height": 48,
+          "alpha": true
+        },
+        "slice": 13
+      }
+    },
     "buttons": {
       "attack": {
         "prefix": "attack",

@@ -57,6 +57,8 @@ Hard rules:
   hover, pressed, and disabled states.
 - Include a restart button treatment that can be cropped into idle, hover,
   pressed, and disabled sprites.
+- Also deliver reusable material assets: repeat-safe 96x96 fill tiles and 48x48
+  transparent nine-slice frames for panel, LCD, and button surfaces.
 - Keep edges crisp; no blur over content apertures.
 - No watermark, no brand logos.
 ```
@@ -86,6 +88,8 @@ pnpm -C frontend validate:skins
 
 The scaffold crop plan creates the fixed runtime assets from the source
 artboard: full chassis, button state variants, status indicator states, and LED
-states. Only promote a generated artboard into the default mobile profile after
-the diagnostics and visual inspection screenshots look cleaner than
-`gold-mobile`.
+states. Add the six material PNGs declared by the scaffold beside the manifest
+before promotion; those materials are rendered by Phaser as tiled sprites and
+nine-slice frames, not CSS. Only promote a generated artboard into the default
+mobile profile after the diagnostics and visual inspection screenshots look
+cleaner than `gold-mobile`.
