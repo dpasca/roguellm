@@ -4,6 +4,11 @@ Use this when generating the next production artboard from the gold mobile
 layout. The intended output is a source artboard for a skin kit, not a screenshot
 of gameplay.
 
+Before using this prompt, choose the `mobilePortrait` or `mobileCompact`
+geometry from `SKIN_LAYOUT_CONTRACT_V1.md` and paste the exact live-region and
+crop-target tables into the prompt. Do not invent alternate coordinates during
+generation; create a new layout contract version first if the geometry changes.
+
 ```text
 Create a polished mobile cyberdeck game UI skin kit artboard.
 

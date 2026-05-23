@@ -4,6 +4,11 @@ This is the mobile-first contract for fixed, Winamp-style RogueLLM skins. Deskto
 skins should become separate profiles later, using the same widget names with
 different coordinates and assets.
 
+For exact v1 artboard coordinates, crop targets, required state assets, and the
+AI-generation handoff checklist, see `SKIN_LAYOUT_CONTRACT_V1.md`. This
+blueprint explains intent; the layout contract is the source of truth for skin
+geometry.
+
 ## Goals
 
 - Build one polished `mobilePortrait` profile before expanding to desktop.
