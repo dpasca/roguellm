@@ -624,6 +624,13 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen ? 'inventory open' : null,
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
+      metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
+      metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
+      metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
+      metrics.mapIcons?.item || metrics.mapIcons?.enemy
+        ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
+        : null,
+      metrics.inCombat && metrics.combat?.enemyBadgeStyled ? 'enemy badge' : null,
       metrics.screenshot ? `mean ${metrics.screenshot.mean.toFixed(3)}` : null,
       metrics.screenshot ? `contrast ${metrics.screenshot.standardDeviation.toFixed(3)}` : null,
       metrics.screenshot ? `sat ${metrics.screenshot.saturationMean.toFixed(3)}` : null,
