@@ -732,6 +732,15 @@ function compactPremiumChassisSvg(variant) {
     <rect x="69" y="519" width="68" height="20" rx="8" fill="#ffffff" opacity="0.035"/>
     <rect x="78" y="552" width="50" height="74" rx="7" fill="#08100f" stroke="#3c4b45"/>
     <rect x="86" y="562" width="34" height="50" rx="5" fill="#020504" stroke="#1b2823"/>
+    <g opacity="0.76" filter="url(#premiumGlow)">
+      <path d="M102 539V644M50 593H154" stroke="${variant.accent}" stroke-width="2.2" stroke-linecap="round" opacity="0.28"/>
+      <circle cx="102" cy="594" r="18" fill="#020504" stroke="${variant.accentSoft}" stroke-width="1.2" opacity="0.42"/>
+      <circle cx="102" cy="594" r="5" fill="${variant.secondary}" opacity="0.66"/>
+      <rect x="71" y="519" width="62" height="60" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.22"/>
+      <rect x="71" y="607" width="62" height="54" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
+      <rect x="24" y="563" width="60" height="58" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
+      <rect x="120" y="563" width="60" height="58" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
+    </g>
     <rect x="196" y="518" width="168" height="68" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
     <rect x="200" y="522" width="160" height="60" rx="8" fill="none" stroke="#1c2b25"/>
     <rect x="204" y="526" width="152" height="10" rx="5" fill="#ffffff" opacity="0.035"/>
@@ -837,7 +846,7 @@ function premiumActionButtonSvg(label, width, height, state, palette) {
       <rect x="18" y="15" width="${width - 36}" height="8" rx="4" fill="none" stroke="${light}" stroke-width="1.3" opacity="${style.glow}"/>
       <line x1="22" y1="${height - 20}" x2="${width - 22}" y2="${height - 20}" stroke="${main}" stroke-width="4" opacity="${style.glow * 0.5}"/>
       <circle cx="${width - 12}" cy="10" r="4" fill="${state === 'disabled' ? '#38413f' : led}" stroke="#160302" stroke-width="2" filter="url(#buttonGlow)"/>
-      <text x="${width / 2}" y="${height / 2 + 8}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" letter-spacing="1" fill="${text}" stroke="${dark}" stroke-width="1.2" filter="url(#buttonGlow)">${label}</text>
+      <text x="${width / 2}" y="${height / 2 + 8}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" fill="${text}" stroke="${dark}" stroke-width="1.2" filter="url(#buttonGlow)">${label}</text>
     </g>
   `);
 }
