@@ -20,6 +20,7 @@ type FixedAssetProfile =
   | 'gold-mobile-compact'
   | 'amber-mobile-compact'
   | 'terminal-green-mobile-compact'
+  | 'obsidian-rain-proto'
   | 'gold-mobile'
   | 'amber-mobile'
   | 'signal-noir-mobile';
@@ -113,7 +114,10 @@ type FixedSkinKit = {
   };
 };
 
-const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.png', {
+const fixedAssetUrls = import.meta.glob<string>([
+  './neo-tokyo-console/fixed/**/*.png',
+  '!./neo-tokyo-console/fixed/**/source-*.png'
+], {
   eager: true,
   query: '?url',
   import: 'default'
@@ -371,6 +375,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('gold-mobile-compact'),
   createManifestProfile('amber-mobile-compact'),
   createManifestProfile('terminal-green-mobile-compact'),
+  createManifestProfile('obsidian-rain-proto'),
   createManifestProfile('reference-mobile-v3'),
   createManifestProfile('signal-noir-mobile'),
   createManifestProfile('gold-mobile'),

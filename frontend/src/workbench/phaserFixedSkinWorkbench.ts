@@ -14,8 +14,8 @@ import type {
   GameSkin
 } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
-import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
-import { selectFixedSkinProfile } from './fixedSkinWorkbench';
+import { selectFixedSkinProfile } from './fixedSkinProfileSelection';
+import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './workbenchFixtures';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type PhaserFixedScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
@@ -297,8 +297,6 @@ export function createPhaserFixedSkinRuntime(
     document.body.dataset.phaserRuntimeState = hasLiveState ? 'live' : 'booting';
     document.body.dataset.phaserStatus = connectionStatus;
     applyPhaserStateDatasets(currentState, inventoryOpen, actionPending);
-    document.body.classList.toggle('in-combat', currentState.in_combat);
-    document.body.classList.toggle('game-ended', isTerminalState(currentState));
     scene.renderWorkbenchState({
       state: currentState,
       logs,
@@ -465,8 +463,6 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
   function renderScene(): void {
     document.body.dataset.phaserDrawer = logOpen ? 'log' : inventoryOpen ? 'inventory' : 'closed';
     applyPhaserStateDatasets(state, inventoryOpen, actionPending);
-    document.body.classList.toggle('in-combat', state.in_combat);
-    document.body.classList.toggle('game-ended', isTerminalState(state));
     scene.renderWorkbenchState({
       state,
       logs,

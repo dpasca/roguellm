@@ -72,7 +72,7 @@ function buildManifest(id, kind, selectedProfile, options) {
         width: selectedProfile.size.width,
         height: selectedProfile.size.height
       },
-      materials: cloneMaterialMap(selectedProfile.materials),
+      materials: cloneMaterialMap(selectedProfile.materials, options['material-render-mode']),
       buttons: buttonAssets,
       indicators: {
         status: {
@@ -213,14 +213,16 @@ function cloneRectMap(rects) {
   );
 }
 
-function cloneMaterialMap(materials) {
+function cloneMaterialMap(materials, renderMode) {
+  const normalizedRenderMode = renderMode === 'tint' ? 'tinted' : renderMode;
   return Object.fromEntries(
     Object.entries(materials ?? {}).map(([name, material]) => [
       name,
       {
         fill: { ...material.fill },
         frame: { ...material.frame },
-        slice: material.slice
+        slice: material.slice,
+        ...(normalizedRenderMode ? { renderMode: normalizedRenderMode } : {})
       }
     ])
   );
@@ -385,6 +387,7 @@ function printUsage() {
     '  --source <path>             Widget/source artboard path relative to the skin dir.',
     '  --chassis-source <path>     Optional clean chassis artboard for the chassis crop.',
     '  --materials-source <path>   Optional material sheet for panel/LCD/button tiles and frames.',
+    '  --material-render-mode <source|tinted>  Material color mode for generated manifests.',
     '  --out <path>                Write skin-kit.json to a file or directory instead of stdout.'
   ].join('\n'));
 }

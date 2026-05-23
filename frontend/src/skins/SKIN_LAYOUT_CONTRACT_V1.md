@@ -341,6 +341,19 @@ PNG sources must match the selected profile dimensions.
 
 ## Manifest Scaffold Generator
 
+If you need an exact-size source artboard before using external image
+generation, create a deterministic prototype source first:
+
+```bash
+pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact \
+  --theme obsidian-rain \
+  --out ../_artifacts/skin-kits/rain-city-deck
+```
+
+This writes `source-chassis.png`, `source-widgets.png`, and
+`source-materials.png`. Treat those as a contract-aligned baseline or as paint
+overs for image generation; they are not a substitute for final art review.
+
 After generating a source artboard, use the scaffold generator to create the
 matching `skin-kit.json` from the same contract profile:
 
@@ -353,6 +366,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
   --materials-source source-materials.png \
+  --material-render-mode source \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 

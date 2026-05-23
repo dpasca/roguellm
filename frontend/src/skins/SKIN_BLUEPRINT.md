@@ -350,8 +350,9 @@ Browser styling is outside the fixed-skin UI contract. The Phaser path renders
 the game UI on canvas from profile geometry and PNG assets; no stylesheet may
 place, skin, size, or compose fixed-skin game widgets. The only tolerated style
 mutation in the Phaser path is shell-level viewport/canvas host sizing. Phaser
-records the active skin as `data-skin` only and must not apply `skin-*` CSS
-classes. The old DOM renderer remains a legacy comparison/debug path only.
+records the active skin and runtime state through `data-*` diagnostics only and
+must not apply CSS skin/state classes. The old DOM renderer remains a legacy
+comparison/debug path only.
 
 Fixed skin profiles own their visual material assets through `skin-kit.json`.
 Reusable panel, LCD, and button materials are declared as profile data (`fill`,

@@ -34,6 +34,10 @@ const phaserFixedWorkbenchProfileUrl = (profile, extraParams = {}) =>
 const defaultFixedProfile = 'reference-mobile-v3';
 const compactFixedProfile = 'reference-mobile-compact';
 const desktopFixedProfile = 'desktop-wide';
+const sourceMaterialPhaserProfiles = new Set([
+  'terminal-green-mobile-compact',
+  'obsidian-rain-proto'
+]);
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom' });
@@ -301,6 +305,27 @@ const baseScenarios = [
     mode: 'phaser-fixed-workbench-press-run',
     url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
     expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-obsidian-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('obsidian-rain-proto'),
+    expectedFixedProfile: 'obsidian-rain-proto'
+  },
+  {
+    name: 'mobile-short-phaser-obsidian-fixed-workbench-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-log',
+    url: phaserFixedWorkbenchProfileUrl('obsidian-rain-proto'),
+    expectedFixedProfile: 'obsidian-rain-proto'
+  },
+  {
+    name: 'mobile-short-phaser-obsidian-fixed-workbench-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-inventory',
+    url: phaserFixedWorkbenchProfileUrl('obsidian-rain-proto'),
+    expectedFixedProfile: 'obsidian-rain-proto'
   },
   {
     name: 'mobile-short-themed-amber-fixed-workbench',
@@ -2454,8 +2479,12 @@ async function collectMetrics(page) {
       cssResourceCount: cssResourceNames.length,
       cssResourceNames,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-      inCombat: document.body.classList.contains('in-combat'),
-      gameEnded: document.body.classList.contains('game-ended'),
+      inCombat: document.body.dataset.fixedRenderer === 'phaser'
+        ? document.body.dataset.phaserInCombat === '1'
+        : document.body.classList.contains('in-combat'),
+      gameEnded: document.body.dataset.fixedRenderer === 'phaser'
+        ? document.body.dataset.phaserTerminalState === 'victory' || document.body.dataset.phaserTerminalState === 'defeat'
+        : document.body.classList.contains('game-ended'),
       logOpen: document.body.classList.contains('log-open'),
       inventoryOpen: document.body.classList.contains('fixed-inventory-open'),
       statusText: document.getElementById('connection-status')?.textContent?.trim() ?? '',
@@ -2801,7 +2830,7 @@ function validateNoPhaserDomStyles(metrics, failures, context) {
 }
 
 function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
-  if (scenario.expectedFixedProfile !== 'terminal-green-mobile-compact') {
+  if (!sourceMaterialPhaserProfiles.has(scenario.expectedFixedProfile)) {
     return;
   }
 
@@ -2817,7 +2846,7 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
 
   if (!Number.isFinite(metrics.phaserSourceMaterialPanels) || metrics.phaserSourceMaterialPanels < minimumPanelCount) {
     failures.push(
-      `${context} expected source-authored material panels for terminal-green-mobile-compact, ` +
+      `${context} expected source-authored material panels for ${scenario.expectedFixedProfile}, ` +
       `got ${metrics.phaserSourceMaterialPanels ?? 'none'}`
     );
   }
@@ -2825,7 +2854,7 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
   for (const requiredKind of requiredKinds) {
     if (!sourceKinds.has(requiredKind)) {
       failures.push(
-        `${context} expected source-authored ${requiredKind} material for terminal-green-mobile-compact, ` +
+        `${context} expected source-authored ${requiredKind} material for ${scenario.expectedFixedProfile}, ` +
         `got ${metrics.phaserSourceMaterialKinds || 'none'}`
       );
     }

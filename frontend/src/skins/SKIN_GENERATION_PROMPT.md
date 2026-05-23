@@ -14,6 +14,7 @@ generation; create a new layout contract version first if the geometry changes.
 Preferred handoff command:
 
 ```bash
+pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact --theme obsidian-rain --out ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
 pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
@@ -77,6 +78,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
   --materials-source source-materials.png \
+  --material-render-mode source \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 

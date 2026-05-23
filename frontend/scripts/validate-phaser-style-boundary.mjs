@@ -59,6 +59,9 @@ async function validatePhaserRendererSourceGraph() {
     }
     visited.add(filePath);
 
+    const source = await fs.readFile(filePath, 'utf8');
+    validateNoPhaserBodyClasses(filePath, source);
+
     const imports = await collectImports(filePath);
     for (const entry of imports) {
       if (isCssSpecifier(entry.specifier)) {
@@ -74,6 +77,16 @@ async function validatePhaserRendererSourceGraph() {
       }
     }
   }
+}
+
+function validateNoPhaserBodyClasses(filePath, source) {
+  if (!source.includes('document.body.classList') && !source.includes('document.body.className')) {
+    return;
+  }
+
+  failures.push(
+    `${formatSource(filePath)} mutates body classes; Phaser fixed-skin state must stay in data-* diagnostics, not CSS hooks`
+  );
 }
 
 async function validateBuiltCssBoundary() {
