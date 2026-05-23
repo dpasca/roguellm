@@ -41,7 +41,8 @@ function buildManifest(id, kind, selectedProfile, options) {
           prefix: buttonPrefix(name),
           width: rect.width,
           height: rect.height,
-          alpha: true
+          alpha: true,
+          ...buttonMetadata(name)
         }
       ])
   );
@@ -195,6 +196,14 @@ function buttonAlphaRadius(name) {
   }
 
   return 12;
+}
+
+function buttonMetadata(name) {
+  return {
+    attack: { icon: 'fa-solid fa-bolt' },
+    run: { icon: 'fa-solid fa-person-running' },
+    restart: { icon: 'fa-solid fa-rotate-right' }
+  }[name] ?? {};
 }
 
 function cloneRectMap(rects) {

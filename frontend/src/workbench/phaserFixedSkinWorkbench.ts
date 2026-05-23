@@ -63,6 +63,7 @@ const fontAwesomeFamily = 'Font Awesome 7 Free';
 const fontAwesomeStyleClasses = new Set(['fa', 'fas', 'far', 'fab', 'fa-solid', 'fa-regular', 'fa-brands']);
 const fontAwesomeGlyphs: Record<string, string> = {
   'ban': '\uf05e',
+  'bolt': '\uf0e7',
   'bowl-food': '\ue4c6',
   'box': '\uf466',
   'briefcase': '\uf0b1',
@@ -126,18 +127,18 @@ function loadPhaserFontAwesome(): Promise<void> {
   }
 
   fontAwesomeLoadPromise = (async () => {
-    if (document.fonts.check(`900 16px "${fontAwesomeFamily}"`)) {
+    if (document.fonts.check(`16px "${fontAwesomeFamily}"`)) {
       document.body.dataset.phaserFontAwesomeReady = '1';
       return;
     }
 
     const fontFace = new FontFace(fontAwesomeFamily, `url(${faSolidFontUrl})`, {
       style: 'normal',
-      weight: '900'
+      weight: 'normal'
     });
     const loadedFace = await fontFace.load();
     document.fonts.add(loadedFace);
-    await document.fonts.load(`900 16px "${fontAwesomeFamily}"`);
+    await document.fonts.load(`16px "${fontAwesomeFamily}"`);
     document.body.dataset.phaserFontAwesomeReady = '1';
   })().catch((error: unknown) => {
     document.body.dataset.phaserFontAwesomeReady = '0';
@@ -1107,6 +1108,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.fillCircle(rect.x + rect.width - 9, rect.y + 8, 4);
       graphics.fillStyle(0xffffff, disabled ? 0.08 : 0.28);
       graphics.fillCircle(rect.x + rect.width - 10, rect.y + 7, 1.5);
+      if (button.icon) {
+        this.drawButtonIconMark(button.icon, rect.x + 31, rect.y + rect.height * 0.55, 26, accent, disabled);
+        this.controlDetailsDrawn += 2;
+      }
       this.controlDetailsDrawn += 6;
       return;
     }
@@ -1129,6 +1134,77 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.lineBetween(rect.x + 8, rect.y + rect.height - 7, rect.x + rect.width - 8, rect.y + rect.height - 7);
       this.controlDetailsDrawn += 2;
     }
+  }
+
+  private drawButtonIconMark(icon: string, x: number, y: number, size: number, tint: number, disabled: boolean): void {
+    const alpha = disabled ? 0.34 : 0.88;
+    if (icon.includes('bolt')) {
+      this.drawBoltMark(x, y, size, tint, alpha);
+      return;
+    }
+
+    if (icon.includes('person-running')) {
+      this.drawRunMark(x, y, size, tint, alpha);
+      return;
+    }
+
+    if (icon.includes('rotate-right')) {
+      this.drawRotateMark(x, y, size, tint, alpha);
+      return;
+    }
+
+    this.addFontAwesomeIcon(icon, '*', x, y, size, disabled ? '#7b837e' : this.theme.titleText)
+      .setOrigin(0.5, 0.5)
+      .setAlpha(alpha);
+  }
+
+  private drawBoltMark(x: number, y: number, size: number, tint: number, alpha: number): void {
+    const graphics = this.add.graphics();
+    const half = size * 0.5;
+    graphics.fillStyle(tint, alpha);
+    graphics.beginPath();
+    graphics.moveTo(x + half * 0.08, y - half);
+    graphics.lineTo(x - half * 0.58, y + half * 0.08);
+    graphics.lineTo(x - half * 0.08, y + half * 0.08);
+    graphics.lineTo(x - half * 0.34, y + half);
+    graphics.lineTo(x + half * 0.62, y - half * 0.2);
+    graphics.lineTo(x + half * 0.12, y - half * 0.2);
+    graphics.closePath();
+    graphics.fillPath();
+    graphics.lineStyle(1, 0xffffff, alpha * 0.22);
+    graphics.lineBetween(x - half * 0.28, y + half * 0.02, x + half * 0.08, y - half * 0.42);
+  }
+
+  private drawRunMark(x: number, y: number, size: number, tint: number, alpha: number): void {
+    const graphics = this.add.graphics();
+    const scale = size / 26;
+    graphics.lineStyle(Math.max(2, 3 * scale), tint, alpha);
+    graphics.fillStyle(tint, alpha);
+    graphics.fillCircle(x + 2 * scale, y - 10 * scale, 4 * scale);
+    graphics.lineBetween(x, y - 5 * scale, x - 4 * scale, y + 3 * scale);
+    graphics.lineBetween(x - 1 * scale, y - 3 * scale, x + 8 * scale, y - 1 * scale);
+    graphics.lineBetween(x - 3 * scale, y + 2 * scale, x - 11 * scale, y + 8 * scale);
+    graphics.lineBetween(x - 3 * scale, y + 2 * scale, x + 7 * scale, y + 10 * scale);
+    graphics.lineStyle(1, 0xffffff, alpha * 0.18);
+    graphics.lineBetween(x + 5 * scale, y - 2 * scale, x + 10 * scale, y - 3 * scale);
+  }
+
+  private drawRotateMark(x: number, y: number, size: number, tint: number, alpha: number): void {
+    const graphics = this.add.graphics();
+    const radius = size * 0.34;
+    graphics.lineStyle(Math.max(2, Math.floor(size * 0.12)), tint, alpha);
+    graphics.beginPath();
+    graphics.arc(x, y, radius, Math.PI * 0.1, Math.PI * 1.55, false);
+    graphics.strokePath();
+    graphics.fillStyle(tint, alpha);
+    graphics.fillTriangle(
+      x + radius * 0.9,
+      y - radius * 0.18,
+      x + radius * 1.24,
+      y - radius * 0.78,
+      x + radius * 0.35,
+      y - radius * 0.78
+    );
   }
 
   private fillDirectionTriangle(
@@ -1530,7 +1606,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       fontFamily: glyph ? `"${fontAwesomeFamily}"` : 'monospace',
       fontSize: `${fontSize}px`,
       color,
-      fontStyle: glyph ? '900' : 'bold',
+      fontStyle: glyph ? 'normal' : 'bold',
       align: 'center'
     });
   }

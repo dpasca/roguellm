@@ -244,6 +244,10 @@ Button assets may include their own label text when the manifest sets
 `hideLabel: true`. Otherwise, Font Awesome icons and Phaser text labels are
 rendered on top by the app.
 
+Action buttons may declare `icon` in the manifest. The Phaser renderer maps
+known action icons to crisp canvas marks so small mobile buttons do not depend
+on DOM icon styling.
+
 Prefer alpha PNGs for controls. Avoid rectangular screenshot crops unless the
 entire rectangle is an intentional physical widget.
 

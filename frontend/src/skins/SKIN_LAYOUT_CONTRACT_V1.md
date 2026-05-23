@@ -214,6 +214,9 @@ skin-kit.json
 - `assets.materials.panel`, `assets.materials.lcd`, and
   `assets.materials.button`, each with `fill.path`, `frame.path`, and `slice`
 - `assets.buttons.<id>.prefix` for every button/toggle
+- `assets.buttons.attack.icon`, `assets.buttons.run.icon`, and
+  `assets.buttons.restart.icon` should name the manifest-driven action marks
+  rendered by Phaser on canvas
 
 Runtime widget names are stable API. New skins may change art style, palette,
 and metadata, but should not rename widgets or change the v1 rectangles unless

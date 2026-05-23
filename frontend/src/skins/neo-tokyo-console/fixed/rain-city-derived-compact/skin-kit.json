@@ -94,19 +94,22 @@
         "prefix": "attack",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-bolt"
       },
       "run": {
         "prefix": "run",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-person-running"
       },
       "restart": {
         "prefix": "restart",
         "width": 226,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-rotate-right"
       },
       "log": {
         "prefix": "log",

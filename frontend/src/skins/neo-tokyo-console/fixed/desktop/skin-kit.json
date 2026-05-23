@@ -89,7 +89,7 @@
         "width": 240,
         "height": 58,
         "alpha": true,
-        "icon": "fa-solid fa-hand-fist",
+        "icon": "fa-solid fa-bolt",
         "hideLabel": false
       },
       "run": {

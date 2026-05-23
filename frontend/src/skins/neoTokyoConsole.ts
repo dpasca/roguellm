@@ -391,7 +391,7 @@ const fixedProfiles: FixedSkinProfile[] = [
       attack: {
         rect: { x: 176, y: 666, width: 186, height: 64 },
         label: 'Attack',
-        icon: 'fa-solid fa-hand-fist',
+        icon: 'fa-solid fa-bolt',
         states: fixedButton('mobile', 'attack')
       },
       run: {

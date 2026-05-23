@@ -160,21 +160,24 @@
         "sourceProfile": "amber-mobile",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-bolt"
       },
       "run": {
         "prefix": "run",
         "sourceProfile": "amber-mobile",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-person-running"
       },
       "restart": {
         "prefix": "restart",
         "sourceProfile": "amber-mobile",
         "width": 226,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-rotate-right"
       },
       "log": {
         "prefix": "log",

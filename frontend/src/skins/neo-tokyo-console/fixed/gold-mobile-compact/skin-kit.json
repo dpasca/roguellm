@@ -161,21 +161,24 @@
         "sourceProfile": "gold-mobile",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-bolt"
       },
       "run": {
         "prefix": "run",
         "sourceProfile": "gold-mobile",
         "width": 152,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-person-running"
       },
       "restart": {
         "prefix": "restart",
         "sourceProfile": "gold-mobile",
         "width": 226,
         "height": 66,
-        "alpha": true
+        "alpha": true,
+        "icon": "fa-solid fa-rotate-right"
       },
       "log": {
         "prefix": "log",
