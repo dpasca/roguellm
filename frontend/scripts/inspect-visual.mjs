@@ -27,6 +27,7 @@ const withQueryEntries = (url, entries) => {
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const defaultFixedProfile = 'reference-mobile-v3';
+const compactFixedProfile = 'reference-mobile-compact';
 const desktopFixedProfile = 'desktop-wide';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
@@ -132,6 +133,13 @@ const baseScenarios = [
     mode: 'fixed-runtime-ready',
     url: fixedRuntimeUrl,
     expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-default-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchUrl,
+    expectedFixedProfile: compactFixedProfile
   },
   {
     name: 'mobile-short-fixed-runtime-log',
@@ -563,6 +571,7 @@ function buildHtmlReport(summary) {
     const chips = [
       metrics.fixedProfile ? `profile ${metrics.fixedProfile}` : null,
       metrics.fixedProfileRole ? `role ${metrics.fixedProfileRole}` : null,
+      metrics.fixedProfileKind ? `kind ${metrics.fixedProfileKind}` : null,
       Number.isFinite(metrics.fixedStageScale) ? `scale ${metrics.fixedStageScale.toFixed(3)}` : null,
       metrics.ui ? `ui ${metrics.ui}` : null,
       metrics.workbench ? `bench ${metrics.workbench}` : null,
@@ -745,14 +754,19 @@ async function loadProductionMobileProfiles(dir) {
       continue;
     }
 
-    if (kit.kind !== 'mobilePortrait' || (kit.meta?.role !== 'default' && kit.meta?.role !== 'variant')) {
+    if (
+      (kit.kind !== 'mobilePortrait' && kit.kind !== 'mobileCompact') ||
+      (kit.meta?.role !== 'default' && kit.meta?.role !== 'variant')
+    ) {
       continue;
     }
 
     profiles.push({
       id: kit.id ?? entry.name,
+      kind: kit.kind,
       role: kit.meta.role,
-      defaultPriority: kit.meta.defaultPriority ?? 0
+      defaultPriority: kit.meta.defaultPriority ?? 0,
+      size: kit.size
     });
   }
 
@@ -769,7 +783,7 @@ function withProductionProfileCoverage(base, profiles) {
   );
 
   for (const profile of profiles) {
-    for (const scenario of productionProfileScenarios(profile.id)) {
+    for (const scenario of productionProfileScenarios(profile)) {
       const key = scenarioKey(scenario);
       if (existingCoverage.has(key)) {
         continue;
@@ -784,70 +798,74 @@ function withProductionProfileCoverage(base, profiles) {
 }
 
 function productionProfileScenarios(profile) {
-  const url = fixedWorkbenchProfileUrl(profile);
+  const url = fixedWorkbenchProfileUrl(profile.id);
+  const viewport = profile.kind === 'mobileCompact'
+    ? { width: profile.size?.width ?? 390, height: profile.size?.height ?? 667 }
+    : { width: 390, height: 844 };
+  const shortViewport = { width: 390, height: 667 };
   return [
     {
-      name: `mobile-${profile}-production-movement`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-movement`,
+      viewport,
       mode: 'fixed-workbench-movement',
       url: `${url}&scenario=movement`,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-log`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-log`,
+      viewport,
       mode: 'fixed-workbench-log',
       url,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-short-log`,
-      viewport: { width: 390, height: 667 },
+      name: `mobile-${profile.id}-production-short-log`,
+      viewport: shortViewport,
       mode: 'fixed-workbench-log',
       url,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-inventory`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-inventory`,
+      viewport,
       mode: 'fixed-workbench-inventory',
       url,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-short-inventory`,
-      viewport: { width: 390, height: 667 },
+      name: `mobile-${profile.id}-production-short-inventory`,
+      viewport: shortViewport,
       mode: 'fixed-workbench-inventory',
       url,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-defeat`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-defeat`,
+      viewport,
       mode: 'fixed-workbench-defeat',
       url: `${url}&scenario=defeat`,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-victory`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-victory`,
+      viewport,
       mode: 'fixed-workbench-victory',
       url: `${url}&scenario=victory`,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-restart`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-restart`,
+      viewport,
       mode: 'fixed-workbench-restart',
       url: `${url}&scenario=defeat`,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     },
     {
-      name: `mobile-${profile}-production-diagnostics`,
-      viewport: { width: 390, height: 844 },
+      name: `mobile-${profile.id}-production-diagnostics`,
+      viewport,
       mode: 'fixed-workbench-diagnostics',
       url: `${url}&scenario=diagnostics`,
-      expectedFixedProfile: profile
+      expectedFixedProfile: profile.id
     }
   ];
 }
@@ -1415,6 +1433,7 @@ async function collectMetrics(page) {
       restartButton: '#restart',
       endStateOverlay: '#end-state-overlay',
       endStatePanel: '.fixed-end-state-panel',
+      endStateMessage: '#end-state-message',
       diagnosticsBoard: '.fixed-diagnostics-board'
     };
 
@@ -1526,6 +1545,7 @@ async function collectMetrics(page) {
       ui: document.body.dataset.ui ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
       fixedProfileRole: document.querySelector('.fixed-skin-stage')?.dataset.profileRole ?? null,
+      fixedProfileKind: document.querySelector('.fixed-skin-stage')?.dataset.profileKind ?? null,
       fixedStageScale: Number(document.querySelector('.fixed-skin-stage')?.dataset.scale ?? NaN),
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1616,9 +1636,12 @@ function validateMetrics(scenario, metrics) {
     } else if (isFixedUi) {
       const latestPanel = metrics.rects.latestPanel;
       const latestMessage = metrics.rects.latestMessage;
+      const minLatestHeight = metrics.fixedProfileKind === 'mobileCompact'
+        ? 70
+        : isCompactFixedProfile(metrics.fixedProfile) ? 50 : 78;
       if (!latestPanel || latestPanel.display === 'none' || !latestMessage || latestMessage.display === 'none') {
         failures.push('mobile fixed latest message is not visible');
-      } else if (latestPanel.visibleHeight < scaledFixedThreshold(metrics, isCompactFixedProfile(metrics.fixedProfile) ? 50 : 78)) {
+      } else if (latestPanel.visibleHeight < scaledFixedThreshold(metrics, minLatestHeight)) {
         failures.push(`mobile fixed latest panel is too short: ${latestPanel.visibleHeight}px visible`);
       }
     } else {
@@ -2005,7 +2028,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
       failures.push(`diagnostics board is missing assets: ${metrics.diagnosticAssetCount}`);
     }
     const diagnostics = metrics.rects.diagnosticsBoard;
-    if (!diagnostics || diagnostics.visibleHeight < 240 || diagnostics.visibleWidth < 300) {
+    const minDiagnosticsHeight = metrics.fixedProfileKind === 'mobileCompact' ? 220 : 240;
+    if (!diagnostics || diagnostics.visibleHeight < minDiagnosticsHeight || diagnostics.visibleWidth < 300) {
       failures.push(`diagnostics board is too small: ${diagnostics?.visibleWidth ?? 0}x${diagnostics?.visibleHeight ?? 0}`);
     }
   }
@@ -2131,7 +2155,9 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
 
   const map = metrics.rects.map;
   const minMapWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 300) : 300;
-  const minMapHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 250) : 250;
+  const minMapHeight = isProductionMobileProfile
+    ? scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 220 : 250)
+    : 250;
   if (!map || map.visibleHeight < minMapHeight || map.visibleWidth < minMapWidth) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
@@ -2248,7 +2274,9 @@ function validateFixedRuntimeInventory(metrics, failures) {
   const inventoryToggle = metrics.rects.inventoryToggleButton;
   const desktop = isDesktopFixedProfile(metrics.fixedProfile);
   const minWidth = desktop ? 300 : scaledFixedThreshold(metrics, 300);
-  const minHeight = desktop ? 100 : scaledFixedThreshold(metrics, 260);
+  const minHeight = desktop
+    ? 100
+    : scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 230 : 260);
   const minToggleHeight = desktop ? 24 : scaledFixedThreshold(metrics, 24);
   const minToggleWidth = desktop ? 38 : scaledFixedThreshold(metrics, 38);
 
@@ -2320,15 +2348,23 @@ function validateFixedEndStateScenario(scenario, metrics, failures) {
 
   const overlay = metrics.rects.endStateOverlay;
   const panel = metrics.rects.endStatePanel;
-  if (!overlay || overlay.visibleHeight < 250 || overlay.visibleWidth < 280) {
+  const minTerminalHeight = metrics.fixedProfileKind === 'mobileCompact' ? 230 : 250;
+  if (!overlay || overlay.visibleHeight < minTerminalHeight || overlay.visibleWidth < 280) {
     failures.push(`fixed end-state overlay is too small: ${overlay?.visibleWidth ?? 0}x${overlay?.visibleHeight ?? 0}`);
   }
-  if (!panel || panel.visibleHeight < 250 || panel.visibleWidth < 280) {
+  if (!panel || panel.visibleHeight < minTerminalHeight || panel.visibleWidth < 280) {
     failures.push(`fixed end-state panel is too small: ${panel?.visibleWidth ?? 0}x${panel?.visibleHeight ?? 0}`);
   }
 
   if (!metrics.endStateText || metrics.endStateText.length < 24) {
     failures.push('fixed end-state message is missing or too short');
+  }
+
+  const message = metrics.rects.endStateMessage;
+  if (!message || message.scrollHeight > message.clientHeight + 1) {
+    failures.push(
+      `fixed end-state message is clipped: ${message?.scrollHeight ?? 0}px > ${message?.clientHeight ?? 0}px`
+    );
   }
 
   const restart = metrics.rects.restartButton;
@@ -2374,11 +2410,17 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile map is too dominant: ${map.height}px high`);
   }
 
-  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < scaledFixedThreshold(metrics, 78))) {
+  const compactMobileProfile = metrics.fixedProfileKind === 'mobileCompact';
+  const minLatestHeight = compactMobileProfile ? 70 : 78;
+  const minPlayerHeight = compactMobileProfile ? 46 : 50;
+  const minCombatHeight = compactMobileProfile ? 48 : 56;
+  const minDrawerHeight = compactMobileProfile ? 230 : 260;
+
+  if (!metrics.logOpen && !metrics.inventoryOpen && (!latest || latest.visibleHeight < scaledFixedThreshold(metrics, minLatestHeight))) {
     failures.push(`compact mobile latest area is too small: ${latest?.visibleHeight ?? 0}px visible`);
   }
 
-  if (!player || player.visibleHeight < scaledFixedThreshold(metrics, 50)) {
+  if (!player || player.visibleHeight < scaledFixedThreshold(metrics, minPlayerHeight)) {
     failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
   }
 
@@ -2388,15 +2430,15 @@ function validateCompactMobileLayout(metrics, failures) {
     failures.push(`compact mobile tile stat has too little room: ${tileStatValue?.visibleWidth ?? 0}px visible`);
   }
 
-  if (!combat || combat.visibleHeight < scaledFixedThreshold(metrics, 56)) {
+  if (!combat || combat.visibleHeight < scaledFixedThreshold(metrics, minCombatHeight)) {
     failures.push(`compact mobile combat panel is too small: ${combat?.visibleHeight ?? 0}px visible`);
   }
 
-  if (metrics.logOpen && (!log || log.visibleHeight < scaledFixedThreshold(metrics, 260))) {
+  if (metrics.logOpen && (!log || log.visibleHeight < scaledFixedThreshold(metrics, minDrawerHeight))) {
     failures.push(`compact mobile open log is too small: ${log?.visibleHeight ?? 0}px visible`);
   }
 
-  if (metrics.inventoryOpen && (!inventory || inventory.visibleHeight < scaledFixedThreshold(metrics, 260))) {
+  if (metrics.inventoryOpen && (!inventory || inventory.visibleHeight < scaledFixedThreshold(metrics, minDrawerHeight))) {
     failures.push(`compact mobile open inventory is too small: ${inventory?.visibleHeight ?? 0}px visible`);
   }
 

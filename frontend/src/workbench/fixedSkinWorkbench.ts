@@ -309,6 +309,15 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
     return selectPreferredProfile(profiles, 'desktopWide') ?? profiles[0] ?? null;
   }
 
+  if (window.innerHeight <= 700) {
+    return selectThemedProfile(profiles, 'mobileCompact', params) ??
+      selectPreferredProfile(profiles, 'mobileCompact') ??
+      selectThemedProfile(profiles, 'mobilePortrait', params) ??
+      selectPreferredProfile(profiles, 'mobilePortrait') ??
+      profiles[0] ??
+      null;
+  }
+
   const themed = selectThemedProfile(profiles, 'mobilePortrait', params);
   if (themed) {
     return themed;
@@ -527,6 +536,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
   stage.style.backgroundImage = `url("${profile.background}")`;
   stage.dataset.profile = profile.id;
   stage.dataset.profileRole = profile.meta?.role ?? 'legacy';
+  stage.dataset.profileKind = profile.kind;
 
   stage.append(
     region('game-canvas', 'fixed-map-region', profile.regions.map),

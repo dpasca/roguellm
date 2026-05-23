@@ -22,6 +22,13 @@ const mobilePortrait = {
     fills: ['playerHp', 'enemyHp', 'playerStats']
   }
 };
+const mobileCompact = {
+  size: { width: 390, height: 667 },
+  regions: mobilePortrait.regions,
+  buttons: mobilePortrait.buttons,
+  indicators: mobilePortrait.indicators,
+  layout: mobilePortrait.layout
+};
 
 const failures = [];
 const kitPaths = await findSkinKits(fixedDir);
@@ -67,7 +74,7 @@ async function validateKit(kitPath) {
   const kit = JSON.parse(await fs.readFile(kitPath, 'utf8'));
   const prefix = `${kit.id ?? path.basename(kitDir)}:`;
 
-  if (kit.kind === 'mobilePortrait') {
+  if (kit.kind === 'mobilePortrait' || kit.kind === 'mobileCompact') {
     mobileKitSummaries.push({
       id: kit.id ?? path.basename(kitDir),
       role: kit.meta?.role,
@@ -75,7 +82,7 @@ async function validateKit(kitPath) {
     });
   }
 
-  if (kit.kind !== 'mobilePortrait' && kit.kind !== 'desktopWide') {
+  if (kit.kind !== 'mobilePortrait' && kit.kind !== 'mobileCompact' && kit.kind !== 'desktopWide') {
     failures.push(`${prefix} invalid kind "${kit.kind}"`);
   }
 
@@ -130,43 +137,45 @@ async function validateKit(kitPath) {
 }
 
 function validateRequiredContract(prefix, kit) {
-  if (kit.kind !== 'mobilePortrait') {
+  if (kit.kind !== 'mobilePortrait' && kit.kind !== 'mobileCompact') {
     return;
   }
 
-  if (kit.size?.width !== mobilePortrait.size.width || kit.size?.height !== mobilePortrait.size.height) {
-    failures.push(`${prefix} mobilePortrait size must be ${mobilePortrait.size.width}x${mobilePortrait.size.height}`);
+  const contract = kit.kind === 'mobileCompact' ? mobileCompact : mobilePortrait;
+
+  if (kit.size?.width !== contract.size.width || kit.size?.height !== contract.size.height) {
+    failures.push(`${prefix} ${kit.kind} size must be ${contract.size.width}x${contract.size.height}`);
   }
 
   validateMetadata(prefix, kit);
 
-  for (const region of mobilePortrait.regions) {
+  for (const region of contract.regions) {
     if (!kit.regions?.[region]) {
       failures.push(`${prefix} missing required region ${region}`);
     }
   }
 
-  for (const button of mobilePortrait.buttons) {
+  for (const button of contract.buttons) {
     if (!kit.assets?.buttons?.[button]) {
       failures.push(`${prefix} missing required button asset ${button}`);
     }
   }
 
   const statusStates = kit.assets?.indicators?.status?.states ?? [];
-  for (const state of mobilePortrait.indicators.status) {
+  for (const state of contract.indicators.status) {
     if (!statusStates.includes(state)) {
       failures.push(`${prefix} status indicator missing state ${state}`);
     }
   }
 
   const combatLedFiles = kit.assets?.indicators?.combatLed?.files ?? [];
-  for (const file of mobilePortrait.indicators.combatLed) {
+  for (const file of contract.indicators.combatLed) {
     if (!combatLedFiles.includes(file)) {
       failures.push(`${prefix} combatLed indicator missing file ${file}`);
     }
   }
 
-  for (const [group, names] of Object.entries(mobilePortrait.layout)) {
+  for (const [group, names] of Object.entries(contract.layout)) {
     for (const name of names) {
       const rect = kit.layout?.[group]?.[name];
       if (!rect) {
@@ -178,7 +187,7 @@ function validateRequiredContract(prefix, kit) {
   }
 
   if (isProductionMobileMeta(kit.meta)) {
-    validateProductionMobileGeometry(prefix, kit);
+    validateProductionMobileGeometry(prefix, kit, kit.kind);
   }
 }
 
@@ -228,15 +237,20 @@ function validateMetadataTokens(prefix, key, tokens) {
   }
 }
 
-function validateProductionMobileGeometry(prefix, kit) {
-  validateRectSize(prefix, 'region map', kit.regions?.map, { minWidth: 320, minHeight: 250, maxHeight: 315 });
-  validateRectSize(prefix, 'region latest', kit.regions?.latest, { minWidth: 260, minHeight: 78 });
-  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: 260 });
-  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: 260 });
-  validateRectSize(prefix, 'region player', kit.regions?.player, { minWidth: 320, minHeight: 50 });
-  validateRectSize(prefix, 'region combat', kit.regions?.combat, { minWidth: 320, minHeight: 56 });
-  validateRectSize(prefix, 'region controls', kit.regions?.controls, { minWidth: 340, minHeight: 180 });
-  validateRectSize(prefix, 'region endState', kit.regions?.endState, { minWidth: 280, minHeight: 250 });
+function validateProductionMobileGeometry(prefix, kit, kind) {
+  const compact = kind === 'mobileCompact';
+  validateRectSize(prefix, 'region map', kit.regions?.map, {
+    minWidth: 320,
+    minHeight: compact ? 220 : 250,
+    maxHeight: compact ? 260 : 315
+  });
+  validateRectSize(prefix, 'region latest', kit.regions?.latest, { minWidth: 260, minHeight: compact ? 70 : 78 });
+  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: compact ? 230 : 260 });
+  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: compact ? 230 : 260 });
+  validateRectSize(prefix, 'region player', kit.regions?.player, { minWidth: 320, minHeight: compact ? 46 : 50 });
+  validateRectSize(prefix, 'region combat', kit.regions?.combat, { minWidth: 320, minHeight: compact ? 48 : 56 });
+  validateRectSize(prefix, 'region controls', kit.regions?.controls, { minWidth: 340, minHeight: compact ? 140 : 180 });
+  validateRectSize(prefix, 'region endState', kit.regions?.endState, { minWidth: 280, minHeight: compact ? 230 : 250 });
 
   validateNoOverlap(prefix, kit, ['map', 'latest', 'title', 'player', 'combat', 'controls']);
 
@@ -307,7 +321,9 @@ async function validateAsset(kitDir, prefix, label, asset) {
     return;
   }
 
-  const assetPath = path.join(kitDir, asset.path);
+  const assetPath = asset.sourceProfile
+    ? path.join(fixedDir, asset.sourceProfile, asset.path)
+    : path.join(kitDir, asset.path);
   let png;
   try {
     png = await readPngHeader(assetPath);

@@ -13,7 +13,7 @@ different coordinates and assets.
 - Allow only deliberate composition, such as alpha sprites, 9-slice frames, or
   tiled fills.
 
-## Mobile Profile
+## Mobile Profiles
 
 The first production target is a `390x844` portrait artboard. The renderer may
 scale the whole artboard uniformly to fit the viewport, but it must not stretch
@@ -36,6 +36,12 @@ The current gold layout target uses this hierarchy:
 - Controls: bottom `190px`, D-pad left and action buttons right.
 - End-state overlay: about `314x292`, large enough for defeat/victory copy,
   HP/XP, and a fixed restart sprite without hiding the whole map.
+
+Short phones use a separate `mobileCompact` profile instead of shrinking the
+portrait artboard below comfortable reading size. The current compact target is
+`390x667`, keeps the same widget names and state-sprite contract, and may reuse
+button/indicator sprites from a larger profile when their fixed dimensions still
+fit the compact geometry. It should have its own chassis and coordinates.
 
 Every mobile skin profile must define:
 
@@ -63,7 +69,8 @@ core widgets.
 
 ## Metadata And Selection
 
-Each production `mobilePortrait` skin kit must include a `meta` block:
+Each production `mobilePortrait` or `mobileCompact` skin kit must include a
+`meta` block:
 
 - `label`: human-readable profile name.
 - `family`: broader UI family, currently `Neo Tokyo Console`.
@@ -81,9 +88,11 @@ so generated manifests should use stable tags like `rain-city` instead of
 display phrases like `Rain City`.
 
 The fixed mobile runtime first honors an explicit `profile=` query parameter.
-Without that override, it chooses the highest-priority `mobilePortrait` profile.
-That keeps the default choice data-driven and makes future LLM theme matching a
-metadata problem instead of another hardcoded profile id.
+Without that override, short mobile viewports choose the highest-priority
+`mobileCompact` profile, then fall back to `mobilePortrait`. Taller mobile
+viewports choose the highest-priority `mobilePortrait` profile. That keeps the
+default choice data-driven and makes future LLM theme matching a metadata
+problem instead of another hardcoded profile id.
 
 For structured theme experiments, pass comma-separated metadata tokens with
 `skin_tags`, `skin_mood`, and `skin_palette`. These are exact manifest tokens,
@@ -187,10 +196,10 @@ Visual inspection should capture diagnostics screenshots and fail if widgets are
 missing, clipped, or overflowing the viewport.
 
 `pnpm -C frontend inspect:visual` discovers every production `mobilePortrait`
-profile (`role: default` or `variant`) and adds movement, log, inventory,
-defeat, victory, restart, and diagnostics scenarios automatically. Use
-`VISUAL_SCENARIOS=production` when you want only this scalable production-skin
-sweep.
+and `mobileCompact` profile (`role: default` or `variant`) and adds movement,
+log, inventory, defeat, victory, restart, and diagnostics scenarios
+automatically. Use `VISUAL_SCENARIOS=production` when you want only this
+scalable production-skin sweep.
 
 ## Playable Runtime
 
@@ -199,6 +208,12 @@ also be forced with `ui=fixed-skin`, for example:
 
 ```text
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-v3
+```
+
+For short-phone manual checks, force the compact profile:
+
+```text
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-compact
 ```
 
 The backend preserves `skin`, `ui`, `fixed_skin`, `profile`, `skin_tags`,
@@ -213,6 +228,9 @@ comparing behavior.
 - `reference-mobile-v3`: compact mobile default, using the gold layout
   proportions with richer reference-style chrome and full terminal/drawer
   coverage.
+- `reference-mobile-compact`: `390x667` short-phone profile selected
+  automatically on short mobile viewports; it has compact geometry and reuses
+  the reference control sprites.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.

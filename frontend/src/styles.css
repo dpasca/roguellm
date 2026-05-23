@@ -1443,6 +1443,75 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
   white-space: nowrap;
 }
 
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-title-region h1 {
+  font-size: 16px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-latest-region .latest-message {
+  font-size: 10px;
+  line-height: 1.16;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-game-log {
+  gap: 7px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-game-log p {
+  padding-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-row {
+  font-size: 15px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-row {
+  margin-top: 15px;
+  font-size: 10px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-combat-region h2 {
+  margin-bottom: 3px;
+  font-size: 11px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-combat-row {
+  font-size: 13px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel {
+  padding: 14px 16px 70px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel .end-state-kicker {
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel h2 {
+  font-size: 19px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel p:not(.end-state-kicker) {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.16;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel .end-state-stats {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel .end-state-stats div {
+  padding: 6px 8px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel .end-state-stats dd {
+  font-size: 16px;
+}
+
 body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixed-log-region,
 body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="amber-mobile"] .fixed-inventory-region {
   border-color: rgba(255, 184, 74, 0.72);

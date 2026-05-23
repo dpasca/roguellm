@@ -18,7 +18,7 @@ export interface FixedSkinRect {
   height: number;
 }
 
-export type FixedSkinProfileKind = 'mobilePortrait' | 'desktopWide';
+export type FixedSkinProfileKind = 'mobilePortrait' | 'mobileCompact' | 'desktopWide';
 
 export type FixedSkinButtonState = 'idle' | 'hover' | 'pressed' | 'disabled';
 

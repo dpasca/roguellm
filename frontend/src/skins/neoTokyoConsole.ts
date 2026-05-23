@@ -6,6 +6,7 @@ type FixedAssetProfile =
   | 'reference-mobile'
   | 'reference-mobile-v2'
   | 'reference-mobile-v3'
+  | 'reference-mobile-compact'
   | 'gold-mobile'
   | 'amber-mobile'
   | 'signal-noir-mobile';
@@ -65,10 +66,19 @@ type FixedSkinKit = {
     };
     buttons: Record<ManifestButtonId, {
       prefix: FixedButtonAssetName;
+      sourceProfile?: FixedAssetProfile;
       label?: string;
       icon?: string;
       hideLabel?: boolean;
     }>;
+    indicators?: {
+      status?: {
+        sourceProfile?: FixedAssetProfile;
+      };
+      combatLed?: {
+        sourceProfile?: FixedAssetProfile;
+      };
+    };
   };
 };
 
@@ -143,7 +153,10 @@ function fixedSkinKit(profile: FixedAssetProfile): FixedSkinKit {
 
 function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): FixedSkinProfile {
   const kit = fixedSkinKit(id);
-  const indicators = fixedIndicators(id);
+  const indicators = {
+    status: fixedIndicators(kit.assets.indicators?.status?.sourceProfile ?? id).status,
+    combatLed: fixedIndicators(kit.assets.indicators?.combatLed?.sourceProfile ?? id).combatLed
+  };
 
   return {
     id: kit.id ?? id,
@@ -200,17 +213,19 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
 
 function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId: ManifestButtonId) {
   const asset = kit.assets.buttons[buttonId];
+  const sourceProfile = asset.sourceProfile ?? profile;
 
   return {
     rect: kit.layout.buttons[buttonId],
     label: asset.label ?? buttonLabels[buttonId],
     icon: asset.icon,
     hideLabel: asset.hideLabel ?? true,
-    states: fixedButton(profile, asset.prefix)
+    states: fixedButton(sourceProfile, asset.prefix)
   };
 }
 
 const fixedProfiles: FixedSkinProfile[] = [
+  createManifestProfile('reference-mobile-compact'),
   createManifestProfile('reference-mobile-v3'),
   createManifestProfile('signal-noir-mobile'),
   createManifestProfile('gold-mobile'),

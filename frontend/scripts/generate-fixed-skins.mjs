@@ -58,6 +58,84 @@ const skinLayout = {
   }
 };
 
+const compactSkinRegions = {
+  map: { x: 22, y: 48, width: 346, height: 232 },
+  title: { x: 32, y: 374, width: 258, height: 30 },
+  latest: { x: 24, y: 292, width: 284, height: 74 },
+  log: { x: 24, y: 290, width: 342, height: 238 },
+  inventory: { x: 24, y: 290, width: 342, height: 238 },
+  player: { x: 24, y: 406, width: 342, height: 48 },
+  combat: { x: 24, y: 464, width: 342, height: 50 },
+  controls: { x: 18, y: 518, width: 354, height: 149 },
+  endState: { x: 38, y: 292, width: 314, height: 238 }
+};
+
+const compactSkinAssets = {
+  chassis: { path: 'chassis.png', width: 390, height: 667 },
+  buttons: {
+    attack: { prefix: 'attack', sourceProfile: 'reference-mobile-v3', width: 152, height: 66, alpha: true },
+    run: { prefix: 'run', sourceProfile: 'reference-mobile-v3', width: 152, height: 66, alpha: true },
+    restart: { prefix: 'restart', sourceProfile: 'reference-mobile-v3', width: 226, height: 66, alpha: true },
+    log: { prefix: 'log', sourceProfile: 'reference-mobile-v3', width: 46, height: 32, alpha: true },
+    inventory: { prefix: 'inventory', sourceProfile: 'reference-mobile-v3', width: 46, height: 32, alpha: true },
+    moveN: { prefix: 'dpad-n', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
+    moveS: { prefix: 'dpad-s', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
+    moveE: { prefix: 'dpad-e', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
+    moveW: { prefix: 'dpad-w', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true }
+  },
+  indicators: {
+    status: {
+      ...skinAssets.indicators.status,
+      sourceProfile: 'reference-mobile-v3'
+    },
+    combatLed: {
+      ...skinAssets.indicators.combatLed,
+      sourceProfile: 'reference-mobile-v3'
+    }
+  }
+};
+
+const compactSkinLayout = {
+  buttons: {
+    attack: { x: 205, y: 522, width: 152, height: 66 },
+    run: { x: 205, y: 592, width: 152, height: 66 },
+    restart: { x: 82, y: 462, width: 226, height: 66 },
+    log: { x: 315, y: 296, width: 46, height: 32 },
+    inventory: { x: 315, y: 336, width: 46, height: 32 },
+    moveN: { x: 73, y: 520, width: 58, height: 58 },
+    moveS: { x: 73, y: 608, width: 58, height: 58 },
+    moveE: { x: 121, y: 564, width: 58, height: 58 },
+    moveW: { x: 25, y: 564, width: 58, height: 58 }
+  },
+  indicators: {
+    status: { x: 301, y: 374, width: 60, height: 26 },
+    combatLed: { x: 349, y: 465, width: 18, height: 18 }
+  },
+  fills: {
+    playerHp: { x: 84, y: 422, width: 196, height: 8 },
+    enemyHp: { x: 168, y: 496, width: 150, height: 8 },
+    playerStats: { x: 34, y: 438, width: 316, height: 16 }
+  }
+};
+
+const standardSkinProfile = {
+  kind: 'mobilePortrait',
+  size: { width: 390, height: 844 },
+  regions: skinRegions,
+  assets: skinAssets,
+  layout: skinLayout,
+  chassis: (variant) => variant.premium ? premiumChassisSvg(variant) : chassisSvg(variant)
+};
+
+const compactSkinProfile = {
+  kind: 'mobileCompact',
+  size: { width: 390, height: 667 },
+  regions: compactSkinRegions,
+  assets: compactSkinAssets,
+  layout: compactSkinLayout,
+  chassis: compactPremiumChassisSvg
+};
+
 const variants = [
   {
     id: 'gold-mobile',
@@ -207,6 +285,22 @@ const variants = [
   }
 ];
 
+const compactVariants = [
+  {
+    ...variants.find((variant) => variant.id === 'reference-mobile-v3'),
+    id: 'reference-mobile-compact',
+    displayLabel: 'Reference Compact Short',
+    label: 'REFERENCE COMPACT SHORT',
+    role: 'variant',
+    defaultPriority: 90,
+    tags: ['cyberpunk', 'neon', 'urban', 'technology', 'crime', 'modern', 'short-phone'],
+    mood: ['dense', 'electric', 'premium', 'tactical', 'compact'],
+    palette: ['green', 'orange', 'graphite'],
+    footer: 'SHORT PROFILE',
+    version: 'v0.1'
+  }
+];
+
 const buttonStates = {
   idle: { y: 0, glow: 0.62, shade: 0, alpha: 1 },
   hover: { y: -1, glow: 0.9, shade: 8, alpha: 1 },
@@ -215,50 +309,79 @@ const buttonStates = {
 };
 
 for (const variant of variants) {
-  generateVariant(variant);
+  generateVariant(variant, standardSkinProfile);
+}
+for (const variant of compactVariants) {
+  generateVariant(variant, compactSkinProfile);
 }
 generateDesktopPrototypeAddons();
 
-function generateVariant(variant) {
+function generateVariant(variant, profile) {
   const outDir = path.join(fixedRootDir, variant.id);
   fs.mkdirSync(outDir, { recursive: true });
 
   writeText(outDir, 'skin-kit.json', `${JSON.stringify({
     id: variant.id,
     meta: skinMeta(variant),
-    kind: 'mobilePortrait',
-    size: { width: 390, height: 844 },
-    regions: skinRegions,
-    assets: skinAssets,
-    layout: skinLayout
+    kind: profile.kind,
+    size: profile.size,
+    regions: profile.regions,
+    assets: profile.assets,
+    layout: profile.layout
   }, null, 2)}\n`);
 
-  writePng(outDir, 'chassis.png', variant.premium ? premiumChassisSvg(variant) : chassisSvg(variant));
+  writePng(outDir, 'chassis.png', profile.chassis(variant));
+
+  const attackAsset = profile.assets.buttons.attack;
+  const runAsset = profile.assets.buttons.run;
+  const restartAsset = profile.assets.buttons.restart;
 
   for (const state of Object.keys(buttonStates)) {
-    writePng(outDir, `attack-${state}.png`, variant.premium
-      ? premiumActionButtonSvg('ATTACK', 152, 66, state, variant.action.attack)
-      : actionButtonSvg('ATTACK', 152, 66, state, variant.action.attack));
-    writePng(outDir, `run-${state}.png`, variant.premium
-      ? premiumActionButtonSvg('RUN', 152, 66, state, variant.action.run)
-      : actionButtonSvg('RUN', 152, 66, state, variant.action.run));
-    writePng(outDir, `restart-${state}.png`, variant.premium
-      ? premiumActionButtonSvg('RESTART', 226, 66, state, variant.action.restart)
-      : actionButtonSvg('RESTART', 226, 66, state, variant.action.restart));
-    writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
-    writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
-    writePng(outDir, `dpad-n-${state}.png`, variant.premium ? premiumDpadButtonSvg('n', state, variant) : dpadButtonSvg('n', state, variant));
-    writePng(outDir, `dpad-s-${state}.png`, variant.premium ? premiumDpadButtonSvg('s', state, variant) : dpadButtonSvg('s', state, variant));
-    writePng(outDir, `dpad-e-${state}.png`, variant.premium ? premiumDpadButtonSvg('e', state, variant) : dpadButtonSvg('e', state, variant));
-    writePng(outDir, `dpad-w-${state}.png`, variant.premium ? premiumDpadButtonSvg('w', state, variant) : dpadButtonSvg('w', state, variant));
+    if (!attackAsset.sourceProfile) {
+      writePng(outDir, `attack-${state}.png`, variant.premium
+        ? premiumActionButtonSvg('ATTACK', attackAsset.width, attackAsset.height, state, variant.action.attack)
+        : actionButtonSvg('ATTACK', attackAsset.width, attackAsset.height, state, variant.action.attack));
+    }
+    if (!runAsset.sourceProfile) {
+      writePng(outDir, `run-${state}.png`, variant.premium
+        ? premiumActionButtonSvg('RUN', runAsset.width, runAsset.height, state, variant.action.run)
+        : actionButtonSvg('RUN', runAsset.width, runAsset.height, state, variant.action.run));
+    }
+    if (!restartAsset.sourceProfile) {
+      writePng(outDir, `restart-${state}.png`, variant.premium
+        ? premiumActionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart)
+        : actionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart));
+    }
+    if (!profile.assets.buttons.log.sourceProfile) {
+      writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
+    }
+    if (!profile.assets.buttons.inventory.sourceProfile) {
+      writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
+    }
+    if (!profile.assets.buttons.moveN.sourceProfile) {
+      writePng(outDir, `dpad-n-${state}.png`, variant.premium ? premiumDpadButtonSvg('n', state, variant) : dpadButtonSvg('n', state, variant));
+    }
+    if (!profile.assets.buttons.moveS.sourceProfile) {
+      writePng(outDir, `dpad-s-${state}.png`, variant.premium ? premiumDpadButtonSvg('s', state, variant) : dpadButtonSvg('s', state, variant));
+    }
+    if (!profile.assets.buttons.moveE.sourceProfile) {
+      writePng(outDir, `dpad-e-${state}.png`, variant.premium ? premiumDpadButtonSvg('e', state, variant) : dpadButtonSvg('e', state, variant));
+    }
+    if (!profile.assets.buttons.moveW.sourceProfile) {
+      writePng(outDir, `dpad-w-${state}.png`, variant.premium ? premiumDpadButtonSvg('w', state, variant) : dpadButtonSvg('w', state, variant));
+    }
   }
 
-  writePng(outDir, 'status-ready.png', variant.premium ? premiumStatusSvg(...variant.status.ready) : statusSvg(...variant.status.ready));
-  writePng(outDir, 'status-thinking.png', variant.premium ? premiumStatusSvg(...variant.status.thinking) : statusSvg(...variant.status.thinking));
-  writePng(outDir, 'status-error.png', variant.premium ? premiumStatusSvg(...variant.status.error) : statusSvg(...variant.status.error));
-  writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
-  writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
-  writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
+  if (!profile.assets.indicators.status.sourceProfile) {
+    writePng(outDir, 'status-ready.png', variant.premium ? premiumStatusSvg(...variant.status.ready) : statusSvg(...variant.status.ready));
+    writePng(outDir, 'status-thinking.png', variant.premium ? premiumStatusSvg(...variant.status.thinking) : statusSvg(...variant.status.thinking));
+    writePng(outDir, 'status-error.png', variant.premium ? premiumStatusSvg(...variant.status.error) : statusSvg(...variant.status.error));
+    writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
+  }
+  if (!profile.assets.indicators.combatLed.sourceProfile) {
+    writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
+    writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
+  }
 }
 
 function generateDesktopPrototypeAddons() {
@@ -479,6 +602,108 @@ function premiumChassisSvg(variant) {
     <rect x="204" y="748" width="152" height="12" rx="5" fill="#ffffff" opacity="0.035"/>
     <text x="27" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.footer}</text>
     <text x="330" y="825" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.version}</text>
+  `);
+}
+
+function compactPremiumChassisSvg(variant) {
+  const panels = [
+    premiumFrame(18, 44, 354, 241, 'MAP', variant, 'large'),
+    premiumFrame(20, 286, 292, 84, 'MSG-01', variant, 'drawer'),
+    premiumFrame(20, 402, 350, 56, 'PLAYER', variant, 'thin'),
+    premiumFrame(20, 460, 350, 58, 'COMBAT', variant, 'thin'),
+    premiumFrame(14, 514, 362, 150, 'CONTROL', variant, 'deck')
+  ].join('\n');
+
+  return svg(390, 667, `
+    <defs>
+      ${defs(variant)}
+      <linearGradient id="premiumShell" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${variant.shellTop}"/>
+        <stop offset="0.16" stop-color="#252c2a"/>
+        <stop offset="0.54" stop-color="#0b1110"/>
+        <stop offset="1" stop-color="#303836"/>
+      </linearGradient>
+      <linearGradient id="sideRail" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${variant.secondary}" stop-opacity="0.9"/>
+        <stop offset="0.48" stop-color="${variant.accent}" stop-opacity="0.34"/>
+        <stop offset="1" stop-color="${variant.secondary}" stop-opacity="0.72"/>
+      </linearGradient>
+      <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#123625"/>
+        <stop offset="0.42" stop-color="#05110d"/>
+        <stop offset="1" stop-color="#010403"/>
+      </linearGradient>
+      <radialGradient id="consoleBloom" cx="0.5" cy="0.18" r="0.82">
+        <stop offset="0" stop-color="${variant.accent}" stop-opacity="0.13"/>
+        <stop offset="0.42" stop-color="${variant.secondary}" stop-opacity="0.05"/>
+        <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+      </radialGradient>
+      <pattern id="brushed" width="8" height="8" patternUnits="userSpaceOnUse">
+        <path d="M0 1H8M0 4H8M0 7H8" stroke="#77837d" stroke-opacity="0.16"/>
+        <path d="M2 0V8M6 0V8" stroke="#030606" stroke-opacity="0.42"/>
+      </pattern>
+      <pattern id="speaker" width="8" height="8" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1" fill="#0a100f"/>
+        <circle cx="6" cy="6" r="1" fill="#0a100f"/>
+      </pattern>
+      <filter id="premiumGlow" x="-35%" y="-35%" width="170%" height="170%">
+        <feGaussianBlur stdDeviation="2.2" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect width="390" height="667" fill="#010303"/>
+    <rect x="1" y="1" width="388" height="665" rx="14" fill="#050707" stroke="#33403d" stroke-width="2"/>
+    <rect x="5" y="5" width="380" height="657" rx="12" fill="url(#premiumShell)" stroke="#0b0f0f" stroke-width="2"/>
+    <rect x="10" y="10" width="370" height="647" rx="10" fill="url(#brushed)" opacity="0.72"/>
+    <rect x="10" y="10" width="370" height="647" rx="10" fill="url(#consoleBloom)" opacity="0.92"/>
+    <rect x="13" y="14" width="364" height="639" rx="8" fill="none" stroke="#59635f" stroke-opacity="0.24"/>
+    <rect x="16" y="44" width="7" height="451" rx="3" fill="url(#sideRail)" opacity="0.88" filter="url(#premiumGlow)"/>
+    <rect x="367" y="44" width="6" height="451" rx="3" fill="url(#sideRail)" opacity="0.36"/>
+    <rect x="18" y="44" width="4" height="451" fill="url(#scan)" opacity="0.24"/>
+
+    <rect x="17" y="18" width="356" height="22" rx="5" fill="#151a1a" stroke="#38433f"/>
+    <rect x="18" y="19" width="354" height="5" rx="2" fill="#ffffff" opacity="0.06"/>
+    <rect x="22" y="22" width="27" height="12" rx="6" fill="#090d0c" stroke="#5b6763"/>
+    <rect x="25" y="25" width="18" height="6" rx="3" fill="${variant.secondary}" filter="url(#premiumGlow)"/>
+    <text x="58" y="32" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="#d4dfda">ROGUELLM</text>
+    <text x="151" y="31" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#94a09c">${variant.label}</text>
+    <g transform="translate(322 18)">
+      <rect x="0" y="17" width="5" height="3" fill="${variant.accent}"/>
+      <rect x="8" y="12" width="5" height="8" fill="${variant.accent}"/>
+      <rect x="16" y="7" width="5" height="13" fill="${variant.accent}"/>
+      <rect x="24" y="3" width="5" height="17" fill="${variant.accent}"/>
+      <rect x="36" y="6" width="18" height="11" rx="2" fill="#24411f" stroke="#6aff48"/>
+    </g>
+    ${screw(24, 26, variant)}
+    ${screw(365, 26, variant)}
+    ${screw(25, 641, variant)}
+    ${screw(365, 641, variant)}
+
+    ${panels}
+
+    <g opacity="0.72">
+      <rect x="21" y="526" width="42" height="118" rx="5" fill="url(#speaker)" stroke="#27322f"/>
+      <rect x="327" y="526" width="40" height="118" rx="5" fill="url(#speaker)" stroke="#27322f"/>
+      <rect x="167" y="639" width="64" height="11" rx="5" fill="#080b0b" stroke="#2d3936"/>
+      <rect x="176" y="643" width="10" height="3" rx="1.5" fill="${variant.secondary}"/>
+      <rect x="191" y="643" width="10" height="3" rx="1.5" fill="${variant.secondary}" opacity="0.55"/>
+      <rect x="206" y="643" width="10" height="3" rx="1.5" fill="${variant.accent}" opacity="0.65"/>
+    </g>
+    <rect x="66" y="516" width="74" height="146" rx="10" fill="#151f1e" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="69" y="519" width="68" height="20" rx="8" fill="#ffffff" opacity="0.035"/>
+    <rect x="78" y="552" width="50" height="74" rx="7" fill="#08100f" stroke="#3c4b45"/>
+    <rect x="86" y="562" width="34" height="50" rx="5" fill="#020504" stroke="#1b2823"/>
+    <rect x="196" y="518" width="168" height="68" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="200" y="522" width="160" height="60" rx="8" fill="none" stroke="#1c2b25"/>
+    <rect x="204" y="526" width="152" height="10" rx="5" fill="#ffffff" opacity="0.035"/>
+    <rect x="196" y="588" width="168" height="68" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="200" y="592" width="160" height="60" rx="8" fill="none" stroke="#1c2b25"/>
+    <rect x="204" y="596" width="152" height="10" rx="5" fill="#ffffff" opacity="0.035"/>
+    <text x="27" y="650" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.footer}</text>
+    <text x="330" y="650" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.version}</text>
   `);
 }
 
