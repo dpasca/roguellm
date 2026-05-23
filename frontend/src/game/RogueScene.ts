@@ -221,15 +221,24 @@ export class RogueScene extends Phaser.Scene {
     const { tileSize } = this.layout;
     const inset = Math.max(2, Math.floor(tileSize * 0.08));
     const lineWidth = Math.max(2, Math.floor(tileSize * 0.06));
-    const cornerSize = Math.max(7, Math.floor(tileSize * 0.22));
+    const cornerSize = Math.max(8, Math.floor(tileSize * 0.25));
     const color = this.playerMarkerColor(visualMode);
+    const left = inset + 0.5;
+    const top = inset + 0.5;
+    const right = tileSize - inset - 0.5;
+    const bottom = tileSize - inset - 0.5;
 
-    this.markerGraphics.lineStyle(lineWidth, color, 0.95);
-    this.markerGraphics.strokeRect(
-      inset + 0.5,
-      inset + 0.5,
-      tileSize - inset * 2 - 1,
-      tileSize - inset * 2 - 1
+    this.markerGraphics.lineStyle(lineWidth + 2, 0x020504, 0.82);
+    this.drawMarkerBrackets(left, top, right, bottom, cornerSize);
+    this.markerGraphics.lineStyle(lineWidth, color, 0.98);
+    this.drawMarkerBrackets(left, top, right, bottom, cornerSize);
+    this.markerGraphics.lineStyle(Math.max(1, lineWidth - 1), 0xffffff, visualMode === 'active' ? 0.26 : 0.14);
+    this.drawMarkerBrackets(
+      left + lineWidth,
+      top + lineWidth,
+      right - lineWidth,
+      bottom - lineWidth,
+      Math.max(4, cornerSize - lineWidth * 2)
     );
 
     this.markerGraphics.fillStyle(color, 0.95);
@@ -282,6 +291,21 @@ export class RogueScene extends Phaser.Scene {
     }
 
     this.lastPlayerTile = targetTile;
+  }
+
+  private drawMarkerBrackets(left: number, top: number, right: number, bottom: number, cornerSize: number): void {
+    if (!this.markerGraphics) {
+      return;
+    }
+
+    this.markerGraphics.lineBetween(left, top, left + cornerSize, top);
+    this.markerGraphics.lineBetween(left, top, left, top + cornerSize);
+    this.markerGraphics.lineBetween(right, top, right - cornerSize, top);
+    this.markerGraphics.lineBetween(right, top, right, top + cornerSize);
+    this.markerGraphics.lineBetween(left, bottom, left + cornerSize, bottom);
+    this.markerGraphics.lineBetween(left, bottom, left, bottom - cornerSize);
+    this.markerGraphics.lineBetween(right, bottom, right - cornerSize, bottom);
+    this.markerGraphics.lineBetween(right, bottom, right, bottom - cornerSize);
   }
 
   private tilePosition(tile: [number, number]): TilePosition {
