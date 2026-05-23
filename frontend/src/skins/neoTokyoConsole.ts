@@ -1,4 +1,4 @@
-import type { FixedSkinProfile, FixedSkinProfileMeta, GameSkin } from './types';
+import type { FixedSkinMaterial, FixedSkinMaterialKind, FixedSkinProfile, FixedSkinProfileMeta, GameSkin } from './types';
 
 type FixedAssetProfile =
   | 'mobile'
@@ -92,6 +92,11 @@ const fixedAssetUrls = import.meta.glob<string>('./neo-tokyo-console/fixed/**/*.
   query: '?url',
   import: 'default'
 });
+const materialAssetUrls = import.meta.glob<string>('./neo-tokyo-console/assets/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default'
+});
 const fixedSkinKitSources = import.meta.glob<string>('./neo-tokyo-console/fixed/**/skin-kit.json', {
   eager: true,
   query: '?raw',
@@ -105,6 +110,32 @@ function fixedAsset(path: string): string {
   }
   return asset;
 }
+
+function materialAsset(path: string): string {
+  const asset = materialAssetUrls[`./neo-tokyo-console/assets/${path}`];
+  if (!asset) {
+    throw new Error(`Missing fixed skin material asset: ${path}`);
+  }
+  return asset;
+}
+
+const neoTokyoMaterials = {
+  panel: {
+    fill: materialAsset('panel-fill-tile.png'),
+    frame: materialAsset('panel-frame-9slice.png'),
+    slice: 14
+  },
+  lcd: {
+    fill: materialAsset('lcd-fill-tile.png'),
+    frame: materialAsset('lcd-frame-9slice.png'),
+    slice: 13
+  },
+  button: {
+    fill: materialAsset('button-fill-tile.png'),
+    frame: materialAsset('button-frame-9slice.png'),
+    slice: 13
+  }
+} satisfies Record<FixedSkinMaterialKind, FixedSkinMaterial>;
 
 function fixedButton(
   profile: FixedAssetProfile,
@@ -179,6 +210,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
     width: kit.size.width,
     height: kit.size.height,
     background: fixedAsset(`${id}/${kit.assets.chassis.path}`),
+    materials: neoTokyoMaterials,
     regions: {
       map: kit.regions.map,
       title: kit.regions.title,
@@ -247,6 +279,7 @@ const fixedProfiles: FixedSkinProfile[] = [
     width: 390,
     height: 844,
     background: fixedAsset('mobile/chassis.png'),
+    materials: neoTokyoMaterials,
     regions: {
       map: { x: 24, y: 48, width: 342, height: 300 },
       title: { x: 26, y: 356, width: 270, height: 34 },
@@ -320,6 +353,7 @@ const fixedProfiles: FixedSkinProfile[] = [
     width: 390,
     height: 844,
     background: fixedAsset('reference-mobile/chassis.png'),
+    materials: neoTokyoMaterials,
     regions: {
       map: { x: 24, y: 45, width: 342, height: 371 },
       title: { x: 26, y: 538, width: 268, height: 36 },

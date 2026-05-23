@@ -1,20 +1,13 @@
 import Phaser from 'phaser';
 import faSolidFontUrl from '@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2?url';
-import buttonFillTileUrl from '../skins/neo-tokyo-console/assets/button-fill-tile.png?url';
-import buttonFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/button-frame-9slice.png?url';
-import lcdFillTileUrl from '../skins/neo-tokyo-console/assets/lcd-fill-tile.png?url';
-import lcdFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/lcd-frame-9slice.png?url';
-import panelFillTileUrl from '../skins/neo-tokyo-console/assets/panel-fill-tile.png?url';
-import panelFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/panel-frame-9slice.png?url';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
-import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
+import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinMaterialKind, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 import { selectFixedSkinProfile } from './fixedSkinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type PhaserFixedScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
-type PhaserMaterialKind = 'panel' | 'lcd' | 'button';
 
 interface SceneConfig {
   profile: FixedSkinProfile;
@@ -59,23 +52,6 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
 const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
 const fontAwesomeFamily = 'Font Awesome 7 Free';
 const fontAwesomeStyleClasses = new Set(['fa', 'fas', 'far', 'fab', 'fa-solid', 'fa-regular', 'fa-brands']);
-const phaserMaterialAssets: Record<PhaserMaterialKind, { fill: string; frame: string; slice: number }> = {
-  panel: {
-    fill: panelFillTileUrl,
-    frame: panelFrameNineSliceUrl,
-    slice: 14
-  },
-  lcd: {
-    fill: lcdFillTileUrl,
-    frame: lcdFrameNineSliceUrl,
-    slice: 13
-  },
-  button: {
-    fill: buttonFillTileUrl,
-    frame: buttonFrameNineSliceUrl,
-    slice: 13
-  }
-};
 const fontAwesomeGlyphs: Record<string, string> = {
   'ban': '\uf05e',
   'bowl-food': '\ue4c6',
@@ -567,9 +543,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image(assetKey(this.profile, 'chassis'), this.profile.background);
-    for (const materialKind of Object.keys(phaserMaterialAssets) as PhaserMaterialKind[]) {
-      this.load.image(materialKey(materialKind, 'fill'), phaserMaterialAssets[materialKind].fill);
-      this.load.image(materialKey(materialKind, 'frame'), phaserMaterialAssets[materialKind].frame);
+    for (const materialKind of Object.keys(this.profile.materials) as FixedSkinMaterialKind[]) {
+      this.load.image(materialKey(this.profile, materialKind, 'fill'), this.profile.materials[materialKind].fill);
+      this.load.image(materialKey(this.profile, materialKind, 'frame'), this.profile.materials[materialKind].frame);
     }
 
     for (const [buttonId, button] of buttonEntries(this.profile)) {
@@ -1170,7 +1146,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawMaterialPanel(
     rect: FixedSkinRect,
-    kind: PhaserMaterialKind,
+    kind: FixedSkinMaterialKind,
     options: {
       alpha?: number;
       fillTint?: number;
@@ -1182,9 +1158,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return;
     }
 
-    const material = phaserMaterialAssets[kind];
-    const fillKey = materialKey(kind, 'fill');
-    const frameKey = materialKey(kind, 'frame');
+    const material = this.profile.materials[kind];
+    const fillKey = materialKey(this.profile, kind, 'fill');
+    const frameKey = materialKey(this.profile, kind, 'frame');
     const alpha = options.alpha ?? 0.86;
     if (this.textures.exists(fillKey)) {
       const fill = this.add.tileSprite(rect.x, rect.y, rect.width, rect.height, fillKey).setOrigin(0, 0);
@@ -1384,8 +1360,8 @@ function assetKey(profile: FixedSkinProfile, asset: string): string {
   return `phaser-fixed:${profile.id}:${asset}`;
 }
 
-function materialKey(kind: PhaserMaterialKind, part: 'fill' | 'frame'): string {
-  return `phaser-fixed:material:${kind}:${part}`;
+function materialKey(profile: FixedSkinProfile, kind: FixedSkinMaterialKind, part: 'fill' | 'frame'): string {
+  return assetKey(profile, `material:${kind}:${part}`);
 }
 
 function buttonKey(profile: FixedSkinProfile, buttonId: FixedButtonId, state: FixedSkinButtonState): string {

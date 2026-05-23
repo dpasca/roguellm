@@ -30,6 +30,14 @@ export interface FixedSkinButton {
   states: Record<FixedSkinButtonState, string>;
 }
 
+export type FixedSkinMaterialKind = 'panel' | 'lcd' | 'button';
+
+export interface FixedSkinMaterial {
+  fill: string;
+  frame: string;
+  slice: number;
+}
+
 export type FixedSkinIndicatorState = 'ready' | 'thinking' | 'error' | 'offline' | 'on' | 'off';
 
 export interface FixedSkinIndicator {
@@ -57,6 +65,7 @@ export interface FixedSkinProfile {
   width: number;
   height: number;
   background: string;
+  materials: Record<FixedSkinMaterialKind, FixedSkinMaterial>;
   regions: {
     map: FixedSkinRect;
     title: FixedSkinRect;
