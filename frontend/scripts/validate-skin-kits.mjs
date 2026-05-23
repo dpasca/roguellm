@@ -227,6 +227,7 @@ function validateRequiredContract(prefix, kit) {
   }
 
   if (isProductionMobileMeta(kit.meta)) {
+    validateRuntimeLayout(prefix, kit, contract);
     validateProductionMobileGeometry(prefix, kit, contract);
   }
 }
@@ -309,6 +310,115 @@ function validateProductionMobileGeometry(prefix, kit, contract) {
 
   for (const name of ['log', 'inventory']) {
     validateButtonSize(prefix, name, kit.layout?.buttons?.[name], { minWidth: 38, minHeight: 24 });
+  }
+}
+
+function validateRuntimeLayout(prefix, kit, contract) {
+  if (!kit.runtime) {
+    failures.push(`${prefix} missing required runtime layout`);
+    return;
+  }
+
+  validateExactRuntime(prefix, 'runtime', kit.runtime, contract.runtime);
+  if (contract.runtime.title?.brand) {
+    validateRuntimeRect(prefix, kit, 'runtime.title.brand', kit.runtime.title?.brand);
+  }
+  validateRuntimeRect(prefix, kit, 'runtime.title.playerIcon', kit.runtime.title?.playerIcon, kit.regions?.title);
+  validateRuntimeRect(prefix, kit, 'runtime.title.gameTitle', kit.runtime.title?.gameTitle, kit.regions?.title);
+  validateRuntimeRect(prefix, kit, 'runtime.latest.label', kit.runtime.latest?.label, kit.regions?.latest);
+  validateRuntimeRect(prefix, kit, 'runtime.latest.message', kit.runtime.latest?.message, kit.regions?.latest);
+  validateRuntimeRect(prefix, kit, 'runtime.player.hpLabel', kit.runtime.player?.hpLabel, kit.regions?.player);
+  validateRuntimeRect(prefix, kit, 'runtime.player.hpValue', kit.runtime.player?.hpValue, kit.regions?.player);
+  for (const [index, stat] of (kit.runtime.player?.stats ?? []).entries()) {
+    validateRuntimeRect(prefix, kit, `runtime.player.stats[${index}].labelRect`, stat.labelRect, kit.regions?.player);
+    validateRuntimeRect(prefix, kit, `runtime.player.stats[${index}].valueRect`, stat.valueRect, kit.regions?.player);
+  }
+  validateRuntimeRect(prefix, kit, 'runtime.combat.mode', kit.runtime.combat?.mode, kit.regions?.combat);
+  validateRuntimeRect(prefix, kit, 'runtime.combat.exploreText', kit.runtime.combat?.exploreText, kit.regions?.combat);
+  validateRuntimeRect(prefix, kit, 'runtime.combat.enemyIcon', kit.runtime.combat?.enemyIcon, kit.regions?.combat);
+  validateRuntimeRect(prefix, kit, 'runtime.combat.enemyName', kit.runtime.combat?.enemyName, kit.regions?.combat);
+  validateRuntimeRect(prefix, kit, 'runtime.combat.enemyHpValue', kit.runtime.combat?.enemyHpValue, kit.regions?.combat);
+
+  const drawerGroups = [
+    ['log', kit.runtime.drawers?.log, kit.regions?.log],
+    ['inventory', kit.runtime.drawers?.inventory, kit.regions?.inventory]
+  ];
+  for (const [drawerName, drawer, region] of drawerGroups) {
+    if (!drawer) {
+      failures.push(`${prefix} missing runtime.drawers.${drawerName}`);
+      continue;
+    }
+    if (!Number.isFinite(drawer.rowHeight) || drawer.rowHeight <= 0) {
+      failures.push(`${prefix} runtime.drawers.${drawerName}.rowHeight must be a positive number`);
+    }
+    for (const [slotName, rect] of Object.entries(drawer)) {
+      if (slotName === 'rowHeight') {
+        continue;
+      }
+      validateRuntimeRect(prefix, kit, `runtime.drawers.${drawerName}.${slotName}`, rect, region);
+    }
+  }
+}
+
+function validateExactRuntime(prefix, label, actual, expected) {
+  if (isRectLike(expected)) {
+    validateExactRect(prefix, label, actual, expected);
+    return;
+  }
+
+  if (typeof expected === 'number') {
+    if (actual !== expected) {
+      failures.push(`${prefix} ${label} ${actual} must match Skin Layout Contract v1 ${expected}`);
+    }
+    return;
+  }
+
+  if (typeof expected === 'string') {
+    if (actual !== expected) {
+      failures.push(`${prefix} ${label} "${actual}" must match Skin Layout Contract v1 "${expected}"`);
+    }
+    return;
+  }
+
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) {
+      failures.push(`${prefix} ${label} must be an array`);
+      return;
+    }
+    if (actual.length !== expected.length) {
+      failures.push(`${prefix} ${label} length ${actual.length} must match Skin Layout Contract v1 ${expected.length}`);
+      return;
+    }
+    for (let index = 0; index < expected.length; index += 1) {
+      validateExactRuntime(prefix, `${label}[${index}]`, actual[index], expected[index]);
+    }
+    return;
+  }
+
+  if (!actual || typeof actual !== 'object' || Array.isArray(actual)) {
+    failures.push(`${prefix} ${label} must be an object`);
+    return;
+  }
+
+  for (const key of Object.keys(expected ?? {})) {
+    validateExactRuntime(prefix, `${label}.${key}`, actual[key], expected[key]);
+  }
+
+  for (const key of Object.keys(actual)) {
+    if (!(key in (expected ?? {}))) {
+      failures.push(`${prefix} ${label}.${key} is not part of Skin Layout Contract v1`);
+    }
+  }
+}
+
+function validateRuntimeRect(prefix, kit, label, rect, container) {
+  if (!rect) {
+    failures.push(`${prefix} missing ${label}`);
+    return;
+  }
+  validateRect(prefix, kit, label, rect);
+  if (container) {
+    validateContainedRect(prefix, label, rect, container);
   }
 }
 
@@ -701,6 +811,13 @@ function isPositiveRect(rect) {
     rect.y >= 0 &&
     rect.width > 0 &&
     rect.height > 0;
+}
+
+function isRectLike(value) {
+  return value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
 }
 
 function isNonEmptyString(value) {

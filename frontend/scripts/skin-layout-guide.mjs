@@ -20,8 +20,8 @@ if (!profile) {
   process.exit(1);
 }
 
-if (!['all', 'live', 'crops'].includes(view)) {
-  console.error('Guide view must be one of: all, live, crops');
+if (!['all', 'live', 'crops', 'runtime'].includes(view)) {
+  console.error('Guide view must be one of: all, live, crops, runtime');
   process.exit(1);
 }
 
@@ -61,6 +61,9 @@ function buildGuide(name, selectedProfile, selectedView) {
           rectGroup('indicator', selectedProfile.layout.indicators, titleHeight, '#68d8ff', 'rgba(104,216,255,0.16)'),
           rectGroup('meter', selectedProfile.layout.fills, titleHeight, '#ff6de8', 'rgba(255,109,232,0.16)', true)
         ]
+      : []),
+    ...(selectedView === 'all' || selectedView === 'runtime'
+      ? [rectGroup('runtime', flattenRuntimeSlots(selectedProfile.runtime), titleHeight, '#c9ff5a', 'rgba(201,255,90,0.10)', true)]
       : []),
     legend(width, height + titleHeight, selectedView)
   ];
@@ -124,7 +127,8 @@ function legend(width, y, selectedView) {
       ['live regions: keep clean for runtime content', '#66ff99'],
       ['button crops: fixed state sprites', '#ffbd4a'],
       ['indicator crops: state sprites', '#68d8ff'],
-      ['meter/fill rects: runtime fills only', '#ff6de8']
+      ['meter/fill rects: runtime fills only', '#ff6de8'],
+      ['runtime slots: Phaser text and icon placement', '#c9ff5a']
     ],
     live: [
       ['live regions: keep clean for Phaser runtime content', '#66ff99'],
@@ -134,6 +138,10 @@ function legend(width, y, selectedView) {
       ['button crops: fixed idle/hover/pressed/disabled sprites', '#ffbd4a'],
       ['indicator crops: state sprites', '#68d8ff'],
       ['meter/fill rects: runtime fills only', '#ff6de8']
+    ],
+    runtime: [
+      ['runtime slots: exact Phaser text and icon placement', '#c9ff5a'],
+      ['art may frame slots but must not bake dynamic content into them', '#a6b7b4']
     ]
   }[selectedView] ?? [
     ['live regions: keep clean for runtime content', '#66ff99'],
@@ -149,6 +157,42 @@ function legend(width, y, selectedView) {
       `).join('')}
     </g>
   `;
+}
+
+function flattenRuntimeSlots(runtime) {
+  const entries = [];
+  collectRuntimeSlots('', runtime, entries);
+  return Object.fromEntries(entries);
+}
+
+function collectRuntimeSlots(prefix, value, entries) {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  if (isRect(value)) {
+    entries.push([prefix, value]);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      const name = entry?.id ? `${prefix}.${entry.id}` : `${prefix}[${index}]`;
+      collectRuntimeSlots(name, entry, entries);
+    });
+    return;
+  }
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === 'rowHeight' || key === 'id' || (key === 'label' && typeof nested === 'string')) {
+      continue;
+    }
+    collectRuntimeSlots(prefix ? `${prefix}.${key}` : key, nested, entries);
+  }
+}
+
+function isRect(value) {
+  return ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
 }
 
 async function writePng(svg, outputPath) {
@@ -204,7 +248,7 @@ function printUsage() {
     'Usage: pnpm -C frontend skin:guide [mobilePortrait|mobileCompact] [options]',
     '',
     'Options:',
-    '  --view <all|live|crops>  Select rectangle groups. Defaults to all.',
+    '  --view <all|live|crops|runtime>  Select rectangle groups. Defaults to all.',
     '  --out <path>             Write .svg or .png guide. Defaults to ../_artifacts/skin-guides/<profile>-<view>-layout-guide.svg.'
   ].join('\n'));
 }

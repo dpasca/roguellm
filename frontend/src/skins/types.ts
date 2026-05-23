@@ -55,6 +55,59 @@ export interface FixedSkinRenderTheme {
   combatText: string;
 }
 
+export type FixedSkinStatSlotId = 'attack' | 'defense' | 'xp' | 'tile';
+
+export interface FixedSkinRuntimeStatSlot {
+  id: FixedSkinStatSlotId;
+  label: string;
+  labelRect: FixedSkinRect;
+  valueRect: FixedSkinRect;
+}
+
+export interface FixedSkinRuntimeLayout {
+  title: {
+    brand?: FixedSkinRect;
+    playerIcon: FixedSkinRect;
+    gameTitle: FixedSkinRect;
+  };
+  latest: {
+    label: FixedSkinRect;
+    message: FixedSkinRect;
+  };
+  player: {
+    hpLabel: FixedSkinRect;
+    hpValue: FixedSkinRect;
+    stats: FixedSkinRuntimeStatSlot[];
+  };
+  combat: {
+    mode: FixedSkinRect;
+    exploreText: FixedSkinRect;
+    enemyIcon: FixedSkinRect;
+    enemyName: FixedSkinRect;
+    enemyHpValue: FixedSkinRect;
+  };
+  drawers: {
+    log: {
+      header: FixedSkinRect;
+      rowLabel: FixedSkinRect;
+      rowText: FixedSkinRect;
+      rowHeight: number;
+    };
+    inventory: {
+      header: FixedSkinRect;
+      rowPanel: FixedSkinRect;
+      rowBadge: FixedSkinRect;
+      rowText: FixedSkinRect;
+      rowMeta: FixedSkinRect;
+      rowAction: FixedSkinRect;
+      rowHeight: number;
+      emptyBox: FixedSkinRect;
+      emptyTitle: FixedSkinRect;
+      emptyBody: FixedSkinRect;
+    };
+  };
+}
+
 export type FixedSkinIndicatorState = 'ready' | 'thinking' | 'error' | 'offline' | 'on' | 'off';
 
 export interface FixedSkinIndicator {
@@ -84,6 +137,7 @@ export interface FixedSkinProfile {
   background: string;
   materials: Record<FixedSkinMaterialKind, FixedSkinMaterial>;
   renderTheme?: FixedSkinRenderTheme;
+  runtime?: FixedSkinRuntimeLayout;
   regions: {
     map: FixedSkinRect;
     title: FixedSkinRect;

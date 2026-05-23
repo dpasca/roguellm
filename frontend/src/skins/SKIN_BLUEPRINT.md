@@ -196,6 +196,11 @@ visual inspection gates so they behave like part of the skin:
   traces, side status bars, bottom vents, and chassis screws. Visual inspection
   must fail when this count falls below the production floor so the mobile
   artboard cannot regress back into floating panels on a plain background.
+- Production fixed skins copy the contract `runtime` blueprint into
+  `skin-kit.json`. Phaser uses those fixed text/icon slots for title, latest
+  message, player stats, combat rows, and drawer rows instead of hard-coded
+  per-renderer offsets. Skin validation must fail if a production manifest
+  drifts from the contract.
 - Fixed HP rows use a stable `HP` label plate and HP value plate, while the HP
   fill remains a separate meter region defined by the skin profile.
 - Fixed status indicators expose their state as `ready`, `thinking`, `error`,

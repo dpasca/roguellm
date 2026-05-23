@@ -139,6 +139,74 @@ by the chassis without baking in the fill value.
 | `enemyHp` | 168 | 496 | 150 | 8 | Runtime fill |
 | `playerStats` | 34 | 438 | 316 | 16 | Runtime stat plates |
 
+## Runtime Text And Icon Slots
+
+These slots are also part of the fixed mobile contract. They define exactly
+where Phaser places runtime text and semantic canvas icons inside the live
+regions. Skin art may draw plates, bezels, wells, shadows, and labels around
+these slots, but must not bake dynamic gameplay values into them.
+
+The machine-readable `runtime` object in `SKIN_LAYOUT_CONTRACT_V1.json` is the
+authoritative source. Production skin kits copy the exact object into
+`skin-kit.json`, and `validate:skins` fails if the manifest drifts.
+
+### Mobile Portrait Runtime Slots
+
+| Slot | x | y | w | h | Runtime contents |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `title.brand` | 32 | 438 | 258 | 12 | Static game brand label |
+| `title.playerIcon` | 34 | 461 | 20 | 20 | Player semantic icon |
+| `title.gameTitle` | 64 | 454 | 226 | 34 | Generated game title |
+| `latest.label` | 32 | 352 | 268 | 12 | Latest message label |
+| `latest.message` | 32 | 368 | 268 | 58 | Top-first newest message |
+| `player.hpLabel` | 32 | 496 | 36 | 18 | HP label |
+| `player.hpValue` | 270 | 496 | 88 | 18 | Current/max HP |
+| `combat.mode` | 32 | 568 | 72 | 14 | Explore/combat mode label |
+| `combat.exploreText` | 32 | 588 | 326 | 22 | Non-combat status text |
+| `combat.enemyIcon` | 32 | 589 | 16 | 16 | Enemy semantic icon |
+| `combat.enemyName` | 54 | 586 | 206 | 20 | Enemy name |
+| `combat.enemyHpValue` | 280 | 586 | 78 | 20 | Enemy HP value |
+| `drawers.log.header` | 34 | 352 | 322 | 16 | Log drawer heading |
+| `drawers.log.rowLabel` | 34 | 386 | 34 | 14 | First log row marker |
+| `drawers.log.rowText` | 74 | 384 | 276 | 42 | First log row text |
+
+Portrait player stats use fixed one-line stat slots:
+
+| Stat | Label x/y/w/h | Value x/y/w/h |
+| --- | --- | --- |
+| `attack` | 34 / 524 / 28 / 18 | 64 / 524 / 36 / 18 |
+| `defense` | 108 / 524 / 30 / 18 | 142 / 524 / 36 / 18 |
+| `xp` | 186 / 524 / 24 / 18 | 214 / 524 / 38 / 18 |
+| `tile` | 258 / 524 / 32 / 18 | 294 / 524 / 56 / 18 |
+
+### Mobile Compact Runtime Slots
+
+| Slot | x | y | w | h | Runtime contents |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `title.playerIcon` | 34 | 381 | 17 | 17 | Player semantic icon |
+| `title.gameTitle` | 61 | 374 | 229 | 30 | Generated game title |
+| `latest.label` | 32 | 300 | 268 | 12 | Latest message label |
+| `latest.message` | 32 | 316 | 268 | 46 | Top-first newest message |
+| `player.hpLabel` | 32 | 412 | 36 | 16 | HP label |
+| `player.hpValue` | 268 | 412 | 90 | 16 | Current/max HP |
+| `combat.mode` | 32 | 470 | 70 | 14 | Explore/combat mode label |
+| `combat.exploreText` | 32 | 488 | 326 | 18 | Non-combat status text |
+| `combat.enemyIcon` | 32 | 486 | 16 | 16 | Enemy semantic icon |
+| `combat.enemyName` | 54 | 486 | 202 | 18 | Enemy name |
+| `combat.enemyHpValue` | 280 | 486 | 78 | 18 | Enemy HP value |
+| `drawers.log.header` | 34 | 300 | 322 | 16 | Log drawer heading |
+| `drawers.log.rowLabel` | 34 | 324 | 34 | 14 | First log row marker |
+| `drawers.log.rowText` | 74 | 322 | 276 | 36 | First log row text |
+
+Compact player stats use fixed one-line stat slots:
+
+| Stat | Label x/y/w/h | Value x/y/w/h |
+| --- | --- | --- |
+| `attack` | 34 / 438 / 24 / 16 | 62 / 438 / 30 / 16 |
+| `defense` | 98 / 438 / 24 / 16 | 126 / 438 / 30 / 16 |
+| `xp` | 162 / 438 / 20 / 16 | 186 / 438 / 42 / 16 |
+| `tile` | 232 / 438 / 28 / 16 | 264 / 438 / 86 / 16 |
+
 ## Skin Kit Files
 
 Each generated skin profile directory must provide or explicitly reference:
@@ -210,6 +278,8 @@ skin-kit.json
 - `layout.indicators.status` and `layout.indicators.combatLed`
 - `layout.fills.playerHp`, `layout.fills.enemyHp`, and
   `layout.fills.playerStats`
+- `runtime` copied from the selected contract profile; this is the exact Phaser
+  text/icon slot blueprint
 - `assets.chassis.path`
 - `assets.materials.panel`, `assets.materials.lcd`, and
   `assets.materials.button`, each with `fill.path`, `frame.path`, and `slice`
@@ -251,13 +321,14 @@ Use the guide generator when preparing or reviewing source artboards:
 ```bash
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.svg
 pnpm -C frontend skin:guide mobileCompact --view crops --out ../_artifacts/skin-guides/mobile-compact-crops.png
+pnpm -C frontend skin:guide mobileCompact --view runtime --out ../_artifacts/skin-guides/mobile-compact-runtime.svg
 ```
 
 The guide renders the same contract rectangles as an annotated image. Use
 `--view live` for clean runtime apertures, `--view crops` for fixed asset crop
-targets, and `--view all` when checking the full contract at once. These guides
-are meant for visual review and for pairing with generated source art; they are
-not runtime assets.
+targets, `--view runtime` for the exact Phaser text/icon slots, and `--view all`
+when checking the full contract at once. These guides are meant for visual
+review and for pairing with generated source art; they are not runtime assets.
 
 ## Manifest Scaffold Generator
 

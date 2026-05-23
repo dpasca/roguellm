@@ -3,6 +3,7 @@ import type {
   FixedSkinMaterialKind,
   FixedSkinProfile,
   FixedSkinProfileMeta,
+  FixedSkinRuntimeLayout,
   FixedSkinRenderTheme,
   GameSkin
 } from './types';
@@ -86,6 +87,7 @@ type FixedSkinKit = {
     };
   };
   renderTheme?: SkinKitRenderTheme;
+  runtime?: FixedSkinRuntimeLayout;
   assets: {
     chassis: {
       path: string;
@@ -307,6 +309,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
     background: fixedAsset(`${id}/${kit.assets.chassis.path}`),
     materials: manifestMaterials(id, kit),
     renderTheme: manifestRenderTheme(id, kit.renderTheme),
+    runtime: kit.runtime,
     regions: {
       map: kit.regions.map,
       title: kit.regions.title,

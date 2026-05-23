@@ -339,5 +339,227 @@
         "height": 16
       }
     }
+  },
+  "runtime": {
+    "title": {
+      "playerIcon": {
+        "x": 34,
+        "y": 381,
+        "width": 17,
+        "height": 17
+      },
+      "gameTitle": {
+        "x": 61,
+        "y": 374,
+        "width": 229,
+        "height": 30
+      }
+    },
+    "latest": {
+      "label": {
+        "x": 32,
+        "y": 300,
+        "width": 268,
+        "height": 12
+      },
+      "message": {
+        "x": 32,
+        "y": 316,
+        "width": 268,
+        "height": 46
+      }
+    },
+    "player": {
+      "hpLabel": {
+        "x": 32,
+        "y": 412,
+        "width": 36,
+        "height": 16
+      },
+      "hpValue": {
+        "x": 268,
+        "y": 412,
+        "width": 90,
+        "height": 16
+      },
+      "stats": [
+        {
+          "id": "attack",
+          "label": "ATK",
+          "labelRect": {
+            "x": 34,
+            "y": 438,
+            "width": 24,
+            "height": 16
+          },
+          "valueRect": {
+            "x": 62,
+            "y": 438,
+            "width": 30,
+            "height": 16
+          }
+        },
+        {
+          "id": "defense",
+          "label": "DEF",
+          "labelRect": {
+            "x": 98,
+            "y": 438,
+            "width": 24,
+            "height": 16
+          },
+          "valueRect": {
+            "x": 126,
+            "y": 438,
+            "width": 30,
+            "height": 16
+          }
+        },
+        {
+          "id": "xp",
+          "label": "XP",
+          "labelRect": {
+            "x": 162,
+            "y": 438,
+            "width": 20,
+            "height": 16
+          },
+          "valueRect": {
+            "x": 186,
+            "y": 438,
+            "width": 42,
+            "height": 16
+          }
+        },
+        {
+          "id": "tile",
+          "label": "TILE",
+          "labelRect": {
+            "x": 232,
+            "y": 438,
+            "width": 28,
+            "height": 16
+          },
+          "valueRect": {
+            "x": 264,
+            "y": 438,
+            "width": 86,
+            "height": 16
+          }
+        }
+      ]
+    },
+    "combat": {
+      "mode": {
+        "x": 32,
+        "y": 470,
+        "width": 70,
+        "height": 14
+      },
+      "exploreText": {
+        "x": 32,
+        "y": 488,
+        "width": 326,
+        "height": 18
+      },
+      "enemyIcon": {
+        "x": 32,
+        "y": 486,
+        "width": 16,
+        "height": 16
+      },
+      "enemyName": {
+        "x": 54,
+        "y": 486,
+        "width": 202,
+        "height": 18
+      },
+      "enemyHpValue": {
+        "x": 280,
+        "y": 486,
+        "width": 78,
+        "height": 18
+      }
+    },
+    "drawers": {
+      "log": {
+        "header": {
+          "x": 34,
+          "y": 300,
+          "width": 322,
+          "height": 16
+        },
+        "rowLabel": {
+          "x": 34,
+          "y": 324,
+          "width": 34,
+          "height": 14
+        },
+        "rowText": {
+          "x": 74,
+          "y": 322,
+          "width": 276,
+          "height": 36
+        },
+        "rowHeight": 40
+      },
+      "inventory": {
+        "header": {
+          "x": 34,
+          "y": 300,
+          "width": 322,
+          "height": 16
+        },
+        "rowPanel": {
+          "x": 32,
+          "y": 320,
+          "width": 326,
+          "height": 34
+        },
+        "rowBadge": {
+          "x": 36,
+          "y": 326,
+          "width": 38,
+          "height": 22
+        },
+        "rowText": {
+          "x": 82,
+          "y": 322,
+          "width": 174,
+          "height": 16
+        },
+        "rowMeta": {
+          "x": 82,
+          "y": 340,
+          "width": 174,
+          "height": 12
+        },
+        "rowAction": {
+          "x": 264,
+          "y": 326,
+          "width": 82,
+          "height": 22
+        },
+        "rowHeight": 40,
+        "emptyBox": {
+          "x": 42,
+          "y": 336,
+          "width": 306,
+          "height": 74
+        },
+        "emptyTitle": {
+          "x": 58,
+          "y": 348,
+          "width": 274,
+          "height": 22
+        },
+        "emptyBody": {
+          "x": 58,
+          "y": 378,
+          "width": 274,
+          "height": 28
+        }
+      }
+    }
   }
 }

@@ -95,6 +95,7 @@ function buildManifest(id, kind, selectedProfile, options) {
       indicators: cloneRectMap(selectedProfile.layout.indicators),
       fills: cloneRectMap(selectedProfile.layout.fills)
     },
+    runtime: cloneDeep(selectedProfile.runtime),
     build: {
       source: options.source ?? 'source-artboard.png',
       crops: buildCrops(selectedProfile, options)
@@ -227,6 +228,10 @@ function cloneMaterialMap(materials) {
 
 function cloneRect(rect) {
   return { ...rect };
+}
+
+function cloneDeep(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 function labelFromId(id) {

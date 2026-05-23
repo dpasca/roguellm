@@ -45,6 +45,9 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     'Runtime meter rectangles:',
     formatRectList(profile.layout.fills, meterNotes()),
     '',
+    'Runtime text and icon slots Phaser will draw from the manifest:',
+    formatRuntimeSlots(profile.runtime),
+    '',
     'Hard rules:',
     '- This is a source artboard for a skin kit, not a gameplay screenshot.',
     '- Leave all live regions clean and empty enough for Phaser-rendered runtime content.',
@@ -80,6 +83,44 @@ function formatMaterialList(materials) {
       return `- ${name}: ${fill.path} ${fill.width}x${fill.height} tile, ${frame.path} ${frame.width}x${frame.height} nine-slice frame, slice=${material.slice}.`;
     })
     .join('\n');
+}
+
+function formatRuntimeSlots(runtime) {
+  const entries = [];
+  collectRuntimeSlots('', runtime, entries);
+  return entries
+    .map(([name, rect]) => `- ${name}: x=${rect.x} y=${rect.y} w=${rect.width} h=${rect.height}.`)
+    .join('\n');
+}
+
+function collectRuntimeSlots(prefix, value, entries) {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  if (isRect(value)) {
+    entries.push([prefix, value]);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      const name = entry?.id ? `${prefix}.${entry.id}` : `${prefix}[${index}]`;
+      collectRuntimeSlots(name, entry, entries);
+    });
+    return;
+  }
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === 'rowHeight' || key === 'id' || (key === 'label' && typeof nested === 'string')) {
+      continue;
+    }
+    collectRuntimeSlots(prefix ? `${prefix}.${key}` : key, nested, entries);
+  }
+}
+
+function isRect(value) {
+  return ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
 }
 
 function liveRegionNotes() {

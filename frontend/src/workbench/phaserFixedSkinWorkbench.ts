@@ -9,6 +9,8 @@ import type {
   FixedSkinProfile,
   FixedSkinRect,
   FixedSkinRenderTheme,
+  FixedSkinRuntimeLayout,
+  FixedSkinStatSlotId,
   GameSkin
 } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
@@ -17,6 +19,13 @@ import { selectFixedSkinProfile } from './fixedSkinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type PhaserFixedScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
+type PhaserTextStyle = {
+  fontSize: number;
+  color: string;
+  fontStyle?: string;
+  align?: 'left' | 'center' | 'right';
+  lineSpacing?: number;
+};
 
 interface SceneConfig {
   profile: FixedSkinProfile;
@@ -971,55 +980,57 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawLatest(): void {
     const latest = this.profile.regions.latest;
+    const layout = runtimeLayout(this.profile).latest;
     this.drawMaterialPanel(insetRect(latest, 0), 'lcd', {
       alpha: 0.82,
       fillTint: this.theme.lcdFill,
       frameTint: this.theme.primary,
       scanlines: true
     });
-    this.addText('LATEST', latest.x + 8, latest.y + 8, latest.width - 16, {
+    this.addTextInRect('LATEST', layout.label, {
       fontSize: 10,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    this.addText(this.viewState.logs[0] ?? 'Ready.', latest.x + 8, latest.y + 24, latest.width - 16, {
+    this.addTextInRect(this.viewState.logs[0] ?? 'Ready.', layout.message, {
       fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
       color: this.theme.bodyText,
       fontStyle: 'bold',
       lineSpacing: this.profile.kind === 'mobileCompact' ? 1 : 2
-    }, latest.height - 28);
+    });
   }
 
   private drawTitle(): void {
-    const rect = this.profile.regions.title;
-    if (this.profile.kind !== 'mobileCompact') {
-      this.addText('ROGUELLM', rect.x, rect.y - 16, rect.width, {
+    const layout = runtimeLayout(this.profile).title;
+    if (layout.brand) {
+      this.addTextInRect('ROGUELLM', layout.brand, {
         fontSize: 10,
         color: this.theme.primaryText,
         fontStyle: 'bold'
       });
     }
-    const iconSize = this.profile.kind === 'mobileCompact' ? 17 : 20;
+    const iconSize = Math.min(layout.playerIcon.width, layout.playerIcon.height);
     this.drawSemanticIcon(
       this.viewState.state.player.font_awesome_icon,
       '@',
-      rect.x + 2 + iconSize * 0.5,
-      rect.y + Math.max(15, rect.height * 0.5),
+      layout.playerIcon.x + layout.playerIcon.width * 0.5,
+      layout.playerIcon.y + layout.playerIcon.height * 0.5,
       iconSize,
       this.theme.primaryText,
       0.96
     );
-    this.addText(this.viewState.state.game_title, rect.x + iconSize + 12, rect.y, rect.width - iconSize - 12, {
+    this.addTextInRect(this.viewState.state.game_title, layout.gameTitle, {
       fontSize: this.profile.kind === 'mobileCompact' ? 20 : 24,
       color: this.theme.titleText,
       fontStyle: 'bold'
-    }, rect.height);
+    });
   }
 
   private drawPlayer(): void {
     const state = this.viewState.state;
     const hpRect = this.profile.regions.playerHp;
     const hpFill = this.profile.regions.playerHpFill;
+    const layout = runtimeLayout(this.profile).player;
     const hpRatio = clampRatio(state.player_hp / Math.max(1, state.player_max_hp));
     this.drawMaterialPanel(insetRect(hpRect, 0), 'panel', {
       alpha: 0.76,
@@ -1027,11 +1038,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
-    this.addText('HP', hpRect.x + 8, hpRect.y + 7, 36, {
+    this.addTextInRect('HP', layout.hpLabel, {
       fontSize: 16,
       color: '#c8cdd6'
     });
-    this.addText(`${Math.max(0, state.player_hp)}/${state.player_max_hp}`, hpRect.x + hpRect.width - 96, hpRect.y + 7, 88, {
+    this.addTextInRect(`${Math.max(0, state.player_hp)}/${state.player_max_hp}`, layout.hpValue, {
       fontSize: 16,
       color: this.theme.titleText,
       fontStyle: 'bold',
@@ -1039,48 +1050,39 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
     this.drawMeter(hpFill, hpRatio, 0x75f06a);
 
-    const stats = this.profile.regions.playerStats;
-    const tile = currentTileName(state);
-    const columns = [
-      ['ATK', String(state.player_attack), '#ff6682'],
-      ['DEF', String(state.player_defense), '#72d6ff'],
-      ['XP', String(state.player_xp), '#e776ff'],
-      ['TILE', tile, '#ffd15a']
-    ] as const;
-    const columnWidth = Math.floor(stats.width / columns.length);
-    columns.forEach(([label, value, color], index) => {
-      const x = stats.x + columnWidth * index;
-      this.addText(label, x, stats.y + 2, columnWidth - 4, {
-        fontSize: 10,
-        color,
+    for (const slot of layout.stats) {
+      this.addTextInRect(slot.label, slot.labelRect, {
+        fontSize: this.profile.kind === 'mobileCompact' ? 9 : 10,
+        color: statAccentColor(slot.id),
         fontStyle: 'bold'
       });
-      this.addText(value, x, stats.y + 18, columnWidth - 4, {
-        fontSize: index === 3 ? 11 : 15,
+      this.addTextInRect(statValue(state, slot.id), slot.valueRect, {
+        fontSize: slot.id === 'tile' ? (this.profile.kind === 'mobileCompact' ? 10 : 11) : 13,
         color: this.theme.titleText,
         fontStyle: 'bold'
-      }, stats.height - 18);
-    });
+      });
+    }
   }
 
   private drawCombat(): void {
     const state = this.viewState.state;
     const rect = this.profile.regions.combat;
     const enemy = state.current_enemy;
+    const layout = runtimeLayout(this.profile).combat;
     this.drawMaterialPanel(insetRect(rect, 0), state.in_combat ? 'button' : 'panel', {
       alpha: state.in_combat ? 0.82 : 0.72,
       fillTint: state.in_combat ? 0x351018 : this.theme.panelFill,
       frameTint: state.in_combat ? this.theme.combat : this.theme.primary,
       scanlines: true
     });
-    this.addText(state.in_combat ? 'COMBAT' : 'EXPLORE', rect.x + 8, rect.y + 6, 72, {
+    this.addTextInRect(state.in_combat ? 'COMBAT' : 'EXPLORE', layout.mode, {
       fontSize: 11,
       color: state.in_combat ? this.theme.combatText : this.theme.primaryText,
       fontStyle: 'bold'
     });
 
     if (!state.in_combat || !enemy) {
-      this.addText('Movement online', rect.x + 8, rect.y + 24, rect.width - 16, {
+      this.addTextInRect('Movement online', layout.exploreText, {
         fontSize: 14,
         color: this.theme.bodyText,
         fontStyle: 'bold'
@@ -1088,13 +1090,21 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return;
     }
 
-    this.drawSemanticIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, this.theme.combatText, 0.96);
-    this.addText(enemy.name, rect.x + 30, rect.y + 24, rect.width - 134, {
+    this.drawSemanticIcon(
+      enemy.font_awesome_icon,
+      '!',
+      layout.enemyIcon.x + layout.enemyIcon.width * 0.5,
+      layout.enemyIcon.y + layout.enemyIcon.height * 0.5,
+      Math.min(layout.enemyIcon.width, layout.enemyIcon.height),
+      this.theme.combatText,
+      0.96
+    );
+    this.addTextInRect(enemy.name, layout.enemyName, {
       fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
       color: this.theme.bodyText,
       fontStyle: 'bold'
     });
-    this.addText(`${enemy.hp}/${enemy.max_hp}`, rect.x + rect.width - 86, rect.y + 24, 78, {
+    this.addTextInRect(`${enemy.hp}/${enemy.max_hp}`, layout.enemyHpValue, {
       fontSize: 14,
       color: this.theme.titleText,
       fontStyle: 'bold',
@@ -1432,80 +1442,77 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawLogDrawer(): void {
     const rect = this.profile.regions.log;
+    const layout = runtimeLayout(this.profile).drawers.log;
     this.drawMaterialPanel(rect, 'lcd', {
       alpha: 0.97,
       fillTint: this.theme.lcdFill,
       frameTint: this.theme.primary,
       scanlines: true
     });
-    this.addText('LOG', rect.x + 10, rect.y + 10, rect.width - 20, {
+    this.addTextInRect('LOG', layout.header, {
       fontSize: 13,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    const rowHeight = this.profile.kind === 'mobileCompact' ? 40 : 46;
-    const maxRows = Math.max(1, Math.floor((rect.height - 36) / rowHeight));
+    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowText.y) / layout.rowHeight));
     this.viewState.logs.slice(0, maxRows).forEach((message, index) => {
-      const y = rect.y + 34 + rowHeight * index;
-      this.addText(index === 0 ? 'NEW' : String(index + 1).padStart(2, '0'), rect.x + 10, y + 2, 34, {
+      this.addTextInRect(index === 0 ? 'NEW' : String(index + 1).padStart(2, '0'), offsetRect(layout.rowLabel, 0, layout.rowHeight * index), {
         fontSize: 10,
         color: index === 0 ? this.theme.primaryText : this.theme.primaryDimText,
         fontStyle: 'bold'
       });
-      this.addText(message, rect.x + 50, y, rect.width - 66, {
+      this.addTextInRect(message, offsetRect(layout.rowText, 0, layout.rowHeight * index), {
         fontSize: 12,
         color: this.theme.bodyText,
         fontStyle: index === 0 ? 'bold' : ''
-      }, rowHeight - 4);
+      });
     });
   }
 
   private drawInventoryDrawer(): void {
     const rect = this.profile.regions.inventory ?? this.profile.regions.log;
+    const layout = runtimeLayout(this.profile).drawers.inventory;
     this.drawMaterialPanel(rect, 'lcd', {
       alpha: 0.97,
       fillTint: this.theme.lcdFill,
       frameTint: this.theme.primary,
       scanlines: true
     });
-    this.addText('INVENTORY', rect.x + 10, rect.y + 10, rect.width - 20, {
+    this.addTextInRect('INVENTORY', layout.header, {
       fontSize: 13,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    const rowHeight = this.profile.kind === 'mobileCompact' ? 40 : 46;
-    const maxRows = Math.max(1, Math.floor((rect.height - 36) / rowHeight));
+    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowPanel.y) / layout.rowHeight));
     if (this.viewState.state.inventory.length === 0) {
-      const box = {
-        x: rect.x + 18,
-        y: rect.y + 46,
-        width: rect.width - 36,
-        height: Math.min(74, rect.height - 66)
-      };
-      this.drawMaterialPanel(box, 'panel', {
+      this.drawMaterialPanel(layout.emptyBox, 'panel', {
         alpha: 0.9,
         fillTint: this.theme.panelFill,
         frameTint: this.theme.primary,
         scanlines: true
       });
-      this.addText('EMPTY', box.x + 12, box.y + 12, box.width - 24, {
+      this.addTextInRect('EMPTY', layout.emptyTitle, {
         fontSize: 18,
         color: this.theme.primaryText,
         fontStyle: 'bold',
         align: 'center'
       });
-      this.addText('Recovered gear and consumables will appear here.', box.x + 16, box.y + 42, box.width - 32, {
+      this.addTextInRect('Recovered gear and consumables will appear here.', layout.emptyBody, {
         fontSize: 11,
         color: this.theme.mutedText,
         align: 'center'
-      }, 28);
+      });
       return;
     }
 
     this.viewState.state.inventory.slice(0, maxRows).forEach((item, index) => {
-      const y = rect.y + 34 + rowHeight * index;
       const action = inventoryRowAction(item, this.viewState);
-      this.drawMaterialPanel({ x: rect.x + 8, y: y - 3, width: rect.width - 16, height: rowHeight - 6 }, 'panel', {
+      const rowPanel = offsetRect(layout.rowPanel, 0, layout.rowHeight * index);
+      const rowBadge = offsetRect(layout.rowBadge, 0, layout.rowHeight * index);
+      const rowText = offsetRect(layout.rowText, 0, layout.rowHeight * index);
+      const rowMeta = offsetRect(layout.rowMeta, 0, layout.rowHeight * index);
+      const rowAction = offsetRect(layout.rowAction, 0, layout.rowHeight * index);
+      this.drawMaterialPanel(rowPanel, 'panel', {
         alpha: item.is_equipped ? 0.9 : 0.72,
         fillTint: item.is_equipped ? 0x163f20 : 0x101a14,
         frameTint: item.is_equipped ? 0xaaff87 : 0x497055
@@ -1514,26 +1521,26 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       const badgeColor = itemTypeColor(item.type);
       const graphics = this.add.graphics();
       graphics.fillStyle(badgeColor, 0.28);
-      graphics.fillRoundedRect(rect.x + 12, y + 4, 38, 22, 4);
+      graphics.fillRoundedRect(rowBadge.x, rowBadge.y, rowBadge.width, rowBadge.height, 4);
       graphics.lineStyle(1, badgeColor, 0.85);
-      graphics.strokeRoundedRect(rect.x + 12.5, y + 4.5, 37, 21, 4);
-      this.addText(itemTypeLabel(item.type), rect.x + 15, y + 9, 32, {
+      graphics.strokeRoundedRect(rowBadge.x + 0.5, rowBadge.y + 0.5, rowBadge.width - 1, rowBadge.height - 1, 4);
+      this.addTextInRect(itemTypeLabel(item.type), rowBadge, {
         fontSize: 10,
         color: itemTypeTextColor(item.type),
         fontStyle: 'bold',
         align: 'center'
       });
 
-      this.addText(item.name, rect.x + 58, y + 1, rect.width - 138, {
+      this.addTextInRect(item.name, rowText, {
         fontSize: 12,
         color: this.theme.bodyText,
         fontStyle: 'bold'
-      }, rowHeight - 20);
-      this.addText(item.description, rect.x + 58, y + 19, rect.width - 138, {
+      });
+      this.addTextInRect(item.description, rowMeta, {
         fontSize: 9,
         color: this.theme.mutedText
-      }, Math.max(12, rowHeight - 24));
-      this.drawInventoryActionChip(rect.x + rect.width - 72, y + 5, 54, 24, action);
+      });
+      this.drawInventoryActionChip(rowAction.x, rowAction.y, rowAction.width, rowAction.height, action);
     });
   }
 
@@ -2112,13 +2119,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     x: number,
     y: number,
     width: number,
-    style: {
-      fontSize: number;
-      color: string;
-      fontStyle?: string;
-      align?: 'left' | 'center' | 'right';
-      lineSpacing?: number;
-    },
+    style: PhaserTextStyle,
     maxHeight?: number
   ): Phaser.GameObjects.Text {
     const object = this.add.text(x, y, text, {
@@ -2141,6 +2142,14 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       object.setFontSize(Math.max(9, Math.floor(style.fontSize * maxHeight / object.height)));
     }
     return object;
+  }
+
+  private addTextInRect(
+    text: string,
+    rect: FixedSkinRect,
+    style: PhaserTextStyle
+  ): Phaser.GameObjects.Text {
+    return this.addText(text, rect.x, rect.y, rect.width, style, rect.height);
   }
 
   private isButtonDisabled(buttonId: FixedButtonId): boolean {
@@ -2237,6 +2246,72 @@ function materialKey(profile: FixedSkinProfile, kind: FixedSkinMaterialKind, par
   return assetKey(profile, `material:${kind}:${part}`);
 }
 
+function runtimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayout {
+  return profile.runtime ?? fallbackRuntimeLayout(profile);
+}
+
+function fallbackRuntimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayout {
+  const title = profile.regions.title;
+  const latest = profile.regions.latest;
+  const player = profile.regions.playerHp;
+  const stats = profile.regions.playerStats;
+  const combat = profile.regions.combat;
+  const log = profile.regions.log;
+  const inventory = profile.regions.inventory ?? profile.regions.log;
+  const iconSize = profile.kind === 'mobileCompact' ? 17 : 20;
+  const rowHeight = profile.kind === 'mobileCompact' ? 40 : 46;
+  const statTop = stats.y + Math.max(0, Math.floor((stats.height - 16) / 2));
+
+  return {
+    title: {
+      ...(profile.kind === 'mobileCompact' ? {} : { brand: { x: title.x, y: title.y - 16, width: title.width, height: 12 } }),
+      playerIcon: { x: title.x + 2, y: title.y + Math.max(0, Math.floor((title.height - iconSize) / 2)), width: iconSize, height: iconSize },
+      gameTitle: { x: title.x + iconSize + 12, y: title.y, width: Math.max(1, title.width - iconSize - 12), height: title.height }
+    },
+    latest: {
+      label: { x: latest.x + 8, y: latest.y + 8, width: latest.width - 16, height: 12 },
+      message: { x: latest.x + 8, y: latest.y + 24, width: latest.width - 16, height: Math.max(12, latest.height - 28) }
+    },
+    player: {
+      hpLabel: { x: player.x + 8, y: player.y + 7, width: 36, height: 18 },
+      hpValue: { x: player.x + player.width - 96, y: player.y + 7, width: 88, height: 18 },
+      stats: [
+        { id: 'attack', label: 'ATK', labelRect: { x: stats.x, y: statTop, width: 28, height: 16 }, valueRect: { x: stats.x + 30, y: statTop, width: 34, height: 16 } },
+        { id: 'defense', label: 'DEF', labelRect: { x: stats.x + 74, y: statTop, width: 30, height: 16 }, valueRect: { x: stats.x + 108, y: statTop, width: 34, height: 16 } },
+        { id: 'xp', label: 'XP', labelRect: { x: stats.x + 152, y: statTop, width: 24, height: 16 }, valueRect: { x: stats.x + 180, y: statTop, width: 38, height: 16 } },
+        { id: 'tile', label: 'TILE', labelRect: { x: stats.x + 224, y: statTop, width: 32, height: 16 }, valueRect: { x: stats.x + 260, y: statTop, width: Math.max(44, stats.width - 260), height: 16 } }
+      ]
+    },
+    combat: {
+      mode: { x: combat.x + 8, y: combat.y + 6, width: 72, height: 14 },
+      exploreText: { x: combat.x + 8, y: combat.y + 24, width: combat.width - 16, height: Math.max(16, combat.height - 28) },
+      enemyIcon: { x: combat.x + 6, y: combat.y + 24, width: 16, height: 16 },
+      enemyName: { x: combat.x + 30, y: combat.y + 24, width: Math.max(60, combat.width - 134), height: Math.max(16, combat.height - 28) },
+      enemyHpValue: { x: combat.x + combat.width - 86, y: combat.y + 24, width: 78, height: Math.max(16, combat.height - 28) }
+    },
+    drawers: {
+      log: {
+        header: { x: log.x + 10, y: log.y + 10, width: log.width - 20, height: 16 },
+        rowLabel: { x: log.x + 10, y: log.y + 36, width: 34, height: 14 },
+        rowText: { x: log.x + 50, y: log.y + 34, width: log.width - 66, height: rowHeight - 4 },
+        rowHeight
+      },
+      inventory: {
+        header: { x: inventory.x + 10, y: inventory.y + 10, width: inventory.width - 20, height: 16 },
+        rowPanel: { x: inventory.x + 8, y: inventory.y + 31, width: inventory.width - 16, height: rowHeight - 6 },
+        rowBadge: { x: inventory.x + 12, y: inventory.y + 38, width: 38, height: 22 },
+        rowText: { x: inventory.x + 58, y: inventory.y + 35, width: inventory.width - 138, height: rowHeight - 20 },
+        rowMeta: { x: inventory.x + 58, y: inventory.y + 53, width: inventory.width - 138, height: Math.max(12, rowHeight - 24) },
+        rowAction: { x: inventory.x + inventory.width - 72, y: inventory.y + 39, width: 54, height: 24 },
+        rowHeight,
+        emptyBox: { x: inventory.x + 18, y: inventory.y + 46, width: inventory.width - 36, height: Math.min(74, inventory.height - 66) },
+        emptyTitle: { x: inventory.x + 30, y: inventory.y + 58, width: inventory.width - 60, height: 22 },
+        emptyBody: { x: inventory.x + 34, y: inventory.y + 88, width: inventory.width - 68, height: 28 }
+      }
+    }
+  };
+}
+
 function fixedSkinRenderTheme(profile: FixedSkinProfile): FixedSkinRenderTheme {
   if (profile.renderTheme) {
     return profile.renderTheme;
@@ -2268,6 +2343,32 @@ function defaultMaterialTint(kind: FixedSkinMaterialKind, theme: FixedSkinRender
     return theme.primary;
   }
   return theme.primary;
+}
+
+function statValue(state: GameState, slotId: FixedSkinStatSlotId): string {
+  if (slotId === 'attack') {
+    return String(state.player_attack);
+  }
+  if (slotId === 'defense') {
+    return String(state.player_defense);
+  }
+  if (slotId === 'xp') {
+    return String(state.player_xp);
+  }
+  return currentTileName(state);
+}
+
+function statAccentColor(slotId: FixedSkinStatSlotId): string {
+  if (slotId === 'attack') {
+    return '#ff6682';
+  }
+  if (slotId === 'defense') {
+    return '#72d6ff';
+  }
+  if (slotId === 'xp') {
+    return '#e776ff';
+  }
+  return '#ffd15a';
 }
 
 function buttonKey(profile: FixedSkinProfile, buttonId: FixedButtonId, state: FixedSkinButtonState): string {
@@ -2540,6 +2641,15 @@ function outsetRect(rect: FixedSkinRect, outset: number): FixedSkinRect {
     y: rect.y - outset,
     width: rect.width + outset * 2,
     height: rect.height + outset * 2
+  };
+}
+
+function offsetRect(rect: FixedSkinRect, dx: number, dy: number): FixedSkinRect {
+  return {
+    x: rect.x + dx,
+    y: rect.y + dy,
+    width: rect.width,
+    height: rect.height
   };
 }
 

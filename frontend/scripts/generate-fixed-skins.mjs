@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const fixedRootDir = path.resolve('src/skins/neo-tokyo-console/fixed');
+const layoutContract = JSON.parse(fs.readFileSync(path.resolve('src/skins/SKIN_LAYOUT_CONTRACT_V1.json'), 'utf8'));
 
 const skinRegions = {
   map: { x: 22, y: 48, width: 346, height: 281 },
@@ -146,6 +147,7 @@ const standardSkinProfile = {
   regions: skinRegions,
   assets: skinAssets,
   layout: skinLayout,
+  runtime: layoutContract.profiles.mobilePortrait.runtime,
   chassis: (variant) => variant.premium ? premiumChassisSvg(variant) : chassisSvg(variant)
 };
 
@@ -156,6 +158,7 @@ function compactSkinProfileFor(sourceProfile = 'reference-mobile-v3') {
     regions: compactSkinRegions,
     assets: compactSkinAssets(sourceProfile),
     layout: compactSkinLayout,
+    runtime: layoutContract.profiles.mobileCompact.runtime,
     chassis: compactPremiumChassisSvg
   };
 }
@@ -384,7 +387,8 @@ function generateVariant(variant, profile) {
     renderTheme: renderTheme(variant),
     regions: profile.regions,
     assets: profile.assets,
-    layout: profile.layout
+    layout: profile.layout,
+    runtime: profile.runtime
   }, null, 2)}\n`);
 
   writePng(outDir, 'chassis.png', profile.chassis(variant));
