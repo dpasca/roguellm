@@ -128,9 +128,9 @@ values, enemy names, log text, or button state text that changes at runtime.
 
 ## Runtime Widget Hardware
 
-Some repeated widgets are DOM-rendered hardware that sits inside fixed apertures
-instead of separate bitmap crops per row. These pieces still need stable sizes
-and visual inspection gates so they behave like part of the skin:
+Repeated widgets are Phaser-rendered hardware that sits inside fixed apertures
+instead of relying on CSS layout. These pieces still need stable sizes and
+visual inspection gates so they behave like part of the skin:
 
 - Fixed map apertures use a non-interactive glass/scanline layer above the
   Phaser canvas while keeping map icons above the glass for readability.
@@ -232,8 +232,8 @@ Required binary indicator states:
 - `off`
 
 Button assets may include their own label text when the manifest sets
-`hideLabel: true`. Otherwise, Font Awesome icons and DOM labels are rendered on
-top by the app.
+`hideLabel: true`. Otherwise, Font Awesome icons and Phaser text labels are
+rendered on top by the app.
 
 Prefer alpha PNGs for controls. Avoid rectangular screenshot crops unless the
 entire rectangle is an intentional physical widget.

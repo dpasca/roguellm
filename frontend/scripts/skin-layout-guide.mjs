@@ -127,7 +127,7 @@ function legend(width, y, selectedView) {
       ['meter/fill rects: runtime fills only', '#ff6de8']
     ],
     live: [
-      ['live regions: keep clean for runtime DOM/Phaser content', '#66ff99'],
+      ['live regions: keep clean for Phaser runtime content', '#66ff99'],
       ['overlap is intentional for drawers and terminal states', '#a6b7b4']
     ],
     crops: [

@@ -43,7 +43,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     '',
     'Hard rules:',
     '- This is a source artboard for a skin kit, not a gameplay screenshot.',
-    '- Leave all live regions clean and empty enough for runtime DOM or Phaser content.',
+    '- Leave all live regions clean and empty enough for Phaser-rendered runtime content.',
     '- Do not include map tiles, player markers, enemies, items, HP values, stat values, enemy names, inventory names, chat/log text, terminal copy, or model status text.',
     '- Do not bake labels that change at runtime.',
     '- Make button and toggle wells suitable for separate transparent crops in idle, hover, pressed, and disabled states.',

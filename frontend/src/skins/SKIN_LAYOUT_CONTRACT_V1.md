@@ -29,10 +29,11 @@ than a scaled mobile layout.
   individual widgets and crops keep their fixed pixel dimensions.
 - Button, toggle, indicator, and terminal states must be separate assets or
   separately croppable state art.
-- Runtime text and Phaser content own the live regions. Art should frame them,
-  not replace them.
-- CSS is not part of the skin authoring contract. CSS may place runtime content,
-  but it should not be the source of the skin's primary look.
+- Phaser-rendered runtime content owns the live regions. Art should frame it,
+  not replace it.
+- CSS is outside the skin and runtime UI contract. It may host the app root,
+  canvas, and global browser reset only; do not use CSS to place, skin, size, or
+  compose game widgets.
 
 ## Coordinate System
 
@@ -47,7 +48,7 @@ The origin is the top-left of the source artboard. Rectangles are measured as
 
 ## Live Region Rectangles
 
-These rectangles must remain clean enough for runtime DOM or Phaser content.
+These rectangles must remain clean enough for Phaser-rendered runtime content.
 The source art should contain frames and surrounding chrome, not baked dynamic
 content inside these rectangles.
 

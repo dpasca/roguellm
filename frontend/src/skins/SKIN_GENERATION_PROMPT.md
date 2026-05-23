@@ -50,9 +50,9 @@ Hard rules:
 - Do not include labels that will change at runtime.
 - Do not bake decorative labels inside live text zones such as player HP/stats,
   combat/enemy, latest message, log, inventory, or end-state copy. Those zones
-  must stay clean for runtime DOM text.
+  must stay clean for Phaser-rendered runtime text.
 - Stable decorative labels are allowed only if small and nonessential.
-- Leave all dynamic apertures clean and empty enough for live DOM/Phaser content.
+- Leave all dynamic apertures clean and empty enough for live Phaser content.
 - Make button wells clean enough to crop separate transparent sprites for idle,
   hover, pressed, and disabled states.
 - Include a restart button treatment that can be cropped into idle, hover,

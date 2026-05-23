@@ -1,6 +1,9 @@
 # Neo Tokyo Console Asset Pipeline
 
-This skin can use generated bitmap art, but generated images should not be applied directly with `background-size: cover`, full-panel stretching, or arbitrary `border-image` values. Runtime assets need to be intentionally cut into layout-safe parts first.
+This skin can use generated bitmap art, but generated images should not be
+applied directly as CSS backgrounds, full-panel stretching, or arbitrary
+`border-image` values. Runtime assets need to be intentionally cut into
+layout-safe Phaser parts first.
 
 ## Current Raw References
 
@@ -13,9 +16,11 @@ The files in `raw/` are generated reference surfaces only:
 
 They are useful for style direction and source material, but they are not currently runtime assets.
 
-## Current Runtime Assets
+## Legacy Runtime Assets
 
-The files in `assets/` are safe for live CSS:
+The files in `assets/` came from the earlier browser/CSS pass. They are useful
+as source material and fallback references, but they are not the target for new
+v1 fixed-skin work:
 
 - `lcd-fill-tile.png`: a 96x96 seamless LCD fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
 - `lcd-frame-9slice.png`: a 48x48 transparent LCD frame. It is intended to be used as a border image with slice `8`, fixed corners, and repeated edges.
@@ -26,12 +31,14 @@ The files in `assets/` are safe for live CSS:
 
 ## Runtime Asset Rules
 
-Use one of these patterns before wiring an image into CSS:
+Use one of these patterns before wiring generated art into the Phaser fixed-skin
+runtime:
 
 - **Fixed-size asset:** for controls that have fixed dimensions, such as square icon buttons, LEDs, screws, and small badges.
 - **Nine-slice frame:** for resizable panels. Corners must stay fixed, edges can stretch or repeat, and the center must be a separate fill.
 - **Tileable fill:** for panel interiors, LCD scanlines, brushed metal, noise, or glass. It must repeat cleanly on both axes needed by the target.
-- **Layered chrome:** combine a tokenized CSS base color, tileable fill, fixed corner/edge artwork, and CSS shadow/glow as separate layers.
+- **Layered chrome:** combine fixed corner/edge artwork, tileable fill, and
+  explicit overlay sprites as separate Phaser layers.
 
 Do not use generated full panels as a generic `cover` background on live controls. That warps bevels, LEDs, screws, and shadows at different aspect ratios.
 
@@ -49,4 +56,5 @@ For the next asset pass, generate or crop these explicit pieces:
 - `button-160x48-normal.png`, `button-160x48-active.png`, `button-160x48-disabled.png`: fixed-size button surfaces.
 - `led-green.png`, `led-amber.png`, `led-red.png`: fixed accent lights.
 
-Once those exist, CSS can compose them predictably rather than stretching a generated screenshot.
+Once those exist, the Phaser fixed-skin path can compose them predictably rather
+than stretching a generated screenshot.
