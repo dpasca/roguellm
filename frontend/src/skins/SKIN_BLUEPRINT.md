@@ -287,8 +287,12 @@ scalable production-skin sweep.
 
 ## Playable Runtime
 
-The fixed mobile skin is the default Game2 UI on mobile-width viewports. It can
-also be forced with `ui=fixed-skin`, for example:
+The fixed mobile skin is the default Game2 UI on mobile-width viewports, and
+the fixed-skin renderer is Phaser-first. CSS/DOM is no longer the skinning
+target; it is kept only as a legacy comparison path while the Phaser runtime
+catches up.
+
+Force the Phaser fixed-skin runtime with `ui=fixed-skin`, for example:
 
 ```text
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-v3
@@ -300,29 +304,25 @@ For short-phone manual checks, force the compact profile:
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-compact
 ```
 
-The experimental Phaser-only runtime uses the same profile contract without the
-legacy CSS widget layer:
+For local Phaser fixed-skin workbench review, use:
 
 ```text
-http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&renderer=phaser&profile=reference-mobile-compact
+http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&profile=reference-mobile-compact
 ```
 
-For local fixed-skin workbench review, use:
+The old CSS/DOM fixed-skin paths are explicit legacy/debug tools:
 
 ```text
-http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&renderer=dom&profile=reference-mobile-compact
+http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&renderer=dom&profile=reference-mobile-compact
 ```
 
-The legacy fixed-skin workbench still uses browser DOM/CSS as scaffolding. The
-new migration target renders the fixed skin inside a single Phaser canvas:
-
-```text
-http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&renderer=phaser&profile=reference-mobile-compact
-```
-
-Use this Phaser renderer for new skin-quality work. It consumes the same fixed
+Use the Phaser renderer for new skin-quality work. It consumes the same fixed
 profile manifests and PNG state assets, so improvements made there can be
 migrated into the live runtime without inventing a second skin format.
+
+CSS may host the browser root, global reset, and legacy renderer only. It should
+not place, skin, size, or compose fixed-skin game widgets.
 
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the

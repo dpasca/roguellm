@@ -41,11 +41,21 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   moveW: { action: 'move', direction: 'w' }
 };
 
+const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
+
+function fixedRendererFromParams(params: URLSearchParams): string {
+  return (params.get('fixed_renderer') ?? params.get('renderer') ?? '').toLowerCase();
+}
+
+function isLegacyFixedRenderer(params: URLSearchParams): boolean {
+  return legacyFixedRenderers.has(fixedRendererFromParams(params));
+}
+
 export function isPhaserFixedSkinWorkbench(): boolean {
   const params = new URLSearchParams(window.location.search);
   const workbench = params.get('workbench') ?? params.get('bench');
   return workbench === 'phaser-fixed-skin' ||
-    (workbench === 'fixed-skin' && params.get('renderer') === 'phaser');
+    (workbench === 'fixed-skin' && !isLegacyFixedRenderer(params));
 }
 
 export interface PhaserFixedSkinRuntimeUi {
@@ -56,16 +66,23 @@ export interface PhaserFixedSkinRuntimeUi {
   destroy(): void;
 }
 
-export function isPhaserFixedSkinRuntime(location: Location = window.location): boolean {
+export function isPhaserFixedSkinRuntime(location: Location = window.location, viewportWidth = window.innerWidth): boolean {
   const params = new URL(location.href).searchParams;
   const requestedUi = params.get('ui')?.toLowerCase();
   if (requestedUi === 'classic' || requestedUi === 'responsive') {
     return false;
   }
 
+  const renderer = fixedRendererFromParams(params);
+  if (legacyFixedRenderers.has(renderer)) {
+    return false;
+  }
+
   return requestedUi === 'phaser-fixed-skin' ||
-    (requestedUi === 'fixed-skin' && params.get('renderer') === 'phaser') ||
-    params.get('fixed_renderer') === 'phaser';
+    requestedUi === 'fixed-skin' ||
+    params.get('fixed_skin') === '1' ||
+    renderer === 'phaser' ||
+    viewportWidth <= 860;
 }
 
 export function createPhaserFixedSkinRuntime(

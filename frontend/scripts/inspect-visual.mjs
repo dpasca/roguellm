@@ -12,7 +12,7 @@ const DEFAULT_FIXED_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workb
 const entryUrl = process.argv[2] ?? process.env.GAME2_VISUAL_URL ?? DEFAULT_URL;
 const viteGameIdUrl = process.env.GAME2_VITE_GAME_ID_URL ?? DEFAULT_VITE_GAME_ID_URL;
 const workbenchUrl = process.env.GAME2_WORKBENCH_URL ?? DEFAULT_WORKBENCH_URL;
-const fixedWorkbenchUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
+const fixedWorkbenchBaseUrl = process.env.GAME2_FIXED_WORKBENCH_URL ?? DEFAULT_FIXED_WORKBENCH_URL;
 const withQueryParams = (url, params) => {
   const search = new URLSearchParams(params).toString();
   return `${url}${url.includes('?') ? '&' : '?'}${search}`;
@@ -24,16 +24,19 @@ const withQueryEntries = (url, entries) => {
   }
   return nextUrl.toString();
 };
+const fixedWorkbenchUrl = withQueryParams(fixedWorkbenchBaseUrl, { renderer: 'dom' });
+const defaultFixedWorkbenchProfileUrl = (profile) =>
+  `${fixedWorkbenchBaseUrl}${fixedWorkbenchBaseUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const fixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchUrl}${fixedWorkbenchUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const phaserFixedWorkbenchProfileUrl = (profile, extraParams = {}) =>
-  withQueryParams(fixedWorkbenchProfileUrl(profile), { renderer: 'phaser', ...extraParams });
+  withQueryParams(defaultFixedWorkbenchProfileUrl(profile), extraParams);
 const defaultFixedProfile = 'reference-mobile-v3';
 const compactFixedProfile = 'reference-mobile-compact';
 const desktopFixedProfile = 'desktop-wide';
-const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
-const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'phaser', profile: compactFixedProfile });
-const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
+const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom', profile: defaultFixedProfile });
+const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
+const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom' });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
@@ -246,6 +249,7 @@ const baseScenarios = [
     mode: 'fixed-runtime-ready',
     url: withQueryParams(entryUrl, {
       ui: 'fixed-skin',
+      renderer: 'dom',
       skin_tags: 'industrial,relay',
       skin_mood: 'nocturnal',
       skin_palette: 'amber'
@@ -258,6 +262,7 @@ const baseScenarios = [
     mode: 'fixed-runtime-ready',
     url: withQueryEntries(viteGameIdUrl, [
       ['ui', 'fixed-skin'],
+      ['renderer', 'dom'],
       ['skin_tags', 'noir'],
       ['skin_tags', 'signal'],
       ['skin_mood', 'sleek'],

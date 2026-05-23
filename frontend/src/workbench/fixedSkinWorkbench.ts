@@ -43,6 +43,16 @@ const domIds: Record<FixedButtonId, string> = {
   restart: 'restart'
 };
 
+const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
+
+function fixedRendererFromParams(params: URLSearchParams): string {
+  return (params.get('fixed_renderer') ?? params.get('renderer') ?? '').toLowerCase();
+}
+
+function isLegacyFixedRenderer(params: URLSearchParams): boolean {
+  return legacyFixedRenderers.has(fixedRendererFromParams(params));
+}
+
 export interface FixedSkinRuntimeUi {
   scene: RogueScene;
   render(state: GameState): void;
@@ -54,7 +64,8 @@ export interface FixedSkinRuntimeUi {
 
 export function isFixedSkinWorkbench(): boolean {
   const params = new URLSearchParams(window.location.search);
-  return params.get('workbench') === 'fixed-skin' || params.get('bench') === 'fixed-skin';
+  const workbench = params.get('workbench') ?? params.get('bench');
+  return workbench === 'fixed-skin' && isLegacyFixedRenderer(params);
 }
 
 export function isFixedSkinRuntime(location: Location = window.location, viewportWidth = window.innerWidth): boolean {
@@ -64,11 +75,13 @@ export function isFixedSkinRuntime(location: Location = window.location, viewpor
     return false;
   }
 
-  if (requestedUi === 'fixed-skin' || params.get('fixed_skin') === '1') {
-    return true;
+  if (!isLegacyFixedRenderer(params)) {
+    return false;
   }
 
-  return viewportWidth <= 860;
+  return requestedUi === 'fixed-skin' ||
+    params.get('fixed_skin') === '1' ||
+    viewportWidth <= 860;
 }
 
 export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAction) => void): FixedSkinRuntimeUi {
