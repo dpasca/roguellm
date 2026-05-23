@@ -1296,49 +1296,67 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
 
 .fixed-stat-row {
   display: grid;
-  grid-template-columns: 0.58fr 0.58fr 0.58fr minmax(0, 2.26fr);
-  gap: 6px;
-  margin-top: 19px;
+  grid-template-columns: 52px 52px 58px minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 17px;
   color: #ffffff;
   font-size: 12px;
   font-weight: 900;
 }
 
-.fixed-stat-row span {
+.fixed-stat-cell {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
   min-width: 0;
+  min-height: 19px;
+  padding: 1px 5px;
+  border: 1px solid rgba(122, 255, 126, 0.18);
   overflow: hidden;
   color: #ffb743;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, currentColor 22%, transparent), transparent 60%),
+    rgba(3, 13, 7, 0.52);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.48),
+    0 0 8px color-mix(in srgb, currentColor 12%, transparent);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fixed-stat-row span:nth-child(1) {
+.fixed-stat-cell[data-stat="atk"] {
   color: #ff5b55;
 }
 
-.fixed-stat-row span:nth-child(2) {
+.fixed-stat-cell[data-stat="def"] {
   color: #55b7ff;
 }
 
-.fixed-stat-row span:nth-child(3) {
+.fixed-stat-cell[data-stat="xp"] {
   color: #ee69ff;
 }
 
-.fixed-stat-row strong {
-  margin-left: 4px;
-  color: #ffffff;
+.fixed-stat-cell[data-stat="tile"] {
+  color: #ffb743;
 }
 
-.fixed-stat-row span:nth-child(4) {
-  display: flex;
-  gap: 4px;
-}
-
-.fixed-stat-row span:nth-child(4) strong {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin-left: 0;
+.fixed-stat-label {
   overflow: hidden;
+  color: currentColor;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 7px currentColor;
+}
+
+.fixed-stat-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #ffffff;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1347,10 +1365,6 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
   grid-template-columns: 64px 52px 64px minmax(0, 1fr);
   gap: 8px;
   margin-top: 16px;
-}
-
-.fixed-skin-stage[data-profile="desktop-wide"] .fixed-stat-row strong {
-  margin-left: 2px;
 }
 
 .fixed-meter-fill {
@@ -1599,13 +1613,19 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="reference-mobile-v2"
 }
 
 .fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-row {
+  grid-template-columns: 40px 40px 44px minmax(0, 1fr);
   gap: 5px;
   margin-top: 11px;
   font-size: 9px;
 }
 
-.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-row strong {
-  margin-left: 2px;
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-cell {
+  min-height: 16px;
+  padding: 1px 3px;
+}
+
+.fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-stat-label {
+  font-size: 7px;
 }
 
 .fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-combat-region h2 {
@@ -1721,6 +1741,15 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-row {
   margin-top: 15px;
   font-size: 10px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-cell {
+  min-height: 17px;
+  padding: 1px 4px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-label {
+  font-size: 8px;
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-combat-region h2 {

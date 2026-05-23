@@ -1460,10 +1460,13 @@ async function collectMetrics(page) {
       latestPanel: '.latest-message-panel',
       latestMessage: '#latest-message',
       playerPanel: '.player-panel',
-      statAttack: '.fixed-stat-row span:nth-child(1)',
-      statDefense: '.fixed-stat-row span:nth-child(2)',
-      statXp: '.fixed-stat-row span:nth-child(3)',
-      tileStatValue: '.fixed-stat-row span:nth-child(4) strong',
+      statAttack: '.fixed-stat-cell[data-stat="atk"]',
+      statAttackValue: '.fixed-stat-cell[data-stat="atk"] strong',
+      statDefense: '.fixed-stat-cell[data-stat="def"]',
+      statDefenseValue: '.fixed-stat-cell[data-stat="def"] strong',
+      statXp: '.fixed-stat-cell[data-stat="xp"]',
+      statXpValue: '.fixed-stat-cell[data-stat="xp"] strong',
+      tileStatValue: '.fixed-stat-cell[data-stat="tile"] strong',
       combatPanel: '#combat-panel',
       enemyBadge: '#enemy-icon-badge',
       enemyIcon: '#enemy-icon',
@@ -1685,6 +1688,26 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectStatMetrics = () => {
+      const cells = Array.from(document.querySelectorAll('.fixed-stat-cell'));
+      const styledCells = cells.filter((cell) => {
+        const style = getComputedStyle(cell);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      });
+      return {
+        cells: cells.length,
+        styledCells: styledCells.length,
+        labels: cells
+          .map((cell) => cell.querySelector('.fixed-stat-label')?.textContent?.trim() ?? '')
+          .filter(Boolean),
+        values: cells
+          .map((cell) => cell.querySelector('.fixed-stat-value')?.textContent?.trim() ?? '')
+          .filter(Boolean)
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1724,7 +1747,7 @@ async function collectMetrics(page) {
         targetX: Number(document.getElementById('game-canvas')?.dataset.markerTargetX ?? NaN),
         targetY: Number(document.getElementById('game-canvas')?.dataset.markerTargetY ?? NaN)
       },
-      tileStatText: document.querySelector('.fixed-stat-row span:nth-child(4) strong')?.textContent?.trim() ?? '',
+      tileStatText: document.querySelector('.fixed-stat-cell[data-stat="tile"] strong')?.textContent?.trim() ?? '',
       combatTitleText: document.getElementById('combat-mode-label')?.textContent?.trim() ?? '',
       enemyNameText: document.getElementById('enemy-name')?.textContent?.trim() ?? '',
       enemyHpText: document.getElementById('enemy-hp')?.textContent?.trim() ?? '',
@@ -1736,6 +1759,7 @@ async function collectMetrics(page) {
       inventory: collectInventoryMetrics(),
       log: collectLogMetrics(),
       combat: collectCombatMetrics(),
+      stats: collectStatMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -2744,6 +2768,20 @@ function validateFixedMessageTextFit(metrics, failures) {
 }
 
 function validateFixedStatLabels(metrics, failures) {
+  if (metrics.stats.cells < 4) {
+    failures.push(`fixed stat cells are missing: ${metrics.stats.cells}/4`);
+  }
+
+  if (metrics.stats.styledCells < metrics.stats.cells) {
+    failures.push(`fixed stat cells lack physical styling: ${metrics.stats.styledCells}/${metrics.stats.cells}`);
+  }
+
+  for (const expectedLabel of ['ATK', 'DEF', 'XP', 'TILE']) {
+    if (!metrics.stats.labels.includes(expectedLabel)) {
+      failures.push(`fixed stat cells are missing ${expectedLabel} label`);
+    }
+  }
+
   for (const [label, rect] of [
     ['attack', metrics.rects.statAttack],
     ['defense', metrics.rects.statDefense],
@@ -2753,6 +2791,19 @@ function validateFixedStatLabels(metrics, failures) {
       failures.push(`fixed ${label} stat label is missing`);
     } else if (rect.scrollWidth > rect.clientWidth + 1) {
       failures.push(`fixed ${label} stat label is clipped: ${rect.scrollWidth}px > ${rect.clientWidth}px`);
+    }
+  }
+
+  for (const [label, rect] of [
+    ['attack value', metrics.rects.statAttackValue],
+    ['defense value', metrics.rects.statDefenseValue],
+    ['xp value', metrics.rects.statXpValue],
+    ['tile value', metrics.rects.tileStatValue]
+  ]) {
+    if (!rect) {
+      failures.push(`fixed ${label} is missing`);
+    } else if (rect.scrollWidth > rect.clientWidth + 1) {
+      failures.push(`fixed ${label} is clipped: ${rect.scrollWidth}px > ${rect.clientWidth}px`);
     }
   }
 }

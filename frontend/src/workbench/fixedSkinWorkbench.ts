@@ -958,9 +958,17 @@ function renderPlayerStatsState(state: GameState): void {
 
 function createStatCell(label: string, value: number | string): HTMLElement {
   const cell = document.createElement('span');
+  cell.className = 'fixed-stat-cell';
+  cell.dataset.stat = label.toLowerCase();
+
+  const statLabel = document.createElement('span');
+  statLabel.className = 'fixed-stat-label';
+  statLabel.textContent = label;
+
   const strong = document.createElement('strong');
+  strong.className = 'fixed-stat-value';
   strong.textContent = String(value);
-  cell.append(`${label} `, strong);
+  cell.append(statLabel, strong);
   return cell;
 }
 
