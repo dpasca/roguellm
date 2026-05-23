@@ -635,6 +635,7 @@ function buildHtmlReport(summary) {
       metrics.gameEnded && metrics.endState?.outcome ? `terminal ${metrics.endState.outcome}` : null,
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
+      metrics.logOpen && metrics.log?.scrollable ? 'log scroll cue' : null,
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
@@ -1497,6 +1498,7 @@ async function collectMetrics(page) {
       logPanel: '#log-panel',
       firstLogEntry: '#game-log p.latest',
       firstLogTag: '#game-log p.latest .fixed-log-entry-tag',
+      logScrollCue: '#fixed-log-scroll-cue',
       inventoryPanel: '.inventory-panel',
       firstInventoryItem: '#inventory-list .inventory-item',
       firstInventoryBadge: '#inventory-list .fixed-inventory-type-badge',
@@ -1717,6 +1719,10 @@ async function collectMetrics(page) {
     };
 
     const collectLogMetrics = () => {
+      const log = document.getElementById('game-log');
+      const panel = document.getElementById('log-panel');
+      const cue = document.getElementById('fixed-log-scroll-cue');
+      const cueStyle = cue ? getComputedStyle(cue) : null;
       const entries = Array.from(document.querySelectorAll('#game-log p'));
       const tags = Array.from(document.querySelectorAll('#game-log .fixed-log-entry-tag'));
       const visibleTags = tags.filter((tag) => {
@@ -1740,13 +1746,31 @@ async function collectMetrics(page) {
           style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
           style.boxShadow !== 'none';
       });
+      const cueBox = cue?.getBoundingClientRect();
+      const cueVisible = !!cueBox &&
+        cueBox.width > 0 &&
+        cueBox.height > 0 &&
+        cueStyle?.display !== 'none' &&
+        cueStyle?.visibility !== 'hidden' &&
+        Number(cueStyle?.opacity ?? 0) > 0.5;
 
       return {
         entries: entries.length,
+        scrollable: !!log && log.scrollHeight > log.clientHeight + 2,
+        scrollOverflowState: panel?.dataset.scrollOverflow ?? '',
+        scrollableState: panel?.dataset.scrollable ?? '',
+        scrollHeight: log?.scrollHeight ?? 0,
+        clientHeight: log?.clientHeight ?? 0,
         entryTags: tags.length,
         visibleEntryTags: visibleTags.length,
         styledEntryTags: styledTags.length,
         styledEntries: styledEntries.length,
+        scrollCueVisible: cueVisible,
+        scrollCueStyled: cueVisible &&
+          cueStyle?.backgroundImage !== 'none' &&
+          cueStyle?.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          cueStyle?.boxShadow !== 'none',
+        scrollCueIconClass: cue?.querySelector('i')?.className ?? '',
         latestTagText: document.querySelector('#game-log p.latest .fixed-log-entry-tag')?.textContent?.trim() ?? '',
         latestCopyText: document.querySelector('#game-log p.latest .fixed-log-entry-copy')?.textContent?.trim() ?? ''
       };
@@ -2924,6 +2948,19 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
       }
       if (!firstTag || firstTag.visibleWidth < minFirstTagSize || firstTag.visibleHeight < minFirstTagSize) {
         failures.push(`fixed workbench latest log tag is clipped: ${firstTag?.visibleWidth ?? 0}x${firstTag?.visibleHeight ?? 0}`);
+      }
+      if (metrics.log.scrollable) {
+        if (metrics.log.scrollableState !== '1' || metrics.log.scrollOverflowState !== '1') {
+          failures.push(
+            `fixed workbench log scroll state is not exposed: scrollable=${metrics.log.scrollableState || 'none'}, overflow=${metrics.log.scrollOverflowState || 'none'}`
+          );
+        }
+        if (!metrics.log.scrollCueVisible || !metrics.log.scrollCueStyled) {
+          failures.push('fixed workbench log overflow cue is missing or unstyled');
+        }
+        if (!metrics.log.scrollCueIconClass.includes('fa-chevron-down')) {
+          failures.push(`fixed workbench log overflow cue is missing the chevron icon: ${metrics.log.scrollCueIconClass || 'none'}`);
+        }
       }
     }
   }

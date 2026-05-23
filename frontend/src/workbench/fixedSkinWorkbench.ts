@@ -621,7 +621,17 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
   );
 
   const log = stage.querySelector('#log-panel');
-  log?.append(el('h2', 'fixed-region-label', 'Log'), el('div', 'game-log fixed-game-log', '', 'game-log'));
+  const logScrollCue = el('span', 'fixed-log-scroll-cue', '', 'fixed-log-scroll-cue');
+  logScrollCue.setAttribute('aria-hidden', 'true');
+  const logCueIcon = document.createElement('i');
+  logCueIcon.className = 'fa-solid fa-chevron-down';
+  logCueIcon.setAttribute('aria-hidden', 'true');
+  logScrollCue.append(logCueIcon);
+  log?.append(
+    el('h2', 'fixed-region-label', 'Log'),
+    el('div', 'game-log fixed-game-log', '', 'game-log'),
+    logScrollCue
+  );
 
   const inventory = stage.querySelector('#inventory-panel');
   inventory?.append(el('h2', 'fixed-region-label', 'Inventory'), el('div', 'fixed-inventory-list', '', 'inventory-list'));
@@ -1244,6 +1254,11 @@ function renderLogs(logs: string[], logOpen: boolean): void {
     return;
   }
 
+  if (!log.dataset.overflowListener) {
+    log.addEventListener('scroll', updateLogOverflowState);
+    log.dataset.overflowListener = '1';
+  }
+
   const visibleLogs = logOpen ? logs : logs.slice(0, 1);
   const latestMessage = visibleLogs[0] ?? '';
   const latestChanged = Boolean(latestMessage) && latestMessage !== (log.dataset.latestMessage ?? '');
@@ -1272,6 +1287,21 @@ function renderLogs(logs: string[], logOpen: boolean): void {
     })
   );
   log.dataset.latestMessage = latestMessage;
+  window.requestAnimationFrame(updateLogOverflowState);
+}
+
+function updateLogOverflowState(): void {
+  const log = document.getElementById('game-log');
+  const panel = document.getElementById('log-panel');
+  if (!log || !panel) {
+    return;
+  }
+
+  const logOpen = document.body.classList.contains('fixed-log-open');
+  const hasOverflow = logOpen && log.scrollHeight > log.clientHeight + 2;
+  const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
+  panel.dataset.scrollOverflow = hasOverflow && !atEnd ? '1' : '0';
+  panel.dataset.scrollable = hasOverflow ? '1' : '0';
 }
 
 function setButtonVisual(element: HTMLButtonElement, button: FixedSkinButton, state: FixedSkinButtonState): void {

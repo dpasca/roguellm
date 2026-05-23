@@ -915,6 +915,25 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-latest-region .latest-messa
     0 0 18px rgba(0, 0, 0, 0.62);
 }
 
+.fixed-log-region::after {
+  content: "";
+  position: absolute;
+  right: 66px;
+  bottom: 8px;
+  left: 8px;
+  height: 18px;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent, rgba(3, 12, 6, 0.70) 72%, rgba(3, 12, 6, 0.92)),
+    linear-gradient(90deg, rgba(126, 255, 96, 0.18), transparent 34%, transparent 66%, rgba(126, 255, 96, 0.10));
+  transition: opacity 140ms ease;
+}
+
+.fixed-log-region[data-scroll-overflow="1"]::after {
+  opacity: 1;
+}
+
 .fixed-inventory-region {
   display: none;
   padding: 10px 66px 10px 10px;
@@ -949,7 +968,25 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-latest-region .latest-messa
 .fixed-log-open .fixed-game-log {
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 7px;
+  scrollbar-color: rgba(140, 255, 141, 0.72) rgba(2, 10, 5, 0.50);
+  scrollbar-width: thin;
+}
+
+.fixed-log-open .fixed-game-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fixed-log-open .fixed-game-log::-webkit-scrollbar-track {
+  background: rgba(2, 10, 5, 0.50);
+  box-shadow: inset 0 0 0 1px rgba(126, 255, 96, 0.12);
+}
+
+.fixed-log-open .fixed-game-log::-webkit-scrollbar-thumb {
+  border: 1px solid rgba(9, 24, 10, 0.84);
+  background:
+    linear-gradient(180deg, rgba(198, 255, 176, 0.88), rgba(88, 224, 78, 0.54));
+  box-shadow: 0 0 8px rgba(126, 255, 96, 0.22);
 }
 
 .fixed-log-open .fixed-latest-region,
@@ -1185,6 +1222,42 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
 
 .fixed-log-entry-copy {
   min-width: 0;
+}
+
+.fixed-log-scroll-cue {
+  position: absolute;
+  right: 18px;
+  bottom: 17px;
+  z-index: 3;
+  display: grid;
+  width: 30px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(140, 255, 141, 0.56);
+  color: #caffb8;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(218, 255, 199, 0.28), transparent 48%),
+    linear-gradient(180deg, rgba(36, 82, 31, 0.84), rgba(4, 14, 6, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 12px rgba(126, 255, 96, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 0 8px currentColor;
+  transform: translateY(-3px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.fixed-log-scroll-cue i {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.fixed-log-region[data-scroll-overflow="1"] .fixed-log-scroll-cue {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .fixed-inventory-list {
@@ -2184,6 +2257,23 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile^="amber-mobile"] .fix
     linear-gradient(180deg, rgba(118, 72, 13, 0.92), rgba(25, 14, 4, 0.96));
 }
 
+.fixed-skin-stage[data-profile^="amber-mobile"] .fixed-log-region::after {
+  background:
+    linear-gradient(180deg, transparent, rgba(24, 14, 4, 0.70) 72%, rgba(24, 14, 4, 0.92)),
+    linear-gradient(90deg, rgba(255, 184, 74, 0.18), transparent 34%, transparent 66%, rgba(255, 184, 74, 0.10));
+}
+
+.fixed-skin-stage[data-profile^="amber-mobile"] .fixed-log-scroll-cue {
+  border-color: rgba(255, 196, 91, 0.62);
+  color: #fff1bc;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 225, 150, 0.30), transparent 48%),
+    linear-gradient(180deg, rgba(118, 72, 13, 0.88), rgba(25, 14, 4, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 12px rgba(255, 184, 74, 0.18);
+}
+
 .fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-log-region,
 .fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-inventory-region {
   border-color: rgba(55, 244, 223, 0.72);
@@ -2247,6 +2337,23 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile^="amber-mobile"] .fix
   text-shadow:
     0 0 8px rgba(55, 244, 223, 0.52),
     0 1px 0 rgba(0, 0, 0, 0.86);
+}
+
+.fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-log-region::after {
+  background:
+    linear-gradient(180deg, transparent, rgba(4, 19, 21, 0.70) 72%, rgba(4, 19, 21, 0.92)),
+    linear-gradient(90deg, rgba(55, 244, 223, 0.18), transparent 34%, transparent 66%, rgba(55, 244, 223, 0.10));
+}
+
+.fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-log-scroll-cue {
+  border-color: rgba(134, 238, 255, 0.60);
+  color: #d7fffa;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(190, 255, 247, 0.28), transparent 48%),
+    linear-gradient(180deg, rgba(14, 84, 84, 0.86), rgba(4, 20, 21, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 12px rgba(55, 244, 223, 0.18);
 }
 
 .fixed-skin-button:disabled {

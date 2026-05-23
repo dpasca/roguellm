@@ -147,6 +147,10 @@ and visual inspection gates so they behave like part of the skin:
   rather than shrinking/clipping inside the drawer.
 - Visual inspection must fail when fixed log drawers contain entries without
   visible/styled row tags.
+- When an open fixed log drawer has more content below the visible area, it
+  must expose a skinned down-cue in the drawer rail; visual inspection must
+  fail when the cue is missing, unstyled, unlabeled by state, or loses its
+  Font Awesome chevron.
 - Fixed combat rows use the structured `current_enemy.font_awesome_icon` value
   to render a small enemy badge before the enemy name and HP.
 - Visual inspection must fail when an active fixed combat state has a clipped,
