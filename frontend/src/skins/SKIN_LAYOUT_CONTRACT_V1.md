@@ -2,7 +2,7 @@
 
 This is the fixed geometry contract for the first AI-generated RogueLLM skin
 packs. It exists so skin generation can target exact artboards and crop targets
-instead of relying on CSS tweaks after the fact.
+instead of relying on DOM style tweaks after the fact.
 
 The machine-readable source for automated validation is
 `SKIN_LAYOUT_CONTRACT_V1.json`. Keep this document and the JSON contract in sync
@@ -31,9 +31,9 @@ than a scaled mobile layout.
   separately croppable state art.
 - Phaser-rendered runtime content owns the live regions. Art should frame it,
   not replace it.
-- CSS is outside the skin and runtime UI contract. It may host the app root,
-  canvas, and global browser reset only; do not use CSS to place, skin, size, or
-  compose game widgets.
+- Browser styling is outside the skin and runtime UI contract. Phaser owns all
+  live UI placement, composition, and skin rendering on canvas. Do not use DOM
+  stylesheets to place, skin, size, or compose game widgets.
 
 ## Coordinate System
 
@@ -217,11 +217,11 @@ Runtime widget names are stable API. New skins may change art style, palette,
 and metadata, but should not rename widgets or change the v1 rectangles unless
 we intentionally create `Skin Layout Contract v2`.
 
-Material assets are part of the skin kit rather than CSS. The `*-fill-tile.png`
-files are repeat-safe 96x96 textures. The `*-frame-9slice.png` files are 48x48
-transparent frames with the declared slice inset. Production skins can keep
-material PNGs beside the manifest or reference family-shared material files, but
-the manifest must make that choice explicit.
+Material assets are part of the skin kit rather than DOM stylesheets. The
+`*-fill-tile.png` files are repeat-safe 96x96 textures. The
+`*-frame-9slice.png` files are 48x48 transparent frames with the declared slice
+inset. Production skins can keep material PNGs beside the manifest or reference
+family-shared material files, but the manifest must make that choice explicit.
 
 ## Prompt Generator
 

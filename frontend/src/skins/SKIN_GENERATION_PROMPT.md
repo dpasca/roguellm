@@ -93,6 +93,6 @@ states. With `--materials-source`, it also crops the six material PNGs from a
 separate 160x304-or-taller sheet: panel row at y=0, LCD row at y=104, button row
 at y=208, each with the 96x96 fill tile at x=0 and the 48x48 frame at x=104.
 Those materials are rendered by Phaser as tiled sprites and nine-slice frames,
-not CSS. Only promote a generated artboard into the default mobile profile after
-the diagnostics and visual inspection screenshots look cleaner than
+not DOM stylesheet surfaces. Only promote a generated artboard into the default
+mobile profile after the diagnostics and visual inspection screenshots look cleaner than
 `gold-mobile`.

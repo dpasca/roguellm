@@ -1,9 +1,9 @@
 # Neo Tokyo Console Asset Pipeline
 
 This skin can use generated bitmap art, but generated images should not be
-applied directly as CSS backgrounds, full-panel stretching, or arbitrary
-`border-image` values. Runtime assets need to be intentionally cut into
-layout-safe Phaser parts first.
+applied directly as DOM backgrounds, full-panel stretching, or arbitrary border
+frames. Runtime assets need to be intentionally cut into layout-safe Phaser
+parts first.
 
 ## Current Raw References
 
@@ -18,16 +18,16 @@ They are useful for style direction and source material, but they are not curren
 
 ## Legacy Runtime Assets
 
-The files in `assets/` came from the earlier browser/CSS pass. They are useful
+The files in `assets/` came from the earlier browser stylesheet pass. They are useful
 as source material and fallback references, but they are not the target for new
 v1 fixed-skin work:
 
-- `lcd-fill-tile.png`: a 96x96 seamless LCD fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
-- `lcd-frame-9slice.png`: a 48x48 transparent LCD frame. It is intended to be used as a border image with slice `8`, fixed corners, and repeated edges.
-- `panel-fill-tile.png`: a 96x96 seamless graphite panel fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
-- `panel-frame-9slice.png`: a 48x48 transparent panel frame. It is intended to be used as a border image with slice `12`, fixed corners, and repeated edges.
-- `button-fill-tile.png`: a 96x96 seamless brushed button fill. It is intended to be used with `background-repeat: repeat` and `background-size: 96px 96px`.
-- `button-frame-9slice.png`: a 48x48 transparent button frame. It is intended to be used as a border image with slice `12`, fixed corners, and repeated edges.
+- `lcd-fill-tile.png`: a 96x96 seamless LCD fill tile.
+- `lcd-frame-9slice.png`: a 48x48 transparent LCD frame with slice `8`, fixed corners, and repeated edges.
+- `panel-fill-tile.png`: a 96x96 seamless graphite panel fill tile.
+- `panel-frame-9slice.png`: a 48x48 transparent panel frame with slice `12`, fixed corners, and repeated edges.
+- `button-fill-tile.png`: a 96x96 seamless brushed button fill tile.
+- `button-frame-9slice.png`: a 48x48 transparent button frame with slice `12`, fixed corners, and repeated edges.
 
 ## Runtime Asset Rules
 

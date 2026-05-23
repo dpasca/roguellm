@@ -522,6 +522,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private ready = false;
   private faGlyphsDrawn = 0;
   private materialPanelsDrawn = 0;
+  private chromeDetailsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -589,6 +590,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private redraw(): void {
     this.faGlyphsDrawn = 0;
     this.materialPanelsDrawn = 0;
+    this.chromeDetailsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawMap();
@@ -613,6 +615,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
     document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
+    document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
   }
 
   private drawMap(): void {
@@ -1132,8 +1135,17 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillRect(rect.x, rect.y, fillWidth, rect.height);
     graphics.fillStyle(color, 0.88);
     graphics.fillRect(rect.x, rect.y, fillWidth, Math.max(1, Math.floor(rect.height * 0.42)));
+    graphics.lineStyle(1, 0x0a120d, 0.55);
+    for (let tick = 1; tick < 5; tick += 1) {
+      const x = rect.x + Math.round((rect.width * tick) / 5);
+      graphics.lineBetween(x, rect.y + 1, x, rect.y + rect.height - 1);
+    }
     graphics.lineStyle(1, 0xffffff, 0.18);
     graphics.lineBetween(rect.x + 1, rect.y + 1, rect.x + fillWidth - 1, rect.y + 1);
+    if (fillWidth > 8) {
+      graphics.fillStyle(0xffffff, 0.16);
+      graphics.fillRect(rect.x + fillWidth - 3, rect.y + 1, 2, rect.height - 2);
+    }
   }
 
   private drawPanelScrim(rect: FixedSkinRect, color: number, alpha: number): void {
@@ -1196,7 +1208,46 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         frame.setTint(options.frameTint);
       }
     }
+    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind), alpha);
     this.materialPanelsDrawn += 1;
+  }
+
+  private drawMaterialChrome(rect: FixedSkinRect, tint: number, alpha: number): void {
+    if (rect.width < 72 || rect.height < 28) {
+      return;
+    }
+
+    const graphics = this.add.graphics();
+    const radius = Math.min(8, Math.max(3, Math.floor(Math.min(rect.width, rect.height) * 0.08)));
+    graphics.lineStyle(1, tint, Math.min(0.28, alpha * 0.22));
+    graphics.strokeRoundedRect(rect.x + 2.5, rect.y + 2.5, rect.width - 5, rect.height - 5, radius);
+    graphics.lineStyle(1, 0xffffff, Math.min(0.2, alpha * 0.12));
+    graphics.lineBetween(rect.x + 8, rect.y + 5, rect.x + rect.width - 8, rect.y + 5);
+    graphics.lineBetween(rect.x + 5, rect.y + 8, rect.x + 5, rect.y + rect.height - 8);
+    graphics.lineStyle(1, 0x020504, Math.min(0.42, alpha * 0.34));
+    graphics.lineBetween(rect.x + 8, rect.y + rect.height - 5, rect.x + rect.width - 8, rect.y + rect.height - 5);
+    graphics.lineBetween(rect.x + rect.width - 5, rect.y + 8, rect.x + rect.width - 5, rect.y + rect.height - 8);
+
+    if (rect.width >= 112 && rect.height >= 42) {
+      const screwRadius = Math.max(2, Math.min(4, Math.floor(Math.min(rect.width, rect.height) * 0.06)));
+      const inset = Math.max(8, screwRadius + 5);
+      const points = [
+        [rect.x + inset, rect.y + inset],
+        [rect.x + rect.width - inset, rect.y + inset],
+        [rect.x + inset, rect.y + rect.height - inset],
+        [rect.x + rect.width - inset, rect.y + rect.height - inset]
+      ] as const;
+      for (const [x, y] of points) {
+        graphics.fillStyle(0x020504, Math.min(0.68, alpha * 0.62));
+        graphics.fillCircle(x, y, screwRadius + 1);
+        graphics.fillStyle(tint, Math.min(0.44, alpha * 0.34));
+        graphics.fillCircle(x, y, screwRadius);
+        graphics.lineStyle(1, 0xffffff, Math.min(0.18, alpha * 0.12));
+        graphics.lineBetween(x - screwRadius + 1, y - 1, x + screwRadius - 1, y - 1);
+      }
+    }
+
+    this.chromeDetailsDrawn += 1;
   }
 
   private drawScanlines(rect: FixedSkinRect, alpha: number): void {
@@ -1362,6 +1413,16 @@ function assetKey(profile: FixedSkinProfile, asset: string): string {
 
 function materialKey(profile: FixedSkinProfile, kind: FixedSkinMaterialKind, part: 'fill' | 'frame'): string {
   return assetKey(profile, `material:${kind}:${part}`);
+}
+
+function defaultMaterialTint(kind: FixedSkinMaterialKind): number {
+  if (kind === 'button') {
+    return 0xff7188;
+  }
+  if (kind === 'lcd') {
+    return 0xa7ff78;
+  }
+  return 0x8dfd70;
 }
 
 function buttonKey(profile: FixedSkinProfile, buttonId: FixedButtonId, state: FixedSkinButtonState): string {

@@ -2226,13 +2226,14 @@ async function collectMetrics(page) {
       phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
+      phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
         height: document.querySelector('#phaser-fixed-skin-workbench canvas')?.height ?? 0
       },
-      cssSurface: document.body.dataset.cssSurface ?? null,
-      cssLinkCount: document.querySelectorAll('link[rel="stylesheet"]').length,
+      renderSurface: document.body.dataset.renderSurface ?? null,
+      stylesheetLinkCount: document.querySelectorAll('link[rel="stylesheet"]').length,
       styleElementCount: document.querySelectorAll('style').length,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       inCombat: document.body.classList.contains('in-combat'),
@@ -2552,12 +2553,14 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser fixed renderer, got ${metrics.fixedRenderer ?? 'none'}`);
   }
 
-  if (metrics.cssSurface !== 'phaser-host-only') {
-    failures.push(`expected Phaser host-only CSS surface, got ${metrics.cssSurface ?? 'none'}`);
+  if (metrics.renderSurface !== 'phaser-canvas') {
+    failures.push(`expected Phaser canvas render surface, got ${metrics.renderSurface ?? 'none'}`);
   }
 
-  if ((metrics.cssLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
-    failures.push(`Phaser workbench loaded DOM stylesheets: links=${metrics.cssLinkCount}, style=${metrics.styleElementCount}`);
+  if ((metrics.stylesheetLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
+    failures.push(
+      `Phaser workbench loaded DOM stylesheets: links=${metrics.stylesheetLinkCount}, style=${metrics.styleElementCount}`
+    );
   }
 
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
@@ -2579,6 +2582,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
     failures.push(`expected Phaser material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
+    failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;
@@ -2651,12 +2658,14 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser fixed renderer, got ${metrics.fixedRenderer ?? 'none'}`);
   }
 
-  if (metrics.cssSurface !== 'phaser-host-only') {
-    failures.push(`expected Phaser runtime host-only CSS surface, got ${metrics.cssSurface ?? 'none'}`);
+  if (metrics.renderSurface !== 'phaser-canvas') {
+    failures.push(`expected Phaser runtime canvas render surface, got ${metrics.renderSurface ?? 'none'}`);
   }
 
-  if ((metrics.cssLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
-    failures.push(`Phaser runtime loaded DOM stylesheets: links=${metrics.cssLinkCount}, style=${metrics.styleElementCount}`);
+  if ((metrics.stylesheetLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
+    failures.push(
+      `Phaser runtime loaded DOM stylesheets: links=${metrics.stylesheetLinkCount}, style=${metrics.styleElementCount}`
+    );
   }
 
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
@@ -2687,6 +2696,10 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
     failures.push(`expected Phaser runtime material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
+    failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;

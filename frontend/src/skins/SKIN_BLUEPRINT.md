@@ -129,7 +129,7 @@ values, enemy names, log text, or button state text that changes at runtime.
 ## Runtime Widget Hardware
 
 Repeated widgets are Phaser-rendered hardware that sits inside fixed apertures
-instead of relying on CSS layout. These pieces still need stable sizes and
+instead of relying on DOM layout. These pieces still need stable sizes and
 visual inspection gates so they behave like part of the skin:
 
 - Fixed map apertures use a non-interactive glass/scanline layer above the
@@ -288,9 +288,8 @@ scalable production-skin sweep.
 ## Playable Runtime
 
 The fixed mobile skin is the default Game2 UI on mobile-width viewports, and
-the fixed-skin renderer is Phaser-first. CSS/DOM is no longer the skinning
-target; it is kept only as a legacy comparison path while the Phaser runtime
-catches up.
+the fixed-skin renderer is Phaser-first. DOM skinning is no longer the target;
+it is kept only as a legacy comparison path while the Phaser runtime catches up.
 
 Force the Phaser fixed-skin runtime with `ui=fixed-skin`, for example:
 
@@ -310,7 +309,7 @@ For local Phaser fixed-skin workbench review, use:
 http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&profile=reference-mobile-compact
 ```
 
-The old CSS/DOM fixed-skin paths are explicit legacy/debug tools:
+The old DOM fixed-skin paths are explicit legacy/debug tools:
 
 ```text
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&renderer=dom&profile=reference-mobile-compact
@@ -321,8 +320,11 @@ Use the Phaser renderer for new skin-quality work. It consumes the same fixed
 profile manifests and PNG state assets, so improvements made there can be
 migrated into the live runtime without inventing a second skin format.
 
-CSS may host the browser root, global reset, and legacy renderer only. It should
-not place, skin, size, or compose fixed-skin game widgets.
+Browser styling is outside the fixed-skin UI contract. The Phaser path renders
+the game UI on canvas from profile geometry and PNG assets; no stylesheet may
+place, skin, size, or compose fixed-skin game widgets. The only tolerated style
+mutation in the Phaser path is shell-level viewport/canvas host sizing. The old
+DOM renderer remains a legacy comparison/debug path only.
 
 Fixed skin profiles own their visual material assets through `skin-kit.json`.
 Reusable panel, LCD, and button materials are declared as profile data (`fill`,
@@ -331,8 +333,7 @@ sprites/nine-slice images. The Phaser renderer must not hardcode a skin
 family's material PNGs.
 
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
-It sets only the minimum browser-shell sizing needed to mount the canvas. Visual
-inspection treats stylesheet links or injected style elements on Phaser
+Visual inspection treats stylesheet links or injected style elements on Phaser
 fixed-skin scenarios as a failure.
 
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin

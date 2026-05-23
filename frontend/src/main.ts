@@ -58,7 +58,7 @@ async function bootstrap(): Promise<void> {
   if (!phaserFixedWorkbench && !phaserFixedRuntime) {
     await loadLegacyDomStyles();
   } else {
-    document.body.dataset.cssSurface = 'phaser-host-only';
+    document.body.dataset.renderSurface = 'phaser-canvas';
   }
 
   applySkin(activeSkin);
@@ -274,7 +274,7 @@ async function bootstrap(): Promise<void> {
 }
 
 async function loadLegacyDomStyles(): Promise<void> {
-  document.body.dataset.cssSurface = 'legacy-dom';
+  document.body.dataset.renderSurface = 'legacy-dom';
   await Promise.all([
     import('@fortawesome/fontawesome-free/css/all.min.css'),
     import('./styles.css')
