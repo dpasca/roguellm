@@ -1062,6 +1062,7 @@ function createInventoryRow(item: Item, onAction: (action: GameAction) => void, 
   const row = document.createElement('div');
   row.className = item.is_equipped ? 'inventory-item fixed-inventory-item equipped' : 'inventory-item fixed-inventory-item';
   row.dataset.itemType = item.type;
+  row.dataset.equipped = item.is_equipped ? '1' : '0';
 
   const type = inventoryTypeMeta(item);
   const typeBadge = document.createElement('span');
@@ -1103,6 +1104,7 @@ function createInventoryRow(item: Item, onAction: (action: GameAction) => void, 
     action.textContent = item.type;
     action.disabled = true;
   }
+  action.dataset.inventoryActionState = item.is_equipped ? 'equipped' : action.disabled ? 'disabled' : 'ready';
 
   row.append(typeBadge, body, action);
   return row;

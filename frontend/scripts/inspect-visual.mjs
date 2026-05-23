@@ -636,6 +636,7 @@ function buildHtmlReport(summary) {
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
+      metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
         : null,
@@ -1660,6 +1661,8 @@ async function collectMetrics(page) {
     const collectInventoryMetrics = () => {
       const items = Array.from(document.querySelectorAll('#inventory-list .fixed-inventory-item'));
       const badges = Array.from(document.querySelectorAll('#inventory-list .fixed-inventory-type-badge'));
+      const equippedItems = items.filter((item) => item.dataset.equipped === '1');
+      const equippedActions = Array.from(document.querySelectorAll('#inventory-list .fixed-inventory-action[data-inventory-action-state="equipped"]'));
       const visibleBadges = badges.filter((badge) => {
         const box = badge.getBoundingClientRect();
         const style = getComputedStyle(badge);
@@ -1669,8 +1672,23 @@ async function collectMetrics(page) {
           style.visibility !== 'hidden' &&
           Number(style.opacity) > 0;
       });
+      const visibleEquippedActions = equippedActions.filter((action) => {
+        const box = action.getBoundingClientRect();
+        const style = getComputedStyle(action);
+        return box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) > 0.9;
+      });
       const styledBadges = visibleBadges.filter((badge) => {
         const style = getComputedStyle(badge);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      });
+      const styledEquippedActions = visibleEquippedActions.filter((action) => {
+        const style = getComputedStyle(action);
         return style.backgroundImage !== 'none' &&
           style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
           style.boxShadow !== 'none';
@@ -1678,6 +1696,13 @@ async function collectMetrics(page) {
 
       return {
         items: items.length,
+        equippedItems: equippedItems.length,
+        equippedActions: equippedActions.length,
+        visibleEquippedActions: visibleEquippedActions.length,
+        styledEquippedActions: styledEquippedActions.length,
+        equippedActionLabels: equippedActions
+          .map((action) => action.textContent?.trim().toUpperCase() ?? '')
+          .filter(Boolean),
         typeBadges: badges.length,
         visibleTypeBadges: visibleBadges.length,
         styledTypeBadges: styledBadges.length,
@@ -2465,6 +2490,33 @@ function validateFixedEnemyBadge(metrics, failures, context) {
   }
 }
 
+function validateFixedInventoryLatchedActions(metrics, failures, context) {
+  if (!metrics.inventory?.equippedItems) {
+    return;
+  }
+
+  if (metrics.inventory.equippedActions < metrics.inventory.equippedItems) {
+    failures.push(
+      `${context} inventory is missing equipped action states: ${metrics.inventory.equippedActions}/${metrics.inventory.equippedItems}`
+    );
+  }
+  if (metrics.inventory.visibleEquippedActions < metrics.inventory.equippedItems) {
+    failures.push(
+      `${context} inventory equipped actions are not all visible: ${metrics.inventory.visibleEquippedActions}/${metrics.inventory.equippedItems}`
+    );
+  }
+  if (metrics.inventory.styledEquippedActions < metrics.inventory.equippedItems) {
+    failures.push(
+      `${context} inventory equipped actions lack latched styling: ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}`
+    );
+  }
+  if (!metrics.inventory.equippedActionLabels.every((label) => label === 'ON')) {
+    failures.push(
+      `${context} inventory equipped actions should read ON, got ${metrics.inventory.equippedActionLabels.join(', ') || 'none'}`
+    );
+  }
+}
+
 function validateFixedCombatModeHardware(metrics, failures, context) {
   const mode = metrics.rects.combatModeLabel;
   const expectedState = metrics.inCombat ? 'combat' : 'explore';
@@ -2757,6 +2809,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
       if (!badge || badge.visibleWidth < minInventoryBadgeSize || badge.visibleHeight < minInventoryBadgeSize) {
         failures.push(`fixed inventory first type badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
       }
+      validateFixedInventoryLatchedActions(metrics, failures, 'fixed workbench');
     }
     if (!action || action.visibleHeight < minInventoryActionHeight || action.visibleWidth < minInventoryActionWidth) {
       failures.push(`fixed inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
@@ -2999,6 +3052,7 @@ function validateFixedRuntimeInventory(metrics, failures) {
     if (!badge || badge.visibleWidth < scaledFixedThreshold(metrics, 26) || badge.visibleHeight < scaledFixedThreshold(metrics, 26)) {
       failures.push(`fixed runtime inventory first type badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
     }
+    validateFixedInventoryLatchedActions(metrics, failures, 'fixed runtime');
   }
 
   if (item && (!action || action.visibleHeight < scaledFixedThreshold(metrics, 24) || action.visibleWidth < scaledFixedThreshold(metrics, 42))) {

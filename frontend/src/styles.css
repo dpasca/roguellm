@@ -1343,6 +1343,22 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
   background: rgba(20, 28, 22, 0.72);
 }
 
+.fixed-inventory-item.equipped .fixed-inventory-action:disabled {
+  border-color: rgba(255, 214, 91, 0.76);
+  color: #fff1a8;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 236, 150, 0.26), transparent 46%),
+    linear-gradient(180deg, rgba(96, 70, 15, 0.90), rgba(22, 15, 4, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.66),
+    inset 0 0 14px rgba(255, 214, 91, 0.12),
+    0 0 12px rgba(255, 214, 91, 0.16);
+  opacity: 1;
+  text-shadow:
+    0 0 8px rgba(255, 214, 91, 0.52),
+    0 1px 0 rgba(0, 0, 0, 0.86);
+}
+
 .fixed-hp-row,
 .fixed-combat-row {
   display: flex;
@@ -2160,6 +2176,14 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile^="amber-mobile"] .fix
   background: rgba(28, 22, 16, 0.72);
 }
 
+.fixed-skin-stage[data-profile^="amber-mobile"] .fixed-inventory-item.equipped .fixed-inventory-action:disabled {
+  border-color: rgba(255, 196, 91, 0.78);
+  color: #fff1bc;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 225, 150, 0.26), transparent 46%),
+    linear-gradient(180deg, rgba(118, 72, 13, 0.92), rgba(25, 14, 4, 0.96));
+}
+
 .fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-log-region,
 .fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-inventory-region {
   border-color: rgba(55, 244, 223, 0.72);
@@ -2208,6 +2232,21 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile^="amber-mobile"] .fix
   color: #6f8380;
   border-color: rgba(111, 131, 128, 0.35);
   background: rgba(15, 24, 25, 0.72);
+}
+
+.fixed-skin-stage[data-profile^="signal-noir-mobile"] .fixed-inventory-item.equipped .fixed-inventory-action:disabled {
+  border-color: rgba(134, 238, 255, 0.74);
+  color: #d7fffa;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(190, 255, 247, 0.24), transparent 46%),
+    linear-gradient(180deg, rgba(14, 84, 84, 0.88), rgba(4, 20, 21, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.66),
+    inset 0 0 14px rgba(55, 244, 223, 0.13),
+    0 0 12px rgba(55, 244, 223, 0.16);
+  text-shadow:
+    0 0 8px rgba(55, 244, 223, 0.52),
+    0 1px 0 rgba(0, 0, 0, 0.86);
 }
 
 .fixed-skin-button:disabled {
