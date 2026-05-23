@@ -523,6 +523,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private faGlyphsDrawn = 0;
   private materialPanelsDrawn = 0;
   private chromeDetailsDrawn = 0;
+  private mapTileDetailsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -591,6 +592,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.faGlyphsDrawn = 0;
     this.materialPanelsDrawn = 0;
     this.chromeDetailsDrawn = 0;
+    this.mapTileDetailsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawMap();
@@ -616,6 +618,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
+    document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
   }
 
   private drawMap(): void {
@@ -627,6 +630,17 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const boardHeight = tileSize * state.map_height;
     const originX = region.x + Math.floor((region.width - boardWidth) / 2);
     const originY = region.y + Math.floor((region.height - boardHeight) / 2);
+    const contentCells = new Set<string>([cellKey(state.player_pos[0], state.player_pos[1])]);
+    for (const item of state.item_placements ?? []) {
+      if (!item.is_collected && state.explored[item.y]?.[item.x]) {
+        contentCells.add(cellKey(item.x, item.y));
+      }
+    }
+    for (const enemy of state.enemies) {
+      if (!enemy.is_defeated && state.explored[enemy.y]?.[enemy.x]) {
+        contentCells.add(cellKey(enemy.x, enemy.y));
+      }
+    }
 
     this.drawMaterialPanel(insetRect(region, 1), 'panel', {
       alpha: 0.42,
@@ -643,27 +657,19 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         const base = parseHexColor(cell?.map_color);
         const tileX = originX + x * tileSize;
         const tileY = originY + y * tileSize;
-        const fill = scaleRgb(base, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
-        graphics.fillStyle(scaleRgb(fill, explored ? 0.64 : 0.36), 1);
-        graphics.fillRect(tileX, tileY, tileSize - 1, tileSize - 1);
-        graphics.lineStyle(1, explored ? this.skin.map.exploredTileStroke : this.skin.map.unexploredTileStroke, explored ? 0.95 : 0.35);
-        graphics.strokeRect(tileX + 0.5, tileY + 0.5, tileSize - 1, tileSize - 1);
+        this.drawMapTile(graphics, tileX, tileY, tileSize, base, explored);
 
-        if (explored && tileSize >= 20) {
+        if (explored && tileSize >= 20 && !contentCells.has(cellKey(x, y))) {
           this.addFontAwesomeIcon(
             cell?.font_awesome_icon,
             '.',
-            tileX + tileSize / 2,
-            tileY + tileSize / 2,
-            Math.max(9, Math.floor(tileSize * 0.42)),
-            '#d5dad2'
-          ).setOrigin(0.5, 0.5).setAlpha(0.66);
+            tileX + tileSize * 0.26,
+            tileY + tileSize * 0.74,
+            Math.max(7, Math.floor(tileSize * 0.24)),
+            '#c8d4c9'
+          ).setOrigin(0.5, 0.5).setAlpha(0.18);
         }
 
-        if (!explored) {
-          graphics.fillStyle(this.skin.map.unexploredTileOverlay, this.skin.map.unexploredTileOverlayAlpha);
-          graphics.fillRect(tileX, tileY, tileSize - 1, tileSize - 1);
-        }
       }
     }
 
@@ -682,6 +688,60 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     this.drawPlayerMarker(originX, originY, tileSize);
+  }
+
+  private drawMapTile(
+    graphics: Phaser.GameObjects.Graphics,
+    tileX: number,
+    tileY: number,
+    tileSize: number,
+    color: number,
+    explored: boolean
+  ): void {
+    const width = tileSize - 1;
+    const height = tileSize - 1;
+    const scaled = scaleRgb(color, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
+    const base = scaleRgb(scaled, explored ? 1.08 : 1.02);
+    const top = scaleRgb(scaled, explored ? 1.42 : 1.12);
+    const shadow = scaleRgb(scaled, explored ? 0.34 : 0.22);
+
+    graphics.fillStyle(base, 1);
+    graphics.fillRect(tileX, tileY, width, height);
+    graphics.fillStyle(top, explored ? 0.22 : 0.08);
+    graphics.fillRect(tileX + 1, tileY + 1, Math.max(1, width - 2), Math.max(1, Math.floor(height * 0.42)));
+
+    if (tileSize >= 18) {
+      const dotStep = Math.max(7, Math.floor(tileSize * 0.27));
+      graphics.fillStyle(top, explored ? 0.28 : 0.09);
+      for (let dotY = tileY + 6; dotY < tileY + height - 4; dotY += dotStep) {
+        for (let dotX = tileX + 6; dotX < tileX + width - 4; dotX += dotStep) {
+          graphics.fillRect(dotX, dotY, 1, 1);
+        }
+      }
+
+      graphics.lineStyle(1, top, explored ? 0.18 : 0.06);
+      for (let y = tileY + 7; y < tileY + height - 5; y += Math.max(8, Math.floor(tileSize * 0.3))) {
+        graphics.lineBetween(tileX + 5, y, tileX + width - 5, Math.min(tileY + height - 5, y + 2));
+      }
+    }
+
+    graphics.lineStyle(1, top, explored ? 0.58 : 0.18);
+    graphics.lineBetween(tileX + 1, tileY + 1, tileX + width - 2, tileY + 1);
+    graphics.lineBetween(tileX + 1, tileY + 1, tileX + 1, tileY + height - 2);
+    graphics.lineStyle(1, shadow, explored ? 0.92 : 0.62);
+    graphics.lineBetween(tileX + 1, tileY + height - 1, tileX + width - 1, tileY + height - 1);
+    graphics.lineBetween(tileX + width - 1, tileY + 1, tileX + width - 1, tileY + height - 1);
+    graphics.lineStyle(1, explored ? this.skin.map.exploredTileStroke : this.skin.map.unexploredTileStroke, explored ? 0.95 : 0.35);
+    graphics.strokeRect(tileX + 0.5, tileY + 0.5, width, height);
+
+    if (!explored) {
+      graphics.fillStyle(this.skin.map.unexploredTileOverlay, this.skin.map.unexploredTileOverlayAlpha);
+      graphics.fillRect(tileX, tileY, width, height);
+      graphics.lineStyle(1, 0x000000, 0.24);
+      graphics.lineBetween(tileX + 3, tileY + 3, tileX + width - 3, tileY + height - 3);
+    }
+
+    this.mapTileDetailsDrawn += tileSize >= 18 ? 3 : 1;
   }
 
   private drawMapBadge(originX: number, originY: number, tileSize: number, x: number, y: number, icon: string | undefined, fallback: string, color: number): void {
@@ -1479,6 +1539,10 @@ function nextPosition(x: number, y: number, direction: Direction): [number, numb
     case 'e':
       return [x + 1, y];
   }
+}
+
+function cellKey(x: number, y: number): string {
+  return `${x},${y}`;
 }
 
 function directionFromKey(key: string): Direction | null {

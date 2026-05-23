@@ -730,6 +730,7 @@ function buildHtmlReport(summary) {
       metrics.logOpen && metrics.log?.scrollable ? 'log scroll cue' : null,
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
+      Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
         : null,
@@ -2227,6 +2228,7 @@ async function collectMetrics(page) {
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
+      phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2588,6 +2590,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
   }
 
+  if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
+    failures.push(`expected detailed Phaser map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
+  }
+
   const canvas = metrics.rects.phaserCanvas;
   if (!canvas || canvas.visibleWidth < metrics.viewport.width * 0.92 || canvas.visibleHeight < metrics.viewport.height * 0.92) {
     failures.push(`Phaser fixed canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
@@ -2689,7 +2695,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser runtime Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
   }
 
-  const minRuntimeGlyphs = scenario.mode === 'phaser-fixed-runtime-combat' ? 5 : 2;
+  const minRuntimeGlyphs = scenario.mode === 'phaser-fixed-runtime-combat' ? 4 : 1;
   if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < minRuntimeGlyphs) {
     failures.push(`expected Phaser runtime Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
   }
@@ -2700,6 +2706,10 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
+    failures.push(`expected detailed Phaser runtime map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;
