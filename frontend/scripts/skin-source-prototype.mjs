@@ -34,6 +34,7 @@ console.error(`Wrote source prototype artboards to ${path.relative(process.cwd()
 function chassisSvg(selectedProfile, theme, options) {
   const { width, height } = selectedProfile.size;
   const compact = height <= 700;
+  const hasBottomConsoleRoom = selectedProfile.regions.controls.y + selectedProfile.regions.controls.height <= height - 62;
   const panels = [
     frame(selectedProfile.regions.map, 'MAP', theme, 'map'),
     frame(selectedProfile.regions.latest, 'MSG', theme, 'latest'),
@@ -59,7 +60,9 @@ function chassisSvg(selectedProfile, theme, options) {
     <rect x="5" y="5" width="${width - 10}" height="${height - 10}" rx="13" fill="url(#shell)" stroke="#090c10" stroke-width="2"/>
     <rect x="10" y="10" width="${width - 20}" height="${height - 20}" rx="10" fill="url(#brushed)" opacity="0.84"/>
     <rect x="10" y="10" width="${width - 20}" height="${height - 20}" rx="10" fill="url(#caseBloom)" opacity="0.95"/>
+    ${surfaceTexture(width, height, theme)}
     <rect x="14" y="14" width="${width - 28}" height="${height - 28}" rx="8" fill="none" stroke="#bceeff" stroke-opacity="0.12"/>
+    ${topGrooves(width, theme)}
     <rect x="18" y="18" width="${width - 36}" height="22" rx="6" fill="#10161b" stroke="${theme.panelStroke}" stroke-width="1.2"/>
     <rect x="20" y="20" width="${width - 40}" height="5" rx="2.5" fill="#ffffff" opacity="0.055"/>
     <rect x="24" y="24" width="28" height="10" rx="5" fill="#07090d" stroke="${theme.panelStroke}"/>
@@ -83,11 +86,73 @@ function chassisSvg(selectedProfile, theme, options) {
     ${panels}
     ${controlsWell(selectedProfile, theme)}
     ${widgets}
-    <rect x="18" y="${height - 30}" width="${width - 36}" height="17" rx="7" fill="#030609" stroke="#1c2730"/>
-    <g opacity="0.85">
+    ${hasBottomConsoleRoom ? bottomConsole(width, height, theme) : ''}
+    ${hasBottomConsoleRoom ? `<rect x="18" y="${height - 30}" width="${width - 36}" height="17" rx="7" fill="#030609" stroke="#1c2730"/>` : ''}
+    ${hasBottomConsoleRoom ? `<g opacity="0.85">
       ${Array.from({ length: 9 }, (_, index) => `<rect x="${width / 2 - 40 + index * 10}" y="${height - 24}" width="6" height="5" rx="2" fill="${index % 3 === 0 ? theme.combat : index % 2 === 0 ? theme.accent : theme.warning}" opacity="${0.25 + index * 0.055}"/>`).join('')}
-    </g>
+    </g>` : ''}
   `);
+}
+
+function surfaceTexture(width, height, theme) {
+  const horizontal = Array.from({ length: Math.floor(height / 12) }, (_, index) => {
+    const y = 44 + index * 12;
+    if (y > height - 42) {
+      return '';
+    }
+    const alpha = index % 5 === 0 ? 0.12 : 0.045;
+    return `<path d="M18 ${y}H${width - 18}" stroke="#ffffff" stroke-opacity="${alpha}" stroke-width="${index % 5 === 0 ? 0.8 : 0.5}"/>`;
+  }).join('\n');
+  const chips = Array.from({ length: 18 }, (_, index) => {
+    const x = 32 + ((index * 47) % Math.max(1, width - 72));
+    const y = 58 + ((index * 83) % Math.max(1, height - 142));
+    const color = index % 4 === 0 ? theme.combat : index % 3 === 0 ? theme.warning : theme.accent;
+    return `<rect x="${x}" y="${y}" width="${index % 2 === 0 ? 10 : 6}" height="2" rx="1" fill="${color}" opacity="${0.08 + (index % 3) * 0.035}"/>`;
+  }).join('\n');
+
+  return `
+    <g opacity="0.95">
+      ${horizontal}
+      ${chips}
+    </g>
+  `;
+}
+
+function topGrooves(width, theme) {
+  return `
+    <g opacity="0.92">
+      <path d="M20 43H${width - 20}" stroke="#010204" stroke-width="2"/>
+      <path d="M22 44H${width - 22}" stroke="${theme.accent}" stroke-opacity="0.2"/>
+      <path d="M22 49H${width - 22}" stroke="#ffffff" stroke-opacity="0.07"/>
+      <path d="M${width - 128} 17L${width - 112} 8H${width - 38}L${width - 50} 39H${width - 148}Z" fill="#05090d" stroke="${theme.panelStroke}" stroke-opacity="0.8"/>
+      <path d="M${width - 121} 20H${width - 60}" stroke="${theme.accent}" stroke-opacity="0.24"/>
+    </g>
+  `;
+}
+
+function bottomConsole(width, height, theme) {
+  const y = height - 55;
+  const segments = [
+    { x: 22, width: 82, label: 'CYBERDECK' },
+    { x: 110, width: 72, label: 'SCAN' },
+    { x: width - 182, width: 72, label: 'SYNC' },
+    { x: width - 104, width: 82, label: 'PWR' }
+  ];
+  const moduleMarkup = segments.map((segment, index) => `
+    <rect x="${segment.x}" y="${y}" width="${segment.width}" height="24" rx="4" fill="#05070a" stroke="${theme.panelStroke}" stroke-opacity="0.45"/>
+    <text x="${segment.x + 9}" y="${y + 16}" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${index === 3 ? theme.warning : theme.textFaint}">${segment.label}</text>
+  `).join('\n');
+  const bars = Array.from({ length: 9 }, (_, index) => `
+    <rect x="${width / 2 - 42 + index * 10}" y="${y + 9}" width="6" height="${4 + (index % 3) * 3}" rx="2" fill="${index % 3 === 0 ? theme.combat : index % 2 === 0 ? theme.accent : theme.warning}" opacity="${0.34 + index * 0.035}"/>
+  `).join('\n');
+
+  return `
+    <g opacity="0.94">
+      ${moduleMarkup}
+      <rect x="${width / 2 - 48}" y="${y}" width="96" height="24" rx="4" fill="#05070a" stroke="${theme.panelStroke}" stroke-opacity="0.45"/>
+      ${bars}
+    </g>
+  `;
 }
 
 function widgetLayer(selectedProfile, theme) {
@@ -137,12 +202,16 @@ function frame(rect, label, theme, mode) {
       <rect x="${rect.x - 5}" y="${rect.y - 5}" width="${rect.width + 10}" height="${rect.height + 10}" rx="8" fill="#010305" stroke="#10161a"/>
       <rect x="${rect.x - 2}" y="${rect.y - 2}" width="${rect.width + 4}" height="${rect.height + 4}" rx="7" fill="#101820" stroke="${theme.panelStroke}" stroke-width="1.2"/>
       <rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="4" fill="url(#glass)" stroke="${theme.accent}" stroke-width="1.2"/>
+      <rect x="${rect.x + 2}" y="${rect.y + 2}" width="${rect.width - 4}" height="${rect.height - 4}" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.06"/>
+      <rect x="${rect.x + 7}" y="${rect.y + 7}" width="${rect.width - 14}" height="${rect.height - 14}" rx="3" fill="none" stroke="${theme.panelStroke}" stroke-opacity="0.25"/>
       <rect x="${rect.x + 3}" y="${rect.y + 3}" width="${rect.width - 6}" height="${rect.height - 6}" rx="3" fill="url(#scan)" opacity="${mode === 'map' ? 0.11 : 0.2}"/>
       <rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${Math.max(6, Math.floor(rect.height * 0.16))}" rx="3" fill="#ffffff" opacity="0.045"/>
       <rect x="${rect.x + 4}" y="${rect.y + rect.height - 8}" width="${rect.width - 8}" height="1" fill="${theme.accentLine}" opacity="0.58"/>
       ${labelMarkup}
       ${notch}
       <circle cx="${rect.x + rect.width - 12}" cy="${rect.y + 12}" r="3.5" fill="${mode === 'map' ? theme.warning : theme.accent}" opacity="0.62" filter="url(#softGlow)"/>
+      <circle cx="${rect.x + 10}" cy="${rect.y + 10}" r="2" fill="#010204" stroke="${theme.panelStroke}" stroke-opacity="0.65"/>
+      <circle cx="${rect.x + rect.width - 10}" cy="${rect.y + rect.height - 10}" r="2" fill="#010204" stroke="${theme.panelStroke}" stroke-opacity="0.48"/>
     </g>
   `;
 }
@@ -161,8 +230,10 @@ function button(rect, buttonId, theme) {
       <rect x="${rect.x}" y="${rect.y + 4}" width="${rect.width}" height="${rect.height - 4}" rx="${radius}" fill="#010204" opacity="0.9"/>
       <rect x="${rect.x + 2}" y="${rect.y + 1}" width="${rect.width - 4}" height="${rect.height - 7}" rx="${radius}" fill="${fill}" stroke="${accent}" stroke-width="1.4"/>
       <rect x="${rect.x + 8}" y="${rect.y + 8}" width="${rect.width - 16}" height="${Math.max(5, Math.floor(rect.height * 0.18))}" rx="4" fill="#ffffff" opacity="0.08"/>
+      <rect x="${rect.x + 9}" y="${rect.y + 14}" width="${rect.width - 18}" height="${Math.max(5, Math.floor(rect.height * 0.5))}" rx="${Math.max(3, radius - 4)}" fill="url(#buttonGrain)" opacity="${attack || run ? 0.38 : 0.22}"/>
       <rect x="${rect.x + 8}" y="${rect.y + rect.height - 16}" width="${rect.width - 16}" height="3" rx="1.5" fill="#010204" opacity="0.5"/>
       <rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${rect.height - 14}" rx="${Math.max(3, radius - 3)}" fill="none" stroke="${accent}" stroke-opacity="0.42"/>
+      ${(attack || run) ? `<path d="M${rect.x + 16} ${rect.y + rect.height - 15}H${rect.x + rect.width - 18}" stroke="${accent}" stroke-opacity="0.5" stroke-width="1.2"/>` : ''}
       ${move ? directionGlyph(rect, buttonId, accent) : ''}
       ${toggle ? `<line x1="${rect.x + 9}" y1="${rect.y + rect.height - 8}" x2="${rect.x + rect.width - 9}" y2="${rect.y + rect.height - 8}" stroke="${accent}" stroke-opacity="0.7"/>` : ''}
       ${(attack || run) ? `<circle cx="${rect.x + rect.width - 10}" cy="${rect.y + 8}" r="4" fill="${accent}" filter="url(#softGlow)"/>` : ''}
@@ -297,6 +368,10 @@ function defs(theme) {
     </pattern>
     <pattern id="diagonalTrace" width="18" height="18" patternUnits="userSpaceOnUse">
       <path d="M-4 18L18 -4M4 22L22 4" stroke="${theme.combat}" stroke-opacity="0.15" stroke-width="1"/>
+    </pattern>
+    <pattern id="buttonGrain" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M0 1H10M0 5H10M0 9H10" stroke="#ffffff" stroke-opacity="0.16"/>
+      <path d="M-2 10L10 -2M3 12L12 3" stroke="#000000" stroke-opacity="0.34"/>
     </pattern>
     <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="1.6" result="blur"/>

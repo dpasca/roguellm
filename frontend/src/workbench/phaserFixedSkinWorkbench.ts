@@ -545,6 +545,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private logRowsDrawn = 0;
   private inventoryRowsDrawn = 0;
   private inventoryActionChipsDrawn = 0;
+  private actionButtonLabelsDrawn = 0;
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
@@ -625,6 +626,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.logRowsDrawn = 0;
     this.inventoryRowsDrawn = 0;
     this.inventoryActionChipsDrawn = 0;
+    this.actionButtonLabelsDrawn = 0;
     document.body.dataset.phaserPointerButtonState = '';
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
@@ -666,6 +668,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
     document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
     document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
+    document.body.dataset.phaserActionButtonLabels = String(this.actionButtonLabelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
@@ -890,9 +893,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
             '.',
             tileX + tileSize * 0.5,
             tileY + tileSize * 0.52,
-            Math.max(8, Math.floor(tileSize * 0.34)),
+            Math.max(9, Math.floor(tileSize * 0.42)),
             this.theme.primaryDimText,
-            0.34
+            0.52
           );
         }
 
@@ -957,9 +960,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const width = tileSize - 1;
     const height = tileSize - 1;
     const scaled = scaleRgb(color, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
-    const base = scaleRgb(scaled, explored ? 1.18 : 1.04);
-    const top = scaleRgb(scaled, explored ? 1.62 : 1.16);
-    const shadow = scaleRgb(scaled, explored ? 0.34 : 0.22);
+    const base = scaleRgb(scaled, explored ? 1.46 : 1.04);
+    const top = scaleRgb(scaled, explored ? 2.08 : 1.16);
+    const shadow = scaleRgb(scaled, explored ? 0.46 : 0.22);
 
     graphics.fillStyle(base, 1);
     graphics.fillRect(tileX, tileY, width, height);
@@ -967,15 +970,15 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillRect(tileX + 1, tileY + 1, Math.max(1, width - 2), Math.max(1, Math.floor(height * 0.42)));
 
     if (tileSize >= 18) {
-      const dotStep = Math.max(7, Math.floor(tileSize * 0.27));
-      graphics.fillStyle(top, explored ? 0.38 : 0.1);
+      const dotStep = Math.max(5, Math.floor(tileSize * 0.2));
+      graphics.fillStyle(top, explored ? 0.52 : 0.1);
       for (let dotY = tileY + 6; dotY < tileY + height - 4; dotY += dotStep) {
         for (let dotX = tileX + 6; dotX < tileX + width - 4; dotX += dotStep) {
           graphics.fillRect(dotX, dotY, 1, 1);
         }
       }
 
-      graphics.lineStyle(1, top, explored ? 0.24 : 0.07);
+      graphics.lineStyle(1, top, explored ? 0.34 : 0.07);
       for (let y = tileY + 7; y < tileY + height - 5; y += Math.max(8, Math.floor(tileSize * 0.3))) {
         graphics.lineBetween(tileX + 5, y, tileX + width - 5, Math.min(tileY + height - 5, y + 2));
       }
@@ -1363,12 +1366,18 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     if (!button.hideLabel) {
-      this.addText(button.label, button.rect.x + 6, button.rect.y + Math.max(6, button.rect.height * 0.34), button.rect.width - 12, {
+      const hasLargeIcon = button.icon && (buttonId === 'attack' || buttonId === 'run' || buttonId === 'restart');
+      const labelX = hasLargeIcon ? button.rect.x + 52 : button.rect.x + 6;
+      const labelWidth = hasLargeIcon ? button.rect.width - 66 : button.rect.width - 12;
+      this.addText(button.label, labelX, button.rect.y + Math.max(6, button.rect.height * 0.34), labelWidth, {
         fontSize: button.rect.height >= 60 ? 18 : 12,
         color: disabled ? '#9aa0a8' : this.theme.titleText,
         fontStyle: 'bold',
         align: 'center'
       });
+      if (buttonId === 'attack' || buttonId === 'run') {
+        this.actionButtonLabelsDrawn += 1;
+      }
     }
   }
 

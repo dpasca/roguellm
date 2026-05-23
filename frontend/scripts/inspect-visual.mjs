@@ -38,6 +38,9 @@ const sourceMaterialPhaserProfiles = new Set([
   'terminal-green-mobile-compact',
   'obsidian-rain-proto'
 ]);
+const actionLabelPhaserProfiles = new Set([
+  'obsidian-rain-proto'
+]);
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom' });
@@ -2461,6 +2464,7 @@ async function collectMetrics(page) {
       phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
+      phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2861,6 +2865,19 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
   }
 }
 
+function validatePhaserActionLabels(scenario, metrics, failures, context) {
+  if (!actionLabelPhaserProfiles.has(scenario.expectedFixedProfile)) {
+    return;
+  }
+
+  if (!Number.isFinite(metrics.phaserActionButtonLabels) || metrics.phaserActionButtonLabels < 2) {
+    failures.push(
+      `${context} expected canvas-rendered action button labels for ${scenario.expectedFixedProfile}, ` +
+      `got ${metrics.phaserActionButtonLabels ?? 'none'}`
+    );
+  }
+}
+
 function phaserButtonState(metrics, buttonId) {
   return Object.fromEntries(
     String(metrics.phaserButtonStates ?? '')
@@ -2903,6 +2920,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
+  validatePhaserActionLabels(scenario, metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);

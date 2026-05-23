@@ -158,21 +158,24 @@
         "width": 152,
         "height": 66,
         "alpha": true,
-        "icon": "fa-solid fa-bolt"
+        "icon": "fa-solid fa-bolt",
+        "hideLabel": false
       },
       "run": {
         "prefix": "run",
         "width": 152,
         "height": 66,
         "alpha": true,
-        "icon": "fa-solid fa-person-running"
+        "icon": "fa-solid fa-person-running",
+        "hideLabel": false
       },
       "restart": {
         "prefix": "restart",
         "width": 226,
         "height": 66,
         "alpha": true,
-        "icon": "fa-solid fa-rotate-right"
+        "icon": "fa-solid fa-rotate-right",
+        "hideLabel": false
       },
       "log": {
         "prefix": "log",

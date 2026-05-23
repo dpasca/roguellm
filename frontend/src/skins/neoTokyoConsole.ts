@@ -540,7 +540,7 @@ export const neoTokyoConsoleSkin: GameSkin = {
   mood: ['dense', 'electric', 'urban', 'tactical'],
   map: {
     canvasBackground: '#070b0d',
-    exploredTileScale: 0.78,
+    exploredTileScale: 0.96,
     unexploredTileScale: 0.28,
     exploredTileStroke: 0x30414a,
     unexploredTileStroke: 0x172025,

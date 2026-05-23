@@ -201,9 +201,9 @@ function buttonAlphaRadius(name) {
 
 function buttonMetadata(name) {
   return {
-    attack: { icon: 'fa-solid fa-bolt' },
-    run: { icon: 'fa-solid fa-person-running' },
-    restart: { icon: 'fa-solid fa-rotate-right' }
+    attack: { icon: 'fa-solid fa-bolt', hideLabel: false },
+    run: { icon: 'fa-solid fa-person-running', hideLabel: false },
+    restart: { icon: 'fa-solid fa-rotate-right', hideLabel: false }
   }[name] ?? {};
 }
 
