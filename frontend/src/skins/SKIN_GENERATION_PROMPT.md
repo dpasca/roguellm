@@ -75,6 +75,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --palette green,brass,graphite \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
+  --materials-source source-materials.png \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 
@@ -88,8 +89,10 @@ pnpm -C frontend validate:skins
 
 The scaffold crop plan creates the fixed runtime assets from the source
 artboard: full chassis, button state variants, status indicator states, and LED
-states. Add the six material PNGs declared by the scaffold beside the manifest
-before promotion; those materials are rendered by Phaser as tiled sprites and
-nine-slice frames, not CSS. Only promote a generated artboard into the default
-mobile profile after the diagnostics and visual inspection screenshots look
-cleaner than `gold-mobile`.
+states. With `--materials-source`, it also crops the six material PNGs from a
+separate 160x304-or-taller sheet: panel row at y=0, LCD row at y=104, button row
+at y=208, each with the 96x96 fill tile at x=0 and the 48x48 frame at x=104.
+Those materials are rendered by Phaser as tiled sprites and nine-slice frames,
+not CSS. Only promote a generated artboard into the default mobile profile after
+the diagnostics and visual inspection screenshots look cleaner than
+`gold-mobile`.

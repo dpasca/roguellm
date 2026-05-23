@@ -100,6 +100,7 @@ function buildManifest(id, kind, selectedProfile, options) {
 }
 
 function buildCrops(selectedProfile, options) {
+  const materialSource = options['materials-source'] ?? options['material-source'];
   const crops = [
     {
       path: 'chassis.png',
@@ -136,7 +137,41 @@ function buildCrops(selectedProfile, options) {
     variants: 'combat-led'
   });
 
+  if (materialSource) {
+    crops.push(...buildMaterialCrops(selectedProfile.materials, materialSource));
+  }
+
   return crops;
+}
+
+function buildMaterialCrops(materials, source) {
+  const rows = ['panel', 'lcd', 'button'];
+  return rows.flatMap((name, rowIndex) => {
+    const material = materials[name];
+    const y = rowIndex * 104;
+    return [
+      {
+        path: material.fill.path,
+        source,
+        rect: {
+          x: 0,
+          y,
+          width: material.fill.width,
+          height: material.fill.height
+        }
+      },
+      {
+        path: material.frame.path,
+        source,
+        rect: {
+          x: 104,
+          y,
+          width: material.frame.width,
+          height: material.frame.height
+        }
+      }
+    ];
+  });
 }
 
 function buttonPrefix(name) {
@@ -255,6 +290,7 @@ function printUsage() {
     '  --generation <value>        Generation/source note.',
     '  --source <path>             Widget/source artboard path relative to the skin dir.',
     '  --chassis-source <path>     Optional clean chassis artboard for the chassis crop.',
+    '  --materials-source <path>   Optional material sheet for panel/LCD/button tiles and frames.',
     '  --out <path>                Write skin-kit.json to a file or directory instead of stdout.'
   ].join('\n'));
 }

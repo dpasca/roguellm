@@ -265,6 +265,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --palette green,brass,graphite \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
+  --materials-source source-materials.png \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 
@@ -280,9 +281,24 @@ The scaffold crop plan assumes a single full source artboard:
 - Button idle crops generate `hover`, `pressed`, and `disabled` variants.
 - `status-ready.png` generates `thinking`, `error`, and `offline` variants.
 - `led-off.png` generates `led-on.png`.
-- Material fill tiles and nine-slice frames are separate required PNGs. Keep
-  them repeat-safe and place them beside the generated skin-kit manifest before
-  promotion.
+- If `--materials-source` is provided, material fill tiles and nine-slice frames
+  are cropped from a separate material sheet. Without that option, keep the
+  material PNGs repeat-safe and place them beside the generated skin-kit
+  manifest before promotion.
+
+Material source sheet layout:
+
+```text
+row 0: panel-fill-tile.png  at x=0 y=0   w=96 h=96
+       panel-frame-9slice.png at x=104 y=0   w=48 h=48
+row 1: lcd-fill-tile.png    at x=0 y=104 w=96 h=96
+       lcd-frame-9slice.png   at x=104 y=104 w=48 h=48
+row 2: button-fill-tile.png at x=0 y=208 w=96 h=96
+       button-frame-9slice.png at x=104 y=208 w=48 h=48
+```
+
+The 8px gutter is intentional. It keeps tile and frame sampling from bleeding
+into neighboring assets during generation cleanup.
 
 For cleaned/generated skins, individual crops may declare `source` to use a
 different artboard from `build.source`. This lets a skin keep a clean chassis

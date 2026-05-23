@@ -40,6 +40,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     '',
     'Reusable material assets to deliver as separate PNGs:',
     formatMaterialList(profile.materials),
+    'Optional material sheet layout for scaffold --materials-source: panel row y=0, LCD row y=104, button row y=208; fill tile at x=0, frame at x=104.',
     '',
     'Runtime meter rectangles:',
     formatRectList(profile.layout.fills, meterNotes()),
