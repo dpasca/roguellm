@@ -545,6 +545,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private materialPanelsDrawn = 0;
   private sourceMaterialPanelsDrawn = 0;
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
+  private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
@@ -620,6 +621,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.materialPanelsDrawn = 0;
     this.sourceMaterialPanelsDrawn = 0;
     this.sourceMaterialKindsDrawn.clear();
+    this.buttonStatesDrawn.clear();
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
@@ -652,6 +654,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
     document.body.dataset.phaserSourceMaterialPanels = String(this.sourceMaterialPanelsDrawn);
     document.body.dataset.phaserSourceMaterialKinds = [...this.sourceMaterialKindsDrawn].sort().join(',');
+    document.body.dataset.phaserButtonStates = [...this.buttonStatesDrawn]
+      .map(([buttonId, state]) => `${buttonId}:${state}`)
+      .sort()
+      .join(',');
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
@@ -1161,6 +1167,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const disabled = this.isButtonDisabled(buttonId);
     const active = (buttonId === 'log' && this.viewState.logOpen) || (buttonId === 'inventory' && this.viewState.inventoryOpen);
     const state: FixedSkinButtonState = disabled ? 'disabled' : active ? 'pressed' : 'idle';
+    this.buttonStatesDrawn.set(buttonId, state);
     const key = buttonKey(this.profile, buttonId, state);
     if (!this.textures.exists(key)) {
       return;
@@ -2588,6 +2595,8 @@ function applyPhaserStateDatasets(state: GameState, inventoryOpen: boolean, acti
   document.body.dataset.phaserEquippedCount = String(visibleItems.filter((item) => item.is_equipped).length);
   document.body.dataset.phaserInventoryActionLabels = rowActions.map((action) => action.label).join(',');
   document.body.dataset.phaserPlayerHp = String(Math.max(0, state.player_hp));
+  document.body.dataset.phaserPlayerX = String(state.player_pos[0]);
+  document.body.dataset.phaserPlayerY = String(state.player_pos[1]);
   document.body.dataset.phaserInCombat = state.in_combat ? '1' : '0';
   document.body.dataset.phaserTerminalState = state.game_won ? 'victory' : isTerminalState(state) ? 'defeat' : 'active';
 }

@@ -47,6 +47,7 @@ const scenarioFilters = (process.env.VISUAL_SCENARIOS ?? process.env.VISUAL_SCEN
   .map((filter) => filter.trim())
   .filter(Boolean);
 const fixedSkinDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
+const fixedProfileKitCache = new Map();
 const productionMobileProfiles = await loadProductionMobileProfiles(fixedSkinDir);
 
 const baseScenarios = [
@@ -264,6 +265,27 @@ const baseScenarios = [
     viewport: { width: 390, height: 667 },
     mode: 'phaser-fixed-workbench-inventory',
     url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-click-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-click-log',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-click-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-click-inventory',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-click-move',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-click-move',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact', { scenario: 'movement' }),
     expectedFixedProfile: 'terminal-green-mobile-compact'
   },
   {
@@ -777,6 +799,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
       Number.isFinite(metrics.phaserSourceMaterialPanels) ? `source materials ${metrics.phaserSourceMaterialPanels}` : null,
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
+      metrics.phaserButtonStates ? `buttons ${metrics.phaserButtonStates}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -1247,6 +1270,22 @@ async function runScenario(page, scenario) {
     await waitForPhaserFixedInventoryUse(page);
   }
 
+  if (scenario.mode === 'phaser-fixed-workbench-click-log') {
+    await clickPhaserFixedButton(page, scenario, 'log');
+    await waitForPhaserFixedWorkbenchDrawer(page, 'log');
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-click-inventory') {
+    await clickPhaserFixedButton(page, scenario, 'inventory');
+    await waitForPhaserFixedWorkbenchDrawer(page, 'inventory');
+    await waitForPhaserFixedInventory(page);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-click-move') {
+    await clickPhaserFixedButton(page, scenario, 'moveE');
+    await waitForPhaserFixedWorkbenchPlayer(page, 2, 1);
+  }
+
   if (scenario.mode === 'phaser-fixed-workbench-defeat') {
     await waitForPhaserTerminalState(page, 'defeat');
   }
@@ -1322,6 +1361,48 @@ async function runScenario(page, scenario) {
     metrics,
     failures
   };
+}
+
+async function clickPhaserFixedButton(page, scenario, buttonId) {
+  const profileId = scenario.expectedFixedProfile ?? compactFixedProfile;
+  const kit = await loadFixedProfileKit(profileId);
+  const rect = kit.layout?.buttons?.[buttonId];
+  if (!isVisualRect(rect)) {
+    throw new Error(`${profileId} does not define layout.buttons.${buttonId}`);
+  }
+
+  const point = await page.evaluate((buttonRect) => {
+    const canvas = document.querySelector('#phaser-fixed-skin-workbench canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      throw new Error('Missing Phaser fixed-skin canvas');
+    }
+
+    const bounds = canvas.getBoundingClientRect();
+    return {
+      x: bounds.left + ((buttonRect.x + buttonRect.width / 2) / canvas.width) * bounds.width,
+      y: bounds.top + ((buttonRect.y + buttonRect.height / 2) / canvas.height) * bounds.height
+    };
+  }, rect);
+
+  await page.mouse.click(point.x, point.y);
+}
+
+async function loadFixedProfileKit(profileId) {
+  const cached = fixedProfileKitCache.get(profileId);
+  if (cached) {
+    return cached;
+  }
+
+  const kitPath = path.join(fixedSkinDir, profileId, 'skin-kit.json');
+  const kit = JSON.parse(await fs.readFile(kitPath, 'utf8'));
+  fixedProfileKitCache.set(profileId, kit);
+  return kit;
+}
+
+function isVisualRect(value) {
+  return value &&
+    typeof value === 'object' &&
+    ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
 }
 
 function collectScreenshotMetrics(screenshotPath) {
@@ -1477,6 +1558,15 @@ async function waitForPhaserFixedInventoryUse(page) {
       document.body.dataset.phaserDrawer === 'inventory' &&
       document.body.dataset.phaserPlayerHp === '55';
   }, null, { timeout: 20_000 });
+}
+
+async function waitForPhaserFixedWorkbenchPlayer(page, x, y) {
+  await page.waitForFunction((expected) => {
+    return document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserInCombat === '0' &&
+      document.body.dataset.phaserPlayerX === String(expected.x) &&
+      document.body.dataset.phaserPlayerY === String(expected.y);
+  }, { x, y }, { timeout: 20_000 });
 }
 
 async function waitForPhaserTerminalState(page, expected) {
@@ -2278,6 +2368,8 @@ async function collectMetrics(page) {
       phaserEquippedCount: Number(document.body.dataset.phaserEquippedCount ?? NaN),
       phaserInventoryActionLabels: document.body.dataset.phaserInventoryActionLabels ?? '',
       phaserPlayerHp: Number(document.body.dataset.phaserPlayerHp ?? NaN),
+      phaserPlayerX: Number(document.body.dataset.phaserPlayerX ?? NaN),
+      phaserPlayerY: Number(document.body.dataset.phaserPlayerY ?? NaN),
       phaserInCombat: document.body.dataset.phaserInCombat ?? null,
       phaserTerminalState: document.body.dataset.phaserTerminalState ?? null,
       phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
@@ -2286,6 +2378,7 @@ async function collectMetrics(page) {
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserSourceMaterialPanels: Number(document.body.dataset.phaserSourceMaterialPanels ?? NaN),
       phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
+      phaserButtonStates: document.body.dataset.phaserButtonStates ?? '',
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2659,15 +2752,19 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
       .split(',')
       .filter(Boolean)
   );
+  const requiredKinds = scenario.mode === 'phaser-fixed-workbench-click-move'
+    ? ['lcd', 'panel']
+    : ['button', 'lcd', 'panel'];
+  const minimumPanelCount = requiredKinds.includes('button') ? 5 : 3;
 
-  if (!Number.isFinite(metrics.phaserSourceMaterialPanels) || metrics.phaserSourceMaterialPanels < 5) {
+  if (!Number.isFinite(metrics.phaserSourceMaterialPanels) || metrics.phaserSourceMaterialPanels < minimumPanelCount) {
     failures.push(
       `${context} expected source-authored material panels for terminal-green-mobile-compact, ` +
       `got ${metrics.phaserSourceMaterialPanels ?? 'none'}`
     );
   }
 
-  for (const requiredKind of ['button', 'lcd', 'panel']) {
+  for (const requiredKind of requiredKinds) {
     if (!sourceKinds.has(requiredKind)) {
       failures.push(
         `${context} expected source-authored ${requiredKind} material for terminal-green-mobile-compact, ` +
@@ -2675,6 +2772,15 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
       );
     }
   }
+}
+
+function phaserButtonState(metrics, buttonId) {
+  return Object.fromEntries(
+    String(metrics.phaserButtonStates ?? '')
+      .split(',')
+      .filter(Boolean)
+      .map((entry) => entry.split(':', 2))
+  )[buttonId];
 }
 
 function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
@@ -2737,11 +2843,17 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`Phaser fixed canvas has wrong backing size: ${metrics.phaserCanvas.width}x${metrics.phaserCanvas.height}`);
   }
 
-  if (scenario.mode === 'phaser-fixed-workbench-log' && metrics.phaserDrawer !== 'log') {
+  if ((scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-workbench-click-log') && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
   }
 
-  if (scenario.mode === 'phaser-fixed-workbench-inventory' || scenario.mode === 'phaser-fixed-workbench-inventory-use') {
+  if (scenario.mode === 'phaser-fixed-workbench-click-log' && phaserButtonState(metrics, 'log') !== 'pressed') {
+    failures.push(`expected Phaser log button pressed after pointer click, got ${phaserButtonState(metrics, 'log') ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-inventory' ||
+    scenario.mode === 'phaser-fixed-workbench-inventory-use' ||
+    scenario.mode === 'phaser-fixed-workbench-click-inventory') {
     if (metrics.phaserDrawer !== 'inventory') {
       failures.push(`expected Phaser inventory drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
     }
@@ -2759,6 +2871,22 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!metrics.phaserInventoryActionLabels.includes('ON') || !metrics.phaserInventoryActionLabels.includes('USE')) {
       failures.push(`expected ON and USE Phaser inventory labels, got ${metrics.phaserInventoryActionLabels || 'none'}`);
+    }
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-click-inventory' && phaserButtonState(metrics, 'inventory') !== 'pressed') {
+    failures.push(`expected Phaser inventory button pressed after pointer click, got ${phaserButtonState(metrics, 'inventory') ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-click-move') {
+    if (metrics.fixedScenario !== 'movement') {
+      failures.push(`expected Phaser movement scenario, got ${metrics.fixedScenario ?? 'none'}`);
+    }
+    if (metrics.phaserPlayerX !== 2 || metrics.phaserPlayerY !== 1) {
+      failures.push(`expected Phaser pointer-click movement to reach 2,1, got ${metrics.phaserPlayerX ?? 'none'},${metrics.phaserPlayerY ?? 'none'}`);
+    }
+    if (phaserButtonState(metrics, 'moveE') !== 'idle') {
+      failures.push(`expected Phaser moveE button to be drawn and idle after pointer click, got ${phaserButtonState(metrics, 'moveE') ?? 'none'}`);
     }
   }
 
