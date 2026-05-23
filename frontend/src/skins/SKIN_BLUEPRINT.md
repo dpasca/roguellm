@@ -247,6 +247,9 @@ rendered on top by the app.
 Action buttons may declare `icon` in the manifest. The Phaser renderer maps
 known action icons to crisp canvas marks so small mobile buttons do not depend
 on DOM icon styling.
+Common map, title, item, and combat icons are also rendered as Phaser canvas
+marks from the same Font Awesome-compatible semantic names. Font Awesome remains
+structured icon metadata and a fallback, not the primary Phaser visual system.
 
 Prefer alpha PNGs for controls. Avoid rectangular screenshot crops unless the
 entire rectangle is an intentional physical widget.
@@ -349,6 +352,9 @@ Production profiles must declare their runtime colors in `renderTheme`.
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser
 fixed-skin scenarios as a failure.
+`pnpm run validate:phaser-css` also follows the Phaser renderer source graph and
+checks the built Vite manifest so CSS can only remain in the explicit legacy DOM
+style loader.
 
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the

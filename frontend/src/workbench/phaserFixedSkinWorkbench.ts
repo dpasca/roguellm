@@ -532,6 +532,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private viewState: SceneState;
   private ready = false;
   private faGlyphsDrawn = 0;
+  private canvasIconMarksDrawn = 0;
   private materialPanelsDrawn = 0;
   private chromeDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
@@ -603,6 +604,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private redraw(): void {
     this.faGlyphsDrawn = 0;
+    this.canvasIconMarksDrawn = 0;
     this.materialPanelsDrawn = 0;
     this.chromeDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
@@ -630,6 +632,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawDiagnostics();
     }
     document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
+    document.body.dataset.phaserCanvasIconMarks = String(this.canvasIconMarksDrawn);
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
@@ -675,14 +678,15 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         this.drawMapTile(graphics, tileX, tileY, tileSize, base, explored);
 
         if (explored && tileSize >= 20 && !contentCells.has(cellKey(x, y))) {
-          this.addFontAwesomeIcon(
+          this.drawSemanticIcon(
             cell?.font_awesome_icon,
             '.',
             tileX + tileSize * 0.26,
             tileY + tileSize * 0.74,
             Math.max(7, Math.floor(tileSize * 0.24)),
-            this.theme.primaryDimText
-          ).setOrigin(0.5, 0.5).setAlpha(0.18);
+            this.theme.primaryDimText,
+            0.18
+          );
         }
 
       }
@@ -768,8 +772,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillCircle(centerX, centerY, radius + 1);
     graphics.fillStyle(color, 0.96);
     graphics.fillCircle(centerX, centerY, radius);
-    this.addFontAwesomeIcon(icon, fallback, centerX, centerY, Math.max(8, Math.floor(tileSize * 0.3)), '#141414')
-      .setOrigin(0.5, 0.5);
+    this.drawSemanticIcon(icon, fallback, centerX, centerY, Math.max(8, Math.floor(tileSize * 0.3)), '#141414', 0.9);
   }
 
   private drawPlayerMarker(originX: number, originY: number, tileSize: number): void {
@@ -821,14 +824,15 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       });
     }
     const iconSize = this.profile.kind === 'mobileCompact' ? 17 : 20;
-    this.addFontAwesomeIcon(
+    this.drawSemanticIcon(
       this.viewState.state.player.font_awesome_icon,
       '@',
-      rect.x + 2,
+      rect.x + 2 + iconSize * 0.5,
       rect.y + Math.max(15, rect.height * 0.5),
       iconSize,
-      this.theme.primaryText
-    ).setOrigin(0, 0.5);
+      this.theme.primaryText,
+      0.96
+    );
     this.addText(this.viewState.state.game_title, rect.x + iconSize + 12, rect.y, rect.width - iconSize - 12, {
       fontSize: this.profile.kind === 'mobileCompact' ? 20 : 24,
       color: this.theme.titleText,
@@ -908,8 +912,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return;
     }
 
-    this.addFontAwesomeIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, this.theme.combatText)
-      .setOrigin(0.5, 0.5);
+    this.drawSemanticIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, this.theme.combatText, 0.96);
     this.addText(enemy.name, rect.x + 30, rect.y + 24, rect.width - 134, {
       fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
       color: this.theme.bodyText,
@@ -1590,6 +1593,323 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
   }
 
+  private drawSemanticIcon(
+    iconClass: string | undefined,
+    fallback: string,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    alpha = 1
+  ): void {
+    const iconName = fontAwesomeIconName(iconClass);
+    const tint = parseHexColor(color, 0xffffff);
+    const graphics = this.add.graphics();
+    if (iconName && this.drawCanvasIconMark(graphics, iconName, x, y, size, tint, alpha)) {
+      this.canvasIconMarksDrawn += 1;
+      return;
+    }
+
+    graphics.destroy();
+    this.addFontAwesomeIcon(iconClass, fallback, x, y, size, color)
+      .setOrigin(0.5, 0.5)
+      .setAlpha(alpha);
+  }
+
+  private drawCanvasIconMark(
+    graphics: Phaser.GameObjects.Graphics,
+    iconName: string,
+    x: number,
+    y: number,
+    size: number,
+    tint: number,
+    alpha: number
+  ): boolean {
+    if (['building', 'city', 'hotel', 'industry'].includes(iconName)) {
+      this.drawBuildingIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (['building-columns', 'place-of-worship', 'torii-gate'].includes(iconName)) {
+      this.drawMonumentIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (iconName === 'store') {
+      this.drawStoreIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (iconName === 'seedling' || iconName === 'tree') {
+      this.drawPlantIcon(graphics, x, y, size, tint, alpha, iconName === 'tree');
+      return true;
+    }
+
+    if (iconName === 'subway' || iconName === 'train-subway') {
+      this.drawTransitIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (['tv', 'laptop-code', 'microchip'].includes(iconName)) {
+      this.drawTechIcon(graphics, x, y, size, tint, alpha, iconName);
+      return true;
+    }
+
+    if (iconName === 'satellite-dish' || iconName === 'tower-broadcast') {
+      this.drawSignalIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (iconName === 'cloud' || iconName === 'cloud-rain') {
+      this.drawCloudIcon(graphics, x, y, size, tint, alpha, iconName === 'cloud-rain');
+      return true;
+    }
+
+    if (iconName === 'water') {
+      this.drawWaterIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (iconName === 'fish') {
+      this.drawFishIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (iconName === 'bowl-food') {
+      this.drawBowlIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    if (['box', 'briefcase', 'briefcase-medical', 'coins'].includes(iconName)) {
+      this.drawItemIcon(graphics, x, y, size, tint, alpha, iconName);
+      return true;
+    }
+
+    if (['mask', 'user-secret', 'user-tie', 'skull', 'fist-raised', 'hand-fist'].includes(iconName)) {
+      this.drawPersonIcon(graphics, x, y, size, tint, alpha, iconName);
+      return true;
+    }
+
+    if (iconName === 'car' || iconName === 'helicopter') {
+      this.drawVehicleIcon(graphics, x, y, size, tint, alpha, iconName);
+      return true;
+    }
+
+    if (iconName === 'question' || iconName === 'ban') {
+      this.drawQuestionIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
+    return false;
+  }
+
+  private drawBuildingIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillRect(x - 8 * s, y - 6 * s, 5 * s, 12 * s);
+    graphics.fillRect(x - 2 * s, y - 9 * s, 5 * s, 15 * s);
+    graphics.fillRect(x + 4 * s, y - 4 * s, 5 * s, 10 * s);
+    graphics.fillStyle(0x020504, alpha * 0.42);
+    for (const offset of [-6, 0, 6]) {
+      graphics.fillRect(x + offset * s, y - 2 * s, 1.5 * s, 2 * s);
+      graphics.fillRect(x + offset * s, y + 2 * s, 1.5 * s, 2 * s);
+    }
+    graphics.lineStyle(Math.max(1, 1.2 * s), tint, alpha * 0.55);
+    graphics.lineBetween(x - 9 * s, y + 7 * s, x + 10 * s, y + 7 * s);
+  }
+
+  private drawMonumentIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillTriangle(x, y - 9 * s, x - 9 * s, y - 3 * s, x + 9 * s, y - 3 * s);
+    graphics.fillRect(x - 8 * s, y - 1 * s, 16 * s, 2 * s);
+    for (const offset of [-5, 0, 5]) {
+      graphics.fillRect(x + offset * s - 1 * s, y + 1 * s, 2 * s, 7 * s);
+    }
+    graphics.fillRect(x - 8 * s, y + 8 * s, 16 * s, 2 * s);
+  }
+
+  private drawStoreIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillRect(x - 8 * s, y - 3 * s, 16 * s, 10 * s);
+    graphics.fillTriangle(x - 9 * s, y - 4 * s, x + 9 * s, y - 4 * s, x, y - 9 * s);
+    graphics.fillStyle(0x020504, alpha * 0.45);
+    graphics.fillRect(x - 5 * s, y + 1 * s, 3 * s, 5 * s);
+    graphics.fillRect(x + 2 * s, y + 1 * s, 4 * s, 3 * s);
+  }
+
+  private drawPlantIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, tree: boolean): void {
+    const s = size / 20;
+    graphics.lineStyle(Math.max(1, 1.6 * s), tint, alpha);
+    graphics.lineBetween(x, y + 8 * s, x, y - (tree ? 2 : 5) * s);
+    graphics.fillStyle(tint, alpha);
+    graphics.fillEllipse(x - 4 * s, y - 2 * s, 8 * s, 5 * s);
+    graphics.fillEllipse(x + 4 * s, y - 5 * s, 8 * s, 5 * s);
+    if (tree) {
+      graphics.fillCircle(x, y - 7 * s, 6 * s);
+    }
+  }
+
+  private drawTransitIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillRoundedRect(x - 8 * s, y - 8 * s, 16 * s, 14 * s, 3 * s);
+    graphics.fillStyle(0x020504, alpha * 0.46);
+    graphics.fillRect(x - 5 * s, y - 5 * s, 4 * s, 4 * s);
+    graphics.fillRect(x + 1 * s, y - 5 * s, 4 * s, 4 * s);
+    graphics.fillStyle(tint, alpha);
+    graphics.fillCircle(x - 4 * s, y + 7 * s, 2 * s);
+    graphics.fillCircle(x + 4 * s, y + 7 * s, 2 * s);
+  }
+
+  private drawTechIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, iconName: string): void {
+    const s = size / 20;
+    graphics.lineStyle(Math.max(1, 1.4 * s), tint, alpha);
+    graphics.strokeRoundedRect(x - 8 * s, y - 6 * s, 16 * s, 11 * s, 2 * s);
+    if (iconName === 'microchip') {
+      for (let offset = -7; offset <= 7; offset += 4) {
+        graphics.lineBetween(x + offset * s, y - 9 * s, x + offset * s, y - 6 * s);
+        graphics.lineBetween(x + offset * s, y + 5 * s, x + offset * s, y + 8 * s);
+      }
+      graphics.fillStyle(tint, alpha * 0.35);
+      graphics.fillRect(x - 3 * s, y - 2 * s, 6 * s, 4 * s);
+      return;
+    }
+    graphics.lineBetween(x - 3 * s, y + 7 * s, x + 3 * s, y + 7 * s);
+    graphics.lineBetween(x, y + 5 * s, x, y + 7 * s);
+  }
+
+  private drawSignalIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.lineStyle(Math.max(1, 1.4 * s), tint, alpha);
+    graphics.lineBetween(x, y + 8 * s, x, y - 7 * s);
+    graphics.lineBetween(x - 5 * s, y + 8 * s, x + 5 * s, y + 8 * s);
+    for (const radius of [4, 7]) {
+      graphics.beginPath();
+      graphics.arc(x, y - 4 * s, radius * s, -0.95, 0.95);
+      graphics.strokePath();
+    }
+  }
+
+  private drawCloudIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, rain: boolean): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillCircle(x - 5 * s, y - 2 * s, 4 * s);
+    graphics.fillCircle(x, y - 5 * s, 5 * s);
+    graphics.fillCircle(x + 5 * s, y - 2 * s, 4 * s);
+    graphics.fillRect(x - 8 * s, y - 2 * s, 16 * s, 5 * s);
+    if (rain) {
+      graphics.lineStyle(Math.max(1, 1.2 * s), tint, alpha);
+      graphics.lineBetween(x - 5 * s, y + 5 * s, x - 7 * s, y + 9 * s);
+      graphics.lineBetween(x, y + 5 * s, x - 2 * s, y + 9 * s);
+      graphics.lineBetween(x + 5 * s, y + 5 * s, x + 3 * s, y + 9 * s);
+    }
+  }
+
+  private drawWaterIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.lineStyle(Math.max(1, 1.5 * s), tint, alpha);
+    for (const offset of [-4, 2, 8]) {
+      graphics.beginPath();
+      graphics.moveTo(x - 8 * s, y + offset * s);
+      graphics.lineTo(x - 3 * s, y + (offset - 2) * s);
+      graphics.lineTo(x + 2 * s, y + offset * s);
+      graphics.lineTo(x + 7 * s, y + (offset - 2) * s);
+      graphics.strokePath();
+    }
+  }
+
+  private drawFishIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillEllipse(x - 1 * s, y, 13 * s, 8 * s);
+    graphics.fillTriangle(x + 6 * s, y, x + 11 * s, y - 5 * s, x + 11 * s, y + 5 * s);
+    graphics.fillStyle(0x020504, alpha * 0.55);
+    graphics.fillCircle(x - 5 * s, y - 1 * s, 1 * s);
+  }
+
+  private drawBowlIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillRoundedRect(x - 8 * s, y - 1 * s, 16 * s, 8 * s, 5 * s);
+    graphics.lineStyle(Math.max(1, 1.2 * s), tint, alpha);
+    graphics.lineBetween(x - 6 * s, y - 4 * s, x - 2 * s, y - 8 * s);
+    graphics.lineBetween(x, y - 4 * s, x + 4 * s, y - 8 * s);
+  }
+
+  private drawItemIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, iconName: string): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    if (iconName === 'coins') {
+      for (const offset of [-4, 0, 4]) {
+        graphics.fillEllipse(x + offset * s, y + (offset === 0 ? -2 : 2) * s, 8 * s, 4 * s);
+      }
+      return;
+    }
+    graphics.fillRoundedRect(x - 7 * s, y - 6 * s, 14 * s, 12 * s, 2 * s);
+    graphics.fillStyle(0x020504, alpha * 0.45);
+    if (iconName === 'briefcase-medical') {
+      graphics.fillRect(x - 1.3 * s, y - 4 * s, 2.6 * s, 8 * s);
+      graphics.fillRect(x - 4 * s, y - 1.3 * s, 8 * s, 2.6 * s);
+    } else {
+      graphics.strokeRect(x - 4 * s, y - 2 * s, 8 * s, 5 * s);
+    }
+  }
+
+  private drawPersonIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, iconName: string): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    if (iconName === 'skull') {
+      graphics.fillCircle(x, y - 3 * s, 7 * s);
+      graphics.fillRect(x - 5 * s, y + 2 * s, 10 * s, 6 * s);
+      graphics.fillStyle(0x020504, alpha * 0.55);
+      graphics.fillCircle(x - 3 * s, y - 3 * s, 1.5 * s);
+      graphics.fillCircle(x + 3 * s, y - 3 * s, 1.5 * s);
+      return;
+    }
+    if (iconName === 'fist-raised' || iconName === 'hand-fist') {
+      graphics.fillRoundedRect(x - 5 * s, y - 7 * s, 10 * s, 10 * s, 3 * s);
+      graphics.fillRect(x - 3 * s, y + 2 * s, 6 * s, 7 * s);
+      return;
+    }
+    graphics.fillCircle(x, y - 5 * s, 4 * s);
+    graphics.fillRoundedRect(x - 6 * s, y, 12 * s, 9 * s, 4 * s);
+    if (iconName === 'user-secret' || iconName === 'mask') {
+      graphics.fillTriangle(x - 8 * s, y - 8 * s, x + 8 * s, y - 8 * s, x, y - 12 * s);
+      graphics.fillStyle(0x020504, alpha * 0.5);
+      graphics.fillRect(x - 5 * s, y - 5 * s, 10 * s, 2 * s);
+    }
+  }
+
+  private drawVehicleIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, iconName: string): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    if (iconName === 'helicopter') {
+      graphics.fillRoundedRect(x - 6 * s, y - 3 * s, 12 * s, 6 * s, 3 * s);
+      graphics.fillRect(x + 4 * s, y - 1 * s, 7 * s, 2 * s);
+      graphics.lineStyle(Math.max(1, 1.2 * s), tint, alpha);
+      graphics.lineBetween(x - 10 * s, y - 7 * s, x + 10 * s, y - 7 * s);
+      return;
+    }
+    graphics.fillRoundedRect(x - 8 * s, y - 2 * s, 16 * s, 7 * s, 3 * s);
+    graphics.fillRect(x - 4 * s, y - 6 * s, 8 * s, 5 * s);
+    graphics.fillStyle(0x020504, alpha * 0.55);
+    graphics.fillCircle(x - 5 * s, y + 5 * s, 2 * s);
+    graphics.fillCircle(x + 5 * s, y + 5 * s, 2 * s);
+  }
+
+  private drawQuestionIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.lineStyle(Math.max(1, 2 * s), tint, alpha);
+    graphics.beginPath();
+    graphics.arc(x, y - 4 * s, 5 * s, Math.PI * 1.08, Math.PI * 1.92);
+    graphics.strokePath();
+    graphics.lineBetween(x + 3 * s, y - 1 * s, x, y + 3 * s);
+    graphics.fillStyle(tint, alpha);
+    graphics.fillCircle(x, y + 8 * s, Math.max(1, 1.5 * s));
+  }
+
   private addFontAwesomeIcon(
     iconClass: string | undefined,
     fallback: string,
@@ -1993,17 +2313,18 @@ function clampRatio(value: number): number {
 }
 
 function fontAwesomeGlyph(iconClass: string | undefined): string | null {
+  const iconName = fontAwesomeIconName(iconClass);
+  return iconName ? fontAwesomeGlyphs[iconName] ?? null : null;
+}
+
+function fontAwesomeIconName(iconClass: string | undefined): string | null {
   const classes = iconClass?.trim().split(/\s+/) ?? [];
   for (const className of classes) {
     const normalized = className.toLowerCase();
     if (!normalized.startsWith('fa-') || fontAwesomeStyleClasses.has(normalized)) {
       continue;
     }
-    const iconName = normalized.slice(3);
-    const glyph = fontAwesomeGlyphs[iconName];
-    if (glyph) {
-      return glyph;
-    }
+    return normalized.slice(3);
   }
   return null;
 }

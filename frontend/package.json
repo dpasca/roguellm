@@ -13,10 +13,11 @@
     "skin:prompt": "node scripts/skin-layout-prompt.mjs",
     "skin:scaffold": "node scripts/skin-layout-scaffold.mjs",
     "build": "tsc --noEmit && vite build",
-    "check": "pnpm run build && pnpm run validate:bundle && pnpm run validate:skins",
+    "check": "pnpm run build && pnpm run validate:bundle && pnpm run validate:phaser-css && pnpm run validate:skins",
     "check:visual": "pnpm run inspect:visual",
     "inspect:visual": "node scripts/inspect-visual.mjs",
     "validate:bundle": "node scripts/validate-bundle.mjs",
+    "validate:phaser-css": "node scripts/validate-phaser-css-boundary.mjs",
     "validate:skins": "node scripts/validate-skin-kits.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4273"
   },

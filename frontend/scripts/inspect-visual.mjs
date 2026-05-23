@@ -1411,8 +1411,7 @@ async function waitForPhaserFixedWorkbenchReady(page) {
     return document.body.dataset.workbench === 'phaser-fixed-skin' &&
       document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.fixedProfile &&
-      document.body.dataset.phaserFontAwesomeReady === '1' &&
-      Number(document.body.dataset.phaserFontAwesomeGlyphs ?? 0) > 0 &&
+      Number(document.body.dataset.phaserCanvasIconMarks ?? 0) > 0 &&
       canvas instanceof HTMLCanvasElement &&
       !!box &&
       box.width > 100 &&
@@ -1471,8 +1470,7 @@ async function waitForPhaserFixedRuntimeReady(page) {
       document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.phaserRuntimeState === 'live' &&
       document.body.dataset.phaserStatus === 'ready' &&
-      document.body.dataset.phaserFontAwesomeReady === '1' &&
-      Number(document.body.dataset.phaserFontAwesomeGlyphs ?? 0) > 0 &&
+      Number(document.body.dataset.phaserCanvasIconMarks ?? 0) > 0 &&
       canvas instanceof HTMLCanvasElement &&
       !!box &&
       box.width > 100 &&
@@ -2219,6 +2217,16 @@ async function collectMetrics(page) {
       };
     };
 
+    const cssResourceNames = performance.getEntriesByType('resource')
+      .map((entry) => entry.name)
+      .filter((name) => {
+        try {
+          return new URL(name, location.href).pathname.endsWith('.css');
+        } catch {
+          return name.includes('.css');
+        }
+      });
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -2248,6 +2256,7 @@ async function collectMetrics(page) {
       phaserTerminalState: document.body.dataset.phaserTerminalState ?? null,
       phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
+      phaserCanvasIconMarks: Number(document.body.dataset.phaserCanvasIconMarks ?? NaN),
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2260,6 +2269,10 @@ async function collectMetrics(page) {
       renderSurface: document.body.dataset.renderSurface ?? null,
       stylesheetLinkCount: document.querySelectorAll('link[rel="stylesheet"]').length,
       styleElementCount: document.querySelectorAll('style').length,
+      adoptedStyleSheetCount: document.adoptedStyleSheets?.length ?? 0,
+      styleSheetCount: document.styleSheets.length,
+      cssResourceCount: cssResourceNames.length,
+      cssResourceNames,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       inCombat: document.body.classList.contains('in-combat'),
       gameEnded: document.body.classList.contains('game-ended'),
@@ -2569,6 +2582,40 @@ function validatePhaserScreenshotQuality(metrics, failures) {
   }
 }
 
+function validateNoPhaserDomStyles(metrics, failures, context) {
+  const styleSurfaceCount =
+    (metrics.stylesheetLinkCount ?? 0) +
+    (metrics.styleElementCount ?? 0) +
+    (metrics.adoptedStyleSheetCount ?? 0) +
+    (metrics.styleSheetCount ?? 0) +
+    (metrics.cssResourceCount ?? 0);
+
+  if (styleSurfaceCount <= 0) {
+    return;
+  }
+
+  const cssResources = (metrics.cssResourceNames ?? [])
+    .map((name) => {
+      try {
+        const url = new URL(name);
+        return `${url.pathname}${url.search}`;
+      } catch {
+        return name;
+      }
+    })
+    .join(', ');
+
+  failures.push(
+    `${context} loaded DOM stylesheet surfaces: ` +
+    `links=${metrics.stylesheetLinkCount ?? 0}, ` +
+    `style=${metrics.styleElementCount ?? 0}, ` +
+    `adopted=${metrics.adoptedStyleSheetCount ?? 0}, ` +
+    `styleSheets=${metrics.styleSheetCount ?? 0}, ` +
+    `cssResources=${metrics.cssResourceCount ?? 0}` +
+    (cssResources ? ` (${cssResources})` : '')
+  );
+}
+
 function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   if (metrics.workbench !== 'phaser-fixed-skin') {
     failures.push(`expected phaser-fixed-skin workbench, got ${metrics.workbench ?? 'none'}`);
@@ -2582,11 +2629,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser canvas render surface, got ${metrics.renderSurface ?? 'none'}`);
   }
 
-  if ((metrics.stylesheetLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
-    failures.push(
-      `Phaser workbench loaded DOM stylesheets: links=${metrics.stylesheetLinkCount}, style=${metrics.styleElementCount}`
-    );
-  }
+  validateNoPhaserDomStyles(metrics, failures, 'Phaser workbench');
 
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
   if (metrics.fixedProfile !== expectedProfile) {
@@ -2597,12 +2640,8 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected one Phaser fixed canvas, got ${metrics.phaserCanvas.count}`);
   }
 
-  if (metrics.phaserFontAwesomeReady !== '1') {
-    failures.push(`expected Phaser Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
-  }
-
-  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < 8) {
-    failures.push(`expected Phaser Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
+  if (!Number.isFinite(metrics.phaserCanvasIconMarks) || metrics.phaserCanvasIconMarks < 8) {
+    failures.push(`expected Phaser canvas icon marks, got ${metrics.phaserCanvasIconMarks ?? 'none'}`);
   }
 
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
@@ -2695,11 +2734,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser runtime canvas render surface, got ${metrics.renderSurface ?? 'none'}`);
   }
 
-  if ((metrics.stylesheetLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
-    failures.push(
-      `Phaser runtime loaded DOM stylesheets: links=${metrics.stylesheetLinkCount}, style=${metrics.styleElementCount}`
-    );
-  }
+  validateNoPhaserDomStyles(metrics, failures, 'Phaser runtime');
 
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
   if (metrics.fixedProfile !== expectedProfile) {
@@ -2718,13 +2753,9 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected one Phaser fixed runtime canvas, got ${metrics.phaserCanvas.count}`);
   }
 
-  if (metrics.phaserFontAwesomeReady !== '1') {
-    failures.push(`expected Phaser runtime Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
-  }
-
-  const minRuntimeGlyphs = scenario.mode === 'phaser-fixed-runtime-combat' ? 4 : 1;
-  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < minRuntimeGlyphs) {
-    failures.push(`expected Phaser runtime Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
+  const minRuntimeIconMarks = scenario.mode === 'phaser-fixed-runtime-combat' ? 4 : 1;
+  if (!Number.isFinite(metrics.phaserCanvasIconMarks) || metrics.phaserCanvasIconMarks < minRuntimeIconMarks) {
+    failures.push(`expected Phaser runtime canvas icon marks, got ${metrics.phaserCanvasIconMarks ?? 'none'}`);
   }
 
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
