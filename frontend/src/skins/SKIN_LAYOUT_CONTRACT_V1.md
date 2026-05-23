@@ -222,6 +222,21 @@ The generator prints the exact live-region rectangles, crop targets, indicator
 targets, and hard rules for the selected profile. Prefer it over manually
 copying tables into image-generation prompts.
 
+## Layout Guide Generator
+
+Use the guide generator when preparing or reviewing source artboards:
+
+```bash
+pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.svg
+pnpm -C frontend skin:guide mobileCompact --view crops --out ../_artifacts/skin-guides/mobile-compact-crops.png
+```
+
+The guide renders the same contract rectangles as an annotated image. Use
+`--view live` for clean runtime apertures, `--view crops` for fixed asset crop
+targets, and `--view all` when checking the full contract at once. These guides
+are meant for visual review and for pairing with generated source art; they are
+not runtime assets.
+
 ## Manifest Scaffold Generator
 
 After generating a source artboard, use the scaffold generator to create the

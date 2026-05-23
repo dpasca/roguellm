@@ -15,6 +15,8 @@ Preferred handoff command:
 
 ```bash
 pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
+pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
+pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
 ```
 
 ```text
