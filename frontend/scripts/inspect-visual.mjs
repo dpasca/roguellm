@@ -627,6 +627,7 @@ function buildHtmlReport(summary) {
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
       metrics.mapGlass?.glassStyled ? 'map glass' : null,
       metrics.controls?.panelStyled ? 'control bay' : null,
+      metrics.drawerToggles?.spriteToggles === metrics.drawerToggles?.visibleToggles ? 'drawer toggles' : null,
       metrics.title?.iconStyled ? 'title badge' : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
@@ -1853,6 +1854,30 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectDrawerToggleMetrics = () => {
+      const toggles = ['fixed-log-toggle', 'fixed-inventory-toggle']
+        .map((id) => document.getElementById(id))
+        .filter((element) => element instanceof HTMLButtonElement);
+      const visibleToggles = toggles.filter((toggle) => {
+        const box = toggle.getBoundingClientRect();
+        const style = getComputedStyle(toggle);
+        return box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) > 0;
+      });
+      const spriteToggles = visibleToggles.filter((toggle) => getComputedStyle(toggle).backgroundImage !== 'none');
+
+      return {
+        visibleToggles: visibleToggles.length,
+        spriteToggles: spriteToggles.length,
+        states: Object.fromEntries(toggles.map((toggle) => [toggle.id, toggle.dataset.visualState ?? ''])),
+        pressed: Object.fromEntries(toggles.map((toggle) => [toggle.id, toggle.getAttribute('aria-pressed') ?? ''])),
+        expanded: Object.fromEntries(toggles.map((toggle) => [toggle.id, toggle.getAttribute('aria-expanded') ?? '']))
+      };
+    };
+
     const collectEndStateMetrics = () => {
       const badge = document.getElementById('end-state-badge');
       if (!badge) {
@@ -1928,6 +1953,7 @@ async function collectMetrics(page) {
       latest: collectLatestMetrics(),
       title: collectTitleMetrics(),
       controls: collectControlsMetrics(),
+      drawerToggles: collectDrawerToggleMetrics(),
       combat: collectCombatMetrics(),
       stats: collectStatMetrics(),
       hp: collectHpMetrics(),
@@ -2179,6 +2205,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
   validateFixedTitleHardware(metrics, failures, 'fixed runtime');
   validateFixedControlHardware(metrics, failures, 'fixed runtime');
   validateFixedMapGlass(metrics, failures, 'fixed runtime');
+  validateFixedDrawerToggleHardware(metrics, failures, 'fixed runtime');
   validateFixedCombatModeHardware(metrics, failures, 'fixed runtime');
   validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
 
@@ -2344,6 +2371,54 @@ function validateFixedMapGlass(metrics, failures, context) {
   if (metrics.mapIcons.total > 0 && !metrics.mapGlass.iconsAboveGlass) {
     failures.push(
       `${context} map icons are not above glass overlay: icons=${metrics.mapGlass.overlayZ}, glass=${metrics.mapGlass.afterZ}`
+    );
+  }
+}
+
+function validateFixedDrawerToggleHardware(metrics, failures, context) {
+  if (!isProductionFixedProfile(metrics.fixedProfileRole)) {
+    return;
+  }
+
+  const expectedStates = {
+    'fixed-log-toggle': metrics.logOpen ? 'pressed' : 'idle',
+    'fixed-inventory-toggle': metrics.inventoryOpen ? 'pressed' : 'idle'
+  };
+  const expectedExpanded = {
+    'fixed-log-toggle': metrics.logOpen ? 'true' : 'false',
+    'fixed-inventory-toggle': metrics.inventoryOpen ? 'true' : 'false'
+  };
+
+  for (const [id, rect] of [
+    ['fixed-log-toggle', metrics.rects.logToggleButton],
+    ['fixed-inventory-toggle', metrics.rects.inventoryToggleButton]
+  ]) {
+    const label = id === 'fixed-log-toggle' ? 'log toggle' : 'inventory toggle';
+    if (!rect || rect.visibleWidth < scaledFixedThreshold(metrics, 38) || rect.visibleHeight < scaledFixedThreshold(metrics, 24)) {
+      failures.push(`${context} ${label} is clipped: ${rect?.visibleWidth ?? 0}x${rect?.visibleHeight ?? 0}`);
+      continue;
+    }
+
+    if (rect.backgroundImage === 'none') {
+      failures.push(`${context} ${label} lost fixed sprite background`);
+    }
+
+    if (rect.visualState !== expectedStates[id]) {
+      failures.push(`${context} ${label} visual state should be ${expectedStates[id]}, got ${rect.visualState ?? 'none'}`);
+    }
+
+    if (rect.ariaPressed !== expectedExpanded[id] || rect.ariaExpanded !== expectedExpanded[id]) {
+      failures.push(`${context} ${label} aria state should be ${expectedExpanded[id]}`);
+    }
+  }
+
+  if (metrics.drawerToggles.visibleToggles < 2) {
+    failures.push(`${context} drawer toggles are missing: ${metrics.drawerToggles.visibleToggles}/2`);
+  }
+
+  if (metrics.drawerToggles.spriteToggles < metrics.drawerToggles.visibleToggles) {
+    failures.push(
+      `${context} drawer toggles lost fixed sprite backgrounds: ${metrics.drawerToggles.spriteToggles}/${metrics.drawerToggles.visibleToggles}`
     );
   }
 }
@@ -2635,6 +2710,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   validateFixedHpHardware(metrics, failures, 'fixed workbench');
   validateFixedTitleHardware(metrics, failures, 'fixed workbench');
   validateFixedControlHardware(metrics, failures, 'fixed workbench');
+  validateFixedDrawerToggleHardware(metrics, failures, 'fixed workbench');
 
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {
