@@ -1177,7 +1177,17 @@ function renderLogs(logs: string[], logOpen: boolean): void {
           window.setTimeout(() => row.classList.remove(messageFreshClass), 520);
         }
       }
-      row.textContent = message;
+
+      const tag = document.createElement('span');
+      tag.className = 'fixed-log-entry-tag';
+      tag.setAttribute('aria-hidden', 'true');
+      tag.textContent = index === 0 ? 'NEW' : String(index + 1).padStart(2, '0');
+
+      const copy = document.createElement('span');
+      copy.className = 'fixed-log-entry-copy';
+      copy.textContent = message;
+
+      row.append(tag, copy);
       return row;
     })
   );

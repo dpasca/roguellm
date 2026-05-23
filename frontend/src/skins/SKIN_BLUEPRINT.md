@@ -135,6 +135,11 @@ and visual inspection gates so they behave like part of the skin:
   action column so generated drawer art never needs to stretch around content.
 - Visual inspection must fail when fixed inventory drawers contain item rows
   without visible/styled type badges.
+- Fixed log rows use a top-first hardware strip: the newest entry gets a `NEW`
+  tag, history rows get numeric tags, and every row must remain scrollable
+  rather than shrinking/clipping inside the drawer.
+- Visual inspection must fail when fixed log drawers contain entries without
+  visible/styled row tags.
 
 ## Asset Rules
 

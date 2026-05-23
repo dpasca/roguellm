@@ -1468,6 +1468,7 @@ async function collectMetrics(page) {
       controlsPanel: '.controls-panel',
       logPanel: '#log-panel',
       firstLogEntry: '#game-log p.latest',
+      firstLogTag: '#game-log p.latest .fixed-log-entry-tag',
       inventoryPanel: '.inventory-panel',
       firstInventoryItem: '#inventory-list .inventory-item',
       firstInventoryBadge: '#inventory-list .fixed-inventory-type-badge',
@@ -1628,6 +1629,42 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectLogMetrics = () => {
+      const entries = Array.from(document.querySelectorAll('#game-log p'));
+      const tags = Array.from(document.querySelectorAll('#game-log .fixed-log-entry-tag'));
+      const visibleTags = tags.filter((tag) => {
+        const box = tag.getBoundingClientRect();
+        const style = getComputedStyle(tag);
+        return box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) > 0;
+      });
+      const styledTags = visibleTags.filter((tag) => {
+        const style = getComputedStyle(tag);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      });
+      const styledEntries = entries.filter((entry) => {
+        const style = getComputedStyle(entry);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      });
+
+      return {
+        entries: entries.length,
+        entryTags: tags.length,
+        visibleEntryTags: visibleTags.length,
+        styledEntryTags: styledTags.length,
+        styledEntries: styledEntries.length,
+        latestTagText: document.querySelector('#game-log p.latest .fixed-log-entry-tag')?.textContent?.trim() ?? '',
+        latestCopyText: document.querySelector('#game-log p.latest .fixed-log-entry-copy')?.textContent?.trim() ?? ''
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1677,6 +1714,7 @@ async function collectMetrics(page) {
       mapIconStacks: collectMapIconStacks(),
       mapIcons: collectMapIconMetrics(),
       inventory: collectInventoryMetrics(),
+      log: collectLogMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -2302,10 +2340,12 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   if (isLogScenario) {
     const log = metrics.rects.logPanel;
     const firstEntry = metrics.rects.firstLogEntry;
+    const firstTag = metrics.rects.firstLogTag;
     // The original screenshot-derived profile is intentionally kept as a visual warning, not a readable layout gate.
     const shouldRequireReadableFirstEntry = metrics.fixedProfile !== 'reference-mobile';
     const minLogHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 160) : isCompactProfile ? 52 : 160;
     const minFirstEntryHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 40) : isCompactProfile ? 36 : 40;
+    const minFirstTagSize = isProductionMobileProfile ? scaledFixedThreshold(metrics, 20) : 20;
     if (!metrics.logOpen) {
       failures.push('fixed workbench log scenario did not open the log drawer');
     }
@@ -2314,6 +2354,25 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (shouldRequireReadableFirstEntry && (!firstEntry || firstEntry.visibleHeight < minFirstEntryHeight)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
+    }
+    if (shouldRequireReadableFirstEntry) {
+      if (metrics.log.entryTags < metrics.log.entries) {
+        failures.push(`fixed workbench log entries are missing tags: ${metrics.log.entryTags}/${metrics.log.entries}`);
+      }
+      if (metrics.log.visibleEntryTags < metrics.log.entries) {
+        failures.push(`fixed workbench log tags are not all visible: ${metrics.log.visibleEntryTags}/${metrics.log.entries}`);
+      }
+      if (metrics.log.styledEntryTags < metrics.log.entries || metrics.log.styledEntries < metrics.log.entries) {
+        failures.push(
+          `fixed workbench log hardware styling is incomplete: tags ${metrics.log.styledEntryTags}/${metrics.log.entries}, entries ${metrics.log.styledEntries}/${metrics.log.entries}`
+        );
+      }
+      if (metrics.log.latestTagText !== 'NEW') {
+        failures.push(`fixed workbench latest log tag should say NEW, got ${metrics.log.latestTagText || 'empty'}`);
+      }
+      if (!firstTag || firstTag.visibleWidth < minFirstTagSize || firstTag.visibleHeight < minFirstTagSize) {
+        failures.push(`fixed workbench latest log tag is clipped: ${firstTag?.visibleWidth ?? 0}x${firstTag?.visibleHeight ?? 0}`);
+      }
     }
   }
 }
