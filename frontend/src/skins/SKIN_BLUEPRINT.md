@@ -127,6 +127,10 @@ Some repeated widgets are DOM-rendered hardware that sits inside fixed apertures
 instead of separate bitmap crops per row. These pieces still need stable sizes
 and visual inspection gates so they behave like part of the skin:
 
+- Fixed map apertures use a non-interactive glass/scanline layer above the
+  Phaser canvas while keeping map icons above the glass for readability.
+- Visual inspection must fail when the map glass is unstyled, can intercept
+  pointer input, sits below the canvas, or covers the icon overlay.
 - Inventory item rows use structured `Item.type`, not item-name parsing, to
   render fixed type badges.
 - Known inventory badge labels are `WPN`, `ARM`, and `USE`, with a fallback

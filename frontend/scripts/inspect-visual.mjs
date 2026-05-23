@@ -625,6 +625,7 @@ function buildHtmlReport(summary) {
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
+      metrics.mapGlass?.glassStyled ? 'map glass' : null,
       metrics.controls?.panelStyled ? 'control bay' : null,
       metrics.title?.iconStyled ? 'title badge' : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
@@ -1546,6 +1547,8 @@ async function collectMetrics(page) {
         borderImageSource: style.borderImageSource,
         borderImageRepeat: style.borderImageRepeat,
         borderImageSlice: style.borderImageSlice,
+        pointerEvents: style.pointerEvents,
+        zIndex: style.zIndex,
         ariaExpanded: element instanceof HTMLElement ? element.getAttribute('aria-expanded') : null,
         ariaPressed: element instanceof HTMLElement ? element.getAttribute('aria-pressed') : null,
         visualState: element instanceof HTMLElement ? element.dataset.visualState ?? null : null
@@ -1619,6 +1622,37 @@ async function collectMetrics(page) {
         enemy: icons.filter((icon) => icon.dataset.mapRole === 'enemy').length,
         itemBadges: icons.filter((icon) => icon.dataset.mapRole === 'item' && hasBadgeTreatment(icon)).length,
         enemyBadges: icons.filter((icon) => icon.dataset.mapRole === 'enemy' && hasBadgeTreatment(icon)).length
+      };
+    };
+
+    const collectMapGlassMetrics = () => {
+      const map = document.getElementById('game-canvas');
+      const canvas = map?.querySelector('canvas');
+      const overlay = map?.querySelector('.map-icon-overlay');
+      const before = map ? getComputedStyle(map, '::before') : null;
+      const after = map ? getComputedStyle(map, '::after') : null;
+      const zIndexValue = (value) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const beforeZ = zIndexValue(before?.zIndex);
+      const afterZ = zIndexValue(after?.zIndex);
+      const canvasZ = zIndexValue(canvas ? getComputedStyle(canvas).zIndex : undefined);
+      const overlayZ = zIndexValue(overlay ? getComputedStyle(overlay).zIndex : undefined);
+
+      return {
+        glassStyled: !!before && !!after &&
+          before.backgroundImage !== 'none' &&
+          after.backgroundImage !== 'none' &&
+          after.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          after.boxShadow !== 'none',
+        pointerSafe: before?.pointerEvents === 'none' && after?.pointerEvents === 'none',
+        canvasBelowGlass: canvasZ < beforeZ && beforeZ <= afterZ,
+        iconsAboveGlass: !overlay || overlayZ > afterZ,
+        beforeZ,
+        afterZ,
+        canvasZ,
+        overlayZ
       };
     };
 
@@ -1888,6 +1922,7 @@ async function collectMetrics(page) {
       endState: collectEndStateMetrics(),
       mapIconStacks: collectMapIconStacks(),
       mapIcons: collectMapIconMetrics(),
+      mapGlass: collectMapGlassMetrics(),
       inventory: collectInventoryMetrics(),
       log: collectLogMetrics(),
       latest: collectLatestMetrics(),
@@ -2143,6 +2178,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
   validateFixedHpHardware(metrics, failures, 'fixed runtime');
   validateFixedTitleHardware(metrics, failures, 'fixed runtime');
   validateFixedControlHardware(metrics, failures, 'fixed runtime');
+  validateFixedMapGlass(metrics, failures, 'fixed runtime');
   validateFixedCombatModeHardware(metrics, failures, 'fixed runtime');
   validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
 
@@ -2287,6 +2323,28 @@ function validateFixedControlHardware(metrics, failures, context) {
     ) {
       failures.push(`${context} ${name} escapes control bay bounds`);
     }
+  }
+}
+
+function validateFixedMapGlass(metrics, failures, context) {
+  if (!metrics.mapGlass.glassStyled) {
+    failures.push(`${context} map glass overlay lacks physical styling`);
+  }
+
+  if (!metrics.mapGlass.pointerSafe) {
+    failures.push(`${context} map glass overlay may intercept pointer input`);
+  }
+
+  if (!metrics.mapGlass.canvasBelowGlass) {
+    failures.push(
+      `${context} map glass layering is wrong: canvas=${metrics.mapGlass.canvasZ}, before=${metrics.mapGlass.beforeZ}, after=${metrics.mapGlass.afterZ}`
+    );
+  }
+
+  if (metrics.mapIcons.total > 0 && !metrics.mapGlass.iconsAboveGlass) {
+    failures.push(
+      `${context} map icons are not above glass overlay: icons=${metrics.mapGlass.overlayZ}, glass=${metrics.mapGlass.afterZ}`
+    );
   }
 }
 
@@ -2442,6 +2500,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   validateFixedEnemyBadge(metrics, failures, 'fixed workbench');
+  validateFixedMapGlass(metrics, failures, 'fixed workbench');
   validateFixedCombatModeHardware(metrics, failures, 'fixed workbench');
 
   if (isMovementScenario) {
