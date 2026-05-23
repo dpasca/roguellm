@@ -155,6 +155,20 @@ const baseScenarios = [
     expectedFixedProfile: compactFixedProfile
   },
   {
+    name: 'mobile-short-phaser-fixed-runtime-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-runtime-inventory',
+    url: phaserFixedRuntimeUrl,
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-runtime-combat',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-runtime-combat',
+    url: phaserFixedRuntimeUrl,
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
     name: 'mobile-short-default-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
@@ -1123,6 +1137,15 @@ async function runScenario(page, scenario) {
     }
   }
 
+  if (scenario.mode === 'phaser-fixed-runtime-inventory') {
+    await page.keyboard.press('i');
+    await waitForPhaserFixedRuntimeDrawer(page, 'inventory');
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-combat') {
+    await enterPhaserFixedRuntimeCombat(page);
+  }
+
   if (scenario.mode === 'fixed-runtime-inventory') {
     await page.getByRole('button', { name: 'Inventory', exact: true }).click();
     await waitForFixedRuntimeInventory(page);
@@ -1381,6 +1404,16 @@ async function waitForPhaserFixedWorkbenchDrawer(page, expected) {
   }, expected, { timeout: 20_000 });
 }
 
+async function waitForPhaserFixedRuntimeDrawer(page, expected) {
+  await page.waitForFunction((drawer) => {
+    return document.body.dataset.ui === 'phaser-fixed-skin' &&
+      document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserRuntimeState === 'live' &&
+      document.body.dataset.phaserStatus === 'ready' &&
+      document.body.dataset.phaserDrawer === drawer;
+  }, expected, { timeout: 20_000 });
+}
+
 async function waitForPhaserFixedInventory(page) {
   await page.waitForFunction(() => {
     return document.body.dataset.fixedRenderer === 'phaser' &&
@@ -1438,6 +1471,37 @@ async function waitForFixedRuntimeReady(page) {
 
 async function waitForFixedRuntimeCombat(page) {
   await waitForFixedRuntimeCombatReady(page, 20_000);
+}
+
+async function enterPhaserFixedRuntimeCombat(page) {
+  if (await isPhaserFixedRuntimeCombatReady(page)) {
+    return;
+  }
+
+  await page.keyboard.press('ArrowRight');
+  await waitForPhaserFixedRuntimeCombatReady(page, 20_000);
+}
+
+async function waitForPhaserFixedRuntimeCombatReady(page, timeout) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.ui === 'phaser-fixed-skin' &&
+      document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserRuntimeState === 'live' &&
+      document.body.dataset.phaserStatus === 'ready' &&
+      document.body.dataset.phaserInCombat === '1' &&
+      document.body.dataset.phaserTerminalState === 'active';
+  }, null, { timeout });
+}
+
+async function isPhaserFixedRuntimeCombatReady(page) {
+  return page.evaluate(() => {
+    return document.body.dataset.ui === 'phaser-fixed-skin' &&
+      document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserRuntimeState === 'live' &&
+      document.body.dataset.phaserStatus === 'ready' &&
+      document.body.dataset.phaserInCombat === '1' &&
+      document.body.dataset.phaserTerminalState === 'active';
+  });
 }
 
 async function enterFixedRuntimeCombat(page) {
@@ -2166,6 +2230,9 @@ async function collectMetrics(page) {
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
         height: document.querySelector('#phaser-fixed-skin-workbench canvas')?.height ?? 0
       },
+      cssSurface: document.body.dataset.cssSurface ?? null,
+      cssLinkCount: document.querySelectorAll('link[rel="stylesheet"]').length,
+      styleElementCount: document.querySelectorAll('style').length,
       prefersReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       inCombat: document.body.classList.contains('in-combat'),
       gameEnded: document.body.classList.contains('game-ended'),
@@ -2484,6 +2551,14 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser fixed renderer, got ${metrics.fixedRenderer ?? 'none'}`);
   }
 
+  if (metrics.cssSurface !== 'phaser-host-only') {
+    failures.push(`expected Phaser host-only CSS surface, got ${metrics.cssSurface ?? 'none'}`);
+  }
+
+  if ((metrics.cssLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
+    failures.push(`Phaser workbench loaded DOM stylesheets: links=${metrics.cssLinkCount}, style=${metrics.styleElementCount}`);
+  }
+
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
   if (metrics.fixedProfile !== expectedProfile) {
     failures.push(`expected ${expectedProfile} Phaser fixed profile, got ${metrics.fixedProfile ?? 'none'}`);
@@ -2571,6 +2646,14 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser fixed renderer, got ${metrics.fixedRenderer ?? 'none'}`);
   }
 
+  if (metrics.cssSurface !== 'phaser-host-only') {
+    failures.push(`expected Phaser runtime host-only CSS surface, got ${metrics.cssSurface ?? 'none'}`);
+  }
+
+  if ((metrics.cssLinkCount ?? 0) + (metrics.styleElementCount ?? 0) > 0) {
+    failures.push(`Phaser runtime loaded DOM stylesheets: links=${metrics.cssLinkCount}, style=${metrics.styleElementCount}`);
+  }
+
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
   if (metrics.fixedProfile !== expectedProfile) {
     failures.push(`expected ${expectedProfile} Phaser fixed runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
@@ -2592,7 +2675,8 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser runtime Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
   }
 
-  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < 8) {
+  const minRuntimeGlyphs = scenario.mode === 'phaser-fixed-runtime-combat' ? 5 : 2;
+  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < minRuntimeGlyphs) {
     failures.push(`expected Phaser runtime Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
   }
 
@@ -2608,6 +2692,27 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-runtime-log' && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser runtime log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-inventory') {
+    if (metrics.phaserDrawer !== 'inventory') {
+      failures.push(`expected Phaser runtime inventory drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+    }
+    if (metrics.phaserInventoryOpen !== '1') {
+      failures.push(`expected Phaser runtime inventory-open dataset, got ${metrics.phaserInventoryOpen ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryCount)) {
+      failures.push(`expected Phaser runtime inventory count, got ${metrics.phaserInventoryCount ?? 'none'}`);
+    }
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-combat') {
+    if (metrics.phaserInCombat !== '1') {
+      failures.push(`expected Phaser runtime combat state, got inCombat=${metrics.phaserInCombat ?? 'none'}`);
+    }
+    if (metrics.phaserTerminalState !== 'active') {
+      failures.push(`expected active Phaser runtime terminal state in combat, got ${metrics.phaserTerminalState ?? 'none'}`);
+    }
   }
 }
 

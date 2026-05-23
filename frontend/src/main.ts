@@ -1,6 +1,4 @@
 import Phaser from 'phaser';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import './styles.css';
 import { RogueScene } from './game/RogueScene';
 import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
@@ -41,16 +39,45 @@ interface RuntimeUi {
   destroy(): void;
 }
 
-const activeSkin = getSkinFromLocation();
-applySkin(activeSkin);
+void bootstrap().catch((error: unknown) => {
+  console.error(error);
+  showFatal(error instanceof Error ? error.message : 'Failed to start Game2.');
+});
 
-if (isPhaserFixedSkinWorkbench()) {
-  startPhaserFixedSkinWorkbench(activeSkin);
-} else if (isFixedSkinWorkbench()) {
-  startFixedSkinWorkbench(activeSkin);
-} else if (isSkinWorkbench()) {
-  startSkinWorkbench(activeSkin);
-} else {
+async function bootstrap(): Promise<void> {
+  const activeSkin = getSkinFromLocation();
+  const phaserFixedWorkbench = isPhaserFixedSkinWorkbench();
+  const legacyFixedWorkbench = isFixedSkinWorkbench();
+  const skinWorkbench = isSkinWorkbench();
+  const phaserFixedRuntime = !phaserFixedWorkbench &&
+    !legacyFixedWorkbench &&
+    !skinWorkbench &&
+    !!activeSkin.fixedProfiles &&
+    isPhaserFixedSkinRuntime();
+
+  if (!phaserFixedWorkbench && !phaserFixedRuntime) {
+    await loadLegacyDomStyles();
+  } else {
+    document.body.dataset.cssSurface = 'phaser-host-only';
+  }
+
+  applySkin(activeSkin);
+
+  if (phaserFixedWorkbench) {
+    startPhaserFixedSkinWorkbench(activeSkin);
+    return;
+  }
+
+  if (legacyFixedWorkbench) {
+    startFixedSkinWorkbench(activeSkin);
+    return;
+  }
+
+  if (skinWorkbench) {
+    startSkinWorkbench(activeSkin);
+    return;
+  }
+
   const sessionId = getSessionIdFromLocation();
 
   if (!sessionId) {
@@ -79,7 +106,7 @@ if (isPhaserFixedSkinWorkbench()) {
   let actionPending = false;
   let nextClientActionId = 1;
   let pendingActionId: number | null = null;
-  const ui = isPhaserFixedSkinRuntime() && activeSkin.fixedProfiles
+  const ui = phaserFixedRuntime
     ? createPhaserFixedSkinRuntime(activeSkin, handleUserAction)
     : isFixedSkinRuntime() && activeSkin.fixedProfiles
       ? createFixedSkinRuntime(activeSkin, handleUserAction)
@@ -244,6 +271,14 @@ if (isPhaserFixedSkinWorkbench()) {
     socket.close();
     ui.destroy();
   });
+}
+
+async function loadLegacyDomStyles(): Promise<void> {
+  document.body.dataset.cssSurface = 'legacy-dom';
+  await Promise.all([
+    import('@fortawesome/fontawesome-free/css/all.min.css'),
+    import('./styles.css')
+  ]);
 }
 
 function createResponsiveRuntimeUi(skin: GameSkin, onAction: (action: GameAction) => void): RuntimeUi {

@@ -324,6 +324,11 @@ migrated into the live runtime without inventing a second skin format.
 CSS may host the browser root, global reset, and legacy renderer only. It should
 not place, skin, size, or compose fixed-skin game widgets.
 
+The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
+It sets only the minimum browser-shell sizing needed to mount the canvas. Visual
+inspection treats stylesheet links or injected style elements on Phaser
+fixed-skin scenarios as a failure.
+
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the
 URL between screenshots.

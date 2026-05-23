@@ -64,29 +64,42 @@ const fontAwesomeGlyphs: Record<string, string> = {
   'caret-left': '\uf0d9',
   'caret-right': '\uf0da',
   'caret-up': '\uf0d8',
+  'car': '\uf1b9',
+  'city': '\uf64f',
   'circle': '\uf111',
   'cloud': '\uf0c2',
   'cloud-rain': '\uf73d',
   'coins': '\uf51e',
+  'fish': '\uf578',
   'flask': '\uf0c3',
+  'fist-raised': '\uf6de',
   'gavel': '\uf0e3',
   'hand-fist': '\uf6de',
   'helicopter': '\uf533',
   'hotel': '\uf594',
+  'industry': '\uf275',
+  'laptop-code': '\uf5fc',
   'list': '\uf03a',
   'mask': '\uf6fa',
   'microchip': '\uf2db',
   'person-running': '\uf70c',
+  'place-of-worship': '\uf67f',
+  'question': '\u003f',
   'satellite-dish': '\uf7c0',
   'seedling': '\uf4d8',
   'shield-halved': '\uf3ed',
   'skull': '\uf54c',
   'store': '\uf54e',
+  'subway': '\uf239',
   'torii-gate': '\uf6a1',
   'tower-broadcast': '\uf519',
+  'tree': '\uf1bb',
   'train-subway': '\uf239',
   'trophy': '\uf091',
-  'user-secret': '\uf21b'
+  'tv': '\uf26c',
+  'user-secret': '\uf21b',
+  'user-tie': '\uf508',
+  'water': '\uf773'
 };
 let fontAwesomeLoadPromise: Promise<void> | null = null;
 
@@ -449,6 +462,20 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
 }
 
 function createPhaserHost(app: HTMLElement): HTMLElement {
+  document.documentElement.style.margin = '0';
+  document.documentElement.style.width = '100%';
+  document.documentElement.style.height = '100%';
+  document.documentElement.style.overflow = 'hidden';
+  document.documentElement.style.background = '#020504';
+  document.body.style.margin = '0';
+  document.body.style.minWidth = '320px';
+  document.body.style.minHeight = '100svh';
+  document.body.style.overflow = 'hidden';
+  document.body.style.background = '#020504';
+  app.style.width = '100vw';
+  app.style.height = '100svh';
+  app.style.overflow = 'hidden';
+  app.style.background = '#020504';
   const host = document.createElement('div');
   host.id = 'phaser-fixed-skin-workbench';
   host.dataset.phaserFixedSkin = '1';
@@ -885,6 +912,32 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
     const rowHeight = this.profile.kind === 'mobileCompact' ? 40 : 46;
     const maxRows = Math.max(1, Math.floor((rect.height - 36) / rowHeight));
+    if (this.viewState.state.inventory.length === 0) {
+      const box = {
+        x: rect.x + 18,
+        y: rect.y + 46,
+        width: rect.width - 36,
+        height: Math.min(74, rect.height - 66)
+      };
+      const graphics = this.add.graphics();
+      graphics.fillStyle(0x0a1510, 0.82);
+      graphics.fillRoundedRect(box.x, box.y, box.width, box.height, 7);
+      graphics.lineStyle(1, 0x477b56, 0.62);
+      graphics.strokeRoundedRect(box.x + 0.5, box.y + 0.5, box.width - 1, box.height - 1, 7);
+      this.addText('EMPTY', box.x + 12, box.y + 12, box.width - 24, {
+        fontSize: 18,
+        color: '#8dff77',
+        fontStyle: 'bold',
+        align: 'center'
+      });
+      this.addText('Recovered gear and consumables will appear here.', box.x + 16, box.y + 42, box.width - 32, {
+        fontSize: 11,
+        color: '#c4d4c6',
+        align: 'center'
+      }, 28);
+      return;
+    }
+
     this.viewState.state.inventory.slice(0, maxRows).forEach((item, index) => {
       const y = rect.y + 34 + rowHeight * index;
       const action = inventoryRowAction(item, this.viewState);
