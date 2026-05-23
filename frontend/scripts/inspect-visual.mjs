@@ -2225,6 +2225,7 @@ async function collectMetrics(page) {
       phaserTerminalState: document.body.dataset.phaserTerminalState ?? null,
       phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
+      phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2576,6 +2577,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
   }
 
+  if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
+    failures.push(`expected Phaser material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
+  }
+
   const canvas = metrics.rects.phaserCanvas;
   if (!canvas || canvas.visibleWidth < metrics.viewport.width * 0.92 || canvas.visibleHeight < metrics.viewport.height * 0.92) {
     failures.push(`Phaser fixed canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
@@ -2678,6 +2683,10 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
   const minRuntimeGlyphs = scenario.mode === 'phaser-fixed-runtime-combat' ? 5 : 2;
   if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < minRuntimeGlyphs) {
     failures.push(`expected Phaser runtime Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
+    failures.push(`expected Phaser runtime material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;

@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
 import faSolidFontUrl from '@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2?url';
+import buttonFillTileUrl from '../skins/neo-tokyo-console/assets/button-fill-tile.png?url';
+import buttonFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/button-frame-9slice.png?url';
+import lcdFillTileUrl from '../skins/neo-tokyo-console/assets/lcd-fill-tile.png?url';
+import lcdFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/lcd-frame-9slice.png?url';
+import panelFillTileUrl from '../skins/neo-tokyo-console/assets/panel-fill-tile.png?url';
+import panelFrameNineSliceUrl from '../skins/neo-tokyo-console/assets/panel-frame-9slice.png?url';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
@@ -8,6 +14,7 @@ import { selectFixedSkinProfile } from './fixedSkinWorkbench';
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type PhaserFixedScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
+type PhaserMaterialKind = 'panel' | 'lcd' | 'button';
 
 interface SceneConfig {
   profile: FixedSkinProfile;
@@ -52,6 +59,23 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
 const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
 const fontAwesomeFamily = 'Font Awesome 7 Free';
 const fontAwesomeStyleClasses = new Set(['fa', 'fas', 'far', 'fab', 'fa-solid', 'fa-regular', 'fa-brands']);
+const phaserMaterialAssets: Record<PhaserMaterialKind, { fill: string; frame: string; slice: number }> = {
+  panel: {
+    fill: panelFillTileUrl,
+    frame: panelFrameNineSliceUrl,
+    slice: 14
+  },
+  lcd: {
+    fill: lcdFillTileUrl,
+    frame: lcdFrameNineSliceUrl,
+    slice: 13
+  },
+  button: {
+    fill: buttonFillTileUrl,
+    frame: buttonFrameNineSliceUrl,
+    slice: 13
+  }
+};
 const fontAwesomeGlyphs: Record<string, string> = {
   'ban': '\uf05e',
   'bowl-food': '\ue4c6',
@@ -521,6 +545,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private viewState: SceneState;
   private ready = false;
   private faGlyphsDrawn = 0;
+  private materialPanelsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -542,6 +567,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image(assetKey(this.profile, 'chassis'), this.profile.background);
+    for (const materialKind of Object.keys(phaserMaterialAssets) as PhaserMaterialKind[]) {
+      this.load.image(materialKey(materialKind, 'fill'), phaserMaterialAssets[materialKind].fill);
+      this.load.image(materialKey(materialKind, 'frame'), phaserMaterialAssets[materialKind].frame);
+    }
+
     for (const [buttonId, button] of buttonEntries(this.profile)) {
       for (const state of Object.keys(button.states) as FixedSkinButtonState[]) {
         this.load.image(buttonKey(this.profile, buttonId, state), button.states[state]);
@@ -582,6 +612,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private redraw(): void {
     this.faGlyphsDrawn = 0;
+    this.materialPanelsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawMap();
@@ -590,6 +621,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawPlayer();
     this.drawCombat();
     this.drawIndicators();
+    this.drawControlsBay();
     this.drawButtons();
     if (this.viewState.logOpen) {
       this.drawLogDrawer();
@@ -604,6 +636,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawDiagnostics();
     }
     document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
+    document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
   }
 
   private drawMap(): void {
@@ -616,8 +649,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const originX = region.x + Math.floor((region.width - boardWidth) / 2);
     const originY = region.y + Math.floor((region.height - boardHeight) / 2);
 
-    graphics.fillStyle(0x020504, 0.22);
-    graphics.fillRect(region.x, region.y, region.width, region.height);
+    this.drawMaterialPanel(insetRect(region, 1), 'panel', {
+      alpha: 0.42,
+      fillTint: 0x060c09,
+      frameTint: 0x81ff5c
+    });
+    graphics.fillStyle(0x020504, 0.28);
+    graphics.fillRect(region.x + 7, region.y + 7, region.width - 14, region.height - 14);
 
     for (let y = 0; y < state.map_height; y += 1) {
       for (let x = 0; x < state.map_width; x += 1) {
@@ -700,16 +738,22 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawLatest(): void {
     const latest = this.profile.regions.latest;
+    this.drawMaterialPanel(insetRect(latest, 0), 'lcd', {
+      alpha: 0.82,
+      fillTint: 0x12321b,
+      frameTint: 0x99ff72,
+      scanlines: true
+    });
     this.addText('LATEST', latest.x + 8, latest.y + 8, latest.width - 16, {
       fontSize: 10,
       color: '#98ff84',
       fontStyle: 'bold'
     });
     this.addText(this.viewState.logs[0] ?? 'Ready.', latest.x + 8, latest.y + 24, latest.width - 16, {
-      fontSize: this.profile.kind === 'mobileCompact' ? 13 : 14,
+      fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
       color: '#f3fff1',
       fontStyle: 'bold',
-      lineSpacing: 2
+      lineSpacing: this.profile.kind === 'mobileCompact' ? 1 : 2
     }, latest.height - 28);
   }
 
@@ -743,6 +787,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const hpRect = this.profile.regions.playerHp;
     const hpFill = this.profile.regions.playerHpFill;
     const hpRatio = clampRatio(state.player_hp / Math.max(1, state.player_max_hp));
+    this.drawMaterialPanel(insetRect(hpRect, 0), 'panel', {
+      alpha: 0.76,
+      fillTint: 0x122019,
+      frameTint: 0x8dfd70,
+      scanlines: true
+    });
     this.addText('HP', hpRect.x + 8, hpRect.y + 7, 36, {
       fontSize: 16,
       color: '#c8cdd6'
@@ -783,6 +833,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const state = this.viewState.state;
     const rect = this.profile.regions.combat;
     const enemy = state.current_enemy;
+    this.drawMaterialPanel(insetRect(rect, 0), state.in_combat ? 'button' : 'panel', {
+      alpha: state.in_combat ? 0.82 : 0.72,
+      fillTint: state.in_combat ? 0x351018 : 0x122019,
+      frameTint: state.in_combat ? 0xff6a82 : 0x8dfd70,
+      scanlines: true
+    });
     this.addText(state.in_combat ? 'COMBAT' : 'EXPLORE', rect.x + 8, rect.y + 6, 72, {
       fontSize: 11,
       color: state.in_combat ? '#ff7188' : '#88ff7a',
@@ -801,7 +857,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.addFontAwesomeIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, '#ff8fa0')
       .setOrigin(0.5, 0.5);
     this.addText(enemy.name, rect.x + 30, rect.y + 24, rect.width - 134, {
-      fontSize: 14,
+      fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
       color: '#dde5e0',
       fontStyle: 'bold'
     });
@@ -832,6 +888,19 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     for (const [buttonId, button] of buttonEntries(this.profile)) {
       this.drawButton(buttonId, button);
     }
+  }
+
+  private drawControlsBay(): void {
+    const rect = this.profile.regions.controls;
+    if (!rect) {
+      return;
+    }
+    this.drawMaterialPanel(insetRect(rect, 0), 'panel', {
+      alpha: 0.48,
+      fillTint: 0x0b100d,
+      frameTint: 0x5b8d66,
+      scanlines: false
+    });
   }
 
   private drawButton(buttonId: FixedButtonId, button: FixedSkinButton): void {
@@ -879,7 +948,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawLogDrawer(): void {
     const rect = this.profile.regions.log;
-    this.drawPanelScrim(rect, 0x07100b, 0.96);
+    this.drawMaterialPanel(rect, 'lcd', {
+      alpha: 0.97,
+      fillTint: 0x0d2615,
+      frameTint: 0xa7ff78,
+      scanlines: true
+    });
     this.addText('LOG', rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 13,
       color: '#aafc92',
@@ -904,7 +978,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawInventoryDrawer(): void {
     const rect = this.profile.regions.inventory ?? this.profile.regions.log;
-    this.drawPanelScrim(rect, 0x07100b, 0.96);
+    this.drawMaterialPanel(rect, 'lcd', {
+      alpha: 0.97,
+      fillTint: 0x0d2615,
+      frameTint: 0xa7ff78,
+      scanlines: true
+    });
     this.addText('INVENTORY', rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 13,
       color: '#aafc92',
@@ -919,11 +998,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         width: rect.width - 36,
         height: Math.min(74, rect.height - 66)
       };
-      const graphics = this.add.graphics();
-      graphics.fillStyle(0x0a1510, 0.82);
-      graphics.fillRoundedRect(box.x, box.y, box.width, box.height, 7);
-      graphics.lineStyle(1, 0x477b56, 0.62);
-      graphics.strokeRoundedRect(box.x + 0.5, box.y + 0.5, box.width - 1, box.height - 1, 7);
+      this.drawMaterialPanel(box, 'panel', {
+        alpha: 0.9,
+        fillTint: 0x14251c,
+        frameTint: 0x8dff77,
+        scanlines: true
+      });
       this.addText('EMPTY', box.x + 12, box.y + 12, box.width - 24, {
         fontSize: 18,
         color: '#8dff77',
@@ -941,13 +1021,14 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.viewState.state.inventory.slice(0, maxRows).forEach((item, index) => {
       const y = rect.y + 34 + rowHeight * index;
       const action = inventoryRowAction(item, this.viewState);
-      const graphics = this.add.graphics();
-      graphics.fillStyle(item.is_equipped ? 0x12341c : 0x0b1710, item.is_equipped ? 0.82 : 0.68);
-      graphics.fillRect(rect.x + 8, y - 3, rect.width - 16, rowHeight - 6);
-      graphics.lineStyle(1, item.is_equipped ? 0x9bff7c : 0x2a5d41, item.is_equipped ? 0.58 : 0.38);
-      graphics.strokeRect(rect.x + 8.5, y - 2.5, rect.width - 17, rowHeight - 7);
+      this.drawMaterialPanel({ x: rect.x + 8, y: y - 3, width: rect.width - 16, height: rowHeight - 6 }, 'panel', {
+        alpha: item.is_equipped ? 0.9 : 0.72,
+        fillTint: item.is_equipped ? 0x163f20 : 0x101a14,
+        frameTint: item.is_equipped ? 0xaaff87 : 0x497055
+      });
 
       const badgeColor = itemTypeColor(item.type);
+      const graphics = this.add.graphics();
       graphics.fillStyle(badgeColor, 0.28);
       graphics.fillRoundedRect(rect.x + 12, y + 4, 38, 22, 4);
       graphics.lineStyle(1, badgeColor, 0.85);
@@ -977,11 +1058,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const equipped = rowAction.state === 'equipped';
     const border = equipped ? 0x9bff7c : active ? 0x66d7ff : 0x67706a;
     const fill = equipped ? 0x173d19 : active ? 0x102c36 : 0x171c1b;
+    this.drawMaterialPanel({ x, y, width, height }, 'button', {
+      alpha: rowAction.disabled ? 0.58 : 0.82,
+      fillTint: fill,
+      frameTint: border
+    });
     const graphics = this.add.graphics();
-    graphics.fillStyle(fill, rowAction.disabled ? 0.72 : 0.92);
-    graphics.fillRoundedRect(x, y, width, height, 5);
-    graphics.lineStyle(1, border, rowAction.disabled && !equipped ? 0.45 : 0.9);
-    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
     const label = this.addText(rowAction.label, x + 4, y + 6, width - 8, {
       fontSize: 10,
       color: equipped ? '#aaff8d' : active ? '#dffcff' : '#8e9690',
@@ -1016,7 +1098,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private drawEndState(): void {
     const state = this.viewState.state;
     const rect = this.profile.regions.endState ?? centeredRect(this.profile, 314, 238);
-    this.drawPanelScrim(rect, state.game_won ? 0x102012 : 0x211017, 0.94);
+    this.drawMaterialPanel(rect, state.game_won ? 'lcd' : 'button', {
+      alpha: 0.97,
+      fillTint: state.game_won ? 0x17301b : 0x321119,
+      frameTint: state.game_won ? 0xa6ff83 : 0xff7188,
+      scanlines: true
+    });
     this.addText(state.game_won ? 'VICTORY' : 'DEFEAT', rect.x + 18, rect.y + 18, rect.width - 36, {
       fontSize: 22,
       color: state.game_won ? '#a6ff83' : '#ff7188',
@@ -1039,7 +1126,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawDiagnostics(): void {
     const rect = this.profile.regions.map;
-    this.drawPanelScrim(rect, 0x020504, 0.76);
+    this.drawMaterialPanel(rect, 'lcd', {
+      alpha: 0.86,
+      fillTint: 0x0c1b14,
+      frameTint: 0xaaff8d,
+      scanlines: true
+    });
     this.addText(`${this.profile.label} Phaser renderer`, rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 15,
       color: '#aaff8d',
@@ -1053,10 +1145,19 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawMeter(rect: FixedSkinRect, ratio: number, color: number): void {
     const graphics = this.add.graphics();
-    graphics.fillStyle(0x0a0e11, 0.76);
+    graphics.fillStyle(0x030504, 0.96);
+    graphics.fillRoundedRect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4, 2);
+    graphics.lineStyle(1, 0x355241, 0.7);
+    graphics.strokeRoundedRect(rect.x - 1.5, rect.y - 1.5, rect.width + 3, rect.height + 3, 2);
+    graphics.fillStyle(0x050807, 0.88);
     graphics.fillRect(rect.x, rect.y, rect.width, rect.height);
-    graphics.fillStyle(color, 0.94);
-    graphics.fillRect(rect.x, rect.y, Math.max(1, Math.round(rect.width * ratio)), rect.height);
+    const fillWidth = Math.max(1, Math.round(rect.width * ratio));
+    graphics.fillStyle(scaleRgb(color, 0.72), 0.96);
+    graphics.fillRect(rect.x, rect.y, fillWidth, rect.height);
+    graphics.fillStyle(color, 0.88);
+    graphics.fillRect(rect.x, rect.y, fillWidth, Math.max(1, Math.floor(rect.height * 0.42)));
+    graphics.lineStyle(1, 0xffffff, 0.18);
+    graphics.lineBetween(rect.x + 1, rect.y + 1, rect.x + fillWidth - 1, rect.y + 1);
   }
 
   private drawPanelScrim(rect: FixedSkinRect, color: number, alpha: number): void {
@@ -1065,6 +1166,69 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillRect(rect.x, rect.y, rect.width, rect.height);
     graphics.lineStyle(1, 0x99ff82, 0.45);
     graphics.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1);
+  }
+
+  private drawMaterialPanel(
+    rect: FixedSkinRect,
+    kind: PhaserMaterialKind,
+    options: {
+      alpha?: number;
+      fillTint?: number;
+      frameTint?: number;
+      scanlines?: boolean;
+    } = {}
+  ): void {
+    if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+
+    const material = phaserMaterialAssets[kind];
+    const fillKey = materialKey(kind, 'fill');
+    const frameKey = materialKey(kind, 'frame');
+    const alpha = options.alpha ?? 0.86;
+    if (this.textures.exists(fillKey)) {
+      const fill = this.add.tileSprite(rect.x, rect.y, rect.width, rect.height, fillKey).setOrigin(0, 0);
+      fill.setAlpha(alpha);
+      if (options.fillTint !== undefined) {
+        fill.setTint(options.fillTint);
+      }
+    } else {
+      this.drawPanelScrim(rect, options.fillTint ?? 0x07100b, alpha);
+    }
+
+    if (options.scanlines) {
+      this.drawScanlines(rect, alpha * 0.35);
+    }
+
+    if (this.textures.exists(frameKey)) {
+      const frame = this.add.nineslice(
+        rect.x,
+        rect.y,
+        frameKey,
+        undefined,
+        rect.width,
+        rect.height,
+        material.slice,
+        material.slice,
+        material.slice,
+        material.slice,
+        false,
+        false
+      ).setOrigin(0, 0);
+      frame.setAlpha(Math.min(1, alpha + 0.06));
+      if (options.frameTint !== undefined) {
+        frame.setTint(options.frameTint);
+      }
+    }
+    this.materialPanelsDrawn += 1;
+  }
+
+  private drawScanlines(rect: FixedSkinRect, alpha: number): void {
+    const graphics = this.add.graphics();
+    graphics.lineStyle(1, 0x9dff80, Math.min(0.28, Math.max(0.04, alpha)));
+    for (let y = rect.y + 4; y < rect.y + rect.height - 3; y += 5) {
+      graphics.lineBetween(rect.x + 4, y, rect.x + rect.width - 4, y);
+    }
   }
 
   private drawImageIfLoaded(key: string, rect: FixedSkinRect): void {
@@ -1218,6 +1382,10 @@ function buttonEntries(profile: FixedSkinProfile): ButtonEntry[] {
 
 function assetKey(profile: FixedSkinProfile, asset: string): string {
   return `phaser-fixed:${profile.id}:${asset}`;
+}
+
+function materialKey(kind: PhaserMaterialKind, part: 'fill' | 'frame'): string {
+  return `phaser-fixed:material:${kind}:${part}`;
 }
 
 function buttonKey(profile: FixedSkinProfile, buttonId: FixedButtonId, state: FixedSkinButtonState): string {
@@ -1467,5 +1635,14 @@ function centeredRect(profile: FixedSkinProfile, width: number, height: number):
     y: Math.floor((profile.height - height) / 2),
     width,
     height
+  };
+}
+
+function insetRect(rect: FixedSkinRect, inset: number): FixedSkinRect {
+  return {
+    x: rect.x + inset,
+    y: rect.y + inset,
+    width: Math.max(1, rect.width - inset * 2),
+    height: Math.max(1, rect.height - inset * 2)
   };
 }
