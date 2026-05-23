@@ -585,12 +585,17 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
   stage.dataset.profileRole = profile.meta?.role ?? 'legacy';
   stage.dataset.profileKind = profile.kind;
 
+  const controlsRegion = profile.regions.controls
+    ? region('fixed-controls-panel', 'fixed-controls-region', profile.regions.controls)
+    : null;
+
   stage.append(
     region('game-canvas', 'fixed-map-region', profile.regions.map),
     region('fixed-title', 'fixed-title-region', profile.regions.title),
     region('latest-message-panel', 'panel latest-message-panel fixed-latest-region', profile.regions.latest),
     region('player-panel', 'panel player-panel fixed-player-region', profile.regions.playerHp),
     region('combat-panel', 'panel combat-panel fixed-combat-region', profile.regions.combat),
+    ...(controlsRegion ? [controlsRegion] : []),
     region('log-panel', 'panel log-panel fixed-log-region', profile.regions.log),
     region('inventory-panel', 'panel inventory-panel fixed-inventory-region', profile.regions.inventory ?? profile.regions.log),
     region('end-state-overlay', 'fixed-end-state-overlay', profile.regions.endState ?? defaultEndStateRect(profile)),

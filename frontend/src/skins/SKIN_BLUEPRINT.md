@@ -153,6 +153,12 @@ and visual inspection gates so they behave like part of the skin:
   collide with the icon.
 - Visual inspection must fail when the title badge is clipped, unstyled, or
   missing its Font Awesome icon class.
+- Production fixed skins expose the skin-kit `controls` region as a tested
+  control bay underlay. Movement and action sprites must remain inside that
+  bay and keep their fixed-state bitmap backgrounds.
+- Visual inspection must fail when the control bay is clipped/unstyled, when
+  fixed control sprites are missing, or when a D-pad/action button escapes the
+  bay.
 - Fixed HP rows use a stable `HP` label plate and HP value plate, while the HP
   fill remains a separate meter region defined by the skin profile.
 - Fixed status indicators expose their state as `ready`, `thinking`, `error`,

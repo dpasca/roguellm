@@ -49,6 +49,7 @@ type FixedSkinKit = {
     inventory: SkinKitRect;
     player: SkinKitRect;
     combat: SkinKitRect;
+    controls: SkinKitRect;
     endState: SkinKitRect;
   };
   layout: {
@@ -186,6 +187,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
       playerHpFill: kit.layout.fills.playerHp,
       playerStats: kit.layout.fills.playerStats,
       combat: kit.regions.combat,
+      controls: kit.regions.controls,
       enemyHpFill: kit.layout.fills.enemyHp,
       endState: kit.regions.endState,
       inventory: kit.regions.inventory

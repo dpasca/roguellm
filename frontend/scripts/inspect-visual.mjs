@@ -625,6 +625,7 @@ function buildHtmlReport(summary) {
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
+      metrics.controls?.panelStyled ? 'control bay' : null,
       metrics.title?.iconStyled ? 'title badge' : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
@@ -1487,7 +1488,7 @@ async function collectMetrics(page) {
       combatPanel: '#combat-panel',
       enemyBadge: '#enemy-icon-badge',
       enemyIcon: '#enemy-icon',
-      controlsPanel: '.controls-panel',
+      controlsPanel: '#fixed-controls-panel, .controls-panel',
       logPanel: '#log-panel',
       firstLogEntry: '#game-log p.latest',
       firstLogTag: '#game-log p.latest .fixed-log-entry-tag',
@@ -1776,6 +1777,36 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectControlsMetrics = () => {
+      const panel = document.getElementById('fixed-controls-panel');
+      const before = panel ? getComputedStyle(panel, '::before') : null;
+      const buttons = ['attack', 'run', 'move-n', 'move-s', 'move-e', 'move-w']
+        .map((id) => document.getElementById(id))
+        .filter((element) => element instanceof HTMLButtonElement);
+      const visibleButtons = buttons.filter((button) => {
+        const box = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) > 0;
+      });
+      const spriteButtons = visibleButtons.filter((button) => getComputedStyle(button).backgroundImage !== 'none');
+
+      return {
+        panelStyled: !!panel && !!before &&
+          before.backgroundImage !== 'none' &&
+          before.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          before.boxShadow !== 'none',
+        visibleButtons: visibleButtons.length,
+        spriteButtons: spriteButtons.length,
+        visualStates: Object.fromEntries(
+          buttons.map((button) => [button.id, button.dataset.visualState ?? ''])
+        )
+      };
+    };
+
     const collectEndStateMetrics = () => {
       const badge = document.getElementById('end-state-badge');
       if (!badge) {
@@ -1849,6 +1880,7 @@ async function collectMetrics(page) {
       log: collectLogMetrics(),
       latest: collectLatestMetrics(),
       title: collectTitleMetrics(),
+      controls: collectControlsMetrics(),
       combat: collectCombatMetrics(),
       stats: collectStatMetrics(),
       hp: collectHpMetrics(),
@@ -2098,6 +2130,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
 
   validateFixedHpHardware(metrics, failures, 'fixed runtime');
   validateFixedTitleHardware(metrics, failures, 'fixed runtime');
+  validateFixedControlHardware(metrics, failures, 'fixed runtime');
   validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
 
   if (metrics.latestTextLength < 30) {
@@ -2191,6 +2224,56 @@ function validateFixedTitleHardware(metrics, failures, context) {
 
   if (!metrics.title.text) {
     failures.push(`${context} title text is empty`);
+  }
+}
+
+function validateFixedControlHardware(metrics, failures, context) {
+  if (!isProductionFixedProfile(metrics.fixedProfileRole)) {
+    return;
+  }
+
+  const panel = metrics.rects.controlsPanel;
+  const minPanelWidth = scaledFixedThreshold(metrics, 340);
+  const minPanelHeight = scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 140 : 180);
+
+  if (!panel || panel.visibleWidth < minPanelWidth || panel.visibleHeight < minPanelHeight) {
+    failures.push(`${context} control bay is clipped: ${panel?.visibleWidth ?? 0}x${panel?.visibleHeight ?? 0}`);
+    return;
+  }
+
+  if (!metrics.controls.panelStyled) {
+    failures.push(`${context} control bay lacks physical styling`);
+  }
+
+  if (metrics.controls.visibleButtons < 6) {
+    failures.push(`${context} control bay is missing visible controls: ${metrics.controls.visibleButtons}/6`);
+  }
+
+  if (metrics.controls.spriteButtons < metrics.controls.visibleButtons) {
+    failures.push(`${context} controls lost fixed sprite backgrounds: ${metrics.controls.spriteButtons}/${metrics.controls.visibleButtons}`);
+  }
+
+  for (const [name, rect] of [
+    ['move-n', metrics.rects.moveNorthButton],
+    ['move-s', metrics.rects.moveSouthButton],
+    ['move-e', metrics.rects.moveEastButton],
+    ['move-w', metrics.rects.moveWestButton],
+    ['attack', metrics.rects.attackButton],
+    ['run', metrics.rects.runButton]
+  ]) {
+    if (!rect) {
+      failures.push(`${context} ${name} control is missing`);
+      continue;
+    }
+
+    if (
+      rect.left < panel.left - 1 ||
+      rect.top < panel.top - 1 ||
+      rect.right > panel.right + 1 ||
+      rect.bottom > panel.bottom + 1
+    ) {
+      failures.push(`${context} ${name} escapes control bay bounds`);
+    }
   }
 }
 
@@ -2458,6 +2541,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
 
   validateFixedHpHardware(metrics, failures, 'fixed workbench');
   validateFixedTitleHardware(metrics, failures, 'fixed workbench');
+  validateFixedControlHardware(metrics, failures, 'fixed workbench');
 
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {

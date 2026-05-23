@@ -66,6 +66,7 @@ export interface FixedSkinProfile {
     playerHpFill: FixedSkinRect;
     playerStats: FixedSkinRect;
     combat: FixedSkinRect;
+    controls?: FixedSkinRect;
     enemyHpFill: FixedSkinRect;
     endState?: FixedSkinRect;
     inventory?: FixedSkinRect;
