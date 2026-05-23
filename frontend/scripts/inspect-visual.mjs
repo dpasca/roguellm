@@ -142,6 +142,17 @@ const baseScenarios = [
     expectedFixedProfile: compactFixedProfile
   },
   {
+    name: 'mobile-short-themed-amber-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench',
+    url: withQueryParams(fixedWorkbenchUrl, {
+      skin_tags: 'industrial,relay',
+      skin_mood: 'nocturnal',
+      skin_palette: 'amber'
+    }),
+    expectedFixedProfile: 'amber-mobile'
+  },
+  {
     name: 'mobile-short-fixed-runtime-log',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-runtime-log',

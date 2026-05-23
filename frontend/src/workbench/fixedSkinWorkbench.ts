@@ -311,8 +311,8 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
 
   if (window.innerHeight <= 700) {
     return selectThemedProfile(profiles, 'mobileCompact', params) ??
-      selectPreferredProfile(profiles, 'mobileCompact') ??
       selectThemedProfile(profiles, 'mobilePortrait', params) ??
+      selectPreferredProfile(profiles, 'mobileCompact') ??
       selectPreferredProfile(profiles, 'mobilePortrait') ??
       profiles[0] ??
       null;
