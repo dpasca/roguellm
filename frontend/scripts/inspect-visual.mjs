@@ -1576,12 +1576,20 @@ async function collectMetrics(page) {
 
     const collectMapIconMetrics = () => {
       const icons = Array.from(document.querySelectorAll('.map-icon-overlay i[data-map-role]'));
+      const hasBadgeTreatment = (icon) => {
+        const style = getComputedStyle(icon);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      };
       return {
         total: icons.length,
         terrain: icons.filter((icon) => icon.dataset.mapRole === 'cell').length,
         crowdedTerrain: icons.filter((icon) => icon.dataset.mapRole === 'cell' && icon.dataset.mapCrowded === '1').length,
         item: icons.filter((icon) => icon.dataset.mapRole === 'item').length,
-        enemy: icons.filter((icon) => icon.dataset.mapRole === 'enemy').length
+        enemy: icons.filter((icon) => icon.dataset.mapRole === 'enemy').length,
+        itemBadges: icons.filter((icon) => icon.dataset.mapRole === 'item' && hasBadgeTreatment(icon)).length,
+        enemyBadges: icons.filter((icon) => icon.dataset.mapRole === 'enemy' && hasBadgeTreatment(icon)).length
       };
     };
 
@@ -1823,6 +1831,14 @@ function validateMapIconMetrics(metrics, failures) {
 
   if (metrics.mapIcons.crowdedTerrain < 1) {
     failures.push('map has no crowded terrain icons protecting the player/content tile');
+  }
+
+  if (metrics.mapIcons.item > 0 && metrics.mapIcons.itemBadges < metrics.mapIcons.item) {
+    failures.push(`map item icons lost badge treatment: ${metrics.mapIcons.itemBadges}/${metrics.mapIcons.item}`);
+  }
+
+  if (metrics.mapIcons.enemy > 0 && metrics.mapIcons.enemyBadges < metrics.mapIcons.enemy) {
+    failures.push(`map enemy icons lost badge treatment: ${metrics.mapIcons.enemyBadges}/${metrics.mapIcons.enemy}`);
   }
 }
 

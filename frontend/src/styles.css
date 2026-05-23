@@ -112,9 +112,24 @@ button:disabled {
 
 .map-icon-overlay i {
   position: absolute;
+  display: grid;
+  width: 1.64em;
+  height: 1.64em;
+  align-items: center;
+  justify-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
   transform: translate(-50%, -50%);
   color: color-mix(in srgb, var(--skin-text) 64%, transparent);
+  font-style: normal;
+  line-height: 1;
+  isolation: isolate;
   text-shadow: 0 2px 3px rgba(0, 0, 0, 0.72);
+}
+
+.map-icon-overlay i::before {
+  position: relative;
+  z-index: 1;
 }
 
 .map-icon-overlay .cell-map-icon {
@@ -130,6 +145,14 @@ button:disabled {
 .map-icon-overlay .item-map-icon {
   z-index: 2;
   color: var(--skin-warning);
+  border-color: color-mix(in srgb, var(--skin-warning) 46%, transparent);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.28), transparent 26%),
+    linear-gradient(145deg, rgba(74, 49, 8, 0.92), rgba(20, 15, 4, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    0 0 10px color-mix(in srgb, var(--skin-warning) 34%, transparent),
+    0 3px 6px rgba(0, 0, 0, 0.64);
   text-shadow:
     0 0 5px color-mix(in srgb, var(--skin-warning) 54%, transparent),
     0 2px 3px rgba(0, 0, 0, 0.78);
@@ -138,6 +161,14 @@ button:disabled {
 .map-icon-overlay .enemy-map-icon {
   z-index: 2;
   color: var(--skin-danger);
+  border-color: color-mix(in srgb, var(--skin-danger) 46%, transparent);
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.24), transparent 26%),
+    linear-gradient(145deg, rgba(78, 13, 23, 0.94), rgba(19, 4, 8, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    0 0 10px color-mix(in srgb, var(--skin-danger) 34%, transparent),
+    0 3px 6px rgba(0, 0, 0, 0.64);
   text-shadow:
     0 0 6px color-mix(in srgb, var(--skin-danger) 56%, transparent),
     0 2px 3px rgba(0, 0, 0, 0.78);
@@ -145,6 +176,13 @@ button:disabled {
 
 .map-icon-overlay .enemy-map-icon.defeated {
   color: color-mix(in srgb, var(--skin-muted) 68%, black);
+  border-color: rgba(122, 132, 134, 0.2);
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.12), transparent 26%),
+    linear-gradient(145deg, rgba(28, 32, 34, 0.78), rgba(8, 10, 11, 0.88));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    0 2px 5px rgba(0, 0, 0, 0.54);
   text-shadow: none;
 }
 
