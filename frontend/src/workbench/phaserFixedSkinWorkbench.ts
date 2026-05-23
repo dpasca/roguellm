@@ -553,6 +553,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
   private controlDetailsDrawn = 0;
+  private hudDetailsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -633,6 +634,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
     this.controlDetailsDrawn = 0;
+    this.hudDetailsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawShellHardware();
@@ -672,6 +674,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
+    document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
   }
 
   private drawShellHardware(): void {
@@ -1055,6 +1058,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawTitle(): void {
     const layout = runtimeLayout(this.profile).title;
+    this.drawTitleReadoutHardware(layout);
     if (layout.brand) {
       this.addTextInRect('ROGUELLM', layout.brand, {
         fontSize: 10,
@@ -1079,6 +1083,29 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
   }
 
+  private drawTitleReadoutHardware(layout: FixedSkinRuntimeLayout['title']): void {
+    const rect = this.profile.regions.title;
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x020504, 0.42);
+    graphics.fillRoundedRect(rect.x - 3, rect.y - 2, rect.width + 6, rect.height + 4, 6);
+    graphics.lineStyle(1, this.theme.primary, 0.24);
+    graphics.strokeRoundedRect(rect.x - 2.5, rect.y - 1.5, rect.width + 5, rect.height + 3, 6);
+    graphics.fillStyle(this.theme.primary, 0.11);
+    graphics.fillRoundedRect(layout.playerIcon.x - 4, layout.playerIcon.y - 4, layout.playerIcon.width + 8, layout.playerIcon.height + 8, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.42);
+    graphics.strokeRoundedRect(layout.playerIcon.x - 3.5, layout.playerIcon.y - 3.5, layout.playerIcon.width + 7, layout.playerIcon.height + 7, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.35);
+    graphics.lineBetween(layout.gameTitle.x, rect.y + rect.height - 4, layout.gameTitle.x + layout.gameTitle.width, rect.y + rect.height - 4);
+    graphics.lineStyle(1, 0xffffff, 0.1);
+    graphics.lineBetween(layout.gameTitle.x, rect.y + 4, layout.gameTitle.x + layout.gameTitle.width, rect.y + 4);
+    for (let index = 0; index < 5; index += 1) {
+      const alpha = 0.18 + index * 0.08;
+      graphics.fillStyle(index < 3 ? this.theme.primary : this.theme.secondary, alpha);
+      graphics.fillRoundedRect(rect.x + rect.width - 46 + index * 8, rect.y + 6, 4, 8 + index, 2);
+    }
+    this.hudDetailsDrawn += 12;
+  }
+
   private drawPlayer(): void {
     const state = this.viewState.state;
     const hpRect = this.profile.regions.playerHp;
@@ -1091,6 +1118,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
+    this.drawPlayerReadoutHardware(hpRect, hpFill, layout);
     this.addTextInRect('HP', layout.hpLabel, {
       fontSize: 16,
       color: '#c8cdd6'
@@ -1117,6 +1145,50 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
   }
 
+  private drawPlayerReadoutHardware(
+    panel: FixedSkinRect,
+    hpFill: FixedSkinRect,
+    layout: FixedSkinRuntimeLayout['player']
+  ): void {
+    const graphics = this.add.graphics();
+    const statsBounds = unionRects(layout.stats.flatMap((slot) => [slot.labelRect, slot.valueRect]));
+
+    graphics.fillStyle(0x020504, 0.34);
+    graphics.fillRoundedRect(panel.x + 5, panel.y + 5, panel.width - 10, panel.height - 10, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.16);
+    graphics.strokeRoundedRect(panel.x + 5.5, panel.y + 5.5, panel.width - 11, panel.height - 11, 5);
+
+    graphics.fillStyle(0x020504, 0.72);
+    graphics.fillRoundedRect(hpFill.x - 4, hpFill.y - 4, hpFill.width + 8, hpFill.height + 8, 3);
+    graphics.lineStyle(1, this.theme.primary, 0.42);
+    graphics.strokeRoundedRect(hpFill.x - 3.5, hpFill.y - 3.5, hpFill.width + 7, hpFill.height + 7, 3);
+    graphics.lineStyle(1, 0xffffff, 0.14);
+    graphics.lineBetween(hpFill.x - 1, hpFill.y - 2, hpFill.x + hpFill.width + 1, hpFill.y - 2);
+
+    for (let tick = 0; tick <= 10; tick += 1) {
+      const x = hpFill.x + Math.round((hpFill.width * tick) / 10);
+      const tall = tick % 5 === 0;
+      graphics.lineStyle(1, tall ? this.theme.primary : this.theme.controlFrame, tall ? 0.42 : 0.2);
+      graphics.lineBetween(x, hpFill.y + hpFill.height + 4, x, hpFill.y + hpFill.height + (tall ? 9 : 7));
+    }
+
+    if (statsBounds) {
+      graphics.fillStyle(0x040806, 0.54);
+      graphics.fillRoundedRect(statsBounds.x - 4, statsBounds.y - 3, statsBounds.width + 8, statsBounds.height + 5, 4);
+      graphics.lineStyle(1, this.theme.primary, 0.18);
+      graphics.strokeRoundedRect(statsBounds.x - 3.5, statsBounds.y - 2.5, statsBounds.width + 7, statsBounds.height + 4, 4);
+      for (let index = 1; index < layout.stats.length; index += 1) {
+        const previous = layout.stats[index - 1];
+        const current = layout.stats[index];
+        const x = Math.floor((previous.valueRect.x + previous.valueRect.width + current.labelRect.x) / 2) + 0.5;
+        graphics.lineStyle(1, this.theme.controlFrame, 0.3);
+        graphics.lineBetween(x, statsBounds.y - 1, x, statsBounds.y + statsBounds.height + 1);
+      }
+    }
+
+    this.hudDetailsDrawn += statsBounds ? 25 : 18;
+  }
+
   private drawCombat(): void {
     const state = this.viewState.state;
     const rect = this.profile.regions.combat;
@@ -1128,6 +1200,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: state.in_combat ? this.theme.combat : this.theme.primary,
       scanlines: true
     });
+    this.drawCombatReadoutHardware(rect, layout, state.in_combat);
     this.addTextInRect(state.in_combat ? 'COMBAT' : 'EXPLORE', layout.mode, {
       fontSize: 11,
       color: state.in_combat ? this.theme.combatText : this.theme.primaryText,
@@ -1164,6 +1237,53 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       align: 'right'
     });
     this.drawMeter(this.profile.regions.enemyHpFill, clampRatio(enemy.hp / Math.max(1, enemy.max_hp)), 0xff4e5e);
+  }
+
+  private drawCombatReadoutHardware(
+    rect: FixedSkinRect,
+    layout: FixedSkinRuntimeLayout['combat'],
+    active: boolean
+  ): void {
+    const graphics = this.add.graphics();
+    const tint = active ? this.theme.combat : this.theme.primary;
+    graphics.fillStyle(active ? 0x180508 : 0x020504, active ? 0.46 : 0.34);
+    graphics.fillRoundedRect(rect.x + 5, rect.y + 5, rect.width - 10, rect.height - 10, 5);
+    graphics.lineStyle(1, tint, active ? 0.42 : 0.2);
+    graphics.strokeRoundedRect(rect.x + 5.5, rect.y + 5.5, rect.width - 11, rect.height - 11, 5);
+
+    graphics.fillStyle(tint, active ? 0.22 : 0.14);
+    graphics.fillRoundedRect(layout.mode.x - 3, layout.mode.y - 2, layout.mode.width + 8, layout.mode.height + 5, 4);
+    graphics.lineStyle(1, tint, active ? 0.62 : 0.38);
+    graphics.strokeRoundedRect(layout.mode.x - 2.5, layout.mode.y - 1.5, layout.mode.width + 7, layout.mode.height + 4, 4);
+
+    if (active) {
+      const enemyWell = {
+        x: layout.enemyIcon.x - 3,
+        y: layout.enemyIcon.y - 3,
+        width: layout.enemyName.x + layout.enemyName.width - layout.enemyIcon.x + 6,
+        height: Math.max(layout.enemyIcon.height, layout.enemyName.height) + 6
+      };
+      graphics.fillStyle(0x040202, 0.62);
+      graphics.fillRoundedRect(enemyWell.x, enemyWell.y, enemyWell.width, enemyWell.height, 4);
+      graphics.lineStyle(1, this.theme.combat, 0.26);
+      graphics.strokeRoundedRect(enemyWell.x + 0.5, enemyWell.y + 0.5, enemyWell.width - 1, enemyWell.height - 1, 4);
+      graphics.lineStyle(1, this.theme.combat, 0.28);
+      const meter = this.profile.regions.enemyHpFill;
+      graphics.strokeRoundedRect(meter.x - 4.5, meter.y - 4.5, meter.width + 9, meter.height + 8, 3);
+      for (let tick = 0; tick < 6; tick += 1) {
+        const x = rect.x + rect.width - 68 + tick * 9;
+        graphics.fillStyle(this.theme.combat, 0.18 + tick * 0.045);
+        graphics.fillRoundedRect(x, rect.y + 9, 5, 4 + tick, 2);
+      }
+      this.hudDetailsDrawn += 16;
+      return;
+    }
+
+    graphics.lineStyle(1, this.theme.primary, 0.22);
+    graphics.lineBetween(layout.exploreText.x, layout.exploreText.y - 4, layout.exploreText.x + layout.exploreText.width - 10, layout.exploreText.y - 4);
+    graphics.lineStyle(1, 0xffffff, 0.08);
+    graphics.lineBetween(layout.exploreText.x, layout.exploreText.y + layout.exploreText.height + 2, layout.exploreText.x + layout.exploreText.width - 10, layout.exploreText.y + layout.exploreText.height + 2);
+    this.hudDetailsDrawn += 9;
   }
 
   private drawIndicators(): void {

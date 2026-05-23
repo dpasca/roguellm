@@ -810,6 +810,7 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
+      Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
       Number.isFinite(metrics.phaserSourceMaterialPanels) ? `source materials ${metrics.phaserSourceMaterialPanels}` : null,
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
@@ -2439,6 +2440,7 @@ async function collectMetrics(page) {
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
+      phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2887,6 +2889,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
     failures.push(`expected detailed Phaser control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserHudDetails) || metrics.phaserHudDetails < 42) {
+    failures.push(`expected detailed Phaser HUD readouts, got ${metrics.phaserHudDetails ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;
