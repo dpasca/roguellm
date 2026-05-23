@@ -327,6 +327,7 @@ Use the guide generator when preparing or reviewing source artboards:
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.svg
 pnpm -C frontend skin:guide mobileCompact --view crops --out ../_artifacts/skin-guides/mobile-compact-crops.png
 pnpm -C frontend skin:guide mobileCompact --view runtime --out ../_artifacts/skin-guides/mobile-compact-runtime.svg
+pnpm -C frontend skin:guide mobileCompact --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
 ```
 
 The guide renders the same contract rectangles as an annotated image. Use
@@ -334,6 +335,9 @@ The guide renders the same contract rectangles as an annotated image. Use
 targets, `--view runtime` for the exact Phaser text/icon slots, and `--view all`
 when checking the full contract at once. These guides are meant for visual
 review and for pairing with generated source art; they are not runtime assets.
+Pass `--source <path>` to place an exact-size generated source artboard
+underneath the guide overlay for alignment review before building a skin kit.
+PNG sources must match the selected profile dimensions.
 
 ## Manifest Scaffold Generator
 

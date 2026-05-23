@@ -28,7 +28,21 @@ if (!['all', 'live', 'crops', 'runtime'].includes(view)) {
 const outputPath = parsedArgs.options.out
   ? path.resolve(rootDir, parsedArgs.options.out)
   : path.resolve(rootDir, `../_artifacts/skin-guides/${profileName}-${view}-layout-guide.svg`);
-const svg = buildGuide(profileName, profile, view);
+const sourceImage = parsedArgs.options.source
+  ? await readSourceImage(parsedArgs.options.source)
+  : null;
+if (
+  sourceImage?.width &&
+  sourceImage?.height &&
+  (sourceImage.width !== profile.size.width || sourceImage.height !== profile.size.height)
+) {
+  console.error(
+    `Source artboard is ${sourceImage.width}x${sourceImage.height}; ` +
+    `expected ${profile.size.width}x${profile.size.height} for ${profileName}.`
+  );
+  process.exit(1);
+}
+const svg = buildGuide(profileName, profile, view, sourceImage);
 
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
@@ -43,7 +57,7 @@ if (outputPath.endsWith('.png')) {
 
 console.error(`Wrote ${path.relative(process.cwd(), outputPath)}`);
 
-function buildGuide(name, selectedProfile, selectedView) {
+function buildGuide(name, selectedProfile, selectedView, sourceImage) {
   const { width, height } = selectedProfile.size;
   const titleHeight = 30;
   const legendHeight = 86;
@@ -77,9 +91,12 @@ function buildGuide(name, selectedProfile, selectedView) {
     '</defs>',
     `<rect width="${viewWidth}" height="${viewHeight}" fill="#050808"/>`,
     `<g transform="translate(0 ${titleHeight})">`,
-    `<rect x="0" y="0" width="${width}" height="${height}" fill="#081011" stroke="#6d8584"/>`,
-    `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#fineGrid)"/>`,
-    `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#majorGrid)"/>`,
+    sourceImage
+      ? `<image href="${sourceImage.href}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none"/>`
+      : `<rect x="0" y="0" width="${width}" height="${height}" fill="#081011" stroke="#6d8584"/>`,
+    `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#fineGrid)" opacity="${sourceImage ? '0.62' : '1'}"/>`,
+    `<rect x="0" y="0" width="${width}" height="${height}" fill="url(#majorGrid)" opacity="${sourceImage ? '0.78' : '1'}"/>`,
+    sourceImage ? `<rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" fill="none" stroke="#d7fff2" stroke-width="1" opacity="0.72"/>` : '',
     '</g>',
     rows.join('\n'),
     '</svg>'
@@ -195,6 +212,47 @@ function isRect(value) {
   return ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
 }
 
+async function readSourceImage(sourcePath) {
+  const resolved = path.resolve(rootDir, sourcePath);
+  const data = await fs.readFile(resolved);
+  return {
+    href: `data:${mimeTypeFor(resolved)};base64,${data.toString('base64')}`,
+    ...imageDimensionsFor(data, resolved)
+  };
+}
+
+function mimeTypeFor(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === '.jpg' || extension === '.jpeg') {
+    return 'image/jpeg';
+  }
+  if (extension === '.webp') {
+    return 'image/webp';
+  }
+  if (extension === '.svg') {
+    return 'image/svg+xml';
+  }
+  return 'image/png';
+}
+
+function imageDimensionsFor(data, filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  if (
+    extension === '.png' &&
+    data.length >= 24 &&
+    data[0] === 0x89 &&
+    data[1] === 0x50 &&
+    data[2] === 0x4e &&
+    data[3] === 0x47
+  ) {
+    return {
+      width: data.readUInt32BE(16),
+      height: data.readUInt32BE(20)
+    };
+  }
+  return {};
+}
+
 async function writePng(svg, outputPath) {
   await new Promise((resolve, reject) => {
     const child = spawn('magick', ['svg:-', `PNG32:${outputPath}`], { stdio: ['pipe', 'inherit', 'inherit'] });
@@ -249,6 +307,7 @@ function printUsage() {
     '',
     'Options:',
     '  --view <all|live|crops|runtime>  Select rectangle groups. Defaults to all.',
+    '  --source <path>          Place an exact-size generated source artboard under the guide overlay.',
     '  --out <path>             Write .svg or .png guide. Defaults to ../_artifacts/skin-guides/<profile>-<view>-layout-guide.svg.'
   ].join('\n'));
 }

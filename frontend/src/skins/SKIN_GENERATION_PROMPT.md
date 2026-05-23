@@ -17,6 +17,7 @@ Preferred handoff command:
 pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
 pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
+pnpm -C frontend skin:guide mobilePortrait --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
 ```
 
 ```text
@@ -96,3 +97,8 @@ Those materials are rendered by Phaser as tiled sprites and nine-slice frames,
 not DOM stylesheet surfaces. Only promote a generated artboard into the default
 mobile profile after the diagnostics and visual inspection screenshots look cleaner than
 `gold-mobile`.
+
+Before building, run `skin:guide --source` against the exact-size generated
+source artboard and inspect the overlay. Reject the source if live apertures
+contain baked game content, if button wells miss the fixed crop rectangles, or
+if material detail crosses into the Phaser text/icon slots.
