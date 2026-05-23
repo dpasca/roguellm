@@ -4,6 +4,10 @@ This is the fixed geometry contract for the first AI-generated RogueLLM skin
 packs. It exists so skin generation can target exact artboards and crop targets
 instead of relying on CSS tweaks after the fact.
 
+The machine-readable source for automated validation is
+`SKIN_LAYOUT_CONTRACT_V1.json`. Keep this document and the JSON contract in sync
+when creating a future contract version.
+
 The v1 contract is mobile-first and has two artboard variants:
 
 - `mobilePortrait`: `390x844`

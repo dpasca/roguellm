@@ -8,6 +8,8 @@ Before using this prompt, choose the `mobilePortrait` or `mobileCompact`
 geometry from `SKIN_LAYOUT_CONTRACT_V1.md` and paste the exact live-region and
 crop-target tables into the prompt. Do not invent alternate coordinates during
 generation; create a new layout contract version first if the geometry changes.
+`validate:skins` enforces the matching machine-readable
+`SKIN_LAYOUT_CONTRACT_V1.json` geometry for production mobile profiles.
 
 ```text
 Create a polished mobile cyberdeck game UI skin kit artboard.

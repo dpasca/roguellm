@@ -4,31 +4,14 @@ import path from 'node:path';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
-const buttonStates = ['idle', 'hover', 'pressed', 'disabled'];
+const layoutContractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
+const layoutContract = JSON.parse(await fs.readFile(layoutContractPath, 'utf8'));
+const mobilePortrait = layoutContract.profiles.mobilePortrait;
+const mobileCompact = layoutContract.profiles.mobileCompact;
+const buttonStates = mobilePortrait.requiredStates.buttons;
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const mobileKitSummaries = [];
-const mobilePortrait = {
-  size: { width: 390, height: 844 },
-  regions: ['map', 'latest', 'log', 'inventory', 'title', 'player', 'combat', 'controls', 'endState'],
-  buttons: ['attack', 'run', 'restart', 'log', 'inventory', 'moveN', 'moveS', 'moveE', 'moveW'],
-  indicators: {
-    status: ['ready', 'thinking', 'error', 'offline'],
-    combatLed: ['led-on.png', 'led-off.png']
-  },
-  layout: {
-    buttons: ['attack', 'run', 'restart', 'log', 'inventory', 'moveN', 'moveS', 'moveE', 'moveW'],
-    indicators: ['status', 'combatLed'],
-    fills: ['playerHp', 'enemyHp', 'playerStats']
-  }
-};
-const mobileCompact = {
-  size: { width: 390, height: 667 },
-  regions: mobilePortrait.regions,
-  buttons: mobilePortrait.buttons,
-  indicators: mobilePortrait.indicators,
-  layout: mobilePortrait.layout
-};
 
 const failures = [];
 const kitPaths = await findSkinKits(fixedDir);
@@ -149,34 +132,34 @@ function validateRequiredContract(prefix, kit) {
 
   validateMetadata(prefix, kit);
 
-  for (const region of contract.regions) {
+  for (const region of Object.keys(contract.regions)) {
     if (!kit.regions?.[region]) {
       failures.push(`${prefix} missing required region ${region}`);
     }
   }
 
-  for (const button of contract.buttons) {
+  for (const button of Object.keys(contract.layout.buttons)) {
     if (!kit.assets?.buttons?.[button]) {
       failures.push(`${prefix} missing required button asset ${button}`);
     }
   }
 
   const statusStates = kit.assets?.indicators?.status?.states ?? [];
-  for (const state of contract.indicators.status) {
+  for (const state of contract.requiredStates.status) {
     if (!statusStates.includes(state)) {
       failures.push(`${prefix} status indicator missing state ${state}`);
     }
   }
 
   const combatLedFiles = kit.assets?.indicators?.combatLed?.files ?? [];
-  for (const file of contract.indicators.combatLed) {
+  for (const file of contract.requiredStates.combatLedFiles) {
     if (!combatLedFiles.includes(file)) {
       failures.push(`${prefix} combatLed indicator missing file ${file}`);
     }
   }
 
-  for (const [group, names] of Object.entries(contract.layout)) {
-    for (const name of names) {
+  for (const [group, rects] of Object.entries(contract.layout)) {
+    for (const name of Object.keys(rects)) {
       const rect = kit.layout?.[group]?.[name];
       if (!rect) {
         failures.push(`${prefix} missing required layout ${group}.${name}`);
@@ -187,7 +170,7 @@ function validateRequiredContract(prefix, kit) {
   }
 
   if (isProductionMobileMeta(kit.meta)) {
-    validateProductionMobileGeometry(prefix, kit, kit.kind);
+    validateProductionMobileGeometry(prefix, kit, contract);
   }
 }
 
@@ -237,20 +220,16 @@ function validateMetadataTokens(prefix, key, tokens) {
   }
 }
 
-function validateProductionMobileGeometry(prefix, kit, kind) {
-  const compact = kind === 'mobileCompact';
-  validateRectSize(prefix, 'region map', kit.regions?.map, {
-    minWidth: 320,
-    minHeight: compact ? 220 : 250,
-    maxHeight: compact ? 260 : 315
-  });
-  validateRectSize(prefix, 'region latest', kit.regions?.latest, { minWidth: 260, minHeight: compact ? 70 : 78 });
-  validateRectSize(prefix, 'region log', kit.regions?.log, { minWidth: 320, minHeight: compact ? 230 : 260 });
-  validateRectSize(prefix, 'region inventory', kit.regions?.inventory, { minWidth: 320, minHeight: compact ? 230 : 260 });
-  validateRectSize(prefix, 'region player', kit.regions?.player, { minWidth: 320, minHeight: compact ? 46 : 50 });
-  validateRectSize(prefix, 'region combat', kit.regions?.combat, { minWidth: 320, minHeight: compact ? 48 : 56 });
-  validateRectSize(prefix, 'region controls', kit.regions?.controls, { minWidth: 340, minHeight: compact ? 140 : 180 });
-  validateRectSize(prefix, 'region endState', kit.regions?.endState, { minWidth: 280, minHeight: compact ? 230 : 250 });
+function validateProductionMobileGeometry(prefix, kit, contract) {
+  for (const [name, expected] of Object.entries(contract.regions)) {
+    validateExactRect(prefix, `region ${name}`, kit.regions?.[name], expected);
+  }
+
+  for (const [group, rects] of Object.entries(contract.layout)) {
+    for (const [name, expected] of Object.entries(rects)) {
+      validateExactRect(prefix, `layout ${group}.${name}`, kit.layout?.[group]?.[name], expected);
+    }
+  }
 
   validateNoOverlap(prefix, kit, ['map', 'latest', 'title', 'player', 'combat', 'controls']);
 
@@ -273,6 +252,20 @@ function validateProductionMobileGeometry(prefix, kit, kind) {
 
   for (const name of ['log', 'inventory']) {
     validateButtonSize(prefix, name, kit.layout?.buttons?.[name], { minWidth: 38, minHeight: 24 });
+  }
+}
+
+function validateExactRect(prefix, label, actual, expected) {
+  if (!actual || !expected) {
+    return;
+  }
+
+  for (const key of ['x', 'y', 'width', 'height']) {
+    if (actual[key] !== expected[key]) {
+      failures.push(
+        `${prefix} ${label}.${key} ${actual[key]} must match Skin Layout Contract v1 ${expected[key]}`
+      );
+    }
   }
 }
 
