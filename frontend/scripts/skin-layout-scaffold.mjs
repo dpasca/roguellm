@@ -93,15 +93,16 @@ function buildManifest(id, kind, selectedProfile, options) {
     },
     build: {
       source: options.source ?? 'source-artboard.png',
-      crops: buildCrops(selectedProfile)
+      crops: buildCrops(selectedProfile, options)
     }
   };
 }
 
-function buildCrops(selectedProfile) {
+function buildCrops(selectedProfile, options) {
   const crops = [
     {
       path: 'chassis.png',
+      ...(options['chassis-source'] ? { source: options['chassis-source'] } : {}),
       rect: {
         x: 0,
         y: 0,
@@ -238,7 +239,8 @@ function printUsage() {
     '  --palette <a,b,c>           Lowercase metadata tokens.',
     '  --default-priority <0-100>  Selection priority metadata. Defaults to 0.',
     '  --generation <value>        Generation/source note.',
-    '  --source <path>             Source artboard path relative to the skin dir.',
+    '  --source <path>             Widget/source artboard path relative to the skin dir.',
+    '  --chassis-source <path>     Optional clean chassis artboard for the chassis crop.',
     '  --out <path>                Write skin-kit.json to a file or directory instead of stdout.'
   ].join('\n'));
 }

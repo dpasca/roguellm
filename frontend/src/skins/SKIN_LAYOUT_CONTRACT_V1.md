@@ -233,7 +233,8 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --tags cyberpunk,rain-city \
   --mood premium,nocturnal \
   --palette green,brass,graphite \
-  --source source-artboard.png \
+  --source source-widgets.png \
+  --chassis-source source-chassis.png \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 
@@ -254,6 +255,10 @@ For cleaned/generated skins, individual crops may declare `source` to use a
 different artboard from `build.source`. This lets a skin keep a clean chassis
 source while using a widget source that temporarily composites fixed buttons
 into the exact crop slots.
+
+`validate:skins` checks the build plan for readable source PNGs, in-bounds crop
+rectangles, duplicate output paths, known variant kinds, and variant filename
+conventions before a skin kit is considered valid.
 
 ## Generation Prompt Template
 

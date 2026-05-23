@@ -10,6 +10,7 @@ const mobilePortrait = layoutContract.profiles.mobilePortrait;
 const mobileCompact = layoutContract.profiles.mobileCompact;
 const buttonStates = mobilePortrait.requiredStates.buttons;
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
+const cropVariantKinds = new Set(['button', 'status-indicator', 'combat-led']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const mobileKitSummaries = [];
 
@@ -117,6 +118,7 @@ async function validateKit(kitPath) {
   }
 
   validateRegions(prefix, kit);
+  await validateBuildPlan(kitDir, prefix, kit);
 }
 
 function validateRequiredContract(prefix, kit) {
@@ -375,6 +377,131 @@ function validateRegions(prefix, kit) {
   }
 }
 
+async function validateBuildPlan(kitDir, prefix, kit) {
+  const build = kit.build;
+  if (!build) {
+    return;
+  }
+
+  if (!isNonEmptyString(build.source)) {
+    failures.push(`${prefix} build.source must be a non-empty relative PNG path`);
+    return;
+  }
+
+  if (!Array.isArray(build.crops) || build.crops.length === 0) {
+    failures.push(`${prefix} build.crops must be a non-empty array`);
+    return;
+  }
+
+  const baseSource = await validateBuildSource(kitDir, prefix, 'build.source', build.source);
+  const seenOutputs = new Set();
+
+  for (let index = 0; index < build.crops.length; index += 1) {
+    const crop = build.crops[index];
+    const label = `build.crops[${index}]`;
+
+    if (!crop || typeof crop !== 'object') {
+      failures.push(`${prefix} ${label} must be an object`);
+      continue;
+    }
+
+    validateCropOutputPath(kitDir, prefix, label, crop.path, seenOutputs);
+
+    const source = crop.source
+      ? await validateBuildSource(kitDir, prefix, `${label}.source`, crop.source)
+      : baseSource;
+
+    validateCropRect(prefix, `${label}.rect`, crop.rect, source);
+
+    if (crop.alphaRadius !== undefined) {
+      if (!Number.isFinite(crop.alphaRadius) || crop.alphaRadius < 0) {
+        failures.push(`${prefix} ${label}.alphaRadius must be a non-negative number`);
+      } else if (crop.rect && crop.alphaRadius > Math.min(crop.rect.width, crop.rect.height) / 2) {
+        failures.push(`${prefix} ${label}.alphaRadius ${crop.alphaRadius} is too large for ${crop.rect.width}x${crop.rect.height}`);
+      }
+    }
+
+    if (crop.variants !== undefined) {
+      if (!cropVariantKinds.has(crop.variants)) {
+        failures.push(`${prefix} ${label}.variants must be one of ${Array.from(cropVariantKinds).join(', ')}`);
+      } else {
+        validateCropVariantPath(prefix, label, crop);
+      }
+    }
+  }
+}
+
+async function validateBuildSource(kitDir, prefix, label, sourcePath) {
+  if (!isRelativePngPath(sourcePath)) {
+    failures.push(`${prefix} ${label} must be a relative PNG path`);
+    return;
+  }
+
+  const resolved = path.resolve(kitDir, sourcePath);
+  if (!containsPath(rootDir, resolved)) {
+    failures.push(`${prefix} ${label} must stay inside ${path.relative(process.cwd(), rootDir)}`);
+    return;
+  }
+
+  let png;
+  try {
+    png = await readPngHeader(resolved);
+  } catch (error) {
+    failures.push(`${prefix} ${label} ${error.message}`);
+    return;
+  }
+
+  return png;
+}
+
+function validateCropOutputPath(kitDir, prefix, label, cropPath, seenOutputs) {
+  if (!isSafeRelativePath(cropPath)) {
+    failures.push(`${prefix} ${label}.path must be a safe relative PNG path`);
+    return;
+  }
+
+  if (!cropPath.endsWith('.png')) {
+    failures.push(`${prefix} ${label}.path must end with .png`);
+  }
+
+  const resolved = path.resolve(kitDir, cropPath);
+  if (!containsPath(kitDir, resolved)) {
+    failures.push(`${prefix} ${label}.path must stay inside the skin-kit directory`);
+  }
+
+  if (seenOutputs.has(cropPath)) {
+    failures.push(`${prefix} ${label}.path duplicates another build crop: ${cropPath}`);
+  }
+
+  seenOutputs.add(cropPath);
+}
+
+function validateCropRect(prefix, label, rect, source) {
+  if (!isPositiveRect(rect)) {
+    failures.push(`${prefix} ${label} is not a positive rectangle`);
+    return;
+  }
+
+  if (source && (rect.x + rect.width > source.width || rect.y + rect.height > source.height)) {
+    failures.push(`${prefix} ${label} exceeds source ${source.width}x${source.height}`);
+  }
+}
+
+function validateCropVariantPath(prefix, label, crop) {
+  const filename = path.basename(crop.path ?? '');
+  if (crop.variants === 'button' && !filename.endsWith('-idle.png')) {
+    failures.push(`${prefix} ${label}.path must end with -idle.png for button variants`);
+  }
+
+  if (crop.variants === 'status-indicator' && !filename.endsWith('-ready.png')) {
+    failures.push(`${prefix} ${label}.path must end with -ready.png for status-indicator variants`);
+  }
+
+  if (crop.variants === 'combat-led' && filename !== 'led-off.png') {
+    failures.push(`${prefix} ${label}.path must be led-off.png for combat-led variants`);
+  }
+}
+
 function validateRect(prefix, kit, label, rect) {
   if (!isPositiveRect(rect)) {
     failures.push(`${prefix} ${label} is not a positive rectangle`);
@@ -492,4 +619,21 @@ function isNonEmptyStringArray(value) {
   return Array.isArray(value) &&
     value.length > 0 &&
     value.every((entry) => isNonEmptyString(entry));
+}
+
+function isSafeRelativePath(value) {
+  return isRelativePngPath(value) &&
+    !value.split(/[\\/]/).includes('..');
+}
+
+function isRelativePngPath(value) {
+  return isNonEmptyString(value) &&
+    value.endsWith('.png') &&
+    !path.isAbsolute(value) &&
+    !value.split(/[\\/]/).includes('');
+}
+
+function containsPath(parent, child) {
+  const relative = path.relative(parent, child);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }

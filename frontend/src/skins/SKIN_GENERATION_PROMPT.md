@@ -69,11 +69,13 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --tags cyberpunk,rain-city \
   --mood premium,nocturnal \
   --palette green,brass,graphite \
-  --source source-artboard.png \
+  --source source-widgets.png \
+  --chassis-source source-chassis.png \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 
-Then place the generated artboard at the scaffold's `build.source` path and run:
+Then place the generated source artboards at the scaffold's `build.source` and
+optional chassis crop `source` paths and run:
 
 ```bash
 pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
