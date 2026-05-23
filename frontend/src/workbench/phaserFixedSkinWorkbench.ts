@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Direction, GameAction, GameState } from '../protocol/types';
+import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
@@ -27,6 +27,13 @@ interface SceneState {
   inventoryOpen: boolean;
   actionPending: boolean;
   connectionStatus: string;
+}
+
+interface InventoryRowAction {
+  action: GameAction | null;
+  label: string;
+  disabled: boolean;
+  state: 'ready' | 'equipped' | 'disabled';
 }
 
 type ButtonEntry = [FixedButtonId, FixedSkinButton];
@@ -165,6 +172,13 @@ export function createPhaserFixedSkinRuntime(
       return;
     }
 
+    const inventoryAction = inventoryActionFromKey(event.key, currentState, actionPending);
+    if (inventoryOpen && hasLiveState && inventoryAction) {
+      onAction(inventoryAction);
+      event.preventDefault();
+      return;
+    }
+
     const direction = directionFromKey(event.key);
     if (direction && hasLiveState && canMove(currentState, direction) && !logOpen && !inventoryOpen && !actionPending) {
       onAction({ action: 'move', direction });
@@ -177,6 +191,7 @@ export function createPhaserFixedSkinRuntime(
     document.body.dataset.phaserDrawer = logOpen ? 'log' : inventoryOpen ? 'inventory' : 'closed';
     document.body.dataset.phaserRuntimeState = hasLiveState ? 'live' : 'booting';
     document.body.dataset.phaserStatus = connectionStatus;
+    applyPhaserStateDatasets(currentState, inventoryOpen, actionPending);
     document.body.classList.toggle('in-combat', currentState.in_combat);
     document.body.classList.toggle('game-ended', isTerminalState(currentState));
     scene.renderWorkbenchState({
@@ -298,6 +313,13 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
       return;
     }
 
+    const inventoryAction = inventoryActionFromKey(event.key, state, actionPending);
+    if (inventoryOpen && inventoryAction) {
+      dispatchAction(inventoryAction);
+      event.preventDefault();
+      return;
+    }
+
     const direction = directionFromKey(event.key);
     if (direction && canMove(state, direction) && !logOpen && !inventoryOpen && !actionPending) {
       dispatchAction({ action: 'move', direction });
@@ -331,6 +353,9 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
 
   function renderScene(): void {
     document.body.dataset.phaserDrawer = logOpen ? 'log' : inventoryOpen ? 'inventory' : 'closed';
+    applyPhaserStateDatasets(state, inventoryOpen, actionPending);
+    document.body.classList.toggle('in-combat', state.in_combat);
+    document.body.classList.toggle('game-ended', isTerminalState(state));
     scene.renderWorkbenchState({
       state,
       logs,
@@ -764,17 +789,77 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const maxRows = Math.max(1, Math.floor((rect.height - 36) / rowHeight));
     this.viewState.state.inventory.slice(0, maxRows).forEach((item, index) => {
       const y = rect.y + 34 + rowHeight * index;
-      this.addText(itemTypeLabel(item.type), rect.x + 10, y + 2, 38, {
+      const action = inventoryRowAction(item, this.viewState);
+      const graphics = this.add.graphics();
+      graphics.fillStyle(item.is_equipped ? 0x12341c : 0x0b1710, item.is_equipped ? 0.82 : 0.68);
+      graphics.fillRect(rect.x + 8, y - 3, rect.width - 16, rowHeight - 6);
+      graphics.lineStyle(1, item.is_equipped ? 0x9bff7c : 0x2a5d41, item.is_equipped ? 0.58 : 0.38);
+      graphics.strokeRect(rect.x + 8.5, y - 2.5, rect.width - 17, rowHeight - 7);
+
+      const badgeColor = itemTypeColor(item.type);
+      graphics.fillStyle(badgeColor, 0.28);
+      graphics.fillRoundedRect(rect.x + 12, y + 4, 38, 22, 4);
+      graphics.lineStyle(1, badgeColor, 0.85);
+      graphics.strokeRoundedRect(rect.x + 12.5, y + 4.5, 37, 21, 4);
+      this.addText(itemTypeLabel(item.type), rect.x + 15, y + 9, 32, {
         fontSize: 10,
-        color: '#72d6ff',
-        fontStyle: 'bold'
+        color: itemTypeTextColor(item.type),
+        fontStyle: 'bold',
+        align: 'center'
       });
-      this.addText(`${item.name}${item.is_equipped ? ' ON' : ''}`, rect.x + 54, y, rect.width - 66, {
+
+      this.addText(item.name, rect.x + 58, y + 1, rect.width - 138, {
         fontSize: 12,
         color: '#f3fff1',
         fontStyle: 'bold'
-      }, rowHeight - 4);
+      }, rowHeight - 20);
+      this.addText(item.description, rect.x + 58, y + 19, rect.width - 138, {
+        fontSize: 9,
+        color: '#b8c7bc'
+      }, Math.max(12, rowHeight - 24));
+      this.drawInventoryActionChip(rect.x + rect.width - 72, y + 5, 54, 24, action);
     });
+  }
+
+  private drawInventoryActionChip(x: number, y: number, width: number, height: number, rowAction: InventoryRowAction): void {
+    const active = rowAction.state === 'ready';
+    const equipped = rowAction.state === 'equipped';
+    const border = equipped ? 0x9bff7c : active ? 0x66d7ff : 0x67706a;
+    const fill = equipped ? 0x173d19 : active ? 0x102c36 : 0x171c1b;
+    const graphics = this.add.graphics();
+    graphics.fillStyle(fill, rowAction.disabled ? 0.72 : 0.92);
+    graphics.fillRoundedRect(x, y, width, height, 5);
+    graphics.lineStyle(1, border, rowAction.disabled && !equipped ? 0.45 : 0.9);
+    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
+    const label = this.addText(rowAction.label, x + 4, y + 6, width - 8, {
+      fontSize: 10,
+      color: equipped ? '#aaff8d' : active ? '#dffcff' : '#8e9690',
+      fontStyle: 'bold',
+      align: 'center'
+    }, height - 4);
+    label.setDepth(2);
+    if (!rowAction.disabled && rowAction.action) {
+      const hit = this.add.zone(x, y, width, height).setOrigin(0, 0).setInteractive({ useHandCursor: true });
+      hit.on('pointerover', () => {
+        graphics.clear();
+        graphics.fillStyle(0x184554, 0.98);
+        graphics.fillRoundedRect(x, y, width, height, 5);
+        graphics.lineStyle(1, 0xb0f8ff, 1);
+        graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
+      });
+      hit.on('pointerout', () => {
+        graphics.clear();
+        graphics.fillStyle(fill, 0.92);
+        graphics.fillRoundedRect(x, y, width, height, 5);
+        graphics.lineStyle(1, border, 0.9);
+        graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
+      });
+      hit.on('pointerup', () => {
+        if (rowAction.action) {
+          this.onAction(rowAction.action);
+        }
+      });
+    }
   }
 
   private drawEndState(): void {
@@ -1074,6 +1159,97 @@ function itemTypeLabel(type: string): string {
     return 'USE';
   }
   return 'ITM';
+}
+
+function itemTypeColor(type: string): number {
+  if (type === 'weapon') {
+    return 0xff6682;
+  }
+  if (type === 'armor') {
+    return 0x72d6ff;
+  }
+  if (type === 'consumable') {
+    return 0xffd15a;
+  }
+  return 0xb7c4bd;
+}
+
+function itemTypeTextColor(type: string): string {
+  if (type === 'weapon') {
+    return '#ff92a5';
+  }
+  if (type === 'armor') {
+    return '#8fe3ff';
+  }
+  if (type === 'consumable') {
+    return '#ffe07b';
+  }
+  return '#d3ddd5';
+}
+
+function inventoryRowAction(item: Item, viewState: SceneState): InventoryRowAction {
+  const disabledByState = viewState.actionPending || isTerminalState(viewState.state);
+  if (item.type === 'consumable') {
+    return {
+      action: { action: 'use_item', item_id: item.id },
+      label: 'USE',
+      disabled: disabledByState,
+      state: disabledByState ? 'disabled' : 'ready'
+    };
+  }
+  if (item.type === 'weapon' || item.type === 'armor') {
+    return {
+      action: { action: 'equip_item', item_id: item.id },
+      label: item.is_equipped ? 'ON' : 'EQP',
+      disabled: disabledByState || item.is_equipped,
+      state: item.is_equipped ? 'equipped' : disabledByState ? 'disabled' : 'ready'
+    };
+  }
+  return {
+    action: null,
+    label: '---',
+    disabled: true,
+    state: 'disabled'
+  };
+}
+
+function inventoryActionFromKey(key: string, state: GameState, actionPending: boolean): GameAction | null {
+  const index = Number(key) - 1;
+  if (!Number.isInteger(index) || index < 0 || index > 8) {
+    return null;
+  }
+  const item = state.inventory[index];
+  if (!item) {
+    return null;
+  }
+  const rowAction = inventoryRowAction(item, {
+    state,
+    logs: [],
+    logOpen: false,
+    inventoryOpen: true,
+    actionPending,
+    connectionStatus: 'ready'
+  });
+  return rowAction.disabled ? null : rowAction.action;
+}
+
+function applyPhaserStateDatasets(state: GameState, inventoryOpen: boolean, actionPending: boolean): void {
+  const visibleItems = state.inventory.slice(0, 9);
+  const rowActions = visibleItems.map((item) => inventoryRowAction(item, {
+    state,
+    logs: [],
+    logOpen: false,
+    inventoryOpen,
+    actionPending,
+    connectionStatus: 'ready'
+  }));
+  document.body.dataset.phaserInventoryOpen = inventoryOpen ? '1' : '0';
+  document.body.dataset.phaserInventoryCount = String(visibleItems.length);
+  document.body.dataset.phaserInventoryActions = String(rowActions.length);
+  document.body.dataset.phaserInventoryReadyActions = String(rowActions.filter((action) => !action.disabled && action.action).length);
+  document.body.dataset.phaserEquippedCount = String(visibleItems.filter((item) => item.is_equipped).length);
+  document.body.dataset.phaserInventoryActionLabels = rowActions.map((action) => action.label).join(',');
+  document.body.dataset.phaserPlayerHp = String(Math.max(0, state.player_hp));
 }
 
 function isTerminalState(state: GameState): boolean {

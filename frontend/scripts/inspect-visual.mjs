@@ -176,6 +176,20 @@ const baseScenarios = [
     expectedFixedProfile: compactFixedProfile
   },
   {
+    name: 'mobile-short-phaser-fixed-workbench-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-inventory',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile),
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-workbench-inventory-use',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-inventory-use',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile),
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
     name: 'mobile-short-themed-amber-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
@@ -1130,6 +1144,17 @@ async function runScenario(page, scenario) {
     await waitForFixedInventoryUse(page);
   }
 
+  if (scenario.mode === 'phaser-fixed-workbench-inventory' || scenario.mode === 'phaser-fixed-workbench-inventory-use') {
+    await page.keyboard.press('i');
+    await waitForPhaserFixedWorkbenchDrawer(page, 'inventory');
+    await waitForPhaserFixedInventory(page);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-inventory-use') {
+    await page.keyboard.press('3');
+    await waitForPhaserFixedInventoryUse(page);
+  }
+
   if (scenario.mode === 'fixed-workbench-drawer-switch') {
     await page.getByRole('button', { name: 'Inventory', exact: true }).click();
     await waitForFixedInventory(page);
@@ -1317,6 +1342,24 @@ async function waitForPhaserFixedWorkbenchDrawer(page, expected) {
     return document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.phaserDrawer === drawer;
   }, expected, { timeout: 20_000 });
+}
+
+async function waitForPhaserFixedInventory(page) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserDrawer === 'inventory' &&
+      Number(document.body.dataset.phaserInventoryCount ?? 0) >= 3 &&
+      Number(document.body.dataset.phaserInventoryActions ?? 0) >= 3 &&
+      (document.body.dataset.phaserInventoryActionLabels ?? '').includes('USE');
+  }, null, { timeout: 20_000 });
+}
+
+async function waitForPhaserFixedInventoryUse(page) {
+  await page.waitForFunction(() => {
+    return document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserDrawer === 'inventory' &&
+      document.body.dataset.phaserPlayerHp === '55';
+  }, null, { timeout: 20_000 });
 }
 
 async function waitForPhaserFixedRuntimeReady(page) {
@@ -2061,6 +2104,13 @@ async function collectMetrics(page) {
       phaserDrawer: document.body.dataset.phaserDrawer ?? null,
       phaserRuntimeState: document.body.dataset.phaserRuntimeState ?? null,
       phaserStatus: document.body.dataset.phaserStatus ?? null,
+      phaserInventoryOpen: document.body.dataset.phaserInventoryOpen ?? null,
+      phaserInventoryCount: Number(document.body.dataset.phaserInventoryCount ?? NaN),
+      phaserInventoryActions: Number(document.body.dataset.phaserInventoryActions ?? NaN),
+      phaserInventoryReadyActions: Number(document.body.dataset.phaserInventoryReadyActions ?? NaN),
+      phaserEquippedCount: Number(document.body.dataset.phaserEquippedCount ?? NaN),
+      phaserInventoryActionLabels: document.body.dataset.phaserInventoryActionLabels ?? '',
+      phaserPlayerHp: Number(document.body.dataset.phaserPlayerHp ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2405,6 +2455,31 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-workbench-log' && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-inventory' || scenario.mode === 'phaser-fixed-workbench-inventory-use') {
+    if (metrics.phaserDrawer !== 'inventory') {
+      failures.push(`expected Phaser inventory drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+    }
+    if (metrics.phaserInventoryOpen !== '1') {
+      failures.push(`expected Phaser inventory-open dataset, got ${metrics.phaserInventoryOpen ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryCount) || metrics.phaserInventoryCount < 3) {
+      failures.push(`expected at least 3 Phaser inventory rows, got ${metrics.phaserInventoryCount ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryActions) || metrics.phaserInventoryActions < 3) {
+      failures.push(`expected at least 3 Phaser inventory action chips, got ${metrics.phaserInventoryActions ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserEquippedCount) || metrics.phaserEquippedCount < 2) {
+      failures.push(`expected equipped Phaser inventory states, got ${metrics.phaserEquippedCount ?? 'none'}`);
+    }
+    if (!metrics.phaserInventoryActionLabels.includes('ON') || !metrics.phaserInventoryActionLabels.includes('USE')) {
+      failures.push(`expected ON and USE Phaser inventory labels, got ${metrics.phaserInventoryActionLabels || 'none'}`);
+    }
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-inventory-use' && metrics.phaserPlayerHp !== 55) {
+    failures.push(`expected Phaser inventory use to heal HP to 55, got ${metrics.phaserPlayerHp ?? 'none'}`);
   }
 }
 
