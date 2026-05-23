@@ -1465,6 +1465,8 @@ async function collectMetrics(page) {
       statXp: '.fixed-stat-row span:nth-child(3)',
       tileStatValue: '.fixed-stat-row span:nth-child(4) strong',
       combatPanel: '#combat-panel',
+      enemyBadge: '#enemy-icon-badge',
+      enemyIcon: '#enemy-icon',
       controlsPanel: '.controls-panel',
       logPanel: '#log-panel',
       firstLogEntry: '#game-log p.latest',
@@ -1665,6 +1667,24 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectCombatMetrics = () => {
+      const badge = document.getElementById('enemy-icon-badge');
+      if (!badge) {
+        return {
+          enemyBadgeStyled: false,
+          enemyIconClass: ''
+        };
+      }
+
+      const style = getComputedStyle(badge);
+      return {
+        enemyBadgeStyled: style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none',
+        enemyIconClass: document.getElementById('enemy-icon')?.className ?? ''
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1715,6 +1735,7 @@ async function collectMetrics(page) {
       mapIcons: collectMapIconMetrics(),
       inventory: collectInventoryMetrics(),
       log: collectLogMetrics(),
+      combat: collectCombatMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -1979,6 +2000,8 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push('fixed runtime combat controls are unexpectedly disabled');
   }
 
+  validateFixedEnemyBadge(metrics, failures, 'fixed runtime');
+
   if (!metrics.inCombat && metrics.combatTitleText !== 'Explore') {
     failures.push(`fixed runtime non-combat panel should say Explore, got ${metrics.combatTitleText || 'empty'}`);
   }
@@ -1995,6 +2018,32 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     validateDesktopFixedLayout(metrics, failures);
   } else {
     validateCompactMobileLayout(metrics, failures);
+  }
+}
+
+function validateFixedEnemyBadge(metrics, failures, context) {
+  if (!metrics.inCombat || metrics.enemyHpText === '--') {
+    return;
+  }
+
+  const badge = metrics.rects.enemyBadge;
+  const icon = metrics.rects.enemyIcon;
+  const minSize = scaledFixedThreshold(metrics, 22);
+
+  if (!badge || badge.visibleWidth < minSize || badge.visibleHeight < minSize) {
+    failures.push(`${context} enemy badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
+  }
+
+  if (!icon || icon.visibleWidth < scaledFixedThreshold(metrics, 10) || icon.visibleHeight < scaledFixedThreshold(metrics, 10)) {
+    failures.push(`${context} enemy badge icon is clipped: ${icon?.visibleWidth ?? 0}x${icon?.visibleHeight ?? 0}`);
+  }
+
+  if (!metrics.combat.enemyBadgeStyled) {
+    failures.push(`${context} enemy badge lacks physical styling`);
+  }
+
+  if (!metrics.combat.enemyIconClass.includes('fa-')) {
+    failures.push(`${context} enemy badge is missing a Font Awesome icon class`);
   }
 }
 
@@ -2086,6 +2135,8 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   if (!isMovementScenario && !isRunScenario && !isEndStateScenario && !isRestartScenario && !metrics.inCombat) {
     failures.push('fixed workbench did not render the combat state');
   }
+
+  validateFixedEnemyBadge(metrics, failures, 'fixed workbench');
 
   if (isMovementScenario) {
     if (metrics.fixedScenario !== 'movement') {

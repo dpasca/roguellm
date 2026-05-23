@@ -1227,10 +1227,71 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
   font-weight: 900;
 }
 
+.fixed-combat-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.fixed-enemy-badge {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(255, 116, 134, 0.54);
+  color: #ff8d9b;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 166, 158, 0.30), transparent 48%),
+    linear-gradient(180deg, rgba(94, 24, 27, 0.86), rgba(18, 4, 8, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 12px rgba(255, 95, 118, 0.16);
+}
+
+.fixed-enemy-badge.empty {
+  border-color: rgba(122, 139, 128, 0.38);
+  color: #7d8a82;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(170, 190, 176, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(25, 34, 28, 0.78), rgba(6, 10, 8, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 8px rgba(126, 255, 96, 0.06);
+}
+
+.fixed-enemy-badge i {
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 8px currentColor;
+}
+
 .fixed-hp-row span,
 .fixed-combat-row span {
   color: #b7c1bd;
   font-weight: 700;
+}
+
+.fixed-combat-row .fixed-enemy-badge {
+  color: #ff8d9b;
+  font-weight: 900;
+}
+
+.fixed-combat-row .fixed-enemy-badge.empty {
+  color: #7d8a82;
+}
+
+.fixed-combat-row #enemy-name {
+  min-width: 0;
+  overflow: hidden;
+  color: #f5fff2;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-combat-row #enemy-hp {
+  white-space: nowrap;
 }
 
 .fixed-stat-row {

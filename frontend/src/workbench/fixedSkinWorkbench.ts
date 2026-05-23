@@ -771,6 +771,16 @@ function createCombatRow(): HTMLElement {
   const row = document.createElement('div');
   row.className = 'fixed-combat-row';
 
+  const badge = document.createElement('span');
+  badge.id = 'enemy-icon-badge';
+  badge.className = 'fixed-enemy-badge';
+  badge.setAttribute('aria-hidden', 'true');
+
+  const icon = document.createElement('i');
+  icon.id = 'enemy-icon';
+  icon.className = 'fa-solid fa-skull';
+  badge.append(icon);
+
   const name = document.createElement('span');
   name.id = 'enemy-name';
   name.textContent = 'Enemy';
@@ -779,7 +789,7 @@ function createCombatRow(): HTMLElement {
   hp.id = 'enemy-hp';
   hp.textContent = '--';
 
-  row.append(name, hp);
+  row.append(badge, name, hp);
   return row;
 }
 
@@ -890,6 +900,7 @@ function renderTextState(
   setText('combat-mode-label', state.in_combat ? 'Combat' : 'Explore');
   setText('enemy-name', enemy?.name ?? (state.in_combat ? 'No enemy' : 'No hostile'));
   setText('enemy-hp', enemy ? `${enemy.hp}/${enemy.max_hp}` : '--');
+  renderEnemyBadgeState(enemy);
   setFill('fixed-player-hp-fill', state.player_hp, state.player_max_hp, profile.regions.playerHpFill.width);
   setFill('fixed-enemy-hp-fill', enemy?.hp ?? 0, enemy?.max_hp ?? 1, profile.regions.enemyHpFill.width);
   renderEndState(state);
@@ -900,6 +911,17 @@ function renderTextState(
     'background-image',
     `url("${state.in_combat ? profile.indicators.combatLed.states.on : profile.indicators.combatLed.states.off}")`
   );
+}
+
+function renderEnemyBadgeState(enemy: GameState['current_enemy']): void {
+  const badge = document.getElementById('enemy-icon-badge');
+  const icon = document.getElementById('enemy-icon');
+  if (!badge || !icon) {
+    return;
+  }
+
+  badge.classList.toggle('empty', !enemy);
+  icon.className = normalizeFontAwesomeClass(enemy?.font_awesome_icon, enemy ? 'fa-solid fa-skull' : 'fa-solid fa-ban');
 }
 
 function renderTitleState(state: GameState): void {
