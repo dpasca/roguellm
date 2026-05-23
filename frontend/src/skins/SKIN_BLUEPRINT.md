@@ -148,6 +148,12 @@ and visual inspection gates so they behave like part of the skin:
   and `TILE`, with fixed numeric columns and a flexible tile-value column.
 - Visual inspection must fail when fixed stat plates are missing, unstyled, or
   clipping their values.
+- Fixed HP rows use a stable `HP` label plate and HP value plate, while the HP
+  fill remains a separate meter region defined by the skin profile.
+- Fixed status indicators expose their state as `ready`, `thinking`, `error`,
+  or `offline` and must render the matching status sprite.
+- Visual inspection must fail when HP plates are unstyled/clipped or when the
+  status sprite state does not match the compact runtime label.
 
 ## Asset Rules
 

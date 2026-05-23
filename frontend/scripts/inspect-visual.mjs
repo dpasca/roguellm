@@ -624,6 +624,8 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen ? 'inventory open' : null,
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
+      metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
+      metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
@@ -1467,6 +1469,9 @@ async function collectMetrics(page) {
       latestPanel: '.latest-message-panel',
       latestMessage: '#latest-message',
       playerPanel: '.player-panel',
+      hpLabel: '.fixed-hp-label',
+      playerHpValue: '#player-hp',
+      playerHpFill: '#fixed-player-hp-fill',
       statAttack: '.fixed-stat-cell[data-stat="atk"]',
       statAttackValue: '.fixed-stat-cell[data-stat="atk"] strong',
       statDefense: '.fixed-stat-cell[data-stat="def"]',
@@ -1715,6 +1720,25 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectHpMetrics = () => {
+      const label = document.querySelector('.fixed-hp-label');
+      const value = document.getElementById('player-hp');
+      const hasPhysicalTreatment = (element) => {
+        if (!element) {
+          return false;
+        }
+        const style = getComputedStyle(element);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      };
+
+      return {
+        labelStyled: hasPhysicalTreatment(label),
+        valueStyled: hasPhysicalTreatment(value)
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1767,6 +1791,7 @@ async function collectMetrics(page) {
       log: collectLogMetrics(),
       combat: collectCombatMetrics(),
       stats: collectStatMetrics(),
+      hp: collectHpMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -2011,6 +2036,9 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected fixed runtime READY status, got ${metrics.statusText}`);
   }
 
+  validateFixedHpHardware(metrics, failures, 'fixed runtime');
+  validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
+
   if (metrics.latestTextLength < 30) {
     failures.push('fixed runtime latest message is too short to inspect');
   }
@@ -2049,6 +2077,49 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
     validateDesktopFixedLayout(metrics, failures);
   } else {
     validateCompactMobileLayout(metrics, failures);
+  }
+}
+
+function validateFixedHpHardware(metrics, failures, context) {
+  const label = metrics.rects.hpLabel;
+  const value = metrics.rects.playerHpValue;
+  const fill = metrics.rects.playerHpFill;
+
+  if (!label || label.visibleWidth < scaledFixedThreshold(metrics, 32) || label.visibleHeight < scaledFixedThreshold(metrics, 18)) {
+    failures.push(`${context} HP label plate is clipped: ${label?.visibleWidth ?? 0}x${label?.visibleHeight ?? 0}`);
+  }
+
+  if (!value || value.visibleWidth < scaledFixedThreshold(metrics, 62) || value.visibleHeight < scaledFixedThreshold(metrics, 16)) {
+    failures.push(`${context} HP value plate is clipped: ${value?.visibleWidth ?? 0}x${value?.visibleHeight ?? 0}`);
+  }
+
+  if (value && value.scrollWidth > value.clientWidth + 1) {
+    failures.push(`${context} HP value is clipped: ${value.scrollWidth}px > ${value.clientWidth}px`);
+  }
+
+  const hpValue = Number(metrics.playerHpText.split('/')[0]);
+  if (!fill || fill.visibleHeight < 4 || (hpValue > 0 && fill.visibleWidth < 1)) {
+    failures.push(`${context} HP fill is clipped: ${fill?.visibleWidth ?? 0}x${fill?.visibleHeight ?? 0}`);
+  }
+
+  if (!metrics.hp.labelStyled || !metrics.hp.valueStyled) {
+    failures.push(`${context} HP hardware lacks physical styling`);
+  }
+}
+
+function validateFixedStatusHardware(metrics, failures, context, expectedState) {
+  const status = metrics.rects.statusPill;
+  if (!status) {
+    failures.push(`${context} status indicator is missing`);
+    return;
+  }
+
+  if (status.visualState !== expectedState) {
+    failures.push(`${context} status visual state should be ${expectedState}, got ${status.visualState ?? 'none'}`);
+  }
+
+  if (status.backgroundImage === 'none') {
+    failures.push(`${context} status indicator has no state sprite`);
   }
 }
 
@@ -2288,12 +2359,17 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     if (metrics.statusText !== 'WAIT') {
       failures.push(`expected compact WAIT status text, got ${metrics.statusText}`);
     }
+    validateFixedStatusHardware(metrics, failures, 'fixed workbench', 'thinking');
     if (!metrics.controlStates.attackDisabled || !metrics.controlStates.runDisabled) {
       failures.push('status scenario did not disable pending combat controls');
     }
   } else if (metrics.statusText !== 'READY') {
     failures.push(`fixed workbench steady state should show READY status, got ${metrics.statusText || 'empty'}`);
+  } else {
+    validateFixedStatusHardware(metrics, failures, 'fixed workbench', 'ready');
   }
+
+  validateFixedHpHardware(metrics, failures, 'fixed workbench');
 
   if (isInventoryScenario) {
     if (!metrics.inventoryOpen) {

@@ -757,10 +757,12 @@ function createPlayerHpRow(): HTMLElement {
   row.className = 'fixed-hp-row';
 
   const label = document.createElement('span');
+  label.className = 'fixed-hp-label';
   label.textContent = 'HP';
 
   const value = document.createElement('strong');
   value.id = 'player-hp';
+  value.className = 'fixed-hp-value';
   value.textContent = '--';
 
   row.append(label, value);
@@ -1132,6 +1134,7 @@ function renderStatusIndicator(profile: FixedSkinProfile, status: string): void 
   const normalized = status.trim().toLowerCase();
   const { label, visualState } = fixedStatusDisplay(normalized);
   element.textContent = label;
+  element.dataset.visualState = visualState;
   element.style.setProperty(
     'background-image',
     `url("${profile.indicators.status.states[visualState] ?? profile.indicators.status.states.ready}")`

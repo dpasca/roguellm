@@ -1227,6 +1227,47 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
   font-weight: 900;
 }
 
+.fixed-hp-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.fixed-hp-label {
+  display: grid;
+  min-height: 24px;
+  place-items: center;
+  border: 1px solid rgba(140, 255, 141, 0.42);
+  color: #a8ff9a;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(218, 255, 199, 0.22), transparent 48%),
+    linear-gradient(180deg, rgba(30, 80, 27, 0.74), rgba(5, 15, 6, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.66),
+    0 0 10px rgba(126, 255, 96, 0.14);
+  text-shadow: 0 0 8px currentColor;
+}
+
+.fixed-hp-value {
+  justify-self: end;
+  min-width: 76px;
+  padding: 2px 7px;
+  border: 1px solid rgba(140, 255, 141, 0.26);
+  color: #ffffff;
+  line-height: 1;
+  text-align: right;
+  background:
+    linear-gradient(90deg, rgba(140, 255, 141, 0.12), transparent 60%),
+    rgba(3, 13, 7, 0.50);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.48),
+    0 0 8px rgba(126, 255, 96, 0.08);
+}
+
 .fixed-combat-row {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
@@ -1693,6 +1734,15 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
   font-size: 16px;
 }
 
+.fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-hp-label {
+  min-height: 22px;
+  font-size: 11px;
+}
+
+.fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-hp-value {
+  min-width: 72px;
+}
+
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-stat-row {
   margin-top: 18px;
   font-size: 11px;
@@ -1736,6 +1786,16 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-row {
   font-size: 15px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-label {
+  min-height: 20px;
+  font-size: 10px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-value {
+  min-width: 68px;
+  padding: 1px 6px;
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-row {
