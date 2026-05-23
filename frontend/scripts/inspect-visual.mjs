@@ -752,6 +752,7 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
+      Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
         : null,
@@ -2250,6 +2251,7 @@ async function collectMetrics(page) {
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
+      phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2615,6 +2617,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected detailed Phaser map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
   }
 
+  if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
+    failures.push(`expected detailed Phaser control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);
+  }
+
   const canvas = metrics.rects.phaserCanvas;
   if (!canvas || canvas.visibleWidth < metrics.viewport.width * 0.92 || canvas.visibleHeight < metrics.viewport.height * 0.92) {
     failures.push(`Phaser fixed canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
@@ -2731,6 +2737,10 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
     failures.push(`expected detailed Phaser runtime map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
+    failures.push(`expected detailed Phaser runtime control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;

@@ -534,6 +534,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private materialPanelsDrawn = 0;
   private chromeDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
+  private controlDetailsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -604,6 +605,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.materialPanelsDrawn = 0;
     this.chromeDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
+    this.controlDetailsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawMap();
@@ -630,6 +632,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
+    document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
   }
 
   private drawMap(): void {
@@ -951,6 +954,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.controlFrame,
       scanlines: false
     });
+    this.drawControlBayHardware(rect);
   }
 
   private drawButton(buttonId: FixedButtonId, button: FixedSkinButton): void {
@@ -967,6 +971,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     const image = this.add.image(button.rect.x, button.rect.y, key).setOrigin(0, 0);
+    this.drawButtonHardwareOverlay(buttonId, button, state, disabled);
     if (!disabled) {
       image.setInteractive({ useHandCursor: true });
       image.on('pointerover', () => image.setTexture(buttonKey(this.profile, buttonId, active ? 'pressed' : 'hover')));
@@ -994,6 +999,180 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         align: 'center'
       });
     }
+  }
+
+  private drawControlBayHardware(rect: FixedSkinRect): void {
+    const graphics = this.add.graphics();
+    const moveRects = [
+      this.profile.buttons.moveN?.rect,
+      this.profile.buttons.moveS?.rect,
+      this.profile.buttons.moveE?.rect,
+      this.profile.buttons.moveW?.rect
+    ].filter(Boolean) as FixedSkinRect[];
+    const dpadBounds = unionRects(moveRects);
+    const attack = this.profile.buttons.attack?.rect;
+    const run = this.profile.buttons.run?.rect;
+
+    graphics.fillStyle(0x020504, 0.42);
+    graphics.fillRoundedRect(rect.x + 8, rect.y + 8, rect.width - 16, rect.height - 16, 9);
+    graphics.lineStyle(1, this.theme.controlFrame, 0.28);
+    graphics.strokeRoundedRect(rect.x + 8.5, rect.y + 8.5, rect.width - 17, rect.height - 17, 9);
+    graphics.lineStyle(1, 0xffffff, 0.09);
+    graphics.lineBetween(rect.x + 16, rect.y + 11, rect.x + rect.width - 16, rect.y + 11);
+
+    if (dpadBounds) {
+      const well = outsetRect(dpadBounds, 12);
+      graphics.fillStyle(0x020504, 0.72);
+      graphics.fillRoundedRect(well.x, well.y, well.width, well.height, 12);
+      graphics.lineStyle(2, 0x1c2723, 0.95);
+      graphics.strokeRoundedRect(well.x + 0.5, well.y + 0.5, well.width - 1, well.height - 1, 12);
+      graphics.lineStyle(1, this.theme.primary, 0.2);
+      graphics.strokeRoundedRect(well.x + 5.5, well.y + 5.5, well.width - 11, well.height - 11, 8);
+
+      const cx = well.x + well.width * 0.5;
+      const cy = well.y + well.height * 0.5;
+      graphics.fillStyle(0x0b1110, 0.96);
+      graphics.fillRoundedRect(cx - 25, well.y + 8, 50, well.height - 16, 8);
+      graphics.fillRoundedRect(well.x + 8, cy - 25, well.width - 16, 50, 8);
+      graphics.lineStyle(1, 0x39443f, 0.6);
+      graphics.strokeRoundedRect(cx - 25.5, well.y + 8.5, 50, well.height - 17, 8);
+      graphics.strokeRoundedRect(well.x + 8.5, cy - 25.5, well.width - 17, 50, 8);
+      this.drawKnurledPlate(cx - 17, cy - 17, 34, 34, this.theme.primary);
+      this.drawHardwareScrew(graphics, well.x + 9, well.y + 9, this.theme.controlFrame);
+      this.drawHardwareScrew(graphics, well.x + well.width - 9, well.y + well.height - 9, this.theme.controlFrame);
+      this.controlDetailsDrawn += 11;
+    }
+
+    if (attack && run) {
+      const actionBounds = unionRects([attack, run]);
+      if (actionBounds) {
+        const rack = outsetRect(actionBounds, 9);
+        graphics.fillStyle(0x030403, 0.7);
+        graphics.fillRoundedRect(rack.x, rack.y, rack.width, rack.height, 10);
+        graphics.lineStyle(2, 0x1e2925, 0.95);
+        graphics.strokeRoundedRect(rack.x + 0.5, rack.y + 0.5, rack.width - 1, rack.height - 1, 10);
+        graphics.lineStyle(1, this.theme.buttonFrame, 0.34);
+        graphics.strokeRoundedRect(rack.x + 5.5, rack.y + 5.5, rack.width - 11, rack.height - 11, 7);
+        this.drawHardwareScrew(graphics, rack.x + 11, rack.y + 11, this.theme.buttonFrame);
+        this.drawHardwareScrew(graphics, rack.x + rack.width - 11, rack.y + 11, this.theme.combat);
+        this.drawHardwareScrew(graphics, rack.x + 11, rack.y + rack.height - 11, this.theme.controlFrame);
+        this.drawHardwareScrew(graphics, rack.x + rack.width - 11, rack.y + rack.height - 11, this.theme.primary);
+        this.controlDetailsDrawn += 8;
+      }
+    }
+
+    const railY = rect.y + rect.height - 19;
+    graphics.fillStyle(0x050807, 0.7);
+    graphics.fillRoundedRect(rect.x + 20, railY, rect.width - 40, 9, 4);
+    graphics.lineStyle(1, 0x2f3b36, 0.72);
+    graphics.strokeRoundedRect(rect.x + 20.5, railY + 0.5, rect.width - 41, 8, 4);
+    for (let index = 0; index < 8; index += 1) {
+      const lit = index % 3 !== 0;
+      graphics.fillStyle(lit ? (index % 2 === 0 ? this.theme.primary : this.theme.secondary) : 0x24302b, lit ? 0.7 : 0.42);
+      graphics.fillRoundedRect(rect.x + 154 + index * 10, railY + 3, 6, 3, 2);
+    }
+    this.controlDetailsDrawn += 10;
+  }
+
+  private drawButtonHardwareOverlay(
+    buttonId: FixedButtonId,
+    button: FixedSkinButton,
+    state: FixedSkinButtonState,
+    disabled: boolean
+  ): void {
+    const rect = button.rect;
+    const graphics = this.add.graphics();
+    const accent = buttonId === 'attack'
+      ? this.theme.combat
+      : buttonId === 'run'
+        ? this.theme.primary
+        : buttonId === 'restart'
+          ? this.theme.secondary
+          : this.theme.controlFrame;
+    const alpha = disabled ? 0.22 : state === 'pressed' ? 0.62 : 0.82;
+
+    graphics.lineStyle(1, 0xffffff, alpha * 0.16);
+    graphics.lineBetween(rect.x + 8, rect.y + 5, rect.x + rect.width - 8, rect.y + 5);
+    graphics.lineStyle(1, 0x010302, alpha * 0.52);
+    graphics.lineBetween(rect.x + 8, rect.y + rect.height - 5, rect.x + rect.width - 8, rect.y + rect.height - 5);
+    graphics.lineStyle(1, accent, alpha * 0.52);
+    graphics.strokeRoundedRect(rect.x + 4.5, rect.y + 4.5, rect.width - 9, rect.height - 9, Math.min(10, rect.height * 0.18));
+
+    if (buttonId === 'attack' || buttonId === 'run' || buttonId === 'restart') {
+      graphics.fillStyle(accent, alpha * 0.18);
+      graphics.fillRoundedRect(rect.x + 12, rect.y + 12, rect.width - 24, Math.max(5, Math.floor(rect.height * 0.18)), 4);
+      graphics.lineStyle(2, accent, alpha * 0.78);
+      graphics.lineBetween(rect.x + 16, rect.y + 11, rect.x + rect.width - 18, rect.y + 11);
+      graphics.fillStyle(accent, disabled ? 0.22 : 0.95);
+      graphics.fillCircle(rect.x + rect.width - 9, rect.y + 8, 4);
+      graphics.fillStyle(0xffffff, disabled ? 0.08 : 0.28);
+      graphics.fillCircle(rect.x + rect.width - 10, rect.y + 7, 1.5);
+      this.controlDetailsDrawn += 6;
+      return;
+    }
+
+    if (isMoveButton(buttonId)) {
+      const cx = rect.x + rect.width * 0.5;
+      const cy = rect.y + rect.height * 0.5;
+      graphics.fillStyle(0x020504, disabled ? 0.28 : 0.45);
+      graphics.fillRoundedRect(rect.x + 9, rect.y + 9, rect.width - 18, rect.height - 18, 6);
+      graphics.fillStyle(disabled ? 0x5f6963 : this.theme.primary, disabled ? 0.3 : 0.86);
+      this.fillDirectionTriangle(graphics, buttonId, cx, cy, Math.max(10, Math.floor(rect.width * 0.26)));
+      graphics.lineStyle(1, this.theme.primary, disabled ? 0.12 : 0.3);
+      graphics.strokeRoundedRect(rect.x + 9.5, rect.y + 9.5, rect.width - 19, rect.height - 19, 6);
+      this.controlDetailsDrawn += 5;
+      return;
+    }
+
+    if (buttonId === 'log' || buttonId === 'inventory') {
+      graphics.lineStyle(1, accent, alpha * 0.72);
+      graphics.lineBetween(rect.x + 8, rect.y + rect.height - 7, rect.x + rect.width - 8, rect.y + rect.height - 7);
+      this.controlDetailsDrawn += 2;
+    }
+  }
+
+  private fillDirectionTriangle(
+    graphics: Phaser.GameObjects.Graphics,
+    buttonId: FixedButtonId,
+    cx: number,
+    cy: number,
+    size: number
+  ): void {
+    if (buttonId === 'moveN') {
+      graphics.fillTriangle(cx, cy - size, cx - size, cy + size * 0.72, cx + size, cy + size * 0.72);
+    } else if (buttonId === 'moveS') {
+      graphics.fillTriangle(cx, cy + size, cx - size, cy - size * 0.72, cx + size, cy - size * 0.72);
+    } else if (buttonId === 'moveE') {
+      graphics.fillTriangle(cx + size, cy, cx - size * 0.72, cy - size, cx - size * 0.72, cy + size);
+    } else if (buttonId === 'moveW') {
+      graphics.fillTriangle(cx - size, cy, cx + size * 0.72, cy - size, cx + size * 0.72, cy + size);
+    }
+  }
+
+  private drawKnurledPlate(x: number, y: number, width: number, height: number, tint: number): void {
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x020504, 0.9);
+    graphics.fillRoundedRect(x, y, width, height, 5);
+    graphics.lineStyle(1, tint, 0.24);
+    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
+    graphics.lineStyle(1, tint, 0.12);
+    for (let offset = -height; offset < width; offset += 7) {
+      graphics.lineBetween(x + offset, y + height, x + offset + height, y);
+      graphics.lineBetween(x + offset, y, x + offset + height, y + height);
+    }
+    this.controlDetailsDrawn += 4;
+  }
+
+  private drawHardwareScrew(graphics: Phaser.GameObjects.Graphics, x: number, y: number, tint: number): void {
+    graphics.fillStyle(0x020504, 0.88);
+    graphics.fillCircle(x, y, 4);
+    graphics.fillStyle(tint, 0.42);
+    graphics.fillCircle(x, y, 2.7);
+    graphics.lineStyle(1, 0xffffff, 0.16);
+    graphics.lineBetween(x - 2, y - 1, x + 2, y - 1);
+    graphics.lineStyle(1, 0x010302, 0.6);
+    graphics.lineBetween(x - 2, y + 1, x + 2, y + 1);
+    this.controlDetailsDrawn += 1;
   }
 
   private drawLogDrawer(): void {
@@ -1780,4 +1959,34 @@ function insetRect(rect: FixedSkinRect, inset: number): FixedSkinRect {
     width: Math.max(1, rect.width - inset * 2),
     height: Math.max(1, rect.height - inset * 2)
   };
+}
+
+function outsetRect(rect: FixedSkinRect, outset: number): FixedSkinRect {
+  return {
+    x: rect.x - outset,
+    y: rect.y - outset,
+    width: rect.width + outset * 2,
+    height: rect.height + outset * 2
+  };
+}
+
+function unionRects(rects: FixedSkinRect[]): FixedSkinRect | null {
+  if (rects.length === 0) {
+    return null;
+  }
+
+  const left = Math.min(...rects.map((rect) => rect.x));
+  const top = Math.min(...rects.map((rect) => rect.y));
+  const right = Math.max(...rects.map((rect) => rect.x + rect.width));
+  const bottom = Math.max(...rects.map((rect) => rect.y + rect.height));
+  return {
+    x: left,
+    y: top,
+    width: right - left,
+    height: bottom - top
+  };
+}
+
+function isMoveButton(buttonId: FixedButtonId): boolean {
+  return buttonId === 'moveN' || buttonId === 'moveS' || buttonId === 'moveE' || buttonId === 'moveW';
 }
