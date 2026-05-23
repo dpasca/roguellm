@@ -306,6 +306,17 @@ For local fixed-skin workbench review, use:
 http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin
 ```
 
+The legacy fixed-skin workbench still uses browser DOM/CSS as scaffolding. The
+new migration target renders the fixed skin inside a single Phaser canvas:
+
+```text
+http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&renderer=phaser&profile=reference-mobile-compact
+```
+
+Use this Phaser renderer for new skin-quality work. It consumes the same fixed
+profile manifests and PNG state assets, so improvements made there can be
+migrated into the live runtime without inventing a second skin format.
+
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the
 URL between screenshots.

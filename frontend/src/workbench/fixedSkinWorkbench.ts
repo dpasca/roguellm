@@ -72,7 +72,7 @@ export function isFixedSkinRuntime(location: Location = window.location, viewpor
 }
 
 export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAction) => void): FixedSkinRuntimeUi {
-  const selectedProfile = selectProfile(skin);
+  const selectedProfile = selectFixedSkinProfile(skin);
   if (!selectedProfile) {
     throw new Error(`Skin ${skin.id} does not define fixed profiles`);
   }
@@ -208,7 +208,7 @@ export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAc
 }
 
 export function startFixedSkinWorkbench(skin: GameSkin): void {
-  const selectedProfile = selectProfile(skin);
+  const selectedProfile = selectFixedSkinProfile(skin);
   if (!selectedProfile) {
     throw new Error(`Skin ${skin.id} does not define fixed profiles`);
   }
@@ -302,7 +302,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   }
 }
 
-function selectProfile(skin: GameSkin): FixedSkinProfile | null {
+export function selectFixedSkinProfile(skin: GameSkin): FixedSkinProfile | null {
   const profiles = skin.fixedProfiles ?? [];
   if (profiles.length === 0) {
     return null;

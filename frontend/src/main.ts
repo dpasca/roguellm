@@ -9,6 +9,7 @@ import { getSkinFromLocation } from './skins/registry';
 import type { GameSkin } from './skins/types';
 import { HudController } from './ui/hud';
 import { createFixedSkinRuntime, isFixedSkinRuntime, isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
+import { isPhaserFixedSkinWorkbench, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
 import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
@@ -42,7 +43,9 @@ interface RuntimeUi {
 const activeSkin = getSkinFromLocation();
 applySkin(activeSkin);
 
-if (isFixedSkinWorkbench()) {
+if (isPhaserFixedSkinWorkbench()) {
+  startPhaserFixedSkinWorkbench(activeSkin);
+} else if (isFixedSkinWorkbench()) {
   startFixedSkinWorkbench(activeSkin);
 } else if (isSkinWorkbench()) {
   startSkinWorkbench(activeSkin);
