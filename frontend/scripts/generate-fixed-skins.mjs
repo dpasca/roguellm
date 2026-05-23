@@ -70,30 +70,32 @@ const compactSkinRegions = {
   endState: { x: 38, y: 292, width: 314, height: 238 }
 };
 
-const compactSkinAssets = {
-  chassis: { path: 'chassis.png', width: 390, height: 667 },
-  buttons: {
-    attack: { prefix: 'attack', sourceProfile: 'reference-mobile-v3', width: 152, height: 66, alpha: true },
-    run: { prefix: 'run', sourceProfile: 'reference-mobile-v3', width: 152, height: 66, alpha: true },
-    restart: { prefix: 'restart', sourceProfile: 'reference-mobile-v3', width: 226, height: 66, alpha: true },
-    log: { prefix: 'log', sourceProfile: 'reference-mobile-v3', width: 46, height: 32, alpha: true },
-    inventory: { prefix: 'inventory', sourceProfile: 'reference-mobile-v3', width: 46, height: 32, alpha: true },
-    moveN: { prefix: 'dpad-n', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
-    moveS: { prefix: 'dpad-s', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
-    moveE: { prefix: 'dpad-e', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true },
-    moveW: { prefix: 'dpad-w', sourceProfile: 'reference-mobile-v3', width: 58, height: 58, alpha: true }
-  },
-  indicators: {
-    status: {
-      ...skinAssets.indicators.status,
-      sourceProfile: 'reference-mobile-v3'
+function compactSkinAssets(sourceProfile = 'reference-mobile-v3') {
+  return {
+    chassis: { path: 'chassis.png', width: 390, height: 667 },
+    buttons: {
+      attack: { prefix: 'attack', sourceProfile, width: 152, height: 66, alpha: true },
+      run: { prefix: 'run', sourceProfile, width: 152, height: 66, alpha: true },
+      restart: { prefix: 'restart', sourceProfile, width: 226, height: 66, alpha: true },
+      log: { prefix: 'log', sourceProfile, width: 46, height: 32, alpha: true },
+      inventory: { prefix: 'inventory', sourceProfile, width: 46, height: 32, alpha: true },
+      moveN: { prefix: 'dpad-n', sourceProfile, width: 58, height: 58, alpha: true },
+      moveS: { prefix: 'dpad-s', sourceProfile, width: 58, height: 58, alpha: true },
+      moveE: { prefix: 'dpad-e', sourceProfile, width: 58, height: 58, alpha: true },
+      moveW: { prefix: 'dpad-w', sourceProfile, width: 58, height: 58, alpha: true }
     },
-    combatLed: {
-      ...skinAssets.indicators.combatLed,
-      sourceProfile: 'reference-mobile-v3'
+    indicators: {
+      status: {
+        ...skinAssets.indicators.status,
+        sourceProfile
+      },
+      combatLed: {
+        ...skinAssets.indicators.combatLed,
+        sourceProfile
+      }
     }
-  }
-};
+  };
+}
 
 const compactSkinLayout = {
   buttons: {
@@ -127,14 +129,16 @@ const standardSkinProfile = {
   chassis: (variant) => variant.premium ? premiumChassisSvg(variant) : chassisSvg(variant)
 };
 
-const compactSkinProfile = {
-  kind: 'mobileCompact',
-  size: { width: 390, height: 667 },
-  regions: compactSkinRegions,
-  assets: compactSkinAssets,
-  layout: compactSkinLayout,
-  chassis: compactPremiumChassisSvg
-};
+function compactSkinProfileFor(sourceProfile = 'reference-mobile-v3') {
+  return {
+    kind: 'mobileCompact',
+    size: { width: 390, height: 667 },
+    regions: compactSkinRegions,
+    assets: compactSkinAssets(sourceProfile),
+    layout: compactSkinLayout,
+    chassis: compactPremiumChassisSvg
+  };
+}
 
 const variants = [
   {
@@ -286,19 +290,31 @@ const variants = [
 ];
 
 const compactVariants = [
-  {
-    ...variants.find((variant) => variant.id === 'reference-mobile-v3'),
+  compactVariant('reference-mobile-v3', {
     id: 'reference-mobile-compact',
     displayLabel: 'Reference Compact Short',
     label: 'REFERENCE COMPACT SHORT',
-    role: 'variant',
     defaultPriority: 90,
-    tags: ['cyberpunk', 'neon', 'urban', 'technology', 'crime', 'modern', 'short-phone'],
-    mood: ['dense', 'electric', 'premium', 'tactical', 'compact'],
-    palette: ['green', 'orange', 'graphite'],
-    footer: 'SHORT PROFILE',
-    version: 'v0.1'
-  }
+    footer: 'SHORT PROFILE'
+  }),
+  compactVariant('signal-noir-mobile', {
+    id: 'signal-noir-mobile-compact',
+    displayLabel: 'Signal Noir Short Deck',
+    label: 'SIGNAL NOIR SHORT',
+    footer: 'SHORT SIGNAL'
+  }),
+  compactVariant('gold-mobile', {
+    id: 'gold-mobile-compact',
+    displayLabel: 'Gold Mobile Short Deck',
+    label: 'GOLD MOBILE SHORT',
+    footer: 'SHORT GOLD'
+  }),
+  compactVariant('amber-mobile', {
+    id: 'amber-mobile-compact',
+    displayLabel: 'Amber Relay Short Deck',
+    label: 'AMBER RELAY SHORT',
+    footer: 'SHORT AMBER'
+  })
 ];
 
 const buttonStates = {
@@ -312,9 +328,29 @@ for (const variant of variants) {
   generateVariant(variant, standardSkinProfile);
 }
 for (const variant of compactVariants) {
-  generateVariant(variant, compactSkinProfile);
+  generateVariant(variant, compactSkinProfileFor(variant.sourceProfile));
 }
 generateDesktopPrototypeAddons();
+
+function compactVariant(sourceId, overrides) {
+  const source = variants.find((variant) => variant.id === sourceId);
+  if (!source) {
+    throw new Error(`Unknown compact source profile: ${sourceId}`);
+  }
+
+  return {
+    ...source,
+    ...overrides,
+    sourceProfile: sourceId,
+    role: 'variant',
+    defaultPriority: overrides.defaultPriority ?? source.defaultPriority,
+    tags: [...source.tags, 'short-phone'],
+    mood: [...source.mood, 'compact'],
+    footer: overrides.footer ?? source.footer,
+    version: overrides.version ?? source.version,
+    generation: 'deterministic-svg-premium-compact'
+  };
+}
 
 function generateVariant(variant, profile) {
   const outDir = path.join(fixedRootDir, variant.id);
@@ -413,7 +449,7 @@ function skinMeta(variant) {
     mood: variant.mood,
     palette: variant.palette,
     defaultPriority: variant.defaultPriority,
-    generation: variant.premium ? 'deterministic-svg-premium' : 'deterministic-svg'
+    generation: variant.generation ?? (variant.premium ? 'deterministic-svg-premium' : 'deterministic-svg')
   };
 }
 

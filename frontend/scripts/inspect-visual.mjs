@@ -150,7 +150,29 @@ const baseScenarios = [
       skin_mood: 'nocturnal',
       skin_palette: 'amber'
     }),
-    expectedFixedProfile: 'amber-mobile'
+    expectedFixedProfile: 'amber-mobile-compact'
+  },
+  {
+    name: 'mobile-short-themed-signal-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench',
+    url: withQueryParams(fixedWorkbenchUrl, {
+      skin_tags: 'noir,signal',
+      skin_mood: 'sleek',
+      skin_palette: 'cyan'
+    }),
+    expectedFixedProfile: 'signal-noir-mobile-compact'
+  },
+  {
+    name: 'mobile-short-themed-gold-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench',
+    url: withQueryParams(fixedWorkbenchUrl, {
+      skin_tags: 'city,technology',
+      skin_mood: 'tactical',
+      skin_palette: 'gold'
+    }),
+    expectedFixedProfile: 'gold-mobile-compact'
   },
   {
     name: 'mobile-short-fixed-runtime-log',

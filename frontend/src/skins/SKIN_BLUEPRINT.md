@@ -88,11 +88,12 @@ so generated manifests should use stable tags like `rain-city` instead of
 display phrases like `Rain City`.
 
 The fixed mobile runtime first honors an explicit `profile=` query parameter.
-Without that override, short mobile viewports choose the highest-priority
-`mobileCompact` profile, then fall back to `mobilePortrait`. Taller mobile
-viewports choose the highest-priority `mobilePortrait` profile. That keeps the
-default choice data-driven and makes future LLM theme matching a metadata
-problem instead of another hardcoded profile id.
+Without that override, short mobile viewports choose a themed `mobileCompact`
+profile when metadata tokens are present, then themed `mobilePortrait`, then the
+highest-priority compact/default mobile profile. Taller mobile viewports choose
+themed `mobilePortrait` first, then the highest-priority `mobilePortrait`
+profile. That keeps the default choice data-driven and makes future LLM theme
+matching a metadata problem instead of another hardcoded profile id.
 
 For structured theme experiments, pass comma-separated metadata tokens with
 `skin_tags`, `skin_mood`, and `skin_palette`. These are exact manifest tokens,
@@ -231,6 +232,15 @@ comparing behavior.
 - `reference-mobile-compact`: `390x667` short-phone profile selected
   automatically on short mobile viewports; it has compact geometry and reuses
   the reference control sprites.
+- `signal-noir-mobile-compact`: `390x667` short-phone variant for noir/signal
+  requests; it uses compact geometry, its own cyan/coral chassis, and reuses the
+  signal-noir control sprites.
+- `gold-mobile-compact`: `390x667` short-phone variant for gold/premium city
+  requests; it uses compact geometry, its own gold chassis, and reuses the gold
+  control sprites.
+- `amber-mobile-compact`: `390x667` short-phone variant for industrial/relay
+  requests; it uses compact geometry, its own amber chassis, and reuses the
+  amber control sprites.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.

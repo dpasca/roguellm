@@ -7,6 +7,9 @@ type FixedAssetProfile =
   | 'reference-mobile-v2'
   | 'reference-mobile-v3'
   | 'reference-mobile-compact'
+  | 'signal-noir-mobile-compact'
+  | 'gold-mobile-compact'
+  | 'amber-mobile-compact'
   | 'gold-mobile'
   | 'amber-mobile'
   | 'signal-noir-mobile';
@@ -226,6 +229,9 @@ function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId:
 
 const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('reference-mobile-compact'),
+  createManifestProfile('signal-noir-mobile-compact'),
+  createManifestProfile('gold-mobile-compact'),
+  createManifestProfile('amber-mobile-compact'),
   createManifestProfile('reference-mobile-v3'),
   createManifestProfile('signal-noir-mobile'),
   createManifestProfile('gold-mobile'),
