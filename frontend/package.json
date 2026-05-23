@@ -10,6 +10,7 @@
     "build:fixed-skins": "node scripts/generate-fixed-skins.mjs && node scripts/generate-reference-v2-addons.mjs",
     "build:gold-mobile-skin": "pnpm run build:fixed-skins",
     "skin:prompt": "node scripts/skin-layout-prompt.mjs",
+    "skin:scaffold": "node scripts/skin-layout-scaffold.mjs",
     "build": "tsc --noEmit && vite build",
     "check": "pnpm run build && pnpm run validate:bundle && pnpm run validate:skins",
     "check:visual": "pnpm run inspect:visual",

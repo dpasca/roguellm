@@ -80,6 +80,40 @@ async function buildCrop(sourcePath, kitDir, crop) {
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-hover.png'), ['-modulate', '116,118,100']);
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-pressed.png'), ['-modulate', '72,116,100']);
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-disabled.png'), ['-colorspace', 'Gray', '-modulate', '46,42,100']);
+  } else if (crop.variants === 'status-indicator') {
+    await writeVariant(outputPath, replaceSuffix(outputPath, '-ready.png', '-thinking.png'), [
+      '-fill',
+      '#68d8ff',
+      '-colorize',
+      '24',
+      '-modulate',
+      '120,130,100'
+    ]);
+    await writeVariant(outputPath, replaceSuffix(outputPath, '-ready.png', '-error.png'), [
+      '-fill',
+      '#ff4d6d',
+      '-colorize',
+      '45',
+      '-modulate',
+      '115,140,100'
+    ]);
+    await writeVariant(outputPath, replaceSuffix(outputPath, '-ready.png', '-offline.png'), [
+      '-colorspace',
+      'Gray',
+      '-modulate',
+      '48,70,100'
+    ]);
+  } else if (crop.variants === 'combat-led') {
+    await writeVariant(outputPath, replaceSuffix(outputPath, 'led-off.png', 'led-on.png'), [
+      '-alpha',
+      'set',
+      '-fill',
+      '#7cff6a',
+      '-colorize',
+      '55',
+      '-modulate',
+      '140,160,100'
+    ]);
   }
 }
 
@@ -88,6 +122,14 @@ async function writeVariant(sourcePath, outputPath, operations) {
     throw new Error(`Variant output must differ from source: ${sourcePath}`);
   }
   await magick([sourcePath, ...operations, outputPath]);
+}
+
+function replaceSuffix(value, expectedSuffix, replacementSuffix) {
+  if (!value.endsWith(expectedSuffix)) {
+    throw new Error(`Expected ${value} to end with ${expectedSuffix}`);
+  }
+
+  return `${value.slice(0, -expectedSuffix.length)}${replacementSuffix}`;
 }
 
 async function magick(args) {

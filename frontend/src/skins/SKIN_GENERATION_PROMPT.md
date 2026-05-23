@@ -61,33 +61,27 @@ Hard rules:
 
 ## Crop Targets
 
-After generation, copy the chosen source artboard into a skin directory and add a
-`build` section to that directory's `skin-kit.json`.
-
-The build script supports crops like:
-
-```json
-{
-  "build": {
-    "source": "../../sources/generated-mobile-v3.png",
-    "crops": [
-      {
-        "path": "attack-idle.png",
-        "rect": { "x": 205, "y": 666, "width": 152, "height": 66 },
-        "alphaRadius": 8,
-        "variants": "button"
-      }
-    ]
-  }
-}
-```
-
-Run:
+After generation, create a prototype manifest from the same contract profile:
 
 ```bash
-pnpm -C frontend build:skin-kit src/skins/neo-tokyo-console/fixed/<skin-id>
+pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
+  --label "Rain City Deck" \
+  --tags cyberpunk,rain-city \
+  --mood premium,nocturnal \
+  --palette green,brass,graphite \
+  --source source-artboard.png \
+  --out ../_artifacts/skin-kits/rain-city-deck
+```
+
+Then place the generated artboard at the scaffold's `build.source` path and run:
+
+```bash
+pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend validate:skins
 ```
 
-Only promote a generated artboard into the default mobile profile after the
-diagnostics and visual inspection screenshots look cleaner than `gold-mobile`.
+The scaffold crop plan creates the fixed runtime assets from the source
+artboard: full chassis, button state variants, status indicator states, and LED
+states. Only promote a generated artboard into the default mobile profile after
+the diagnostics and visual inspection screenshots look cleaner than
+`gold-mobile`.

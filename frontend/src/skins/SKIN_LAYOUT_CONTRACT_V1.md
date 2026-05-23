@@ -222,6 +222,34 @@ The generator prints the exact live-region rectangles, crop targets, indicator
 targets, and hard rules for the selected profile. Prefer it over manually
 copying tables into image-generation prompts.
 
+## Manifest Scaffold Generator
+
+After generating a source artboard, use the scaffold generator to create the
+matching `skin-kit.json` from the same contract profile:
+
+```bash
+pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
+  --label "Rain City Deck" \
+  --tags cyberpunk,rain-city \
+  --mood premium,nocturnal \
+  --palette green,brass,graphite \
+  --source source-artboard.png \
+  --out ../_artifacts/skin-kits/rain-city-deck
+```
+
+The scaffold is contract-driven. It copies the exact v1 regions and layout
+rectangles, declares all required fixed-size assets, and adds a `build.crops`
+plan for `build:skin-kit`. The default `meta.role` is `prototype`; do not move a
+generated scaffold into `src/skins/neo-tokyo-console/fixed` as a production
+`default` or `variant` until the PNG assets exist and validation passes.
+
+The scaffold crop plan assumes a single full source artboard:
+
+- `chassis.png` is cropped from the full canvas.
+- Button idle crops generate `hover`, `pressed`, and `disabled` variants.
+- `status-ready.png` generates `thinking`, `error`, and `offline` variants.
+- `led-off.png` generates `led-on.png`.
+
 ## Generation Prompt Template
 
 Use this template after selecting either the portrait or compact rectangle set:
