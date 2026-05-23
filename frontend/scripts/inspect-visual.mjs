@@ -625,6 +625,7 @@ function buildHtmlReport(summary) {
       metrics.inCombat ? 'combat' : 'explore',
       metrics.fontAwesome ? `fa ${metrics.fontAwesome.rendered}/${metrics.fontAwesome.visible}` : null,
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
+      metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
@@ -1739,6 +1740,22 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectLatestMetrics = () => {
+      const latest = document.getElementById('latest-message');
+      if (!latest) {
+        return {
+          messageStyled: false
+        };
+      }
+
+      const style = getComputedStyle(latest);
+      return {
+        messageStyled: style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none'
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1789,6 +1806,7 @@ async function collectMetrics(page) {
       mapIcons: collectMapIconMetrics(),
       inventory: collectInventoryMetrics(),
       log: collectLogMetrics(),
+      latest: collectLatestMetrics(),
       combat: collectCombatMetrics(),
       stats: collectStatMetrics(),
       hp: collectHpMetrics(),
@@ -2830,6 +2848,10 @@ function validateFixedMessageTextFit(metrics, failures) {
   const firstLogEntry = metrics.rects.firstLogEntry;
 
   if (!metrics.logOpen && !metrics.inventoryOpen) {
+    if (!metrics.latest.messageStyled) {
+      failures.push('fixed latest message lacks physical styling');
+    }
+
     if (latestPanel && latestPanel.scrollHeight > latestPanel.clientHeight + 1) {
       failures.push(
         `fixed latest panel content overflows: ${latestPanel.scrollHeight}px > ${latestPanel.clientHeight}px`

@@ -154,6 +154,11 @@ and visual inspection gates so they behave like part of the skin:
   or `offline` and must render the matching status sprite.
 - Visual inspection must fail when HP plates are unstyled/clipped or when the
   status sprite state does not match the compact runtime label.
+- Fixed latest-message panels render the newest top-first message inside a
+  physical LCD strip while preserving the larger log drawer as the long-form
+  reading surface.
+- Visual inspection must fail when the closed-state latest LCD loses its
+  physical styling or clips the latest message.
 
 ## Asset Rules
 
