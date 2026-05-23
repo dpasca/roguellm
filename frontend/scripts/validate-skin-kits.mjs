@@ -12,6 +12,7 @@ const buttonStates = mobilePortrait.requiredStates.buttons;
 const materialKinds = Object.keys(mobilePortrait.materials ?? {});
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
 const cropVariantKinds = new Set(['button', 'status-indicator', 'combat-led']);
+const materialRenderModes = new Set(['tinted', 'source']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const renderThemeKeys = [
   'primary',
@@ -459,6 +460,10 @@ async function validateMaterials(kitDir, prefix, kit) {
       failures.push(`${prefix} material ${name}.slice must be a positive number`);
     } else if (frame && material.slice * 2 >= Math.min(frame.width, frame.height)) {
       failures.push(`${prefix} material ${name}.slice ${material.slice} is too large for frame ${frame.width}x${frame.height}`);
+    }
+
+    if (material.renderMode !== undefined && !materialRenderModes.has(material.renderMode)) {
+      failures.push(`${prefix} material ${name}.renderMode must be one of ${Array.from(materialRenderModes).join(', ')}`);
     }
   }
 }

@@ -31,11 +31,13 @@ export interface FixedSkinButton {
 }
 
 export type FixedSkinMaterialKind = 'panel' | 'lcd' | 'button';
+export type FixedSkinMaterialRenderMode = 'tinted' | 'source';
 
 export interface FixedSkinMaterial {
   fill: string;
   frame: string;
   slice: number;
+  renderMode?: FixedSkinMaterialRenderMode;
 }
 
 export interface FixedSkinRenderTheme {

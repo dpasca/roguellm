@@ -1686,10 +1686,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const fillKey = materialKey(this.profile, kind, 'fill');
     const frameKey = materialKey(this.profile, kind, 'frame');
     const alpha = options.alpha ?? 0.86;
+    const useSourceColors = material.renderMode === 'source';
     if (this.textures.exists(fillKey)) {
       const fill = this.add.tileSprite(rect.x, rect.y, rect.width, rect.height, fillKey).setOrigin(0, 0);
-      fill.setAlpha(alpha);
-      if (options.fillTint !== undefined) {
+      fill.setAlpha(useSourceColors ? Math.min(1, alpha + 0.08) : alpha);
+      if (!useSourceColors && options.fillTint !== undefined) {
         fill.setTint(options.fillTint);
       }
     } else {
@@ -1715,12 +1716,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         false,
         false
       ).setOrigin(0, 0);
-      frame.setAlpha(Math.min(1, alpha + 0.06));
-      if (options.frameTint !== undefined) {
+      frame.setAlpha(useSourceColors ? 1 : Math.min(1, alpha + 0.06));
+      if (!useSourceColors && options.frameTint !== undefined) {
         frame.setTint(options.frameTint);
       }
     }
-    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), alpha);
+    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), useSourceColors ? alpha * 0.58 : alpha);
     this.materialPanelsDrawn += 1;
   }
 

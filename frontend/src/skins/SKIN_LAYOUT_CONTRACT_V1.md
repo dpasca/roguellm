@@ -299,6 +299,9 @@ inset. Production skins can keep material PNGs beside the manifest or reference
 family-shared material files, but the manifest must make that choice explicit.
 Production mobile skins also declare `renderTheme` in `skin-kit.json`; this is
 the canvas runtime palette used inside live regions, not a stylesheet hook.
+Material entries may set `renderMode: "source"` when the fill/frame art is
+already color-authored for that skin. Otherwise Phaser treats material art as a
+neutral texture and tints it from `renderTheme`.
 
 ## Prompt Generator
 

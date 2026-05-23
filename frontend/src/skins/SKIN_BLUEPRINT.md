@@ -398,7 +398,8 @@ the older responsive HUD while comparing behavior.
   amber control sprites.
 - `terminal-green-mobile-compact`: `390x667` short-phone variant for terminal,
   green-screen, and retro-tech requests; it uses compact geometry plus its own
-  chassis, fixed-state controls, indicators, and material tiles/frames.
+  chassis, fixed-state controls, indicators, and source-color material
+  tiles/frames.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.

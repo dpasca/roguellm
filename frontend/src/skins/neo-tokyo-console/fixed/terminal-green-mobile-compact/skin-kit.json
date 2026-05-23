@@ -125,7 +125,8 @@
           "height": 48,
           "alpha": true
         },
-        "slice": 14
+        "slice": 14,
+        "renderMode": "source"
       },
       "lcd": {
         "fill": {
@@ -139,7 +140,8 @@
           "height": 48,
           "alpha": true
         },
-        "slice": 13
+        "slice": 13,
+        "renderMode": "source"
       },
       "button": {
         "fill": {
@@ -153,7 +155,8 @@
           "height": 48,
           "alpha": true
         },
-        "slice": 13
+        "slice": 13,
+        "renderMode": "source"
       }
     },
     "buttons": {

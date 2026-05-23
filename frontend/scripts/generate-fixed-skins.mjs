@@ -39,17 +39,20 @@ const ownedMaterialAssets = {
   panel: {
     fill: { path: 'panel-fill-tile.png', width: 96, height: 96 },
     frame: { path: 'panel-frame-9slice.png', width: 48, height: 48, alpha: true },
-    slice: 14
+    slice: 14,
+    renderMode: 'source'
   },
   lcd: {
     fill: { path: 'lcd-fill-tile.png', width: 96, height: 96 },
     frame: { path: 'lcd-frame-9slice.png', width: 48, height: 48, alpha: true },
-    slice: 13
+    slice: 13,
+    renderMode: 'source'
   },
   button: {
     fill: { path: 'button-fill-tile.png', width: 96, height: 96 },
     frame: { path: 'button-frame-9slice.png', width: 48, height: 48, alpha: true },
-    slice: 13
+    slice: 13,
+    renderMode: 'source'
   }
 };
 

@@ -52,6 +52,7 @@ type SkinKitMaterial = {
   fill: SkinKitImageAsset;
   frame: SkinKitImageAsset;
   slice: number;
+  renderMode?: FixedSkinMaterial['renderMode'];
 };
 type SkinKitRenderTheme = Record<keyof FixedSkinRenderTheme, string>;
 type FixedSkinKit = {
@@ -196,7 +197,8 @@ function manifestMaterial(profile: FixedAssetProfile, material: SkinKitMaterial)
   return {
     fill: skinKitImageAsset(profile, material.fill),
     frame: skinKitImageAsset(profile, material.frame),
-    slice: material.slice
+    slice: material.slice,
+    renderMode: material.renderMode
   };
 }
 
