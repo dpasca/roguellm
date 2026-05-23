@@ -32,6 +32,7 @@ if (parsedArgs.options.out) {
 }
 
 function buildManifest(id, kind, selectedProfile, options) {
+  const palette = parseList(options.palette, ['graphite', 'green']);
   const buttonAssets = Object.fromEntries(
     Object.entries(selectedProfile.layout.buttons)
       .map(([name, rect]) => [
@@ -56,12 +57,13 @@ function buildManifest(id, kind, selectedProfile, options) {
       role: options.role ?? 'prototype',
       tags: parseList(options.tags, ['prototype', 'contract-v1']),
       mood: parseList(options.mood, ['premium', 'experimental']),
-      palette: parseList(options.palette, ['graphite', 'green']),
+      palette,
       defaultPriority: parseNumber(options['default-priority'], 0),
       generation: options.generation ?? 'skin-layout-contract-v1-scaffold'
     },
     kind,
     size: cloneRect(selectedProfile.size),
+    renderTheme: renderThemeForPalette(palette),
     regions: cloneRectMap(selectedProfile.regions),
     assets: {
       chassis: {
@@ -244,6 +246,84 @@ function parseNumber(value, fallback) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function renderThemeForPalette(palette) {
+  const tokens = new Set(palette);
+
+  if (tokens.has('amber')) {
+    return {
+      primary: '#ffa441',
+      primaryText: '#ffc46d',
+      primaryDimText: '#a86f3c',
+      secondary: '#68dfff',
+      secondaryText: '#8feaff',
+      lcdFill: '#24180c',
+      panelFill: '#20170f',
+      controlFrame: '#8f5e2f',
+      buttonFrame: '#ffa441',
+      titleText: '#fff4dc',
+      bodyText: '#f6ead7',
+      mutedText: '#cab69d',
+      combat: '#ff5f73',
+      combatText: '#ff8c9b'
+    };
+  }
+
+  if (tokens.has('gold')) {
+    return {
+      primary: '#ffd15a',
+      primaryText: '#ffe38a',
+      primaryDimText: '#a08b48',
+      secondary: '#8dff70',
+      secondaryText: '#aaff8d',
+      lcdFill: '#29250f',
+      panelFill: '#22200f',
+      controlFrame: '#9f8642',
+      buttonFrame: '#ffd15a',
+      titleText: '#fff7dc',
+      bodyText: '#f7edd7',
+      mutedText: '#c8bfa8',
+      combat: '#ff6682',
+      combatText: '#ff8fa0'
+    };
+  }
+
+  if (tokens.has('cyan') || tokens.has('signal')) {
+    return {
+      primary: '#64dfff',
+      primaryText: '#93efff',
+      primaryDimText: '#5f9dab',
+      secondary: '#ff7188',
+      secondaryText: '#ff9daf',
+      lcdFill: '#0a2630',
+      panelFill: '#0d2026',
+      controlFrame: '#3aaec6',
+      buttonFrame: '#ff7188',
+      titleText: '#eefcff',
+      bodyText: '#d8edf0',
+      mutedText: '#9db5ba',
+      combat: '#ff7188',
+      combatText: '#ff9daf'
+    };
+  }
+
+  return {
+    primary: '#8dff70',
+    primaryText: '#aaff8d',
+    primaryDimText: '#7ba58a',
+    secondary: '#ffa441',
+    secondaryText: '#ffc46d',
+    lcdFill: '#0d2615',
+    panelFill: '#122019',
+    controlFrame: '#5b8d66',
+    buttonFrame: '#ff7188',
+    titleText: '#f6fff3',
+    bodyText: '#f3fff1',
+    mutedText: '#b8c7bc',
+    combat: '#ff7188',
+    combatText: '#ff8fa0'
+  };
 }
 
 function resolveOutputPath(value) {

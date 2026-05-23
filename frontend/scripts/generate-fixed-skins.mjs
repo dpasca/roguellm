@@ -381,6 +381,7 @@ function generateVariant(variant, profile) {
     meta: skinMeta(variant),
     kind: profile.kind,
     size: profile.size,
+    renderTheme: renderTheme(variant),
     regions: profile.regions,
     assets: profile.assets,
     layout: profile.layout
@@ -470,6 +471,84 @@ function skinMeta(variant) {
     palette: variant.palette,
     defaultPriority: variant.defaultPriority,
     generation: variant.generation ?? (variant.premium ? 'deterministic-svg-premium' : 'deterministic-svg')
+  };
+}
+
+function renderTheme(variant) {
+  const palette = new Set(variant.palette ?? []);
+
+  if (palette.has('amber')) {
+    return {
+      primary: '#ffa441',
+      primaryText: '#ffc46d',
+      primaryDimText: '#a86f3c',
+      secondary: '#68dfff',
+      secondaryText: '#8feaff',
+      lcdFill: '#24180c',
+      panelFill: '#20170f',
+      controlFrame: '#8f5e2f',
+      buttonFrame: '#ffa441',
+      titleText: '#fff4dc',
+      bodyText: '#f6ead7',
+      mutedText: '#cab69d',
+      combat: '#ff5f73',
+      combatText: '#ff8c9b'
+    };
+  }
+
+  if (palette.has('gold')) {
+    return {
+      primary: '#ffd15a',
+      primaryText: '#ffe38a',
+      primaryDimText: '#a08b48',
+      secondary: '#8dff70',
+      secondaryText: '#aaff8d',
+      lcdFill: '#29250f',
+      panelFill: '#22200f',
+      controlFrame: '#9f8642',
+      buttonFrame: '#ffd15a',
+      titleText: '#fff7dc',
+      bodyText: '#f7edd7',
+      mutedText: '#c8bfa8',
+      combat: '#ff6682',
+      combatText: '#ff8fa0'
+    };
+  }
+
+  if (palette.has('cyan') || palette.has('signal')) {
+    return {
+      primary: '#64dfff',
+      primaryText: '#93efff',
+      primaryDimText: '#5f9dab',
+      secondary: '#ff7188',
+      secondaryText: '#ff9daf',
+      lcdFill: '#0a2630',
+      panelFill: '#0d2026',
+      controlFrame: '#3aaec6',
+      buttonFrame: '#ff7188',
+      titleText: '#eefcff',
+      bodyText: '#d8edf0',
+      mutedText: '#9db5ba',
+      combat: '#ff7188',
+      combatText: '#ff9daf'
+    };
+  }
+
+  return {
+    primary: '#8dff70',
+    primaryText: '#aaff8d',
+    primaryDimText: '#7ba58a',
+    secondary: '#ffa441',
+    secondaryText: '#ffc46d',
+    lcdFill: '#0d2615',
+    panelFill: '#122019',
+    controlFrame: '#5b8d66',
+    buttonFrame: '#ff7188',
+    titleText: '#f6fff3',
+    bodyText: '#f3fff1',
+    mutedText: '#b8c7bc',
+    combat: '#ff7188',
+    combatText: '#ff8fa0'
   };
 }
 

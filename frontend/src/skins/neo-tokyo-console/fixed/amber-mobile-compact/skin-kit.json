@@ -32,6 +32,22 @@
     "width": 390,
     "height": 667
   },
+  "renderTheme": {
+    "primary": "#ffa441",
+    "primaryText": "#ffc46d",
+    "primaryDimText": "#a86f3c",
+    "secondary": "#68dfff",
+    "secondaryText": "#8feaff",
+    "lcdFill": "#24180c",
+    "panelFill": "#20170f",
+    "controlFrame": "#8f5e2f",
+    "buttonFrame": "#ffa441",
+    "titleText": "#fff4dc",
+    "bodyText": "#f6ead7",
+    "mutedText": "#cab69d",
+    "combat": "#ff5f73",
+    "combatText": "#ff8c9b"
+  },
   "regions": {
     "map": {
       "x": 22,

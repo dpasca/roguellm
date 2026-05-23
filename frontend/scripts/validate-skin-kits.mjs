@@ -13,6 +13,23 @@ const materialKinds = Object.keys(mobilePortrait.materials ?? {});
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
 const cropVariantKinds = new Set(['button', 'status-indicator', 'combat-led']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const renderThemeKeys = [
+  'primary',
+  'primaryText',
+  'primaryDimText',
+  'secondary',
+  'secondaryText',
+  'lcdFill',
+  'panelFill',
+  'controlFrame',
+  'buttonFrame',
+  'titleText',
+  'bodyText',
+  'mutedText',
+  'combat',
+  'combatText'
+];
+const hexColorPattern = /^#[0-9a-fA-F]{6}$/;
 const mobileKitSummaries = [];
 
 const failures = [];
@@ -76,6 +93,7 @@ async function validateKit(kitPath) {
   }
 
   validateRequiredContract(prefix, kit);
+  validateRenderTheme(prefix, kit);
   validateFixedAssetGeometry(prefix, kit);
   await validateAsset(kitDir, prefix, 'chassis', kit.assets?.chassis);
   await validateMaterials(kitDir, prefix, kit);
@@ -121,6 +139,35 @@ async function validateKit(kitPath) {
 
   validateRegions(prefix, kit);
   await validateBuildPlan(kitDir, prefix, kit);
+}
+
+function validateRenderTheme(prefix, kit) {
+  if (isProductionMobileMeta(kit.meta) && !kit.renderTheme) {
+    failures.push(`${prefix} production mobile kit must declare renderTheme`);
+    return;
+  }
+
+  if (!kit.renderTheme) {
+    return;
+  }
+
+  if (typeof kit.renderTheme !== 'object' || Array.isArray(kit.renderTheme)) {
+    failures.push(`${prefix} renderTheme must be an object`);
+    return;
+  }
+
+  for (const key of renderThemeKeys) {
+    const value = kit.renderTheme[key];
+    if (!hexColorPattern.test(value ?? '')) {
+      failures.push(`${prefix} renderTheme.${key} must be a #rrggbb color`);
+    }
+  }
+
+  for (const key of Object.keys(kit.renderTheme)) {
+    if (!renderThemeKeys.includes(key)) {
+      failures.push(`${prefix} unknown renderTheme key ${key}`);
+    }
+  }
 }
 
 function validateRequiredContract(prefix, kit) {

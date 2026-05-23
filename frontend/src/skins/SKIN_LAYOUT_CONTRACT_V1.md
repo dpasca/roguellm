@@ -204,6 +204,8 @@ skin-kit.json
 - `meta.label`, `meta.family`, `meta.role`, `meta.tags`, `meta.mood`,
   `meta.palette`, `meta.defaultPriority`, and `meta.generation`
 - `regions` using the exact v1 widget names
+- `renderTheme` with explicit `#rrggbb` runtime colors for Phaser-rendered
+  text, meters, frames, combat accents, and LCD/panel fills
 - `layout.buttons` using the exact v1 button names
 - `layout.indicators.status` and `layout.indicators.combatLed`
 - `layout.fills.playerHp`, `layout.fills.enemyHp`, and
@@ -222,6 +224,8 @@ Material assets are part of the skin kit rather than DOM stylesheets. The
 `*-frame-9slice.png` files are 48x48 transparent frames with the declared slice
 inset. Production skins can keep material PNGs beside the manifest or reference
 family-shared material files, but the manifest must make that choice explicit.
+Production mobile skins also declare `renderTheme` in `skin-kit.json`; this is
+the canvas runtime palette used inside live regions, not a stylesheet hook.
 
 ## Prompt Generator
 

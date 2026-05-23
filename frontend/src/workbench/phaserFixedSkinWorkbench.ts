@@ -1,7 +1,16 @@
 import Phaser from 'phaser';
 import faSolidFontUrl from '@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2?url';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
-import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinMaterialKind, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
+import type {
+  FixedSkinButton,
+  FixedSkinButtonState,
+  FixedSkinIndicatorState,
+  FixedSkinMaterialKind,
+  FixedSkinProfile,
+  FixedSkinRect,
+  FixedSkinRenderTheme,
+  GameSkin
+} from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './skinWorkbench';
 import { selectFixedSkinProfile } from './fixedSkinWorkbench';
@@ -35,23 +44,6 @@ interface InventoryRowAction {
   label: string;
   disabled: boolean;
   state: 'ready' | 'equipped' | 'disabled';
-}
-
-interface FixedSkinRenderTheme {
-  primary: number;
-  primaryText: string;
-  primaryDimText: string;
-  secondary: number;
-  secondaryText: string;
-  lcdFill: number;
-  panelFill: number;
-  controlFrame: number;
-  buttonFrame: number;
-  titleText: string;
-  bodyText: string;
-  mutedText: string;
-  combat: number;
-  combatText: string;
 }
 
 type ButtonEntry = [FixedButtonId, FixedSkinButton];
@@ -1495,64 +1487,8 @@ function materialKey(profile: FixedSkinProfile, kind: FixedSkinMaterialKind, par
 }
 
 function fixedSkinRenderTheme(profile: FixedSkinProfile): FixedSkinRenderTheme {
-  const palette = new Set(profile.meta?.palette ?? []);
-  const tags = new Set(profile.meta?.tags ?? []);
-
-  if (palette.has('amber')) {
-    return {
-      primary: 0xffa441,
-      primaryText: '#ffc46d',
-      primaryDimText: '#a86f3c',
-      secondary: 0x68dfff,
-      secondaryText: '#8feaff',
-      lcdFill: 0x24180c,
-      panelFill: 0x20170f,
-      controlFrame: 0x8f5e2f,
-      buttonFrame: 0xffa441,
-      titleText: '#fff4dc',
-      bodyText: '#f6ead7',
-      mutedText: '#cab69d',
-      combat: 0xff5f73,
-      combatText: '#ff8c9b'
-    };
-  }
-
-  if (palette.has('gold')) {
-    return {
-      primary: 0xffd15a,
-      primaryText: '#ffe38a',
-      primaryDimText: '#a08b48',
-      secondary: 0x8dff70,
-      secondaryText: '#aaff8d',
-      lcdFill: 0x29250f,
-      panelFill: 0x22200f,
-      controlFrame: 0x9f8642,
-      buttonFrame: 0xffd15a,
-      titleText: '#fff7dc',
-      bodyText: '#f7edd7',
-      mutedText: '#c8bfa8',
-      combat: 0xff6682,
-      combatText: '#ff8fa0'
-    };
-  }
-
-  if (palette.has('cyan') || palette.has('coral') || tags.has('signal') || tags.has('noir')) {
-    return {
-      primary: 0x64dfff,
-      primaryText: '#93efff',
-      primaryDimText: '#5f9dab',
-      secondary: 0xff7188,
-      secondaryText: '#ff9daf',
-      lcdFill: 0x0a2630,
-      panelFill: 0x0d2026,
-      controlFrame: 0x3aaec6,
-      buttonFrame: 0xff7188,
-      titleText: '#eefcff',
-      bodyText: '#d8edf0',
-      mutedText: '#9db5ba',
-      combat: 0xff7188,
-      combatText: '#ff9daf'
-    };
+  if (profile.renderTheme) {
+    return profile.renderTheme;
   }
 
   return {

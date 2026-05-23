@@ -87,6 +87,11 @@ Each production `mobilePortrait` or `mobileCompact` skin kit must include a
 - `defaultPriority`: numeric preference used by runtime profile selection.
 - `generation`: optional provenance such as `deterministic-svg-premium`.
 
+Each production mobile skin kit must also include a `renderTheme` block with
+explicit `#rrggbb` values for the Phaser/canvas runtime: text, muted text,
+primary and secondary accents, combat accents, control frames, and live-region
+fills. This is part of the skin manifest, not a CSS variable set.
+
 Metadata tokens in `tags`, `mood`, and `palette` must be unique lowercase
 kebab-case strings. Runtime selection treats them as exact structured tokens,
 so generated manifests should use stable tags like `rain-city` instead of
@@ -330,7 +335,8 @@ Fixed skin profiles own their visual material assets through `skin-kit.json`.
 Reusable panel, LCD, and button materials are declared as profile data (`fill`,
 `frame`, and nine-slice metadata) and rendered by Phaser as tiled
 sprites/nine-slice images. The Phaser renderer must not hardcode a skin
-family's material PNGs.
+family's material PNGs or infer a production skin palette from metadata tokens.
+Production profiles must declare their runtime colors in `renderTheme`.
 
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser

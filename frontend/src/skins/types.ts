@@ -38,6 +38,23 @@ export interface FixedSkinMaterial {
   slice: number;
 }
 
+export interface FixedSkinRenderTheme {
+  primary: number;
+  primaryText: string;
+  primaryDimText: string;
+  secondary: number;
+  secondaryText: string;
+  lcdFill: number;
+  panelFill: number;
+  controlFrame: number;
+  buttonFrame: number;
+  titleText: string;
+  bodyText: string;
+  mutedText: string;
+  combat: number;
+  combatText: string;
+}
+
 export type FixedSkinIndicatorState = 'ready' | 'thinking' | 'error' | 'offline' | 'on' | 'off';
 
 export interface FixedSkinIndicator {
@@ -66,6 +83,7 @@ export interface FixedSkinProfile {
   height: number;
   background: string;
   materials: Record<FixedSkinMaterialKind, FixedSkinMaterial>;
+  renderTheme?: FixedSkinRenderTheme;
   regions: {
     map: FixedSkinRect;
     title: FixedSkinRect;

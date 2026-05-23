@@ -1,4 +1,11 @@
-import type { FixedSkinMaterial, FixedSkinMaterialKind, FixedSkinProfile, FixedSkinProfileMeta, GameSkin } from './types';
+import type {
+  FixedSkinMaterial,
+  FixedSkinMaterialKind,
+  FixedSkinProfile,
+  FixedSkinProfileMeta,
+  FixedSkinRenderTheme,
+  GameSkin
+} from './types';
 
 type FixedAssetProfile =
   | 'mobile'
@@ -44,6 +51,7 @@ type SkinKitMaterial = {
   frame: SkinKitImageAsset;
   slice: number;
 };
+type SkinKitRenderTheme = Record<keyof FixedSkinRenderTheme, string>;
 type FixedSkinKit = {
   id: FixedAssetProfile;
   meta?: FixedSkinProfileMeta & {
@@ -77,6 +85,7 @@ type FixedSkinKit = {
       playerStats: SkinKitRect;
     };
   };
+  renderTheme?: SkinKitRenderTheme;
   assets: {
     chassis: {
       path: string;
@@ -188,6 +197,41 @@ function manifestMaterial(profile: FixedAssetProfile, material: SkinKitMaterial)
   };
 }
 
+function manifestRenderTheme(profile: FixedAssetProfile, theme: SkinKitRenderTheme | undefined): FixedSkinRenderTheme | undefined {
+  if (!theme) {
+    return undefined;
+  }
+
+  return {
+    primary: manifestTint(profile, 'primary', theme.primary),
+    primaryText: manifestTextColor(profile, 'primaryText', theme.primaryText),
+    primaryDimText: manifestTextColor(profile, 'primaryDimText', theme.primaryDimText),
+    secondary: manifestTint(profile, 'secondary', theme.secondary),
+    secondaryText: manifestTextColor(profile, 'secondaryText', theme.secondaryText),
+    lcdFill: manifestTint(profile, 'lcdFill', theme.lcdFill),
+    panelFill: manifestTint(profile, 'panelFill', theme.panelFill),
+    controlFrame: manifestTint(profile, 'controlFrame', theme.controlFrame),
+    buttonFrame: manifestTint(profile, 'buttonFrame', theme.buttonFrame),
+    titleText: manifestTextColor(profile, 'titleText', theme.titleText),
+    bodyText: manifestTextColor(profile, 'bodyText', theme.bodyText),
+    mutedText: manifestTextColor(profile, 'mutedText', theme.mutedText),
+    combat: manifestTint(profile, 'combat', theme.combat),
+    combatText: manifestTextColor(profile, 'combatText', theme.combatText)
+  };
+}
+
+function manifestTint(profile: FixedAssetProfile, key: keyof FixedSkinRenderTheme, value: string): number {
+  const hex = manifestTextColor(profile, key, value);
+  return Number.parseInt(hex.slice(1), 16);
+}
+
+function manifestTextColor(profile: FixedAssetProfile, key: keyof FixedSkinRenderTheme, value: string): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(value ?? '')) {
+    throw new Error(`Skin kit ${profile} renderTheme.${key} must be a #rrggbb color`);
+  }
+  return value.toLowerCase();
+}
+
 function fixedButton(
   profile: FixedAssetProfile,
   name: FixedButtonAssetName
@@ -262,6 +306,7 @@ function createManifestProfile(id: FixedAssetProfile, fallbackLabel?: string): F
     height: kit.size.height,
     background: fixedAsset(`${id}/${kit.assets.chassis.path}`),
     materials: manifestMaterials(id, kit),
+    renderTheme: manifestRenderTheme(id, kit.renderTheme),
     regions: {
       map: kit.regions.map,
       title: kit.regions.title,
