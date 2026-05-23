@@ -7,6 +7,7 @@ type FixedAssetProfile =
   | 'reference-mobile-v2'
   | 'reference-mobile-v3'
   | 'reference-mobile-compact'
+  | 'rain-city-derived-compact'
   | 'signal-noir-mobile-compact'
   | 'gold-mobile-compact'
   | 'amber-mobile-compact'
@@ -231,6 +232,7 @@ function manifestButton(profile: FixedAssetProfile, kit: FixedSkinKit, buttonId:
 
 const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('reference-mobile-compact'),
+  createManifestProfile('rain-city-derived-compact'),
   createManifestProfile('signal-noir-mobile-compact'),
   createManifestProfile('gold-mobile-compact'),
   createManifestProfile('amber-mobile-compact'),

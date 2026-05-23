@@ -250,6 +250,11 @@ The scaffold crop plan assumes a single full source artboard:
 - `status-ready.png` generates `thinking`, `error`, and `offline` variants.
 - `led-off.png` generates `led-on.png`.
 
+For cleaned/generated skins, individual crops may declare `source` to use a
+different artboard from `build.source`. This lets a skin keep a clean chassis
+source while using a widget source that temporarily composites fixed buttons
+into the exact crop slots.
+
 ## Generation Prompt Template
 
 Use this template after selecting either the portrait or compact rectangle set:

@@ -325,6 +325,8 @@ comparing behavior.
 - `reference-mobile-compact`: `390x667` short-phone profile selected
   automatically on short mobile viewports; it has compact geometry and reuses
   the reference control sprites.
+- `rain-city-derived-compact`: generated-reference prototype that uses the v1
+  compact contract with separate clean chassis and widget source artboards.
 - `signal-noir-mobile-compact`: `390x667` short-phone variant for noir/signal
   requests; it uses compact geometry, its own cyan/coral chassis, and reuses the
   signal-noir control sprites.

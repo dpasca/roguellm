@@ -20,6 +20,7 @@ export default defineConfig(({ command }) => ({
     outDir: '../static/game2',
     emptyOutDir: true,
     manifest: true,
+    assetsInlineLimit: 0,
     chunkSizeWarningLimit: 1500,
     rolldownOptions: {
       output: {

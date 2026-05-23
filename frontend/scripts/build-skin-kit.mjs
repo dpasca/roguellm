@@ -25,7 +25,11 @@ const sourcePath = path.resolve(kitDir, build.source);
 await assertReadable(sourcePath);
 
 for (const crop of build.crops) {
-  await buildCrop(sourcePath, kitDir, crop);
+  const cropSourcePath = crop.source ? path.resolve(kitDir, crop.source) : sourcePath;
+  if (cropSourcePath !== sourcePath) {
+    await assertReadable(cropSourcePath);
+  }
+  await buildCrop(cropSourcePath, kitDir, crop);
 }
 
 console.log(`${dryRun ? 'Planned' : 'Built'} ${build.crops.length} crop${build.crops.length === 1 ? '' : 's'} for ${kit.id ?? path.basename(kitDir)}.`);
@@ -74,7 +78,7 @@ async function buildCrop(sourcePath, kitDir, crop) {
     );
   }
 
-  await magick([...baseArgs, outputPath]);
+  await magick([...baseArgs, png32(outputPath)]);
 
   if (crop.variants === 'button') {
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-hover.png'), ['-modulate', '116,118,100']);
@@ -121,7 +125,7 @@ async function writeVariant(sourcePath, outputPath, operations) {
   if (sourcePath === outputPath) {
     throw new Error(`Variant output must differ from source: ${sourcePath}`);
   }
-  await magick([sourcePath, ...operations, outputPath]);
+  await magick([sourcePath, ...operations, png32(outputPath)]);
 }
 
 function replaceSuffix(value, expectedSuffix, replacementSuffix) {
@@ -130,6 +134,10 @@ function replaceSuffix(value, expectedSuffix, replacementSuffix) {
   }
 
   return `${value.slice(0, -expectedSuffix.length)}${replacementSuffix}`;
+}
+
+function png32(outputPath) {
+  return `PNG32:${outputPath}`;
 }
 
 async function magick(args) {

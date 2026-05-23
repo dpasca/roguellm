@@ -182,6 +182,13 @@ const baseScenarios = [
     expectedFixedProfile: 'signal-noir-mobile-compact'
   },
   {
+    name: 'mobile-rain-city-derived-compact-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench',
+    url: fixedWorkbenchProfileUrl('rain-city-derived-compact'),
+    expectedFixedProfile: 'rain-city-derived-compact'
+  },
+  {
     name: 'mobile-short-fixed-runtime-log',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-runtime-log',
@@ -2896,9 +2903,11 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
 
   const map = metrics.rects.map;
   const minMapWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 300) : 300;
-  const minMapHeight = isProductionMobileProfile
-    ? scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 220 : 250)
-    : 250;
+  const minMapHeight = metrics.fixedProfileKind === 'mobileCompact'
+    ? scaledFixedThreshold(metrics, 220)
+    : isProductionMobileProfile
+      ? scaledFixedThreshold(metrics, 250)
+      : 250;
   if (!map || map.visibleHeight < minMapHeight || map.visibleWidth < minMapWidth) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
