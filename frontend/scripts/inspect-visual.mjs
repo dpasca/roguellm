@@ -627,6 +627,7 @@ function buildHtmlReport(summary) {
       metrics.rects.statusPill?.visualState ? `status state ${metrics.rects.statusPill.visualState}` : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
+      metrics.gameEnded && metrics.endState?.outcome ? `terminal ${metrics.endState.outcome}` : null,
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
@@ -1504,6 +1505,8 @@ async function collectMetrics(page) {
       restartButton: '#restart',
       endStateOverlay: '#end-state-overlay',
       endStatePanel: '.fixed-end-state-panel',
+      endStateBadge: '#end-state-badge',
+      endStateIcon: '#end-state-icon',
       endStateMessage: '#end-state-message',
       diagnosticsBoard: '.fixed-diagnostics-board'
     };
@@ -1756,6 +1759,26 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectEndStateMetrics = () => {
+      const badge = document.getElementById('end-state-badge');
+      if (!badge) {
+        return {
+          outcome: '',
+          badgeStyled: false,
+          iconClass: ''
+        };
+      }
+
+      const style = getComputedStyle(badge);
+      return {
+        outcome: badge.dataset.outcome ?? '',
+        badgeStyled: style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none',
+        iconClass: document.getElementById('end-state-icon')?.className ?? ''
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1802,6 +1825,7 @@ async function collectMetrics(page) {
       unsafeMarkupCount: document.querySelectorAll('#fixed-title img, #fixed-title script, #fixed-player-stats b, #game-log script, #enemy-name script').length,
       diagnosticAssetCount: document.querySelectorAll('.fixed-diagnostics-board img').length,
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
+      endState: collectEndStateMetrics(),
       mapIconStacks: collectMapIconStacks(),
       mapIcons: collectMapIconMetrics(),
       inventory: collectInventoryMetrics(),
@@ -2726,12 +2750,30 @@ function validateFixedEndStateScenario(scenario, metrics, failures) {
 
   const overlay = metrics.rects.endStateOverlay;
   const panel = metrics.rects.endStatePanel;
+  const badge = metrics.rects.endStateBadge;
+  const icon = metrics.rects.endStateIcon;
   const minTerminalHeight = metrics.fixedProfileKind === 'mobileCompact' ? 230 : 250;
   if (!overlay || overlay.visibleHeight < minTerminalHeight || overlay.visibleWidth < 280) {
     failures.push(`fixed end-state overlay is too small: ${overlay?.visibleWidth ?? 0}x${overlay?.visibleHeight ?? 0}`);
   }
   if (!panel || panel.visibleHeight < minTerminalHeight || panel.visibleWidth < 280) {
     failures.push(`fixed end-state panel is too small: ${panel?.visibleWidth ?? 0}x${panel?.visibleHeight ?? 0}`);
+  }
+  if (!badge || badge.visibleWidth < scaledFixedThreshold(metrics, 26) || badge.visibleHeight < scaledFixedThreshold(metrics, 26)) {
+    failures.push(`fixed end-state badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
+  }
+  if (!icon || icon.visibleWidth < scaledFixedThreshold(metrics, 10) || icon.visibleHeight < scaledFixedThreshold(metrics, 10)) {
+    failures.push(`fixed end-state badge icon is clipped: ${icon?.visibleWidth ?? 0}x${icon?.visibleHeight ?? 0}`);
+  }
+  if (!metrics.endState.badgeStyled) {
+    failures.push('fixed end-state badge lacks physical styling');
+  }
+  if (metrics.endState.outcome !== expectedScenario) {
+    failures.push(`fixed end-state badge outcome should be ${expectedScenario}, got ${metrics.endState.outcome || 'empty'}`);
+  }
+  const expectedIcon = expectedScenario === 'victory' ? 'fa-trophy' : 'fa-skull';
+  if (!metrics.endState.iconClass.includes(expectedIcon)) {
+    failures.push(`fixed end-state badge icon should include ${expectedIcon}, got ${metrics.endState.iconClass || 'empty'}`);
   }
 
   if (!metrics.endStateText || metrics.endStateText.length < 24) {

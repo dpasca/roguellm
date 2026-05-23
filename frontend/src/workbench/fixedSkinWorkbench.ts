@@ -799,14 +799,33 @@ function createEndStatePanel(): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'fixed-end-state-panel';
 
+  const header = document.createElement('div');
+  header.className = 'fixed-end-state-header';
+
+  const badge = document.createElement('span');
+  badge.id = 'end-state-badge';
+  badge.className = 'fixed-end-state-badge';
+  badge.setAttribute('aria-hidden', 'true');
+
+  const badgeIcon = document.createElement('i');
+  badgeIcon.id = 'end-state-icon';
+  badgeIcon.className = 'fa-solid fa-skull';
+  badge.append(badgeIcon);
+
+  const copy = document.createElement('div');
+  copy.className = 'fixed-end-state-copy';
+
   const kicker = el('p', 'end-state-kicker', 'Mission ended', 'end-state-kicker');
   const title = el('h2', '', 'RogueLLM', 'end-state-title');
+  copy.append(kicker, title);
+
   const message = el('p', '', '', 'end-state-message');
   const stats = document.createElement('dl');
   stats.className = 'end-state-stats';
   stats.append(createEndStateStat('HP', 'end-state-hp'), createEndStateStat('XP', 'end-state-xp'));
 
-  panel.append(kicker, title, message, stats);
+  header.append(badge, copy);
+  panel.append(header, message, stats);
   return panel;
 }
 
@@ -1179,6 +1198,7 @@ function renderEndState(state: GameState): void {
     return;
   }
 
+  renderEndStateBadge(won ? 'victory' : 'defeat');
   setText('end-state-kicker', won ? 'Case closed' : 'Down for the count');
   setText('end-state-title', state.game_title || 'RogueLLM');
   setText(
@@ -1189,6 +1209,20 @@ function renderEndState(state: GameState): void {
   );
   setText('end-state-hp', `${Math.max(0, state.player_hp)}/${state.player_max_hp}`);
   setText('end-state-xp', String(state.player_xp));
+}
+
+function renderEndStateBadge(outcome: 'victory' | 'defeat'): void {
+  const badge = document.getElementById('end-state-badge');
+  const icon = document.getElementById('end-state-icon');
+  if (!badge || !icon) {
+    return;
+  }
+
+  badge.dataset.outcome = outcome;
+  icon.className = normalizeFontAwesomeClass(
+    outcome === 'victory' ? 'fa-solid fa-trophy' : 'fa-solid fa-skull',
+    'fa-solid fa-circle'
+  );
 }
 
 function renderLogs(logs: string[], logOpen: boolean): void {

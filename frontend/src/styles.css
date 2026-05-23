@@ -921,7 +921,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-latest-region .latest-messa
 
 .fixed-end-state-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 0;
   padding: 18px 18px 92px;
   border: 1px solid rgba(140, 255, 141, 0.62);
@@ -932,6 +932,50 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-latest-region .latest-messa
     inset 0 0 0 2px rgba(0, 0, 0, 0.72),
     inset 0 0 42px rgba(126, 255, 96, 0.10),
     0 18px 34px rgba(0, 0, 0, 0.58);
+}
+
+.fixed-end-state-header {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.fixed-end-state-badge {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(140, 255, 141, 0.58);
+  color: #a8ff9a;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(218, 255, 199, 0.28), transparent 48%),
+    linear-gradient(180deg, rgba(30, 80, 27, 0.82), rgba(5, 15, 6, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 14px rgba(126, 255, 96, 0.18);
+}
+
+.fixed-defeat-state .fixed-end-state-badge {
+  border-color: rgba(255, 102, 121, 0.70);
+  color: #ff8d9b;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 166, 158, 0.30), transparent 48%),
+    linear-gradient(180deg, rgba(94, 24, 27, 0.88), rgba(18, 4, 8, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    0 0 14px rgba(255, 95, 118, 0.20);
+}
+
+.fixed-end-state-badge i {
+  font-size: 16px;
+  line-height: 1;
+  text-shadow: 0 0 9px currentColor;
+}
+
+.fixed-end-state-copy {
+  min-width: 0;
 }
 
 .fixed-defeat-state .fixed-end-state-panel {
@@ -1844,6 +1888,20 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel {
   padding: 14px 16px 70px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-header {
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-badge {
+  width: 30px;
+  height: 30px;
+}
+
+.fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-badge i {
+  font-size: 14px;
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-end-state-panel .end-state-kicker {
