@@ -24,6 +24,13 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
 
 const messageFreshClass = 'message-fresh';
 
+type InventoryTypeMeta = {
+  className: string;
+  icon: string;
+  label: string;
+  title: string;
+};
+
 const domIds: Record<FixedButtonId, string> = {
   attack: 'attack',
   run: 'run',
@@ -992,6 +999,22 @@ function renderInventoryState(state: GameState, onAction: (action: GameAction) =
 function createInventoryRow(item: Item, onAction: (action: GameAction) => void, actionsEnabled: boolean): HTMLElement {
   const row = document.createElement('div');
   row.className = item.is_equipped ? 'inventory-item fixed-inventory-item equipped' : 'inventory-item fixed-inventory-item';
+  row.dataset.itemType = item.type;
+
+  const type = inventoryTypeMeta(item);
+  const typeBadge = document.createElement('span');
+  typeBadge.className = `fixed-inventory-type-badge ${type.className}`;
+  typeBadge.title = type.title;
+  typeBadge.dataset.itemType = item.type;
+
+  const typeIcon = document.createElement('i');
+  typeIcon.className = normalizeFontAwesomeClass(type.icon, 'fa-solid fa-box');
+  typeIcon.setAttribute('aria-hidden', 'true');
+
+  const typeLabel = document.createElement('span');
+  typeLabel.className = 'fixed-inventory-type-label';
+  typeLabel.textContent = type.label;
+  typeBadge.append(typeIcon, typeLabel);
 
   const body = document.createElement('div');
   body.className = 'fixed-inventory-item-body';
@@ -1019,8 +1042,41 @@ function createInventoryRow(item: Item, onAction: (action: GameAction) => void, 
     action.disabled = true;
   }
 
-  row.append(body, action);
+  row.append(typeBadge, body, action);
   return row;
+}
+
+function inventoryTypeMeta(item: Item): InventoryTypeMeta {
+  switch (item.type) {
+    case 'weapon':
+      return {
+        className: 'fixed-inventory-type-weapon',
+        icon: 'fa-solid fa-gavel',
+        label: 'WPN',
+        title: 'Weapon'
+      };
+    case 'armor':
+      return {
+        className: 'fixed-inventory-type-armor',
+        icon: 'fa-solid fa-shield-halved',
+        label: 'ARM',
+        title: 'Armor'
+      };
+    case 'consumable':
+      return {
+        className: 'fixed-inventory-type-consumable',
+        icon: 'fa-solid fa-flask',
+        label: 'USE',
+        title: 'Consumable'
+      };
+    default:
+      return {
+        className: 'fixed-inventory-type-unknown',
+        icon: 'fa-solid fa-box',
+        label: 'ITM',
+        title: item.type || 'Item'
+      };
+  }
 }
 
 function applyFixedStateClasses(stage: HTMLElement, state: GameState | null, logOpen: boolean, inventoryOpen: boolean): void {

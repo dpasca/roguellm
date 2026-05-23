@@ -121,6 +121,21 @@ The fixed skin renderer should stack layers in this order:
 The chassis must not contain live map tiles, generated item/enemy icons, HP
 values, enemy names, log text, or button state text that changes at runtime.
 
+## Runtime Widget Hardware
+
+Some repeated widgets are DOM-rendered hardware that sits inside fixed apertures
+instead of separate bitmap crops per row. These pieces still need stable sizes
+and visual inspection gates so they behave like part of the skin:
+
+- Inventory item rows use structured `Item.type`, not item-name parsing, to
+  render fixed type badges.
+- Known inventory badge labels are `WPN`, `ARM`, and `USE`, with a fallback
+  `ITM` badge for future item types.
+- Each inventory row keeps a fixed badge column, flexible text column, and fixed
+  action column so generated drawer art never needs to stretch around content.
+- Visual inspection must fail when fixed inventory drawers contain item rows
+  without visible/styled type badges.
+
 ## Asset Rules
 
 Use PNG for all runtime bitmap skin assets.

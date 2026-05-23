@@ -1470,6 +1470,7 @@ async function collectMetrics(page) {
       firstLogEntry: '#game-log p.latest',
       inventoryPanel: '.inventory-panel',
       firstInventoryItem: '#inventory-list .inventory-item',
+      firstInventoryBadge: '#inventory-list .fixed-inventory-type-badge',
       firstInventoryAction: '#inventory-list button',
       inventoryEmpty: '#inventory-list .fixed-inventory-empty',
       statusPill: '#connection-status',
@@ -1593,6 +1594,40 @@ async function collectMetrics(page) {
       };
     };
 
+    const collectInventoryMetrics = () => {
+      const items = Array.from(document.querySelectorAll('#inventory-list .fixed-inventory-item'));
+      const badges = Array.from(document.querySelectorAll('#inventory-list .fixed-inventory-type-badge'));
+      const visibleBadges = badges.filter((badge) => {
+        const box = badge.getBoundingClientRect();
+        const style = getComputedStyle(badge);
+        return box.width > 0 &&
+          box.height > 0 &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) > 0;
+      });
+      const styledBadges = visibleBadges.filter((badge) => {
+        const style = getComputedStyle(badge);
+        return style.backgroundImage !== 'none' &&
+          style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          style.boxShadow !== 'none';
+      });
+
+      return {
+        items: items.length,
+        typeBadges: badges.length,
+        visibleTypeBadges: visibleBadges.length,
+        styledTypeBadges: styledBadges.length,
+        typeIcons: badges.filter((badge) => badge.querySelector('i[class*="fa-"]')).length,
+        typeLabels: badges
+          .map((badge) => badge.querySelector('.fixed-inventory-type-label')?.textContent?.trim() ?? '')
+          .filter(Boolean),
+        itemTypes: items
+          .map((item) => item.dataset.itemType ?? '')
+          .filter(Boolean)
+      };
+    };
+
     return {
       viewport: { width: innerWidth, height: innerHeight },
       documentHeight: document.documentElement.scrollHeight,
@@ -1641,6 +1676,7 @@ async function collectMetrics(page) {
       endStateText: document.getElementById('end-state-message')?.textContent?.trim() ?? '',
       mapIconStacks: collectMapIconStacks(),
       mapIcons: collectMapIconMetrics(),
+      inventory: collectInventoryMetrics(),
       fontAwesome: collectFontAwesomeMetrics(),
       controlStates: {
         attackDisabled: document.getElementById('attack')?.disabled ?? null,
@@ -2145,12 +2181,14 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     const inventory = metrics.rects.inventoryPanel;
     const item = metrics.rects.firstInventoryItem;
+    const badge = metrics.rects.firstInventoryBadge;
     const action = metrics.rects.firstInventoryAction;
     const logToggle = metrics.rects.logToggleButton;
     const inventoryToggle = metrics.rects.inventoryToggleButton;
     const minInventoryWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 300) : 300;
     const minInventoryHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 180) : 180;
     const minInventoryItemHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 36) : 36;
+    const minInventoryBadgeSize = isProductionMobileProfile ? scaledFixedThreshold(metrics, 26) : 26;
     const minInventoryActionWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 42) : 42;
     const minInventoryActionHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 24) : 24;
     const minInventoryToggleWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 38) : 38;
@@ -2160,6 +2198,28 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!item || item.visibleHeight < minInventoryItemHeight) {
       failures.push(`fixed inventory first item is clipped: ${item?.visibleHeight ?? 0}px visible`);
+    }
+    if (metrics.inventory.items > 0) {
+      if (metrics.inventory.typeBadges < metrics.inventory.items) {
+        failures.push(`fixed inventory is missing type badges: ${metrics.inventory.typeBadges}/${metrics.inventory.items}`);
+      }
+      if (metrics.inventory.visibleTypeBadges < metrics.inventory.items) {
+        failures.push(`fixed inventory type badges are not all visible: ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}`);
+      }
+      if (metrics.inventory.styledTypeBadges < metrics.inventory.items) {
+        failures.push(`fixed inventory type badges lack physical styling: ${metrics.inventory.styledTypeBadges}/${metrics.inventory.items}`);
+      }
+      if (metrics.inventory.typeIcons < metrics.inventory.items) {
+        failures.push(`fixed inventory type badges are missing Font Awesome icons: ${metrics.inventory.typeIcons}/${metrics.inventory.items}`);
+      }
+      for (const expectedLabel of ['WPN', 'ARM', 'USE']) {
+        if (!metrics.inventory.typeLabels.includes(expectedLabel)) {
+          failures.push(`fixed inventory is missing ${expectedLabel} type label`);
+        }
+      }
+      if (!badge || badge.visibleWidth < minInventoryBadgeSize || badge.visibleHeight < minInventoryBadgeSize) {
+        failures.push(`fixed inventory first type badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
+      }
     }
     if (!action || action.visibleHeight < minInventoryActionHeight || action.visibleWidth < minInventoryActionWidth) {
       failures.push(`fixed inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
@@ -2336,6 +2396,7 @@ function validateDesktopFixedLayout(metrics, failures) {
 function validateFixedRuntimeInventory(metrics, failures) {
   const inventory = metrics.rects.inventoryPanel;
   const item = metrics.rects.firstInventoryItem;
+  const badge = metrics.rects.firstInventoryBadge;
   const action = metrics.rects.firstInventoryAction;
   const empty = metrics.rects.inventoryEmpty;
   const inventoryToggle = metrics.rects.inventoryToggleButton;
@@ -2365,6 +2426,21 @@ function validateFixedRuntimeInventory(metrics, failures) {
 
   if (item && item.visibleHeight < scaledFixedThreshold(metrics, 36)) {
     failures.push(`fixed runtime inventory first item is clipped: ${item.visibleHeight}px visible`);
+  }
+
+  if (item) {
+    if (metrics.inventory.typeBadges < metrics.inventory.items) {
+      failures.push(`fixed runtime inventory is missing type badges: ${metrics.inventory.typeBadges}/${metrics.inventory.items}`);
+    }
+    if (metrics.inventory.visibleTypeBadges < metrics.inventory.items) {
+      failures.push(`fixed runtime inventory type badges are not all visible: ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}`);
+    }
+    if (metrics.inventory.styledTypeBadges < metrics.inventory.items) {
+      failures.push(`fixed runtime inventory type badges lack physical styling: ${metrics.inventory.styledTypeBadges}/${metrics.inventory.items}`);
+    }
+    if (!badge || badge.visibleWidth < scaledFixedThreshold(metrics, 26) || badge.visibleHeight < scaledFixedThreshold(metrics, 26)) {
+      failures.push(`fixed runtime inventory first type badge is clipped: ${badge?.visibleWidth ?? 0}x${badge?.visibleHeight ?? 0}`);
+    }
   }
 
   if (item && (!action || action.visibleHeight < scaledFixedThreshold(metrics, 24) || action.visibleWidth < scaledFixedThreshold(metrics, 42))) {
