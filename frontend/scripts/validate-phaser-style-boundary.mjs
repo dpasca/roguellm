@@ -18,13 +18,13 @@ await validatePhaserRendererSourceGraph();
 await validateBuiltCssBoundary();
 
 if (failures.length > 0) {
-  console.error('Phaser CSS boundary validation failed:');
+  console.error('Phaser style boundary validation failed:');
   for (const failure of failures) {
     console.error(`- ${failure}`);
   }
   process.exitCode = 1;
 } else {
-  console.log('Phaser CSS boundary OK: fixed-skin Phaser path is style-free.');
+  console.log('Phaser style boundary OK: fixed-skin Phaser path is canvas-owned.');
 }
 
 async function validateMainCssBoundary() {

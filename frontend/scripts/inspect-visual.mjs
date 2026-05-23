@@ -815,6 +815,9 @@ function buildHtmlReport(summary) {
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
       metrics.phaserButtonStates ? `buttons ${metrics.phaserButtonStates}` : null,
       metrics.phaserPointerButtonState ? `pointer ${metrics.phaserPointerButtonState}` : null,
+      Number.isFinite(metrics.phaserLogRows) ? `log rows ${metrics.phaserLogRows}` : null,
+      Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
+      Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -2429,6 +2432,9 @@ async function collectMetrics(page) {
       phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
       phaserButtonStates: document.body.dataset.phaserButtonStates ?? '',
       phaserPointerButtonState: document.body.dataset.phaserPointerButtonState ?? '',
+      phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
+      phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
+      phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2897,6 +2903,11 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
   }
 
+  if ((scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-workbench-click-log') &&
+    (!Number.isFinite(metrics.phaserLogRows) || metrics.phaserLogRows < 4)) {
+    failures.push(`expected at least 4 Phaser log rows, got ${metrics.phaserLogRows ?? 'none'}`);
+  }
+
   if (scenario.mode === 'phaser-fixed-workbench-click-log' && phaserButtonState(metrics, 'log') !== 'pressed') {
     failures.push(`expected Phaser log button pressed after pointer click, got ${phaserButtonState(metrics, 'log') ?? 'none'}`);
   }
@@ -2915,6 +2926,12 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!Number.isFinite(metrics.phaserInventoryActions) || metrics.phaserInventoryActions < 3) {
       failures.push(`expected at least 3 Phaser inventory action chips, got ${metrics.phaserInventoryActions ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryRows) || metrics.phaserInventoryRows < 3) {
+      failures.push(`expected at least 3 drawn Phaser inventory rows, got ${metrics.phaserInventoryRows ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryActionChips) || metrics.phaserInventoryActionChips < 3) {
+      failures.push(`expected at least 3 drawn Phaser inventory action chips, got ${metrics.phaserInventoryActionChips ?? 'none'}`);
     }
     if (!Number.isFinite(metrics.phaserEquippedCount) || metrics.phaserEquippedCount < 2) {
       failures.push(`expected equipped Phaser inventory states, got ${metrics.phaserEquippedCount ?? 'none'}`);

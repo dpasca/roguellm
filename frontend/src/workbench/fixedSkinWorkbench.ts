@@ -43,7 +43,7 @@ const domIds: Record<FixedButtonId, string> = {
   restart: 'restart'
 };
 
-const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
+const legacyFixedRenderers = new Set(['dom', 'html', 'legacy']);
 
 function fixedRendererFromParams(params: URLSearchParams): string {
   return (params.get('fixed_renderer') ?? params.get('renderer') ?? '').toLowerCase();

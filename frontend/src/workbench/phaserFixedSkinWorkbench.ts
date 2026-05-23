@@ -67,7 +67,7 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
   moveW: { action: 'move', direction: 'w' }
 };
 
-const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
+const legacyFixedRenderers = new Set(['dom', 'html', 'legacy']);
 const fontAwesomeFamily = 'Font Awesome 7 Free';
 const fontAwesomeStyleClasses = new Set(['fa', 'fas', 'far', 'fab', 'fa-solid', 'fa-regular', 'fa-brands']);
 const fontAwesomeGlyphs: Record<string, string> = {
@@ -546,6 +546,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private sourceMaterialPanelsDrawn = 0;
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
+  private logRowsDrawn = 0;
+  private inventoryRowsDrawn = 0;
+  private inventoryActionChipsDrawn = 0;
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
@@ -622,6 +625,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialPanelsDrawn = 0;
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
+    this.logRowsDrawn = 0;
+    this.inventoryRowsDrawn = 0;
+    this.inventoryActionChipsDrawn = 0;
     document.body.dataset.phaserPointerButtonState = '';
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
@@ -659,6 +665,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       .map(([buttonId, state]) => `${buttonId}:${state}`)
       .sort()
       .join(',');
+    document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
+    document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
+    document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
@@ -1516,17 +1525,42 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
     const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowText.y) / layout.rowHeight));
     this.viewState.logs.slice(0, maxRows).forEach((message, index) => {
-      this.addTextInRect(index === 0 ? 'NEW' : String(index + 1).padStart(2, '0'), offsetRect(layout.rowLabel, 0, layout.rowHeight * index), {
+      const rowLabel = offsetRect(layout.rowLabel, 0, layout.rowHeight * index);
+      const rowText = offsetRect(layout.rowText, 0, layout.rowHeight * index);
+      this.drawLogRowHardware(rowLabel, rowText, layout.rowHeight, index);
+      this.addTextInRect(index === 0 ? 'NEW' : String(index + 1).padStart(2, '0'), rowLabel, {
         fontSize: 10,
         color: index === 0 ? this.theme.primaryText : this.theme.primaryDimText,
         fontStyle: 'bold'
       });
-      this.addTextInRect(message, offsetRect(layout.rowText, 0, layout.rowHeight * index), {
+      this.addTextInRect(message, rowText, {
         fontSize: 12,
         color: this.theme.bodyText,
         fontStyle: index === 0 ? 'bold' : ''
       });
+      this.logRowsDrawn += 1;
     });
+  }
+
+  private drawLogRowHardware(label: FixedSkinRect, text: FixedSkinRect, rowHeight: number, index: number): void {
+    const graphics = this.add.graphics();
+    const y = text.y - 2;
+    const x = label.x - 2;
+    const width = text.x + text.width - x + 2;
+    const height = Math.max(22, rowHeight - 5);
+    const active = index === 0;
+    graphics.fillStyle(active ? this.theme.primary : 0x050807, active ? 0.12 : 0.36);
+    graphics.fillRoundedRect(x, y, width, height, 4);
+    graphics.lineStyle(1, active ? this.theme.primary : this.theme.controlFrame, active ? 0.44 : 0.2);
+    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 4);
+
+    const labelStroke = parseHexColor(active ? this.theme.primaryText : this.theme.primaryDimText, this.theme.primary);
+    graphics.fillStyle(active ? this.theme.primary : 0x0b1510, active ? 0.22 : 0.78);
+    graphics.fillRoundedRect(label.x - 2, label.y - 3, label.width + 6, label.height + 7, 4);
+    graphics.lineStyle(1, labelStroke, active ? 0.55 : 0.24);
+    graphics.strokeRoundedRect(label.x - 1.5, label.y - 2.5, label.width + 5, label.height + 6, 4);
+    graphics.lineStyle(1, this.theme.primary, active ? 0.18 : 0.08);
+    graphics.lineBetween(text.x, y + height - 4, text.x + text.width - 2, y + height - 4);
   }
 
   private drawInventoryDrawer(): void {
@@ -1601,10 +1635,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         color: this.theme.mutedText
       });
       this.drawInventoryActionChip(rowAction.x, rowAction.y, rowAction.width, rowAction.height, action);
+      this.inventoryRowsDrawn += 1;
     });
   }
 
   private drawInventoryActionChip(x: number, y: number, width: number, height: number, rowAction: InventoryRowAction): void {
+    this.inventoryActionChipsDrawn += 1;
     const active = rowAction.state === 'ready';
     const equipped = rowAction.state === 'equipped';
     const border = equipped ? 0x9bff7c : active ? 0x66d7ff : 0x67706a;
@@ -2290,7 +2326,7 @@ function createScenarioLogs(scenario: PhaserFixedScenario): string[] {
   const intro: Record<PhaserFixedScenario, string> = {
     combat: 'Phaser fixed-skin pass: combat controls, HP meters, latest message, and map are canvas-rendered.',
     movement: 'Phaser fixed-skin pass: movement is unlocked; arrows and D-pad update the canvas state.',
-    diagnostics: 'Diagnostics: this renderer is the no-CSS migration target for fixed skins.',
+    diagnostics: 'Diagnostics: this renderer is the canvas skin target for fixed skins.',
     status: 'Status test: controls are disabled while the model is thinking.',
     defeat: 'Defeat test: terminal overlay and restart control are visible.',
     victory: 'Victory test: terminal overlay and restart control are visible.'

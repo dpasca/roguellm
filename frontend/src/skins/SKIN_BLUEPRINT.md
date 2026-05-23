@@ -365,9 +365,9 @@ art and tintable neutral art are never ambiguous.
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser
 fixed-skin scenarios as a failure.
-`pnpm run validate:phaser-css` also follows the Phaser renderer source graph and
-checks the built Vite manifest so CSS can only remain in the explicit legacy DOM
-style loader.
+`pnpm run validate:phaser-style-boundary` follows the Phaser renderer source
+graph and checks the built Vite manifest so stylesheets can only remain in the
+explicit legacy DOM style loader.
 
 In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the
