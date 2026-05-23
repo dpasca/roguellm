@@ -37,6 +37,23 @@ interface InventoryRowAction {
   state: 'ready' | 'equipped' | 'disabled';
 }
 
+interface FixedSkinRenderTheme {
+  primary: number;
+  primaryText: string;
+  primaryDimText: string;
+  secondary: number;
+  secondaryText: string;
+  lcdFill: number;
+  panelFill: number;
+  controlFrame: number;
+  buttonFrame: number;
+  titleText: string;
+  bodyText: string;
+  mutedText: string;
+  combat: number;
+  combatText: string;
+}
+
 type ButtonEntry = [FixedButtonId, FixedSkinButton];
 
 const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
@@ -514,6 +531,7 @@ function createPhaserFixedGame(
 class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly profile: FixedSkinProfile;
   private readonly skin: GameSkin;
+  private readonly theme: FixedSkinRenderTheme;
   private readonly onAction: (action: GameAction) => void;
   private readonly onToggleLog: () => void;
   private readonly onToggleInventory: () => void;
@@ -529,6 +547,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     super('PhaserFixedSkinScene');
     this.profile = config.profile;
     this.skin = config.skin;
+    this.theme = fixedSkinRenderTheme(config.profile);
     this.onAction = config.onAction;
     this.onToggleLog = config.onToggleLog;
     this.onToggleInventory = config.onToggleInventory;
@@ -645,7 +664,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawMaterialPanel(insetRect(region, 1), 'panel', {
       alpha: 0.42,
       fillTint: 0x060c09,
-      frameTint: 0x81ff5c
+      frameTint: this.theme.primary
     });
     graphics.fillStyle(0x020504, 0.28);
     graphics.fillRect(region.x + 7, region.y + 7, region.width - 14, region.height - 14);
@@ -666,7 +685,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
             tileX + tileSize * 0.26,
             tileY + tileSize * 0.74,
             Math.max(7, Math.floor(tileSize * 0.24)),
-            '#c8d4c9'
+            this.theme.primaryDimText
           ).setOrigin(0.5, 0.5).setAlpha(0.18);
         }
 
@@ -779,18 +798,18 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const latest = this.profile.regions.latest;
     this.drawMaterialPanel(insetRect(latest, 0), 'lcd', {
       alpha: 0.82,
-      fillTint: 0x12321b,
-      frameTint: 0x99ff72,
+      fillTint: this.theme.lcdFill,
+      frameTint: this.theme.primary,
       scanlines: true
     });
     this.addText('LATEST', latest.x + 8, latest.y + 8, latest.width - 16, {
       fontSize: 10,
-      color: '#98ff84',
+      color: this.theme.primaryText,
       fontStyle: 'bold'
     });
     this.addText(this.viewState.logs[0] ?? 'Ready.', latest.x + 8, latest.y + 24, latest.width - 16, {
       fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
-      color: '#f3fff1',
+      color: this.theme.bodyText,
       fontStyle: 'bold',
       lineSpacing: this.profile.kind === 'mobileCompact' ? 1 : 2
     }, latest.height - 28);
@@ -801,7 +820,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (this.profile.kind !== 'mobileCompact') {
       this.addText('ROGUELLM', rect.x, rect.y - 16, rect.width, {
         fontSize: 10,
-        color: '#88ff7a',
+        color: this.theme.primaryText,
         fontStyle: 'bold'
       });
     }
@@ -812,11 +831,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       rect.x + 2,
       rect.y + Math.max(15, rect.height * 0.5),
       iconSize,
-      '#88ff7a'
+      this.theme.primaryText
     ).setOrigin(0, 0.5);
     this.addText(this.viewState.state.game_title, rect.x + iconSize + 12, rect.y, rect.width - iconSize - 12, {
       fontSize: this.profile.kind === 'mobileCompact' ? 20 : 24,
-      color: '#f6fff3',
+      color: this.theme.titleText,
       fontStyle: 'bold'
     }, rect.height);
   }
@@ -828,8 +847,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const hpRatio = clampRatio(state.player_hp / Math.max(1, state.player_max_hp));
     this.drawMaterialPanel(insetRect(hpRect, 0), 'panel', {
       alpha: 0.76,
-      fillTint: 0x122019,
-      frameTint: 0x8dfd70,
+      fillTint: this.theme.panelFill,
+      frameTint: this.theme.primary,
       scanlines: true
     });
     this.addText('HP', hpRect.x + 8, hpRect.y + 7, 36, {
@@ -838,7 +857,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
     this.addText(`${Math.max(0, state.player_hp)}/${state.player_max_hp}`, hpRect.x + hpRect.width - 96, hpRect.y + 7, 88, {
       fontSize: 16,
-      color: '#f7fbff',
+      color: this.theme.titleText,
       fontStyle: 'bold',
       align: 'right'
     });
@@ -862,7 +881,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       });
       this.addText(value, x, stats.y + 18, columnWidth - 4, {
         fontSize: index === 3 ? 11 : 15,
-        color: '#f7fbff',
+        color: this.theme.titleText,
         fontStyle: 'bold'
       }, stats.height - 18);
     });
@@ -874,35 +893,35 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const enemy = state.current_enemy;
     this.drawMaterialPanel(insetRect(rect, 0), state.in_combat ? 'button' : 'panel', {
       alpha: state.in_combat ? 0.82 : 0.72,
-      fillTint: state.in_combat ? 0x351018 : 0x122019,
-      frameTint: state.in_combat ? 0xff6a82 : 0x8dfd70,
+      fillTint: state.in_combat ? 0x351018 : this.theme.panelFill,
+      frameTint: state.in_combat ? this.theme.combat : this.theme.primary,
       scanlines: true
     });
     this.addText(state.in_combat ? 'COMBAT' : 'EXPLORE', rect.x + 8, rect.y + 6, 72, {
       fontSize: 11,
-      color: state.in_combat ? '#ff7188' : '#88ff7a',
+      color: state.in_combat ? this.theme.combatText : this.theme.primaryText,
       fontStyle: 'bold'
     });
 
     if (!state.in_combat || !enemy) {
       this.addText('Movement online', rect.x + 8, rect.y + 24, rect.width - 16, {
         fontSize: 14,
-        color: '#d9e4db',
+        color: this.theme.bodyText,
         fontStyle: 'bold'
       });
       return;
     }
 
-    this.addFontAwesomeIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, '#ff8fa0')
+    this.addFontAwesomeIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, this.theme.combatText)
       .setOrigin(0.5, 0.5);
     this.addText(enemy.name, rect.x + 30, rect.y + 24, rect.width - 134, {
       fontSize: this.profile.kind === 'mobileCompact' ? 12 : 14,
-      color: '#dde5e0',
+      color: this.theme.bodyText,
       fontStyle: 'bold'
     });
     this.addText(`${enemy.hp}/${enemy.max_hp}`, rect.x + rect.width - 86, rect.y + 24, 78, {
       fontSize: 14,
-      color: '#f7fbff',
+      color: this.theme.titleText,
       fontStyle: 'bold',
       align: 'right'
     });
@@ -914,7 +933,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawImageIfLoaded(indicatorKey(this.profile, 'status', statusState), this.profile.indicators.status.rect);
     this.addText(shortStatus(this.viewState.connectionStatus), this.profile.indicators.status.rect.x + 7, this.profile.indicators.status.rect.y + 9, this.profile.indicators.status.rect.width - 14, {
       fontSize: 10,
-      color: '#f5fff1',
+      color: this.theme.titleText,
       fontStyle: 'bold',
       align: 'center'
     });
@@ -937,7 +956,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawMaterialPanel(insetRect(rect, 0), 'panel', {
       alpha: 0.48,
       fillTint: 0x0b100d,
-      frameTint: 0x5b8d66,
+      frameTint: this.theme.controlFrame,
       scanlines: false
     });
   }
@@ -978,7 +997,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (!button.hideLabel) {
       this.addText(button.label, button.rect.x + 6, button.rect.y + Math.max(6, button.rect.height * 0.34), button.rect.width - 12, {
         fontSize: button.rect.height >= 60 ? 18 : 12,
-        color: disabled ? '#9aa0a8' : '#f8fff4',
+        color: disabled ? '#9aa0a8' : this.theme.titleText,
         fontStyle: 'bold',
         align: 'center'
       });
@@ -989,13 +1008,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const rect = this.profile.regions.log;
     this.drawMaterialPanel(rect, 'lcd', {
       alpha: 0.97,
-      fillTint: 0x0d2615,
-      frameTint: 0xa7ff78,
+      fillTint: this.theme.lcdFill,
+      frameTint: this.theme.primary,
       scanlines: true
     });
     this.addText('LOG', rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 13,
-      color: '#aafc92',
+      color: this.theme.primaryText,
       fontStyle: 'bold'
     });
     const rowHeight = this.profile.kind === 'mobileCompact' ? 40 : 46;
@@ -1004,12 +1023,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       const y = rect.y + 34 + rowHeight * index;
       this.addText(index === 0 ? 'NEW' : String(index + 1).padStart(2, '0'), rect.x + 10, y + 2, 34, {
         fontSize: 10,
-        color: index === 0 ? '#93ff7b' : '#7ba58a',
+        color: index === 0 ? this.theme.primaryText : this.theme.primaryDimText,
         fontStyle: 'bold'
       });
       this.addText(message, rect.x + 50, y, rect.width - 66, {
         fontSize: 12,
-        color: '#f3fff1',
+        color: this.theme.bodyText,
         fontStyle: index === 0 ? 'bold' : ''
       }, rowHeight - 4);
     });
@@ -1019,13 +1038,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const rect = this.profile.regions.inventory ?? this.profile.regions.log;
     this.drawMaterialPanel(rect, 'lcd', {
       alpha: 0.97,
-      fillTint: 0x0d2615,
-      frameTint: 0xa7ff78,
+      fillTint: this.theme.lcdFill,
+      frameTint: this.theme.primary,
       scanlines: true
     });
     this.addText('INVENTORY', rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 13,
-      color: '#aafc92',
+      color: this.theme.primaryText,
       fontStyle: 'bold'
     });
     const rowHeight = this.profile.kind === 'mobileCompact' ? 40 : 46;
@@ -1039,19 +1058,19 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       };
       this.drawMaterialPanel(box, 'panel', {
         alpha: 0.9,
-        fillTint: 0x14251c,
-        frameTint: 0x8dff77,
+        fillTint: this.theme.panelFill,
+        frameTint: this.theme.primary,
         scanlines: true
       });
       this.addText('EMPTY', box.x + 12, box.y + 12, box.width - 24, {
         fontSize: 18,
-        color: '#8dff77',
+        color: this.theme.primaryText,
         fontStyle: 'bold',
         align: 'center'
       });
       this.addText('Recovered gear and consumables will appear here.', box.x + 16, box.y + 42, box.width - 32, {
         fontSize: 11,
-        color: '#c4d4c6',
+        color: this.theme.mutedText,
         align: 'center'
       }, 28);
       return;
@@ -1081,12 +1100,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
       this.addText(item.name, rect.x + 58, y + 1, rect.width - 138, {
         fontSize: 12,
-        color: '#f3fff1',
+        color: this.theme.bodyText,
         fontStyle: 'bold'
       }, rowHeight - 20);
       this.addText(item.description, rect.x + 58, y + 19, rect.width - 138, {
         fontSize: 9,
-        color: '#b8c7bc'
+        color: this.theme.mutedText
       }, Math.max(12, rowHeight - 24));
       this.drawInventoryActionChip(rect.x + rect.width - 72, y + 5, 54, 24, action);
     });
@@ -1140,24 +1159,24 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawMaterialPanel(rect, state.game_won ? 'lcd' : 'button', {
       alpha: 0.97,
       fillTint: state.game_won ? 0x17301b : 0x321119,
-      frameTint: state.game_won ? 0xa6ff83 : 0xff7188,
+      frameTint: state.game_won ? this.theme.primary : this.theme.combat,
       scanlines: true
     });
     this.addText(state.game_won ? 'VICTORY' : 'DEFEAT', rect.x + 18, rect.y + 18, rect.width - 36, {
       fontSize: 22,
-      color: state.game_won ? '#a6ff83' : '#ff7188',
+      color: state.game_won ? this.theme.primaryText : this.theme.combatText,
       fontStyle: 'bold',
       align: 'center'
     });
     this.addText(state.game_won ? 'The city opens its locked doors.' : 'The signal fades under neon rain.', rect.x + 24, rect.y + 62, rect.width - 48, {
       fontSize: 15,
-      color: '#f6fff3',
+      color: this.theme.titleText,
       fontStyle: 'bold',
       align: 'center'
     }, 64);
     this.addText(`HP ${Math.max(0, state.player_hp)}     XP ${state.player_xp}`, rect.x + 24, rect.y + 134, rect.width - 48, {
       fontSize: 14,
-      color: '#dfe8df',
+      color: this.theme.bodyText,
       fontStyle: 'bold',
       align: 'center'
     });
@@ -1167,18 +1186,18 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const rect = this.profile.regions.map;
     this.drawMaterialPanel(rect, 'lcd', {
       alpha: 0.86,
-      fillTint: 0x0c1b14,
-      frameTint: 0xaaff8d,
+      fillTint: this.theme.lcdFill,
+      frameTint: this.theme.primary,
       scanlines: true
     });
     this.addText(`${this.profile.label} Phaser renderer`, rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 15,
-      color: '#aaff8d',
+      color: this.theme.primaryText,
       fontStyle: 'bold'
     });
     this.addText('Canvas-only skin pass: chassis, map, meters, messages, drawers, controls, and terminal states are rendered inside Phaser.', rect.x + 10, rect.y + 36, rect.width - 20, {
       fontSize: 12,
-      color: '#f5fff1'
+      color: this.theme.bodyText
     }, 76);
   }
 
@@ -1268,7 +1287,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         frame.setTint(options.frameTint);
       }
     }
-    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind), alpha);
+    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), alpha);
     this.materialPanelsDrawn += 1;
   }
 
@@ -1312,7 +1331,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawScanlines(rect: FixedSkinRect, alpha: number): void {
     const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x9dff80, Math.min(0.28, Math.max(0.04, alpha)));
+    graphics.lineStyle(1, this.theme.primary, Math.min(0.28, Math.max(0.04, alpha)));
     for (let y = rect.y + 4; y < rect.y + rect.height - 3; y += 5) {
       graphics.lineBetween(rect.x + 4, y, rect.x + rect.width - 4, y);
     }
@@ -1475,14 +1494,93 @@ function materialKey(profile: FixedSkinProfile, kind: FixedSkinMaterialKind, par
   return assetKey(profile, `material:${kind}:${part}`);
 }
 
-function defaultMaterialTint(kind: FixedSkinMaterialKind): number {
+function fixedSkinRenderTheme(profile: FixedSkinProfile): FixedSkinRenderTheme {
+  const palette = new Set(profile.meta?.palette ?? []);
+  const tags = new Set(profile.meta?.tags ?? []);
+
+  if (palette.has('amber')) {
+    return {
+      primary: 0xffa441,
+      primaryText: '#ffc46d',
+      primaryDimText: '#a86f3c',
+      secondary: 0x68dfff,
+      secondaryText: '#8feaff',
+      lcdFill: 0x24180c,
+      panelFill: 0x20170f,
+      controlFrame: 0x8f5e2f,
+      buttonFrame: 0xffa441,
+      titleText: '#fff4dc',
+      bodyText: '#f6ead7',
+      mutedText: '#cab69d',
+      combat: 0xff5f73,
+      combatText: '#ff8c9b'
+    };
+  }
+
+  if (palette.has('gold')) {
+    return {
+      primary: 0xffd15a,
+      primaryText: '#ffe38a',
+      primaryDimText: '#a08b48',
+      secondary: 0x8dff70,
+      secondaryText: '#aaff8d',
+      lcdFill: 0x29250f,
+      panelFill: 0x22200f,
+      controlFrame: 0x9f8642,
+      buttonFrame: 0xffd15a,
+      titleText: '#fff7dc',
+      bodyText: '#f7edd7',
+      mutedText: '#c8bfa8',
+      combat: 0xff6682,
+      combatText: '#ff8fa0'
+    };
+  }
+
+  if (palette.has('cyan') || palette.has('coral') || tags.has('signal') || tags.has('noir')) {
+    return {
+      primary: 0x64dfff,
+      primaryText: '#93efff',
+      primaryDimText: '#5f9dab',
+      secondary: 0xff7188,
+      secondaryText: '#ff9daf',
+      lcdFill: 0x0a2630,
+      panelFill: 0x0d2026,
+      controlFrame: 0x3aaec6,
+      buttonFrame: 0xff7188,
+      titleText: '#eefcff',
+      bodyText: '#d8edf0',
+      mutedText: '#9db5ba',
+      combat: 0xff7188,
+      combatText: '#ff9daf'
+    };
+  }
+
+  return {
+    primary: 0x8dff70,
+    primaryText: '#aaff8d',
+    primaryDimText: '#7ba58a',
+    secondary: 0xffa441,
+    secondaryText: '#ffc46d',
+    lcdFill: 0x0d2615,
+    panelFill: 0x122019,
+    controlFrame: 0x5b8d66,
+    buttonFrame: 0xff7188,
+    titleText: '#f6fff3',
+    bodyText: '#f3fff1',
+    mutedText: '#b8c7bc',
+    combat: 0xff7188,
+    combatText: '#ff8fa0'
+  };
+}
+
+function defaultMaterialTint(kind: FixedSkinMaterialKind, theme: FixedSkinRenderTheme): number {
   if (kind === 'button') {
-    return 0xff7188;
+    return theme.buttonFrame;
   }
   if (kind === 'lcd') {
-    return 0xa7ff78;
+    return theme.primary;
   }
-  return 0x8dfd70;
+  return theme.primary;
 }
 
 function buttonKey(profile: FixedSkinProfile, buttonId: FixedButtonId, state: FixedSkinButtonState): string {

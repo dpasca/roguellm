@@ -225,6 +225,27 @@ const baseScenarios = [
     expectedFixedProfile: compactFixedProfile
   },
   {
+    name: 'mobile-short-phaser-signal-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('signal-noir-mobile-compact'),
+    expectedFixedProfile: 'signal-noir-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-gold-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('gold-mobile-compact'),
+    expectedFixedProfile: 'gold-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-amber-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('amber-mobile-compact'),
+    expectedFixedProfile: 'amber-mobile-compact'
+  },
+  {
     name: 'mobile-short-themed-amber-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
