@@ -57,11 +57,11 @@ async function bootstrap(): Promise<void> {
 
   if (!phaserFixedWorkbench && !phaserFixedRuntime) {
     await loadLegacyDomStyles();
+    applySkin(activeSkin);
   } else {
     document.body.dataset.renderSurface = 'phaser-canvas';
+    markCanvasSkin(activeSkin);
   }
-
-  applySkin(activeSkin);
 
   if (phaserFixedWorkbench) {
     startPhaserFixedSkinWorkbench(activeSkin);
@@ -279,6 +279,10 @@ async function loadLegacyDomStyles(): Promise<void> {
     import('@fortawesome/fontawesome-free/css/all.min.css'),
     import('./styles.css')
   ]);
+}
+
+function markCanvasSkin(skin: GameSkin): void {
+  document.body.dataset.skin = skin.id;
 }
 
 function createResponsiveRuntimeUi(skin: GameSkin, onAction: (action: GameAction) => void): RuntimeUi {

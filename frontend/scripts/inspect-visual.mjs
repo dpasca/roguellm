@@ -775,6 +775,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
+      metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
         : null,
@@ -2256,6 +2257,7 @@ async function collectMetrics(page) {
       overflowsY: document.documentElement.scrollHeight > innerHeight,
       overflowsX: document.documentElement.scrollWidth > innerWidth,
       skin: document.body.dataset.skin ?? null,
+      skinClasses: [...document.body.classList].filter((className) => className.startsWith('skin-')),
       workbench: document.body.dataset.workbench ?? null,
       ui: document.body.dataset.ui ?? null,
       fixedProfile: document.body.dataset.fixedProfile ?? null,
@@ -2606,6 +2608,10 @@ function validatePhaserScreenshotQuality(metrics, failures) {
 }
 
 function validateNoPhaserDomStyles(metrics, failures, context) {
+  if ((metrics.skinClasses ?? []).length > 0) {
+    failures.push(`${context} applied CSS skin classes: ${metrics.skinClasses.join(', ')}`);
+  }
+
   const styleSurfaceCount =
     (metrics.stylesheetLinkCount ?? 0) +
     (metrics.styleElementCount ?? 0) +
