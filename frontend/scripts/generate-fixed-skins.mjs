@@ -35,6 +35,24 @@ const sharedMaterialAssets = {
   }
 };
 
+const ownedMaterialAssets = {
+  panel: {
+    fill: { path: 'panel-fill-tile.png', width: 96, height: 96 },
+    frame: { path: 'panel-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 14
+  },
+  lcd: {
+    fill: { path: 'lcd-fill-tile.png', width: 96, height: 96 },
+    frame: { path: 'lcd-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 13
+  },
+  button: {
+    fill: { path: 'button-fill-tile.png', width: 96, height: 96 },
+    frame: { path: 'button-frame-9slice.png', width: 48, height: 48, alpha: true },
+    slice: 13
+  }
+};
+
 const skinAssets = {
   chassis: { path: 'chassis.png', width: 390, height: 844 },
   materials: sharedMaterialAssets,
@@ -91,28 +109,29 @@ const compactSkinRegions = {
 };
 
 function compactSkinAssets(sourceProfile = 'reference-mobile-v3') {
+  const sourceRef = sourceProfile ? { sourceProfile } : {};
   return {
     chassis: { path: 'chassis.png', width: 390, height: 667 },
     materials: sharedMaterialAssets,
     buttons: {
-      attack: { prefix: 'attack', sourceProfile, width: 152, height: 66, alpha: true, icon: 'fa-solid fa-bolt' },
-      run: { prefix: 'run', sourceProfile, width: 152, height: 66, alpha: true, icon: 'fa-solid fa-person-running' },
-      restart: { prefix: 'restart', sourceProfile, width: 226, height: 66, alpha: true, icon: 'fa-solid fa-rotate-right' },
-      log: { prefix: 'log', sourceProfile, width: 46, height: 32, alpha: true },
-      inventory: { prefix: 'inventory', sourceProfile, width: 46, height: 32, alpha: true },
-      moveN: { prefix: 'dpad-n', sourceProfile, width: 58, height: 58, alpha: true },
-      moveS: { prefix: 'dpad-s', sourceProfile, width: 58, height: 58, alpha: true },
-      moveE: { prefix: 'dpad-e', sourceProfile, width: 58, height: 58, alpha: true },
-      moveW: { prefix: 'dpad-w', sourceProfile, width: 58, height: 58, alpha: true }
+      attack: { prefix: 'attack', ...sourceRef, width: 152, height: 66, alpha: true, icon: 'fa-solid fa-bolt' },
+      run: { prefix: 'run', ...sourceRef, width: 152, height: 66, alpha: true, icon: 'fa-solid fa-person-running' },
+      restart: { prefix: 'restart', ...sourceRef, width: 226, height: 66, alpha: true, icon: 'fa-solid fa-rotate-right' },
+      log: { prefix: 'log', ...sourceRef, width: 46, height: 32, alpha: true },
+      inventory: { prefix: 'inventory', ...sourceRef, width: 46, height: 32, alpha: true },
+      moveN: { prefix: 'dpad-n', ...sourceRef, width: 58, height: 58, alpha: true },
+      moveS: { prefix: 'dpad-s', ...sourceRef, width: 58, height: 58, alpha: true },
+      moveE: { prefix: 'dpad-e', ...sourceRef, width: 58, height: 58, alpha: true },
+      moveW: { prefix: 'dpad-w', ...sourceRef, width: 58, height: 58, alpha: true }
     },
     indicators: {
       status: {
         ...skinAssets.indicators.status,
-        sourceProfile
+        ...sourceRef
       },
       combatLed: {
         ...skinAssets.indicators.combatLed,
-        sourceProfile
+        ...sourceRef
       }
     }
   };
@@ -337,7 +356,47 @@ const compactVariants = [
     displayLabel: 'Amber Relay Short Deck',
     label: 'AMBER RELAY SHORT',
     footer: 'SHORT AMBER'
-  })
+  }),
+  {
+    id: 'terminal-green-mobile-compact',
+    displayLabel: 'Terminal Green Short Deck',
+    label: 'TERMINAL GREEN SHORT',
+    role: 'variant',
+    defaultPriority: 82,
+    ownAssets: true,
+    ownMaterials: true,
+    tags: ['cyberpunk', 'terminal', 'green-screen', 'retro', 'technology', 'short-phone'],
+    mood: ['sleek', 'luminous', 'tactile', 'premium', 'compact'],
+    palette: ['emerald', 'green', 'red', 'black', 'graphite'],
+    footer: 'TERMINAL V1',
+    version: 'v0.1',
+    generation: 'deterministic-svg-owned-compact',
+    premium: true,
+    accent: '#9cff67',
+    accentSoft: '#d8ffa3',
+    accentDim: '#265f26',
+    accentLine: '#5dff66',
+    secondary: '#ff4f5e',
+    textMuted: '#b7cab9',
+    textDim: '#6f806f',
+    shellTop: '#353f39',
+    shellMid: '#050908',
+    shellStroke: '#7a8f7f',
+    panelStroke: '#6f8b70',
+    panelInset: '#07160c',
+    noise: '#26332a',
+    action: {
+      attack: { main: '#e33128', dark: '#330705', light: '#ff8d74', text: '#fff0df' },
+      run: { main: '#59e842', dark: '#082d0d', light: '#d8ff9b', text: '#ecffe1' },
+      restart: { main: '#9cff67', dark: '#153816', light: '#ecffb3', text: '#f3ffe4' }
+    },
+    status: {
+      ready: ['#9cff67', '#123a16'],
+      thinking: ['#ffd65a', '#3f3109'],
+      error: ['#ff4f5e', '#4a0a12'],
+      offline: ['#7a877d', '#0f1411']
+    }
+  }
 ];
 
 const buttonStates = {
@@ -351,7 +410,7 @@ for (const variant of variants) {
   generateVariant(variant, standardSkinProfile);
 }
 for (const variant of compactVariants) {
-  generateVariant(variant, compactSkinProfileFor(variant.sourceProfile));
+  generateVariant(variant, compactSkinProfileFor(variant.ownAssets ? null : variant.sourceProfile));
 }
 generateDesktopPrototypeAddons();
 
@@ -378,6 +437,9 @@ function compactVariant(sourceId, overrides) {
 function generateVariant(variant, profile) {
   const outDir = path.join(fixedRootDir, variant.id);
   fs.mkdirSync(outDir, { recursive: true });
+  const assets = variant.ownMaterials
+    ? { ...profile.assets, materials: ownedMaterialAssets }
+    : profile.assets;
 
   writeText(outDir, 'skin-kit.json', `${JSON.stringify({
     id: variant.id,
@@ -386,16 +448,19 @@ function generateVariant(variant, profile) {
     size: profile.size,
     renderTheme: renderTheme(variant),
     regions: profile.regions,
-    assets: profile.assets,
+    assets,
     layout: profile.layout,
     runtime: profile.runtime
   }, null, 2)}\n`);
 
   writePng(outDir, 'chassis.png', profile.chassis(variant));
+  if (variant.ownMaterials) {
+    writeOwnedMaterialAssets(outDir, variant);
+  }
 
-  const attackAsset = profile.assets.buttons.attack;
-  const runAsset = profile.assets.buttons.run;
-  const restartAsset = profile.assets.buttons.restart;
+  const attackAsset = assets.buttons.attack;
+  const runAsset = assets.buttons.run;
+  const restartAsset = assets.buttons.restart;
 
   for (const state of Object.keys(buttonStates)) {
     if (!attackAsset.sourceProfile) {
@@ -413,35 +478,42 @@ function generateVariant(variant, profile) {
         ? premiumActionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart)
         : actionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart));
     }
-    if (!profile.assets.buttons.log.sourceProfile) {
+    if (!assets.buttons.log.sourceProfile) {
       writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
     }
-    if (!profile.assets.buttons.inventory.sourceProfile) {
+    if (!assets.buttons.inventory.sourceProfile) {
       writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
     }
-    if (!profile.assets.buttons.moveN.sourceProfile) {
+    if (!assets.buttons.moveN.sourceProfile) {
       writePng(outDir, `dpad-n-${state}.png`, variant.premium ? premiumDpadButtonSvg('n', state, variant) : dpadButtonSvg('n', state, variant));
     }
-    if (!profile.assets.buttons.moveS.sourceProfile) {
+    if (!assets.buttons.moveS.sourceProfile) {
       writePng(outDir, `dpad-s-${state}.png`, variant.premium ? premiumDpadButtonSvg('s', state, variant) : dpadButtonSvg('s', state, variant));
     }
-    if (!profile.assets.buttons.moveE.sourceProfile) {
+    if (!assets.buttons.moveE.sourceProfile) {
       writePng(outDir, `dpad-e-${state}.png`, variant.premium ? premiumDpadButtonSvg('e', state, variant) : dpadButtonSvg('e', state, variant));
     }
-    if (!profile.assets.buttons.moveW.sourceProfile) {
+    if (!assets.buttons.moveW.sourceProfile) {
       writePng(outDir, `dpad-w-${state}.png`, variant.premium ? premiumDpadButtonSvg('w', state, variant) : dpadButtonSvg('w', state, variant));
     }
   }
 
-  if (!profile.assets.indicators.status.sourceProfile) {
+  if (!assets.indicators.status.sourceProfile) {
     writePng(outDir, 'status-ready.png', variant.premium ? premiumStatusSvg(...variant.status.ready) : statusSvg(...variant.status.ready));
     writePng(outDir, 'status-thinking.png', variant.premium ? premiumStatusSvg(...variant.status.thinking) : statusSvg(...variant.status.thinking));
     writePng(outDir, 'status-error.png', variant.premium ? premiumStatusSvg(...variant.status.error) : statusSvg(...variant.status.error));
     writePng(outDir, 'status-offline.png', variant.premium ? premiumStatusSvg(...variant.status.offline) : statusSvg(...variant.status.offline));
   }
-  if (!profile.assets.indicators.combatLed.sourceProfile) {
+  if (!assets.indicators.combatLed.sourceProfile) {
     writePng(outDir, 'led-on.png', variant.premium ? premiumLedSvg(true, variant) : ledSvg(true, variant));
     writePng(outDir, 'led-off.png', variant.premium ? premiumLedSvg(false, variant) : ledSvg(false, variant));
+  }
+}
+
+function writeOwnedMaterialAssets(outDir, variant) {
+  for (const kind of Object.keys(ownedMaterialAssets)) {
+    writePng(outDir, `${kind}-fill-tile.png`, ownedMaterialFillSvg(kind, variant));
+    writePng(outDir, `${kind}-frame-9slice.png`, ownedMaterialFrameSvg(kind, variant));
   }
 }
 
@@ -538,6 +610,25 @@ function renderTheme(variant) {
     };
   }
 
+  if (palette.has('emerald')) {
+    return {
+      primary: '#9cff67',
+      primaryText: '#d6ff9b',
+      primaryDimText: '#7fab73',
+      secondary: '#ff4f5e',
+      secondaryText: '#ff9aa4',
+      lcdFill: '#071b0d',
+      panelFill: '#0c1710',
+      controlFrame: '#6f8b70',
+      buttonFrame: '#ff4f5e',
+      titleText: '#f5fff0',
+      bodyText: '#edfbe9',
+      mutedText: '#b7cab9',
+      combat: '#ff4f5e',
+      combatText: '#ff9aa4'
+    };
+  }
+
   return {
     primary: '#8dff70',
     primaryText: '#aaff8d',
@@ -563,6 +654,70 @@ function writeText(outDir, filename, content) {
 function writePng(outDir, filename, svgSource) {
   const output = path.join(outDir, filename);
   execFileSync('magick', ['-background', 'none', 'svg:-', '-strip', `PNG32:${output}`], { input: svgSource });
+}
+
+function ownedMaterialFillSvg(kind, variant) {
+  const base = kind === 'lcd'
+    ? '#041008'
+    : kind === 'button'
+      ? '#160807'
+      : '#07100b';
+  const trace = kind === 'button' ? variant.secondary : variant.accent;
+  const secondaryTrace = kind === 'lcd' ? variant.accentSoft : variant.secondary;
+  const opacity = kind === 'panel' ? 0.24 : kind === 'lcd' ? 0.34 : 0.28;
+
+  return svg(96, 96, `
+    <defs>
+      <linearGradient id="fillBase" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${shift(base, 24)}"/>
+        <stop offset="0.52" stop-color="${base}"/>
+        <stop offset="1" stop-color="#010302"/>
+      </linearGradient>
+      <pattern id="terminalGrid" width="12" height="12" patternUnits="userSpaceOnUse">
+        <path d="M12 0H0V12" fill="none" stroke="${trace}" stroke-opacity="${opacity}" stroke-width="0.9"/>
+        <path d="M0 4H12M0 8H12" stroke="#ffffff" stroke-opacity="0.035" stroke-width="0.8"/>
+      </pattern>
+      <pattern id="diagonalTrace" width="18" height="18" patternUnits="userSpaceOnUse">
+        <path d="M-4 18L18 -4M4 22L22 4" stroke="${secondaryTrace}" stroke-opacity="0.13" stroke-width="1"/>
+      </pattern>
+      <radialGradient id="tileBloom" cx="0.2" cy="0.15" r="0.85">
+        <stop offset="0" stop-color="${trace}" stop-opacity="0.18"/>
+        <stop offset="0.48" stop-color="${trace}" stop-opacity="0.04"/>
+        <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="96" height="96" fill="url(#fillBase)"/>
+    <rect width="96" height="96" fill="url(#terminalGrid)"/>
+    <rect width="96" height="96" fill="url(#diagonalTrace)" opacity="${kind === 'button' ? 0.72 : 0.42}"/>
+    <rect width="96" height="96" fill="url(#tileBloom)"/>
+    <circle cx="12" cy="12" r="2" fill="${trace}" opacity="0.22"/>
+    <circle cx="84" cy="84" r="2" fill="${secondaryTrace}" opacity="0.18"/>
+    <path d="M18 72H42V66H78" fill="none" stroke="${trace}" stroke-opacity="0.2" stroke-width="1.2"/>
+  `);
+}
+
+function ownedMaterialFrameSvg(kind, variant) {
+  const stroke = kind === 'button' ? variant.secondary : variant.accentSoft;
+  const glow = kind === 'button' ? variant.secondary : variant.accent;
+  const corner = kind === 'lcd' ? variant.accentSoft : variant.textMuted;
+
+  return svg(48, 48, `
+    <defs>
+      <filter id="frameGlow" x="-45%" y="-45%" width="190%" height="190%">
+        <feGaussianBlur stdDeviation="1.2" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect x="1.5" y="1.5" width="45" height="45" rx="7" fill="none" stroke="#020403" stroke-width="3"/>
+    <rect x="3.5" y="3.5" width="41" height="41" rx="6" fill="none" stroke="${stroke}" stroke-width="1.6" opacity="0.78"/>
+    <rect x="7.5" y="7.5" width="33" height="33" rx="4" fill="none" stroke="${glow}" stroke-width="0.9" opacity="0.35" filter="url(#frameGlow)"/>
+    <path d="M7 17V7H17M31 7H41V17M41 31V41H31M17 41H7V31" fill="none" stroke="${corner}" stroke-opacity="0.62" stroke-width="1.2"/>
+    <path d="M13 4H35M13 44H35" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
+    <path d="M4 13V35M44 13V35" stroke="#000000" stroke-opacity="0.5" stroke-width="1"/>
+  `);
 }
 
 function chassisSvg(variant) {

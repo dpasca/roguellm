@@ -246,6 +246,27 @@ const baseScenarios = [
     expectedFixedProfile: 'amber-mobile-compact'
   },
   {
+    name: 'mobile-short-phaser-terminal-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-log',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
+    name: 'mobile-short-phaser-terminal-fixed-workbench-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-inventory',
+    url: phaserFixedWorkbenchProfileUrl('terminal-green-mobile-compact'),
+    expectedFixedProfile: 'terminal-green-mobile-compact'
+  },
+  {
     name: 'mobile-short-themed-amber-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
