@@ -217,6 +217,16 @@ For short-phone manual checks, force the compact profile:
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-compact
 ```
 
+For local fixed-skin workbench review, use:
+
+```text
+http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin
+```
+
+In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
+kind, which makes compact mobile variants quick to compare without editing the
+URL between screenshots.
+
 The backend preserves `skin`, `ui`, `fixed_skin`, `profile`, `skin_tags`,
 `skin_mood`, and `skin_palette` query params when it creates or redirects to a
 Game2 session, so these links remain on the fixed skin after session creation.

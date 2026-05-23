@@ -261,6 +261,9 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (!event.repeat) {
+      if (cycleWorkbenchProfile(skin, profile, event)) {
+        return;
+      }
       handleDrawerKey(event);
     }
   };
@@ -324,6 +327,43 @@ function selectProfile(skin: GameSkin): FixedSkinProfile | null {
   }
 
   return selectPreferredProfile(profiles, 'mobilePortrait') ?? profiles[0] ?? null;
+}
+
+function cycleWorkbenchProfile(skin: GameSkin, currentProfile: FixedSkinProfile, event: KeyboardEvent): boolean {
+  const direction = profileCycleDirection(event);
+  if (!direction) {
+    return false;
+  }
+
+  const profiles = (skin.fixedProfiles ?? []).filter((profile) => profile.kind === currentProfile.kind);
+  if (profiles.length <= 1) {
+    return false;
+  }
+
+  const currentIndex = Math.max(0, profiles.findIndex((profile) => profile.id === currentProfile.id));
+  const nextIndex = (currentIndex + direction + profiles.length) % profiles.length;
+  const nextProfile = profiles[nextIndex];
+  const url = new URL(window.location.href);
+  url.searchParams.set('profile', nextProfile.id);
+  event.preventDefault();
+  window.location.assign(url.toString());
+  return true;
+}
+
+function profileCycleDirection(event: KeyboardEvent): -1 | 1 | null {
+  if (event.ctrlKey || event.metaKey || event.altKey) {
+    return null;
+  }
+
+  if (event.key === '[') {
+    return -1;
+  }
+
+  if (event.key === ']') {
+    return 1;
+  }
+
+  return null;
 }
 
 function nextDrawerStateForKey(event: KeyboardEvent, current: DrawerState): DrawerState | null {

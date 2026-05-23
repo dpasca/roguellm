@@ -175,6 +175,13 @@ const baseScenarios = [
     expectedFixedProfile: 'gold-mobile-compact'
   },
   {
+    name: 'mobile-compact-profile-cycle-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'fixed-workbench-profile-cycle',
+    url: fixedWorkbenchProfileUrl(compactFixedProfile),
+    expectedFixedProfile: 'signal-noir-mobile-compact'
+  },
+  {
     name: 'mobile-short-fixed-runtime-log',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-runtime-log',
@@ -1063,6 +1070,17 @@ async function runScenario(page, scenario) {
     await waitForLogOpen(page);
     await page.keyboard.press('Escape');
     await waitForFixedDrawerClosed(page);
+  }
+
+  if (scenario.mode === 'fixed-workbench-profile-cycle') {
+    await Promise.all([
+      page.waitForURL(
+        (url) => url.searchParams.get('profile') === scenario.expectedFixedProfile,
+        { timeout: 5000 }
+      ),
+      page.keyboard.press(']')
+    ]);
+    await waitForFixedWorkbenchReady(page);
   }
 
   if (
