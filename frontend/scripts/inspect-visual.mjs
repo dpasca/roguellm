@@ -753,6 +753,7 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
+      Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
         : null,
@@ -2259,6 +2260,7 @@ async function collectMetrics(page) {
       phaserCanvasIconMarks: Number(document.body.dataset.phaserCanvasIconMarks ?? NaN),
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
+      phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserCanvas: {
@@ -2652,6 +2654,10 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
   }
 
+  if (!Number.isFinite(metrics.phaserShellDetails) || metrics.phaserShellDetails < 80) {
+    failures.push(`expected Phaser shell hardware details, got ${metrics.phaserShellDetails ?? 'none'}`);
+  }
+
   if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
     failures.push(`expected detailed Phaser map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
   }
@@ -2764,6 +2770,10 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserShellDetails) || metrics.phaserShellDetails < 80) {
+    failures.push(`expected Phaser runtime shell hardware details, got ${metrics.phaserShellDetails ?? 'none'}`);
   }
 
   if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {

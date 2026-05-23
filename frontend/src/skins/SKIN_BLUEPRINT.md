@@ -191,6 +191,11 @@ visual inspection gates so they behave like part of the skin:
   canvas-rendered control hardware: recessed D-pad wells, action racks, screws,
   rails, LEDs, bevels, and directional markers. Visual inspection must fail
   when this count falls below the production floor.
+- Phaser fixed skins expose a separate `phaserShellDetails` metric for the
+  overall skin shell: outer rails, header hardware, aperture clamps, circuit
+  traces, side status bars, bottom vents, and chassis screws. Visual inspection
+  must fail when this count falls below the production floor so the mobile
+  artboard cannot regress back into floating panels on a plain background.
 - Fixed HP rows use a stable `HP` label plate and HP value plate, while the HP
   fill remains a separate meter region defined by the skin profile.
 - Fixed status indicators expose their state as `ready`, `thinking`, `error`,

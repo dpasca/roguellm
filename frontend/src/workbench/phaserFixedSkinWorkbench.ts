@@ -535,6 +535,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private canvasIconMarksDrawn = 0;
   private materialPanelsDrawn = 0;
   private chromeDetailsDrawn = 0;
+  private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
   private controlDetailsDrawn = 0;
 
@@ -607,10 +608,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.canvasIconMarksDrawn = 0;
     this.materialPanelsDrawn = 0;
     this.chromeDetailsDrawn = 0;
+    this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
+    this.drawShellHardware();
     this.drawMap();
     this.drawLatest();
     this.drawTitle();
@@ -635,8 +638,181 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserCanvasIconMarks = String(this.canvasIconMarksDrawn);
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
+    document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
+  }
+
+  private drawShellHardware(): void {
+    const width = this.profile.width;
+    const height = this.profile.height;
+    const graphics = this.add.graphics();
+    const primary = this.theme.primary;
+    const secondary = this.theme.secondary;
+    const control = this.theme.controlFrame;
+
+    graphics.fillStyle(0x020504, 0.28);
+    graphics.fillRect(0, 0, width, height);
+    graphics.lineStyle(2, control, 0.48);
+    graphics.strokeRoundedRect(6.5, 6.5, width - 13, height - 13, 8);
+    graphics.lineStyle(1, primary, 0.36);
+    graphics.strokeRoundedRect(14.5, 36.5, width - 29, height - 45, 4);
+    graphics.lineStyle(1, 0xffffff, 0.08);
+    graphics.lineBetween(18, 10, width - 18, 10);
+    graphics.lineBetween(10, 18, 10, height - 18);
+    graphics.lineStyle(1, 0x010302, 0.62);
+    graphics.lineBetween(18, height - 9, width - 18, height - 9);
+    graphics.lineBetween(width - 9, 18, width - 9, height - 18);
+    this.shellDetailsDrawn += 8;
+
+    this.drawHeaderHardware(graphics, width, primary, secondary, control);
+    this.drawSideRails(graphics, width, height, primary, secondary);
+    this.drawRegionHarness(graphics, this.profile.regions.map, primary, 'map');
+    this.drawRegionHarness(graphics, this.profile.regions.latest, secondary, 'latest');
+    this.drawRegionHarness(graphics, this.profile.regions.playerHp, primary, 'player');
+    this.drawRegionHarness(graphics, this.profile.regions.combat, this.theme.combat, 'combat');
+    this.drawLowerDeckHardware(graphics, width, height, primary, secondary);
+  }
+
+  private drawHeaderHardware(graphics: Phaser.GameObjects.Graphics, width: number, primary: number, secondary: number, control: number): void {
+    graphics.fillStyle(0x020504, 0.7);
+    graphics.fillRoundedRect(18, 14, width - 36, 20, 8);
+    graphics.lineStyle(1, control, 0.5);
+    graphics.strokeRoundedRect(18.5, 14.5, width - 37, 19, 8);
+    graphics.lineStyle(1, 0xffffff, 0.12);
+    graphics.lineBetween(30, 17, width - 30, 17);
+    this.shellDetailsDrawn += 3;
+
+    for (let index = 0; index < 5; index += 1) {
+      const x = width - 54 + index * 7;
+      const barHeight = 5 + index * 3;
+      graphics.fillStyle(index < 4 ? primary : secondary, 0.86);
+      graphics.fillRoundedRect(x, 26 - barHeight, 4, barHeight, 1);
+      this.shellDetailsDrawn += 1;
+    }
+
+    graphics.fillStyle(secondary, 0.86);
+    graphics.fillRoundedRect(24, 21, 22, 6, 3);
+    graphics.fillStyle(0x020504, 0.72);
+    graphics.fillCircle(width - 24, 24, 7);
+    graphics.lineStyle(1, primary, 0.5);
+    graphics.strokeCircle(width - 24, 24, 5);
+    this.shellDetailsDrawn += 4;
+
+    this.drawShellScrew(graphics, 16, 16, control);
+    this.drawShellScrew(graphics, width - 16, 16, control);
+  }
+
+  private drawSideRails(graphics: Phaser.GameObjects.Graphics, width: number, height: number, primary: number, secondary: number): void {
+    const railTop = 52;
+    const railBottom = height - 42;
+    for (const side of [18, width - 22]) {
+      graphics.fillStyle(0x020504, 0.62);
+      graphics.fillRoundedRect(side, railTop, 4, railBottom - railTop, 2);
+      graphics.lineStyle(1, primary, 0.24);
+      graphics.lineBetween(side + 1, railTop + 8, side + 1, railBottom - 8);
+      this.shellDetailsDrawn += 2;
+      for (let y = railTop + 18; y < railBottom - 10; y += 38) {
+        graphics.fillStyle((Math.floor(y / 38) % 2 === 0) ? primary : secondary, 0.5);
+        graphics.fillRoundedRect(side - 1, y, 6, 11, 2);
+        this.shellDetailsDrawn += 1;
+      }
+    }
+  }
+
+  private drawRegionHarness(graphics: Phaser.GameObjects.Graphics, rect: FixedSkinRect, tint: number, role: 'map' | 'latest' | 'player' | 'combat'): void {
+    const expanded = role === 'map' ? outsetRect(rect, 5) : outsetRect(rect, 4);
+    const length = role === 'map' ? 20 : 13;
+    const alpha = role === 'combat' && !this.viewState.state.in_combat ? 0.22 : 0.38;
+
+    graphics.lineStyle(1, tint, alpha);
+    this.drawShellCorner(graphics, expanded.x, expanded.y, 1, 1, length);
+    this.drawShellCorner(graphics, expanded.x + expanded.width, expanded.y, -1, 1, length);
+    this.drawShellCorner(graphics, expanded.x, expanded.y + expanded.height, 1, -1, length);
+    this.drawShellCorner(graphics, expanded.x + expanded.width, expanded.y + expanded.height, -1, -1, length);
+    this.shellDetailsDrawn += 8;
+
+    if (role === 'map') {
+      graphics.lineStyle(1, 0xffffff, 0.08);
+      graphics.lineBetween(expanded.x + 26, expanded.y - 3, expanded.x + expanded.width - 26, expanded.y - 3);
+      graphics.lineStyle(1, tint, 0.18);
+      graphics.lineBetween(expanded.x - 3, expanded.y + 22, expanded.x - 3, expanded.y + expanded.height - 22);
+      graphics.lineBetween(expanded.x + expanded.width + 3, expanded.y + 22, expanded.x + expanded.width + 3, expanded.y + expanded.height - 22);
+      this.shellDetailsDrawn += 3;
+    }
+
+    if (role === 'latest') {
+      this.drawTinyLedCluster(graphics, expanded.x + expanded.width + 9, expanded.y + 11, tint);
+      this.drawCircuitTrace(graphics, expanded.x + expanded.width + 2, expanded.y + 24, expanded.x + expanded.width + 24, expanded.y + 24, tint);
+    }
+
+    if (role === 'player' || role === 'combat') {
+      this.drawCircuitTrace(graphics, expanded.x + 12, expanded.y - 7, expanded.x + expanded.width - 12, expanded.y - 7, tint);
+    }
+  }
+
+  private drawLowerDeckHardware(graphics: Phaser.GameObjects.Graphics, width: number, height: number, primary: number, secondary: number): void {
+    const y = height - 28;
+    graphics.fillStyle(0x020504, 0.68);
+    graphics.fillRoundedRect(28, y, width - 56, 13, 5);
+    graphics.lineStyle(1, primary, 0.22);
+    graphics.strokeRoundedRect(28.5, y + 0.5, width - 57, 12, 5);
+    this.shellDetailsDrawn += 2;
+
+    for (let index = 0; index < 12; index += 1) {
+      const x = 52 + index * 12;
+      const lit = index % 4 !== 0;
+      graphics.fillStyle(lit ? (index % 3 === 0 ? secondary : primary) : 0x26302c, lit ? 0.58 : 0.36);
+      graphics.fillRoundedRect(x, y + 5, 7, 3, 1);
+      this.shellDetailsDrawn += 1;
+    }
+
+    for (let index = 0; index < 9; index += 1) {
+      const x = width - 96 + index * 7;
+      graphics.lineStyle(1, 0x3a453f, 0.48);
+      graphics.lineBetween(x, y + 3, x, y + 10);
+      this.shellDetailsDrawn += 1;
+    }
+
+    this.drawShellScrew(graphics, 17, height - 17, primary);
+    this.drawShellScrew(graphics, width - 17, height - 17, primary);
+  }
+
+  private drawShellCorner(graphics: Phaser.GameObjects.Graphics, x: number, y: number, xDirection: 1 | -1, yDirection: 1 | -1, length: number): void {
+    graphics.lineBetween(x, y, x + xDirection * length, y);
+    graphics.lineBetween(x, y, x, y + yDirection * length);
+  }
+
+  private drawCircuitTrace(graphics: Phaser.GameObjects.Graphics, x1: number, y1: number, x2: number, y2: number, tint: number): void {
+    const midX = Math.round((x1 + x2) / 2);
+    graphics.lineStyle(1, tint, 0.22);
+    graphics.lineBetween(x1, y1, midX, y1);
+    graphics.lineBetween(midX, y1, midX, y2);
+    graphics.lineBetween(midX, y2, x2, y2);
+    graphics.fillStyle(tint, 0.45);
+    graphics.fillCircle(x1, y1, 1.5);
+    graphics.fillCircle(x2, y2, 1.5);
+    this.shellDetailsDrawn += 5;
+  }
+
+  private drawTinyLedCluster(graphics: Phaser.GameObjects.Graphics, x: number, y: number, tint: number): void {
+    for (let index = 0; index < 3; index += 1) {
+      graphics.fillStyle(index === 2 ? this.theme.secondary : tint, index === 1 ? 0.32 : 0.74);
+      graphics.fillRoundedRect(x, y + index * 7, 9, 3, 1);
+      this.shellDetailsDrawn += 1;
+    }
+  }
+
+  private drawShellScrew(graphics: Phaser.GameObjects.Graphics, x: number, y: number, tint: number): void {
+    graphics.fillStyle(0x020504, 0.9);
+    graphics.fillCircle(x, y, 5);
+    graphics.fillStyle(tint, 0.38);
+    graphics.fillCircle(x, y, 3);
+    graphics.lineStyle(1, 0xffffff, 0.15);
+    graphics.lineBetween(x - 3, y - 1, x + 3, y - 1);
+    graphics.lineStyle(1, 0x010302, 0.62);
+    graphics.lineBetween(x - 3, y + 1, x + 3, y + 1);
+    this.shellDetailsDrawn += 3;
   }
 
   private drawMap(): void {
