@@ -9,7 +9,7 @@ import { getSkinFromLocation } from './skins/registry';
 import type { GameSkin } from './skins/types';
 import { HudController } from './ui/hud';
 import { createFixedSkinRuntime, isFixedSkinRuntime, isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
-import { isPhaserFixedSkinWorkbench, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
+import { createPhaserFixedSkinRuntime, isPhaserFixedSkinRuntime, isPhaserFixedSkinWorkbench, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
 import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
@@ -17,6 +17,7 @@ const GAME2_SESSION_QUERY_PARAMS = [
   'fixture',
   'skin',
   'ui',
+  'renderer',
   'fixed_skin',
   'profile',
   'skin_tags',
@@ -32,7 +33,7 @@ function showFatal(message: string): void {
 }
 
 interface RuntimeUi {
-  scene: RogueScene;
+  scene?: unknown;
   render(state: GameState): void;
   setActionPending(pending: boolean): void;
   setConnectionStatus(status: string): void;
@@ -78,9 +79,11 @@ if (isPhaserFixedSkinWorkbench()) {
   let actionPending = false;
   let nextClientActionId = 1;
   let pendingActionId: number | null = null;
-  const ui = isFixedSkinRuntime() && activeSkin.fixedProfiles
-    ? createFixedSkinRuntime(activeSkin, handleUserAction)
-    : createResponsiveRuntimeUi(activeSkin, handleUserAction);
+  const ui = isPhaserFixedSkinRuntime() && activeSkin.fixedProfiles
+    ? createPhaserFixedSkinRuntime(activeSkin, handleUserAction)
+    : isFixedSkinRuntime() && activeSkin.fixedProfiles
+      ? createFixedSkinRuntime(activeSkin, handleUserAction)
+      : createResponsiveRuntimeUi(activeSkin, handleUserAction);
 
   const socket = new GameSocketClient(sessionId, {
     onOpen() {

@@ -48,6 +48,160 @@ export function isPhaserFixedSkinWorkbench(): boolean {
     (workbench === 'fixed-skin' && params.get('renderer') === 'phaser');
 }
 
+export interface PhaserFixedSkinRuntimeUi {
+  render(state: GameState): void;
+  setActionPending(pending: boolean): void;
+  setConnectionStatus(status: string): void;
+  addLog(message: string): void;
+  destroy(): void;
+}
+
+export function isPhaserFixedSkinRuntime(location: Location = window.location): boolean {
+  const params = new URL(location.href).searchParams;
+  const requestedUi = params.get('ui')?.toLowerCase();
+  if (requestedUi === 'classic' || requestedUi === 'responsive') {
+    return false;
+  }
+
+  return requestedUi === 'phaser-fixed-skin' ||
+    (requestedUi === 'fixed-skin' && params.get('renderer') === 'phaser') ||
+    params.get('fixed_renderer') === 'phaser';
+}
+
+export function createPhaserFixedSkinRuntime(
+  skin: GameSkin,
+  onAction: (action: GameAction) => void
+): PhaserFixedSkinRuntimeUi {
+  const profile = selectFixedSkinProfile(skin);
+  if (!profile) {
+    throw new Error(`Skin ${skin.id} does not define fixed profiles`);
+  }
+
+  let currentState = createWorkbenchState();
+  let hasLiveState = false;
+  let logs = ['Connecting...'];
+  let logOpen = false;
+  let inventoryOpen = false;
+  let actionPending = false;
+  let connectionStatus = 'offline';
+
+  document.body.dataset.ui = 'phaser-fixed-skin';
+  document.body.dataset.fixedProfile = profile.id;
+  document.body.dataset.fixedRenderer = 'phaser';
+  document.body.dataset.phaserDrawer = 'closed';
+  document.body.dataset.phaserRuntimeState = 'booting';
+
+  const app = document.getElementById('app');
+  if (!app) {
+    throw new Error('Missing #app');
+  }
+  app.replaceChildren();
+
+  const host = createPhaserHost(app);
+  const scene = new PhaserFixedSkinScene({
+    profile,
+    skin,
+    state: currentState,
+    logs,
+    scenario: 'combat',
+    connectionStatus,
+    onAction,
+    onToggleLog() {
+      logOpen = !logOpen;
+      inventoryOpen = false;
+      renderScene();
+    },
+    onToggleInventory() {
+      inventoryOpen = !inventoryOpen;
+      logOpen = false;
+      renderScene();
+    }
+  });
+  const game = createPhaserFixedGame(host, profile, scene);
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.repeat) {
+      return;
+    }
+
+    if (event.key === 'Escape' && (logOpen || inventoryOpen)) {
+      logOpen = false;
+      inventoryOpen = false;
+      renderScene();
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key.toLowerCase() === 'l') {
+      logOpen = !logOpen;
+      inventoryOpen = false;
+      renderScene();
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key.toLowerCase() === 'i') {
+      inventoryOpen = !inventoryOpen;
+      logOpen = false;
+      renderScene();
+      event.preventDefault();
+      return;
+    }
+
+    const direction = directionFromKey(event.key);
+    if (direction && hasLiveState && canMove(currentState, direction) && !logOpen && !inventoryOpen && !actionPending) {
+      onAction({ action: 'move', direction });
+      event.preventDefault();
+    }
+  };
+  window.addEventListener('keydown', onKeyDown);
+
+  function renderScene(): void {
+    document.body.dataset.phaserDrawer = logOpen ? 'log' : inventoryOpen ? 'inventory' : 'closed';
+    document.body.dataset.phaserRuntimeState = hasLiveState ? 'live' : 'booting';
+    document.body.dataset.phaserStatus = connectionStatus;
+    document.body.classList.toggle('in-combat', currentState.in_combat);
+    document.body.classList.toggle('game-ended', isTerminalState(currentState));
+    scene.renderWorkbenchState({
+      state: currentState,
+      logs,
+      logOpen,
+      inventoryOpen,
+      actionPending,
+      connectionStatus
+    });
+  }
+
+  renderScene();
+
+  return {
+    render(state: GameState): void {
+      currentState = state;
+      hasLiveState = true;
+      renderScene();
+    },
+    setActionPending(pending: boolean): void {
+      actionPending = pending;
+      renderScene();
+    },
+    setConnectionStatus(status: string): void {
+      connectionStatus = status;
+      renderScene();
+    },
+    addLog(message: string): void {
+      if (!message.trim()) {
+        return;
+      }
+      logs = [message, ...logs.filter((entry) => entry !== 'Connecting...')].slice(0, 40);
+      renderScene();
+    },
+    destroy(): void {
+      window.removeEventListener('keydown', onKeyDown);
+      game.destroy(false);
+    }
+  };
+}
+
 export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
   const profile = selectFixedSkinProfile(skin);
   if (!profile) {
@@ -74,14 +228,7 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
   }
   app.replaceChildren();
 
-  const host = document.createElement('div');
-  host.id = 'phaser-fixed-skin-workbench';
-  host.dataset.phaserFixedSkin = '1';
-  host.style.width = '100vw';
-  host.style.height = '100svh';
-  host.style.overflow = 'hidden';
-  host.style.background = '#020504';
-  app.append(host);
+  const host = createPhaserHost(app);
 
   const scene = new PhaserFixedSkinScene({
     profile,
@@ -103,23 +250,7 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
     }
   });
 
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: host,
-    backgroundColor: '#020504',
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      parent: host,
-      width: profile.width,
-      height: profile.height
-    },
-    render: {
-      antialias: false,
-      pixelArt: true
-    },
-    scene
-  });
+  const game = createPhaserFixedGame(host, profile, scene);
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.repeat) {
@@ -192,6 +323,42 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
       connectionStatus
     });
   }
+}
+
+function createPhaserHost(app: HTMLElement): HTMLElement {
+  const host = document.createElement('div');
+  host.id = 'phaser-fixed-skin-workbench';
+  host.dataset.phaserFixedSkin = '1';
+  host.style.width = '100vw';
+  host.style.height = '100svh';
+  host.style.overflow = 'hidden';
+  host.style.background = '#020504';
+  app.append(host);
+  return host;
+}
+
+function createPhaserFixedGame(
+  host: HTMLElement,
+  profile: FixedSkinProfile,
+  scene: Phaser.Scene
+): Phaser.Game {
+  return new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: host,
+    backgroundColor: '#020504',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      parent: host,
+      width: profile.width,
+      height: profile.height
+    },
+    render: {
+      antialias: false,
+      pixelArt: true
+    },
+    scene
+  });
 }
 
 class PhaserFixedSkinScene extends Phaser.Scene {

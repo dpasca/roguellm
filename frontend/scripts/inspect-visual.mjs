@@ -32,6 +32,7 @@ const defaultFixedProfile = 'reference-mobile-v3';
 const compactFixedProfile = 'reference-mobile-compact';
 const desktopFixedProfile = 'desktop-wide';
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
+const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'phaser', profile: compactFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
 const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -135,6 +136,20 @@ const baseScenarios = [
     mode: 'fixed-runtime-ready',
     url: fixedRuntimeUrl,
     expectedFixedProfile: defaultFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-runtime-ready',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-runtime-ready',
+    url: phaserFixedRuntimeUrl,
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-runtime-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-runtime-log',
+    url: phaserFixedRuntimeUrl,
+    expectedFixedProfile: compactFixedProfile
   },
   {
     name: 'mobile-short-default-fixed-workbench',
@@ -1034,6 +1049,8 @@ async function runScenario(page, scenario) {
   await page.goto(scenario.url ?? entryUrl, { waitUntil: 'domcontentloaded' });
   if (scenario.mode.startsWith('phaser-fixed-workbench')) {
     await waitForPhaserFixedWorkbenchReady(page);
+  } else if (scenario.mode.startsWith('phaser-fixed-runtime')) {
+    await waitForPhaserFixedRuntimeReady(page);
   } else if (scenario.mode.startsWith('fixed-workbench')) {
     await waitForFixedWorkbenchReady(page);
   } else if (scenario.mode.startsWith('fixed-runtime')) {
@@ -1054,9 +1071,10 @@ async function runScenario(page, scenario) {
     scenario.mode === 'workbench-log' ||
     scenario.mode === 'fixed-workbench-log' ||
     scenario.mode === 'phaser-fixed-workbench-log' ||
+    scenario.mode === 'phaser-fixed-runtime-log' ||
     scenario.mode === 'fixed-runtime-log'
   ) {
-    if (scenario.mode === 'phaser-fixed-workbench-log') {
+    if (scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-runtime-log') {
       await page.keyboard.press('l');
       await waitForPhaserFixedWorkbenchDrawer(page, 'log');
     } else {
@@ -1145,7 +1163,7 @@ async function runScenario(page, scenario) {
     await waitForFixedRestarted(page);
   }
 
-  if (!scenario.mode.startsWith('phaser-fixed-workbench')) {
+  if (!scenario.mode.startsWith('phaser-fixed')) {
     await waitForFontAwesome(page);
   }
   await page.waitForTimeout(300);
@@ -1291,10 +1309,25 @@ async function waitForPhaserFixedWorkbenchReady(page) {
 
 async function waitForPhaserFixedWorkbenchDrawer(page, expected) {
   await page.waitForFunction((drawer) => {
-    return document.body.dataset.workbench === 'phaser-fixed-skin' &&
-      document.body.dataset.fixedRenderer === 'phaser' &&
+    return document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.phaserDrawer === drawer;
   }, expected, { timeout: 20_000 });
+}
+
+async function waitForPhaserFixedRuntimeReady(page) {
+  await page.waitForFunction(() => {
+    const host = document.getElementById('phaser-fixed-skin-workbench');
+    const canvas = host?.querySelector('canvas');
+    const box = canvas?.getBoundingClientRect();
+    return document.body.dataset.ui === 'phaser-fixed-skin' &&
+      document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserRuntimeState === 'live' &&
+      document.body.dataset.phaserStatus === 'ready' &&
+      canvas instanceof HTMLCanvasElement &&
+      !!box &&
+      box.width > 100 &&
+      box.height > 100;
+  }, null, { timeout: 20_000 });
 }
 
 async function waitForFixedRuntimeReady(page) {
@@ -2021,6 +2054,8 @@ async function collectMetrics(page) {
       fixedRenderer: document.body.dataset.fixedRenderer ?? null,
       fixedScenario: document.body.dataset.fixedScenario ?? null,
       phaserDrawer: document.body.dataset.phaserDrawer ?? null,
+      phaserRuntimeState: document.body.dataset.phaserRuntimeState ?? null,
+      phaserStatus: document.body.dataset.phaserStatus ?? null,
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2091,6 +2126,7 @@ function validateMetrics(scenario, metrics) {
   const failures = [];
   const isMobile = scenario.viewport.width <= 860;
   const isPhaserFixedWorkbench = scenario.mode.startsWith('phaser-fixed-workbench');
+  const isPhaserFixedRuntime = scenario.mode.startsWith('phaser-fixed-runtime');
   const isFixedWorkbench = scenario.mode.startsWith('fixed-workbench');
   const isFixedUi = isFixedWorkbench || scenario.mode.startsWith('fixed-runtime');
 
@@ -2112,6 +2148,12 @@ function validateMetrics(scenario, metrics) {
 
   if (isPhaserFixedWorkbench) {
     validatePhaserFixedWorkbenchScenario(scenario, metrics, failures);
+    validatePhaserScreenshotQuality(metrics, failures);
+    return failures;
+  }
+
+  if (isPhaserFixedRuntime) {
+    validatePhaserFixedRuntimeScenario(scenario, metrics, failures);
     validatePhaserScreenshotQuality(metrics, failures);
     return failures;
   }
@@ -2358,6 +2400,51 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-workbench-log' && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+  }
+}
+
+function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
+  if (metrics.ui !== 'phaser-fixed-skin') {
+    failures.push(`expected phaser-fixed-skin runtime ui, got ${metrics.ui ?? 'none'}`);
+  }
+
+  if (metrics.workbench) {
+    failures.push(`Phaser fixed runtime should not be in workbench mode: ${metrics.workbench}`);
+  }
+
+  if (metrics.fixedRenderer !== 'phaser') {
+    failures.push(`expected Phaser fixed renderer, got ${metrics.fixedRenderer ?? 'none'}`);
+  }
+
+  const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
+  if (metrics.fixedProfile !== expectedProfile) {
+    failures.push(`expected ${expectedProfile} Phaser fixed runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
+  }
+
+  if (metrics.phaserRuntimeState !== 'live') {
+    failures.push(`expected live Phaser runtime state, got ${metrics.phaserRuntimeState ?? 'none'}`);
+  }
+
+  if (metrics.phaserStatus !== 'ready') {
+    failures.push(`expected ready Phaser runtime status, got ${metrics.phaserStatus ?? 'none'}`);
+  }
+
+  if (metrics.phaserCanvas.count !== 1) {
+    failures.push(`expected one Phaser fixed runtime canvas, got ${metrics.phaserCanvas.count}`);
+  }
+
+  const canvas = metrics.rects.phaserCanvas;
+  if (!canvas || canvas.visibleWidth < metrics.viewport.width * 0.92 || canvas.visibleHeight < metrics.viewport.height * 0.92) {
+    failures.push(`Phaser fixed runtime canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
+  }
+
+  const expectedCanvasHeight = scenario.viewport.height <= 700 ? 667 : 844;
+  if (metrics.phaserCanvas.width !== 390 || metrics.phaserCanvas.height !== expectedCanvasHeight) {
+    failures.push(`Phaser fixed runtime canvas has wrong backing size: ${metrics.phaserCanvas.width}x${metrics.phaserCanvas.height}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-log' && metrics.phaserDrawer !== 'log') {
+    failures.push(`expected Phaser runtime log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
   }
 }
 

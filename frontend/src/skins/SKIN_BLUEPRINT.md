@@ -300,6 +300,13 @@ For short-phone manual checks, force the compact profile:
 http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-compact
 ```
 
+The experimental Phaser-only runtime uses the same profile contract without the
+legacy CSS widget layer:
+
+```text
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&renderer=phaser&profile=reference-mobile-compact
+```
+
 For local fixed-skin workbench review, use:
 
 ```text
@@ -321,11 +328,11 @@ In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
 kind, which makes compact mobile variants quick to compare without editing the
 URL between screenshots.
 
-The backend preserves `skin`, `ui`, `fixed_skin`, `profile`, `skin_tags`,
-`skin_mood`, and `skin_palette` query params when it creates or redirects to a
-Game2 session, so these links remain on the fixed skin after session creation.
-Use `ui=classic` or `ui=responsive` to force the older responsive HUD while
-comparing behavior.
+The backend preserves `skin`, `ui`, `renderer`, `fixed_skin`, `profile`,
+`skin_tags`, `skin_mood`, and `skin_palette` query params when it creates or
+redirects to a Game2 session, so these links remain on the selected fixed
+renderer after session creation. Use `ui=classic` or `ui=responsive` to force
+the older responsive HUD while comparing behavior.
 
 ## Current Profiles
 
