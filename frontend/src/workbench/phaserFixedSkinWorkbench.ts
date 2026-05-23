@@ -865,6 +865,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
     graphics.fillStyle(0x020504, 0.28);
     graphics.fillRect(region.x + 7, region.y + 7, region.width - 14, region.height - 14);
+    this.drawMapBoardChrome(graphics, originX, originY, boardWidth, boardHeight, tileSize);
 
     for (let y = 0; y < state.map_height; y += 1) {
       for (let x = 0; x < state.map_width; x += 1) {
@@ -879,11 +880,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
           this.drawSemanticIcon(
             cell?.font_awesome_icon,
             '.',
-            tileX + tileSize * 0.26,
-            tileY + tileSize * 0.74,
-            Math.max(7, Math.floor(tileSize * 0.24)),
+            tileX + tileSize * 0.5,
+            tileY + tileSize * 0.52,
+            Math.max(8, Math.floor(tileSize * 0.34)),
             this.theme.primaryDimText,
-            0.18
+            0.34
           );
         }
 
@@ -907,6 +908,36 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawPlayerMarker(originX, originY, tileSize);
   }
 
+  private drawMapBoardChrome(
+    graphics: Phaser.GameObjects.Graphics,
+    originX: number,
+    originY: number,
+    boardWidth: number,
+    boardHeight: number,
+    tileSize: number
+  ): void {
+    graphics.lineStyle(1, this.theme.primary, 0.26);
+    graphics.strokeRect(originX - 2.5, originY - 2.5, boardWidth + 4, boardHeight + 4);
+    graphics.lineStyle(1, this.theme.secondary, 0.16);
+    graphics.strokeRect(originX - 5.5, originY - 5.5, boardWidth + 10, boardHeight + 10);
+
+    graphics.lineStyle(1, this.theme.primary, 0.13);
+    for (let x = originX; x <= originX + boardWidth; x += tileSize) {
+      graphics.lineBetween(x, originY - 4, x, originY - 1);
+      graphics.lineBetween(x, originY + boardHeight + 1, x, originY + boardHeight + 4);
+    }
+    for (let y = originY; y <= originY + boardHeight; y += tileSize) {
+      graphics.lineBetween(originX - 4, y, originX - 1, y);
+      graphics.lineBetween(originX + boardWidth + 1, y, originX + boardWidth + 4, y);
+    }
+
+    graphics.lineStyle(1, this.theme.primary, 0.06);
+    for (let y = originY + 5; y < originY + boardHeight - 4; y += 6) {
+      graphics.lineBetween(originX + 4, y, originX + boardWidth - 4, y);
+    }
+    this.mapTileDetailsDrawn += 8;
+  }
+
   private drawMapTile(
     graphics: Phaser.GameObjects.Graphics,
     tileX: number,
@@ -918,37 +949,37 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const width = tileSize - 1;
     const height = tileSize - 1;
     const scaled = scaleRgb(color, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
-    const base = scaleRgb(scaled, explored ? 1.08 : 1.02);
-    const top = scaleRgb(scaled, explored ? 1.42 : 1.12);
+    const base = scaleRgb(scaled, explored ? 1.18 : 1.04);
+    const top = scaleRgb(scaled, explored ? 1.62 : 1.16);
     const shadow = scaleRgb(scaled, explored ? 0.34 : 0.22);
 
     graphics.fillStyle(base, 1);
     graphics.fillRect(tileX, tileY, width, height);
-    graphics.fillStyle(top, explored ? 0.22 : 0.08);
+    graphics.fillStyle(top, explored ? 0.32 : 0.09);
     graphics.fillRect(tileX + 1, tileY + 1, Math.max(1, width - 2), Math.max(1, Math.floor(height * 0.42)));
 
     if (tileSize >= 18) {
       const dotStep = Math.max(7, Math.floor(tileSize * 0.27));
-      graphics.fillStyle(top, explored ? 0.28 : 0.09);
+      graphics.fillStyle(top, explored ? 0.38 : 0.1);
       for (let dotY = tileY + 6; dotY < tileY + height - 4; dotY += dotStep) {
         for (let dotX = tileX + 6; dotX < tileX + width - 4; dotX += dotStep) {
           graphics.fillRect(dotX, dotY, 1, 1);
         }
       }
 
-      graphics.lineStyle(1, top, explored ? 0.18 : 0.06);
+      graphics.lineStyle(1, top, explored ? 0.24 : 0.07);
       for (let y = tileY + 7; y < tileY + height - 5; y += Math.max(8, Math.floor(tileSize * 0.3))) {
         graphics.lineBetween(tileX + 5, y, tileX + width - 5, Math.min(tileY + height - 5, y + 2));
       }
     }
 
-    graphics.lineStyle(1, top, explored ? 0.58 : 0.18);
+    graphics.lineStyle(1, top, explored ? 0.68 : 0.2);
     graphics.lineBetween(tileX + 1, tileY + 1, tileX + width - 2, tileY + 1);
     graphics.lineBetween(tileX + 1, tileY + 1, tileX + 1, tileY + height - 2);
     graphics.lineStyle(1, shadow, explored ? 0.92 : 0.62);
     graphics.lineBetween(tileX + 1, tileY + height - 1, tileX + width - 1, tileY + height - 1);
     graphics.lineBetween(tileX + width - 1, tileY + 1, tileX + width - 1, tileY + height - 1);
-    graphics.lineStyle(1, explored ? this.skin.map.exploredTileStroke : this.skin.map.unexploredTileStroke, explored ? 0.95 : 0.35);
+    graphics.lineStyle(1, explored ? this.skin.map.exploredTileStroke : this.skin.map.unexploredTileStroke, explored ? 1 : 0.38);
     graphics.strokeRect(tileX + 0.5, tileY + 0.5, width, height);
 
     if (!explored) {
