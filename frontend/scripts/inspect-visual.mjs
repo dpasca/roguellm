@@ -563,6 +563,7 @@ function buildHtmlReport(summary) {
     const chips = [
       metrics.fixedProfile ? `profile ${metrics.fixedProfile}` : null,
       metrics.fixedProfileRole ? `role ${metrics.fixedProfileRole}` : null,
+      Number.isFinite(metrics.fixedStageScale) ? `scale ${metrics.fixedStageScale.toFixed(3)}` : null,
       metrics.ui ? `ui ${metrics.ui}` : null,
       metrics.workbench ? `bench ${metrics.workbench}` : null,
       metrics.statusText ? `status ${metrics.statusText}` : null,
@@ -764,12 +765,12 @@ async function loadProductionMobileProfiles(dir) {
 function withProductionProfileCoverage(base, profiles) {
   const scenarios = [...base];
   const existingCoverage = new Set(
-    base.map((scenario) => scenarioKey(scenario.mode, scenario.url ?? entryUrl, scenario.expectedFixedProfile))
+    base.map((scenario) => scenarioKey(scenario))
   );
 
   for (const profile of profiles) {
     for (const scenario of productionProfileScenarios(profile.id)) {
-      const key = scenarioKey(scenario.mode, scenario.url ?? entryUrl, scenario.expectedFixedProfile);
+      const key = scenarioKey(scenario);
       if (existingCoverage.has(key)) {
         continue;
       }
@@ -800,8 +801,22 @@ function productionProfileScenarios(profile) {
       expectedFixedProfile: profile
     },
     {
+      name: `mobile-${profile}-production-short-log`,
+      viewport: { width: 390, height: 667 },
+      mode: 'fixed-workbench-log',
+      url,
+      expectedFixedProfile: profile
+    },
+    {
       name: `mobile-${profile}-production-inventory`,
       viewport: { width: 390, height: 844 },
+      mode: 'fixed-workbench-inventory',
+      url,
+      expectedFixedProfile: profile
+    },
+    {
+      name: `mobile-${profile}-production-short-inventory`,
+      viewport: { width: 390, height: 667 },
       mode: 'fixed-workbench-inventory',
       url,
       expectedFixedProfile: profile
@@ -837,8 +852,14 @@ function productionProfileScenarios(profile) {
   ];
 }
 
-function scenarioKey(mode, url, expectedFixedProfile) {
-  return `${mode}\n${url}\n${expectedFixedProfile ?? ''}`;
+function scenarioKey(scenario) {
+  return [
+    scenario.mode,
+    scenario.url ?? entryUrl,
+    scenario.expectedFixedProfile ?? '',
+    scenario.viewport.width,
+    scenario.viewport.height
+  ].join('\n');
 }
 
 async function ensureViteServer(selected) {
@@ -2036,19 +2057,26 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     const action = metrics.rects.firstInventoryAction;
     const logToggle = metrics.rects.logToggleButton;
     const inventoryToggle = metrics.rects.inventoryToggleButton;
-    if (!inventory || inventory.visibleHeight < 180 || inventory.visibleWidth < 300) {
+    const minInventoryWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 300) : 300;
+    const minInventoryHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 180) : 180;
+    const minInventoryItemHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 36) : 36;
+    const minInventoryActionWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 42) : 42;
+    const minInventoryActionHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 24) : 24;
+    const minInventoryToggleWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 38) : 38;
+    const minInventoryToggleHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 24) : 24;
+    if (!inventory || inventory.visibleHeight < minInventoryHeight || inventory.visibleWidth < minInventoryWidth) {
       failures.push(`fixed inventory drawer is too small: ${inventory?.visibleWidth ?? 0}x${inventory?.visibleHeight ?? 0}`);
     }
-    if (!item || item.visibleHeight < 36) {
+    if (!item || item.visibleHeight < minInventoryItemHeight) {
       failures.push(`fixed inventory first item is clipped: ${item?.visibleHeight ?? 0}px visible`);
     }
-    if (!action || action.visibleHeight < 24 || action.visibleWidth < 42) {
+    if (!action || action.visibleHeight < minInventoryActionHeight || action.visibleWidth < minInventoryActionWidth) {
       failures.push(`fixed inventory action is clipped: ${action?.visibleWidth ?? 0}x${action?.visibleHeight ?? 0}`);
     }
     if (action && logToggle && action.right > logToggle.left - 4) {
       failures.push(`fixed inventory first action overlaps drawer toggles: action right=${action.right}, toggle left=${logToggle.left}`);
     }
-    if (!inventoryToggle || inventoryToggle.visibleHeight < 24 || inventoryToggle.visibleWidth < 38) {
+    if (!inventoryToggle || inventoryToggle.visibleHeight < minInventoryToggleHeight || inventoryToggle.visibleWidth < minInventoryToggleWidth) {
       failures.push(`fixed inventory toggle is clipped while drawer is open: ${inventoryToggle?.visibleWidth ?? 0}x${inventoryToggle?.visibleHeight ?? 0}`);
     }
     if (inventoryToggle?.visualState !== 'pressed') {
@@ -2102,7 +2130,9 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   const map = metrics.rects.map;
-  if (!map || map.visibleHeight < 250 || map.visibleWidth < 300) {
+  const minMapWidth = isProductionMobileProfile ? scaledFixedThreshold(metrics, 300) : 300;
+  const minMapHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 250) : 250;
+  if (!map || map.visibleHeight < minMapHeight || map.visibleWidth < minMapWidth) {
     failures.push(`fixed workbench map is too small: ${map?.visibleWidth ?? 0}x${map?.visibleHeight ?? 0}`);
   }
 
@@ -2121,13 +2151,15 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
     const firstEntry = metrics.rects.firstLogEntry;
     // The original screenshot-derived profile is intentionally kept as a visual warning, not a readable layout gate.
     const shouldRequireReadableFirstEntry = metrics.fixedProfile !== 'reference-mobile';
+    const minLogHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 160) : isCompactProfile ? 52 : 160;
+    const minFirstEntryHeight = isProductionMobileProfile ? scaledFixedThreshold(metrics, 40) : isCompactProfile ? 36 : 40;
     if (!metrics.logOpen) {
       failures.push('fixed workbench log scenario did not open the log drawer');
     }
-    if (!log || log.visibleHeight < (isCompactProfile ? 52 : 160)) {
+    if (!log || log.visibleHeight < minLogHeight) {
       failures.push(`fixed workbench open log is too small: ${log?.visibleHeight ?? 0}px visible`);
     }
-    if (shouldRequireReadableFirstEntry && (!firstEntry || firstEntry.visibleHeight < (isCompactProfile ? 36 : 40))) {
+    if (shouldRequireReadableFirstEntry && (!firstEntry || firstEntry.visibleHeight < minFirstEntryHeight)) {
       failures.push(`fixed workbench open log first entry is clipped: ${firstEntry?.visibleHeight ?? 0}px visible`);
     }
   }
