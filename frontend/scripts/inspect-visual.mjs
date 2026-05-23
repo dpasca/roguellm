@@ -1330,6 +1330,8 @@ async function waitForPhaserFixedWorkbenchReady(page) {
     return document.body.dataset.workbench === 'phaser-fixed-skin' &&
       document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.fixedProfile &&
+      document.body.dataset.phaserFontAwesomeReady === '1' &&
+      Number(document.body.dataset.phaserFontAwesomeGlyphs ?? 0) > 0 &&
       canvas instanceof HTMLCanvasElement &&
       !!box &&
       box.width > 100 &&
@@ -1371,6 +1373,8 @@ async function waitForPhaserFixedRuntimeReady(page) {
       document.body.dataset.fixedRenderer === 'phaser' &&
       document.body.dataset.phaserRuntimeState === 'live' &&
       document.body.dataset.phaserStatus === 'ready' &&
+      document.body.dataset.phaserFontAwesomeReady === '1' &&
+      Number(document.body.dataset.phaserFontAwesomeGlyphs ?? 0) > 0 &&
       canvas instanceof HTMLCanvasElement &&
       !!box &&
       box.width > 100 &&
@@ -2111,6 +2115,8 @@ async function collectMetrics(page) {
       phaserEquippedCount: Number(document.body.dataset.phaserEquippedCount ?? NaN),
       phaserInventoryActionLabels: document.body.dataset.phaserInventoryActionLabels ?? '',
       phaserPlayerHp: Number(document.body.dataset.phaserPlayerHp ?? NaN),
+      phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
+      phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2443,6 +2449,14 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected one Phaser fixed canvas, got ${metrics.phaserCanvas.count}`);
   }
 
+  if (metrics.phaserFontAwesomeReady !== '1') {
+    failures.push(`expected Phaser Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < 8) {
+    failures.push(`expected Phaser Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
+  }
+
   const canvas = metrics.rects.phaserCanvas;
   if (!canvas || canvas.visibleWidth < metrics.viewport.width * 0.92 || canvas.visibleHeight < metrics.viewport.height * 0.92) {
     failures.push(`Phaser fixed canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
@@ -2511,6 +2525,14 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (metrics.phaserCanvas.count !== 1) {
     failures.push(`expected one Phaser fixed runtime canvas, got ${metrics.phaserCanvas.count}`);
+  }
+
+  if (metrics.phaserFontAwesomeReady !== '1') {
+    failures.push(`expected Phaser runtime Font Awesome font to be ready, got ${metrics.phaserFontAwesomeReady ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserFontAwesomeGlyphs) || metrics.phaserFontAwesomeGlyphs < 8) {
+    failures.push(`expected Phaser runtime Font Awesome glyphs, got ${metrics.phaserFontAwesomeGlyphs ?? 'none'}`);
   }
 
   const canvas = metrics.rects.phaserCanvas;

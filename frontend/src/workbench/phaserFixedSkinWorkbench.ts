@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import faSolidFontUrl from '@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2?url';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinIndicatorState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
@@ -49,6 +50,45 @@ const buttonActions: Partial<Record<FixedButtonId, GameAction>> = {
 };
 
 const legacyFixedRenderers = new Set(['css', 'dom', 'html', 'legacy']);
+const fontAwesomeFamily = 'Font Awesome 7 Free';
+const fontAwesomeStyleClasses = new Set(['fa', 'fas', 'far', 'fab', 'fa-solid', 'fa-regular', 'fa-brands']);
+const fontAwesomeGlyphs: Record<string, string> = {
+  'ban': '\uf05e',
+  'bowl-food': '\ue4c6',
+  'box': '\uf466',
+  'briefcase': '\uf0b1',
+  'briefcase-medical': '\uf469',
+  'building': '\uf1ad',
+  'building-columns': '\uf19c',
+  'caret-down': '\uf0d7',
+  'caret-left': '\uf0d9',
+  'caret-right': '\uf0da',
+  'caret-up': '\uf0d8',
+  'circle': '\uf111',
+  'cloud': '\uf0c2',
+  'cloud-rain': '\uf73d',
+  'coins': '\uf51e',
+  'flask': '\uf0c3',
+  'gavel': '\uf0e3',
+  'hand-fist': '\uf6de',
+  'helicopter': '\uf533',
+  'hotel': '\uf594',
+  'list': '\uf03a',
+  'mask': '\uf6fa',
+  'microchip': '\uf2db',
+  'person-running': '\uf70c',
+  'satellite-dish': '\uf7c0',
+  'seedling': '\uf4d8',
+  'shield-halved': '\uf3ed',
+  'skull': '\uf54c',
+  'store': '\uf54e',
+  'torii-gate': '\uf6a1',
+  'tower-broadcast': '\uf519',
+  'train-subway': '\uf239',
+  'trophy': '\uf091',
+  'user-secret': '\uf21b'
+};
+let fontAwesomeLoadPromise: Promise<void> | null = null;
 
 function fixedRendererFromParams(params: URLSearchParams): string {
   return (params.get('fixed_renderer') ?? params.get('renderer') ?? '').toLowerCase();
@@ -56,6 +96,33 @@ function fixedRendererFromParams(params: URLSearchParams): string {
 
 function isLegacyFixedRenderer(params: URLSearchParams): boolean {
   return legacyFixedRenderers.has(fixedRendererFromParams(params));
+}
+
+function loadPhaserFontAwesome(): Promise<void> {
+  if (fontAwesomeLoadPromise) {
+    return fontAwesomeLoadPromise;
+  }
+
+  fontAwesomeLoadPromise = (async () => {
+    if (document.fonts.check(`900 16px "${fontAwesomeFamily}"`)) {
+      document.body.dataset.phaserFontAwesomeReady = '1';
+      return;
+    }
+
+    const fontFace = new FontFace(fontAwesomeFamily, `url(${faSolidFontUrl})`, {
+      style: 'normal',
+      weight: '900'
+    });
+    const loadedFace = await fontFace.load();
+    document.fonts.add(loadedFace);
+    await document.fonts.load(`900 16px "${fontAwesomeFamily}"`);
+    document.body.dataset.phaserFontAwesomeReady = '1';
+  })().catch((error: unknown) => {
+    document.body.dataset.phaserFontAwesomeReady = '0';
+    console.warn('Font Awesome could not be loaded for the Phaser fixed-skin renderer.', error);
+  });
+
+  return fontAwesomeLoadPromise;
 }
 
 export function isPhaserFixedSkinWorkbench(): boolean {
@@ -412,6 +479,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly scenario: PhaserFixedScenario;
   private viewState: SceneState;
   private ready = false;
+  private faGlyphsDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -456,6 +524,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   create(): void {
     this.ready = true;
+    void loadPhaserFontAwesome().then(() => {
+      if (this.ready) {
+        this.redraw();
+      }
+    });
     this.redraw();
   }
 
@@ -467,6 +540,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    this.faGlyphsDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawMap();
@@ -488,6 +562,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (this.scenario === 'diagnostics') {
       this.drawDiagnostics();
     }
+    document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
   }
 
   private drawMap(): void {
@@ -517,12 +592,14 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         graphics.strokeRect(tileX + 0.5, tileY + 0.5, tileSize - 1, tileSize - 1);
 
         if (explored && tileSize >= 20) {
-          this.add.text(tileX + tileSize / 2, tileY + tileSize / 2, iconGlyph(cell?.font_awesome_icon, '.'), {
-            fontFamily: 'monospace',
-            fontSize: `${Math.max(9, Math.floor(tileSize * 0.44))}px`,
-            color: '#d5dad2',
-            align: 'center'
-          }).setOrigin(0.5, 0.5).setAlpha(0.65);
+          this.addFontAwesomeIcon(
+            cell?.font_awesome_icon,
+            '.',
+            tileX + tileSize / 2,
+            tileY + tileSize / 2,
+            Math.max(9, Math.floor(tileSize * 0.42)),
+            '#d5dad2'
+          ).setOrigin(0.5, 0.5).setAlpha(0.66);
         }
 
         if (!explored) {
@@ -536,20 +613,20 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       if (item.is_collected || !state.explored[item.y]?.[item.x]) {
         continue;
       }
-      this.drawMapBadge(originX, originY, tileSize, item.x, item.y, iconGlyph(item.font_awesome_icon, '+'), 0xffcc4d);
+      this.drawMapBadge(originX, originY, tileSize, item.x, item.y, item.font_awesome_icon, '+', 0xffcc4d);
     }
 
     for (const enemy of state.enemies) {
       if (enemy.is_defeated || !state.explored[enemy.y]?.[enemy.x]) {
         continue;
       }
-      this.drawMapBadge(originX, originY, tileSize, enemy.x, enemy.y, iconGlyph(enemy.font_awesome_icon, '!'), 0xff6682);
+      this.drawMapBadge(originX, originY, tileSize, enemy.x, enemy.y, enemy.font_awesome_icon, '!', 0xff6682);
     }
 
     this.drawPlayerMarker(originX, originY, tileSize);
   }
 
-  private drawMapBadge(originX: number, originY: number, tileSize: number, x: number, y: number, text: string, color: number): void {
+  private drawMapBadge(originX: number, originY: number, tileSize: number, x: number, y: number, icon: string | undefined, fallback: string, color: number): void {
     const centerX = originX + x * tileSize + tileSize * 0.76;
     const centerY = originY + y * tileSize + tileSize * 0.26;
     const radius = Math.max(5, Math.floor(tileSize * 0.22));
@@ -558,12 +635,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillCircle(centerX, centerY, radius + 1);
     graphics.fillStyle(color, 0.96);
     graphics.fillCircle(centerX, centerY, radius);
-    this.add.text(centerX, centerY, text, {
-      fontFamily: 'monospace',
-      fontSize: `${Math.max(8, Math.floor(tileSize * 0.34))}px`,
-      color: '#141414',
-      fontStyle: 'bold'
-    }).setOrigin(0.5, 0.5);
+    this.addFontAwesomeIcon(icon, fallback, centerX, centerY, Math.max(8, Math.floor(tileSize * 0.3)), '#141414')
+      .setOrigin(0.5, 0.5);
   }
 
   private drawPlayerMarker(originX: number, originY: number, tileSize: number): void {
@@ -608,7 +681,16 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         fontStyle: 'bold'
       });
     }
-    this.addText(`${iconGlyph(this.viewState.state.player.font_awesome_icon, '@')} ${this.viewState.state.game_title}`, rect.x, rect.y, rect.width, {
+    const iconSize = this.profile.kind === 'mobileCompact' ? 17 : 20;
+    this.addFontAwesomeIcon(
+      this.viewState.state.player.font_awesome_icon,
+      '@',
+      rect.x + 2,
+      rect.y + Math.max(15, rect.height * 0.5),
+      iconSize,
+      '#88ff7a'
+    ).setOrigin(0, 0.5);
+    this.addText(this.viewState.state.game_title, rect.x + iconSize + 12, rect.y, rect.width - iconSize - 12, {
       fontSize: this.profile.kind === 'mobileCompact' ? 20 : 24,
       color: '#f6fff3',
       fontStyle: 'bold'
@@ -675,7 +757,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return;
     }
 
-    this.addText(`${iconGlyph(enemy.font_awesome_icon, '!')} ${enemy.name}`, rect.x + 8, rect.y + 24, rect.width - 112, {
+    this.addFontAwesomeIcon(enemy.font_awesome_icon, '!', rect.x + 14, rect.y + 32, 14, '#ff8fa0')
+      .setOrigin(0.5, 0.5);
+    this.addText(enemy.name, rect.x + 30, rect.y + 24, rect.width - 134, {
       fontSize: 14,
       color: '#dde5e0',
       fontStyle: 'bold'
@@ -920,6 +1004,27 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (this.textures.exists(key)) {
       this.add.image(rect.x, rect.y, key).setOrigin(0, 0);
     }
+  }
+
+  private addFontAwesomeIcon(
+    iconClass: string | undefined,
+    fallback: string,
+    x: number,
+    y: number,
+    fontSize: number,
+    color: string
+  ): Phaser.GameObjects.Text {
+    const glyph = fontAwesomeGlyph(iconClass);
+    if (glyph) {
+      this.faGlyphsDrawn += 1;
+    }
+    return this.add.text(x, y, glyph ?? fallback, {
+      fontFamily: glyph ? `"${fontAwesomeFamily}"` : 'monospace',
+      fontSize: `${fontSize}px`,
+      color,
+      fontStyle: glyph ? '900' : 'bold',
+      align: 'center'
+    });
   }
 
   private addText(
@@ -1260,44 +1365,20 @@ function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
-function iconGlyph(icon: string | undefined, fallback: string): string {
-  if (!icon) {
-    return fallback;
+function fontAwesomeGlyph(iconClass: string | undefined): string | null {
+  const classes = iconClass?.trim().split(/\s+/) ?? [];
+  for (const className of classes) {
+    const normalized = className.toLowerCase();
+    if (!normalized.startsWith('fa-') || fontAwesomeStyleClasses.has(normalized)) {
+      continue;
+    }
+    const iconName = normalized.slice(3);
+    const glyph = fontAwesomeGlyphs[iconName];
+    if (glyph) {
+      return glyph;
+    }
   }
-  if (icon.includes('seedling')) {
-    return 'Y';
-  }
-  if (icon.includes('rain') || icon.includes('cloud')) {
-    return 'R';
-  }
-  if (icon.includes('train')) {
-    return 'T';
-  }
-  if (icon.includes('store')) {
-    return 'S';
-  }
-  if (icon.includes('hotel')) {
-    return 'H';
-  }
-  if (icon.includes('skull') || icon.includes('mask')) {
-    return '!';
-  }
-  if (icon.includes('coin')) {
-    return '$';
-  }
-  if (icon.includes('medical')) {
-    return '+';
-  }
-  if (icon.includes('microchip')) {
-    return '#';
-  }
-  if (icon.includes('user')) {
-    return '@';
-  }
-  if (icon.includes('building') || icon.includes('torii')) {
-    return 'B';
-  }
-  return fallback;
+  return null;
 }
 
 function drawCornerBrackets(graphics: Phaser.GameObjects.Graphics, left: number, top: number, right: number, bottom: number, length: number): void {
