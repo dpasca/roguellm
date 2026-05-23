@@ -239,6 +239,12 @@ export function createPhaserFixedSkinRuntime(
       return;
     }
 
+    if (event.key.toLowerCase() === 'r' && hasLiveState && isTerminalState(currentState)) {
+      onAction({ action: 'restart' });
+      event.preventDefault();
+      return;
+    }
+
     const inventoryAction = inventoryActionFromKey(event.key, currentState, actionPending);
     if (inventoryOpen && hasLiveState && inventoryAction) {
       onAction(inventoryAction);
@@ -380,6 +386,12 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
       return;
     }
 
+    if (event.key.toLowerCase() === 'r' && isTerminalState(state)) {
+      dispatchAction({ action: 'restart' });
+      event.preventDefault();
+      return;
+    }
+
     const inventoryAction = inventoryActionFromKey(event.key, state, actionPending);
     if (inventoryOpen && inventoryAction) {
       dispatchAction(inventoryAction);
@@ -432,6 +444,8 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
       connectionStatus
     });
   }
+
+  renderScene();
 }
 
 function createPhaserHost(app: HTMLElement): HTMLElement {
@@ -1355,6 +1369,8 @@ function applyPhaserStateDatasets(state: GameState, inventoryOpen: boolean, acti
   document.body.dataset.phaserEquippedCount = String(visibleItems.filter((item) => item.is_equipped).length);
   document.body.dataset.phaserInventoryActionLabels = rowActions.map((action) => action.label).join(',');
   document.body.dataset.phaserPlayerHp = String(Math.max(0, state.player_hp));
+  document.body.dataset.phaserInCombat = state.in_combat ? '1' : '0';
+  document.body.dataset.phaserTerminalState = state.game_won ? 'victory' : isTerminalState(state) ? 'defeat' : 'active';
 }
 
 function isTerminalState(state: GameState): boolean {

@@ -190,6 +190,27 @@ const baseScenarios = [
     expectedFixedProfile: compactFixedProfile
   },
   {
+    name: 'mobile-short-phaser-fixed-workbench-defeat',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-defeat',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile, { scenario: 'defeat' }),
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-workbench-victory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-victory',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile, { scenario: 'victory' }),
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
+    name: 'mobile-short-phaser-fixed-workbench-restart',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-restart',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile, { scenario: 'defeat' }),
+    expectedFixedProfile: compactFixedProfile
+  },
+  {
     name: 'mobile-short-themed-amber-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
@@ -1155,6 +1176,20 @@ async function runScenario(page, scenario) {
     await waitForPhaserFixedInventoryUse(page);
   }
 
+  if (scenario.mode === 'phaser-fixed-workbench-defeat') {
+    await waitForPhaserTerminalState(page, 'defeat');
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-victory') {
+    await waitForPhaserTerminalState(page, 'victory');
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-restart') {
+    await waitForPhaserTerminalState(page, 'defeat');
+    await page.keyboard.press('r');
+    await waitForPhaserTerminalState(page, 'active');
+  }
+
   if (scenario.mode === 'fixed-workbench-drawer-switch') {
     await page.getByRole('button', { name: 'Inventory', exact: true }).click();
     await waitForFixedInventory(page);
@@ -1362,6 +1397,13 @@ async function waitForPhaserFixedInventoryUse(page) {
       document.body.dataset.phaserDrawer === 'inventory' &&
       document.body.dataset.phaserPlayerHp === '55';
   }, null, { timeout: 20_000 });
+}
+
+async function waitForPhaserTerminalState(page, expected) {
+  await page.waitForFunction((terminalState) => {
+    return document.body.dataset.fixedRenderer === 'phaser' &&
+      document.body.dataset.phaserTerminalState === terminalState;
+  }, expected, { timeout: 20_000 });
 }
 
 async function waitForPhaserFixedRuntimeReady(page) {
@@ -2115,6 +2157,8 @@ async function collectMetrics(page) {
       phaserEquippedCount: Number(document.body.dataset.phaserEquippedCount ?? NaN),
       phaserInventoryActionLabels: document.body.dataset.phaserInventoryActionLabels ?? '',
       phaserPlayerHp: Number(document.body.dataset.phaserPlayerHp ?? NaN),
+      phaserInCombat: document.body.dataset.phaserInCombat ?? null,
+      phaserTerminalState: document.body.dataset.phaserTerminalState ?? null,
       phaserFontAwesomeReady: document.body.dataset.phaserFontAwesomeReady ?? null,
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
       phaserCanvas: {
@@ -2494,6 +2538,23 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-workbench-inventory-use' && metrics.phaserPlayerHp !== 55) {
     failures.push(`expected Phaser inventory use to heal HP to 55, got ${metrics.phaserPlayerHp ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-defeat' && metrics.phaserTerminalState !== 'defeat') {
+    failures.push(`expected Phaser defeat terminal state, got ${metrics.phaserTerminalState ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-victory' && metrics.phaserTerminalState !== 'victory') {
+    failures.push(`expected Phaser victory terminal state, got ${metrics.phaserTerminalState ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-restart') {
+    if (metrics.phaserTerminalState !== 'active') {
+      failures.push(`expected Phaser restart to return to active state, got ${metrics.phaserTerminalState ?? 'none'}`);
+    }
+    if (metrics.phaserInCombat !== '1') {
+      failures.push(`expected Phaser restart to restore combat scenario, got inCombat=${metrics.phaserInCombat ?? 'none'}`);
+    }
   }
 }
 
