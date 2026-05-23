@@ -2065,7 +2065,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 }
 
 .fixed-skin-stage:is([data-profile-role="default"], [data-profile-role="variant"]) .fixed-stat-row {
-  margin-top: 18px;
+  margin-top: 12px;
   font-size: 11px;
 }
 
@@ -2115,6 +2115,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-row {
   font-size: 15px;
+  line-height: 1;
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-hp-label {
@@ -2128,7 +2129,7 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-stat-row {
-  margin-top: 15px;
+  margin-top: 10px;
   font-size: 10px;
 }
 

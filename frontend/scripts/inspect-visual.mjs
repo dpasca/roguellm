@@ -3233,6 +3233,9 @@ function validateCompactMobileLayout(metrics, failures) {
   if (!player || player.visibleHeight < scaledFixedThreshold(metrics, minPlayerHeight)) {
     failures.push(`compact mobile player panel is too small: ${player?.visibleHeight ?? 0}px visible`);
   }
+  if (player && player.scrollHeight > player.clientHeight + 1) {
+    failures.push(`compact mobile player panel content overflows: ${player.scrollHeight}px > ${player.clientHeight}px`);
+  }
 
   validateFixedStatLabels(metrics, failures);
 
