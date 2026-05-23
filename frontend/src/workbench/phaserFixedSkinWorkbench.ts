@@ -543,6 +543,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private faGlyphsDrawn = 0;
   private canvasIconMarksDrawn = 0;
   private materialPanelsDrawn = 0;
+  private sourceMaterialPanelsDrawn = 0;
+  private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
@@ -616,6 +618,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.faGlyphsDrawn = 0;
     this.canvasIconMarksDrawn = 0;
     this.materialPanelsDrawn = 0;
+    this.sourceMaterialPanelsDrawn = 0;
+    this.sourceMaterialKindsDrawn.clear();
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
@@ -646,6 +650,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserFontAwesomeGlyphs = String(this.faGlyphsDrawn);
     document.body.dataset.phaserCanvasIconMarks = String(this.canvasIconMarksDrawn);
     document.body.dataset.phaserMaterialPanels = String(this.materialPanelsDrawn);
+    document.body.dataset.phaserSourceMaterialPanels = String(this.sourceMaterialPanelsDrawn);
+    document.body.dataset.phaserSourceMaterialKinds = [...this.sourceMaterialKindsDrawn].sort().join(',');
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
@@ -1723,6 +1729,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
     this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), useSourceColors ? alpha * 0.58 : alpha);
     this.materialPanelsDrawn += 1;
+    if (useSourceColors) {
+      this.sourceMaterialPanelsDrawn += 1;
+      this.sourceMaterialKindsDrawn.add(kind);
+    }
   }
 
   private drawMaterialChrome(rect: FixedSkinRect, tint: number, alpha: number): void {

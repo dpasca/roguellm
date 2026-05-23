@@ -359,6 +359,8 @@ Reusable panel, LCD, and button materials are declared as profile data (`fill`,
 sprites/nine-slice images. The Phaser renderer must not hardcode a skin
 family's material PNGs or infer a production skin palette from metadata tokens.
 Production profiles must declare their runtime colors in `renderTheme`.
+Production-local material PNGs must also declare `renderMode`, so source-color
+art and tintable neutral art are never ambiguous.
 
 The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser

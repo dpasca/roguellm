@@ -465,6 +465,14 @@ async function validateMaterials(kitDir, prefix, kit) {
     if (material.renderMode !== undefined && !materialRenderModes.has(material.renderMode)) {
       failures.push(`${prefix} material ${name}.renderMode must be one of ${Array.from(materialRenderModes).join(', ')}`);
     }
+
+    if (
+      isProductionMobileMeta(kit.meta) &&
+      material.renderMode === undefined &&
+      (isLocalMaterialAsset(kitDir, material.fill) || isLocalMaterialAsset(kitDir, material.frame))
+    ) {
+      failures.push(`${prefix} local production material ${name} must declare renderMode`);
+    }
   }
 }
 
@@ -808,6 +816,14 @@ function validateMobileDefaultSelection() {
 
 function isProductionMobileMeta(meta) {
   return meta?.role === 'default' || meta?.role === 'variant';
+}
+
+function isLocalMaterialAsset(kitDir, asset) {
+  if (!asset?.path || asset.sourceProfile) {
+    return false;
+  }
+
+  return containsPath(kitDir, path.resolve(kitDir, asset.path));
 }
 
 function isPositiveRect(rect) {

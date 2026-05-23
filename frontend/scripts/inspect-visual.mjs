@@ -775,6 +775,8 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
+      Number.isFinite(metrics.phaserSourceMaterialPanels) ? `source materials ${metrics.phaserSourceMaterialPanels}` : null,
+      metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -2282,6 +2284,8 @@ async function collectMetrics(page) {
       phaserFontAwesomeGlyphs: Number(document.body.dataset.phaserFontAwesomeGlyphs ?? NaN),
       phaserCanvasIconMarks: Number(document.body.dataset.phaserCanvasIconMarks ?? NaN),
       phaserMaterialPanels: Number(document.body.dataset.phaserMaterialPanels ?? NaN),
+      phaserSourceMaterialPanels: Number(document.body.dataset.phaserSourceMaterialPanels ?? NaN),
+      phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2645,6 +2649,34 @@ function validateNoPhaserDomStyles(metrics, failures, context) {
   );
 }
 
+function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
+  if (scenario.expectedFixedProfile !== 'terminal-green-mobile-compact') {
+    return;
+  }
+
+  const sourceKinds = new Set(
+    String(metrics.phaserSourceMaterialKinds ?? '')
+      .split(',')
+      .filter(Boolean)
+  );
+
+  if (!Number.isFinite(metrics.phaserSourceMaterialPanels) || metrics.phaserSourceMaterialPanels < 5) {
+    failures.push(
+      `${context} expected source-authored material panels for terminal-green-mobile-compact, ` +
+      `got ${metrics.phaserSourceMaterialPanels ?? 'none'}`
+    );
+  }
+
+  for (const requiredKind of ['button', 'lcd', 'panel']) {
+    if (!sourceKinds.has(requiredKind)) {
+      failures.push(
+        `${context} expected source-authored ${requiredKind} material for terminal-green-mobile-compact, ` +
+        `got ${metrics.phaserSourceMaterialKinds || 'none'}`
+      );
+    }
+  }
+}
+
 function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   if (metrics.workbench !== 'phaser-fixed-skin') {
     failures.push(`expected phaser-fixed-skin workbench, got ${metrics.workbench ?? 'none'}`);
@@ -2676,6 +2708,8 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
     failures.push(`expected Phaser material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
   }
+
+  validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
@@ -2794,6 +2828,8 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
   if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
     failures.push(`expected Phaser runtime material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
   }
+
+  validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser runtime');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
