@@ -629,6 +629,7 @@ function buildHtmlReport(summary) {
       metrics.title?.iconStyled ? 'title badge' : null,
       metrics.latest?.messageStyled && !metrics.logOpen && !metrics.inventoryOpen ? 'latest hardware' : null,
       metrics.hp?.labelStyled && metrics.hp?.valueStyled ? 'hp hardware' : null,
+      metrics.combat?.modeStyled ? `mode ${metrics.combat.modeState || 'set'}` : null,
       metrics.gameEnded && metrics.endState?.outcome ? `terminal ${metrics.endState.outcome}` : null,
       metrics.stats?.cells ? `stats ${metrics.stats.styledCells}/${metrics.stats.cells}` : null,
       metrics.logOpen && metrics.log?.entries ? `log tags ${metrics.log.visibleEntryTags}/${metrics.log.entries}` : null,
@@ -1486,6 +1487,7 @@ async function collectMetrics(page) {
       statXpValue: '.fixed-stat-cell[data-stat="xp"] strong',
       tileStatValue: '.fixed-stat-cell[data-stat="tile"] strong',
       combatPanel: '#combat-panel',
+      combatModeLabel: '#combat-mode-label',
       enemyBadge: '#enemy-icon-badge',
       enemyIcon: '#enemy-icon',
       controlsPanel: '#fixed-controls-panel, .controls-panel',
@@ -1692,8 +1694,14 @@ async function collectMetrics(page) {
 
     const collectCombatMetrics = () => {
       const badge = document.getElementById('enemy-icon-badge');
+      const mode = document.getElementById('combat-mode-label');
+      const modeStyle = mode ? getComputedStyle(mode) : null;
       if (!badge) {
         return {
+          modeStyled: !!mode && modeStyle.backgroundImage !== 'none' &&
+            modeStyle.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+            modeStyle.boxShadow !== 'none',
+          modeState: mode?.dataset.mode ?? '',
           enemyBadgeStyled: false,
           enemyIconClass: ''
         };
@@ -1701,6 +1709,10 @@ async function collectMetrics(page) {
 
       const style = getComputedStyle(badge);
       return {
+        modeStyled: !!mode && modeStyle.backgroundImage !== 'none' &&
+          modeStyle.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
+          modeStyle.boxShadow !== 'none',
+        modeState: mode?.dataset.mode ?? '',
         enemyBadgeStyled: style.backgroundImage !== 'none' &&
           style.borderTopColor !== 'rgba(0, 0, 0, 0)' &&
           style.boxShadow !== 'none',
@@ -2131,6 +2143,7 @@ function validateFixedRuntimeScenario(scenario, metrics, failures) {
   validateFixedHpHardware(metrics, failures, 'fixed runtime');
   validateFixedTitleHardware(metrics, failures, 'fixed runtime');
   validateFixedControlHardware(metrics, failures, 'fixed runtime');
+  validateFixedCombatModeHardware(metrics, failures, 'fixed runtime');
   validateFixedStatusHardware(metrics, failures, 'fixed runtime', 'ready');
 
   if (metrics.latestTextLength < 30) {
@@ -2319,6 +2332,26 @@ function validateFixedEnemyBadge(metrics, failures, context) {
   }
 }
 
+function validateFixedCombatModeHardware(metrics, failures, context) {
+  const mode = metrics.rects.combatModeLabel;
+  const expectedState = metrics.inCombat ? 'combat' : 'explore';
+  const minWidth = scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 58 : 64);
+  const minHeight = scaledFixedThreshold(metrics, metrics.fixedProfileKind === 'mobileCompact' ? 14 : 16);
+
+  if (!mode || mode.visibleWidth < minWidth || mode.visibleHeight < minHeight) {
+    failures.push(`${context} combat mode plate is clipped: ${mode?.visibleWidth ?? 0}x${mode?.visibleHeight ?? 0}`);
+    return;
+  }
+
+  if (!metrics.combat.modeStyled) {
+    failures.push(`${context} combat mode plate lacks physical styling`);
+  }
+
+  if (metrics.combat.modeState !== expectedState) {
+    failures.push(`${context} combat mode plate state should be ${expectedState}, got ${metrics.combat.modeState || 'empty'}`);
+  }
+}
+
 function validateCombatScenario(metrics, failures) {
   if (!metrics.inCombat) {
     failures.push('combat scenario did not enter combat');
@@ -2409,6 +2442,7 @@ function validateFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   validateFixedEnemyBadge(metrics, failures, 'fixed workbench');
+  validateFixedCombatModeHardware(metrics, failures, 'fixed workbench');
 
   if (isMovementScenario) {
     if (metrics.fixedScenario !== 'movement') {

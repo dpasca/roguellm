@@ -1514,15 +1514,36 @@ body.skin-neo-tokyo-console .fixed-skin-stage .fixed-game-log p.latest {
 }
 
 .fixed-combat-region h2 {
+  display: inline-grid;
+  min-width: 76px;
+  min-height: 18px;
+  padding: 0 7px;
+  place-items: center;
+  border: 1px solid rgba(140, 255, 141, 0.42);
   margin: 0 0 6px;
   color: #8cff8d;
   font-size: 13px;
   font-weight: 900;
+  line-height: 1;
   text-transform: uppercase;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(218, 255, 199, 0.20), transparent 46%),
+    linear-gradient(180deg, rgba(28, 80, 26, 0.72), rgba(5, 15, 6, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.62),
+    0 0 10px rgba(126, 255, 96, 0.12);
+  text-shadow: 0 0 8px currentColor;
 }
 
 .fixed-combat-state .fixed-combat-region h2 {
+  border-color: rgba(255, 102, 121, 0.56);
   color: #ff6679;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255, 166, 158, 0.24), transparent 46%),
+    linear-gradient(180deg, rgba(94, 24, 27, 0.78), rgba(18, 4, 8, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.64),
+    0 0 11px rgba(255, 95, 118, 0.14);
 }
 
 .fixed-controls-region {
@@ -1808,6 +1829,9 @@ body.skin-neo-tokyo-console .fixed-skin-stage[data-profile="reference-mobile-v2"
 }
 
 .fixed-skin-stage:is([data-profile="reference-mobile"], [data-profile="reference-mobile-v2"]) .fixed-combat-region h2 {
+  min-width: 58px;
+  min-height: 14px;
+  padding: 0 5px;
   margin-bottom: 2px;
   font-size: 10px;
 }
@@ -1959,6 +1983,9 @@ body.skin-neo-tokyo-console .fixed-skin-stage:is([data-profile-role="default"], 
 }
 
 .fixed-skin-stage[data-profile-kind="mobileCompact"] .fixed-combat-region h2 {
+  min-width: 66px;
+  min-height: 16px;
+  padding: 0 6px;
   margin-bottom: 3px;
   font-size: 11px;
 }

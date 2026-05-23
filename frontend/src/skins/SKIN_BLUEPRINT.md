@@ -144,6 +144,10 @@ and visual inspection gates so they behave like part of the skin:
   to render a small enemy badge before the enemy name and HP.
 - Visual inspection must fail when an active fixed combat state has a clipped,
   unstyled, or icon-less enemy badge.
+- Fixed combat panels expose `combat` or `explore` on a physical mode plate so
+  mode changes are visual state, not loose label text.
+- Visual inspection must fail when the combat mode plate is clipped, unstyled,
+  or reporting a state that disagrees with runtime combat state.
 - Fixed player stat rows use four stable stat plates for `ATK`, `DEF`, `XP`,
   and `TILE`, with fixed numeric columns and a flexible tile-value column.
 - Visual inspection must fail when fixed stat plates are missing, unstyled, or

@@ -616,7 +616,7 @@ function buildStage(app: HTMLElement, profile: FixedSkinProfile, scenario: Fixed
 
   const combat = stage.querySelector('#combat-panel');
   combat?.append(
-    el('h2', '', 'Combat', 'combat-mode-label'),
+    el('h2', 'fixed-combat-mode', 'Combat', 'combat-mode-label'),
     createCombatRow()
   );
 
@@ -923,7 +923,9 @@ function renderTextState(
   renderPlayerStatsState(state);
 
   const enemy = state.current_enemy;
+  const combatMode = document.getElementById('combat-mode-label');
   setText('combat-mode-label', state.in_combat ? 'Combat' : 'Explore');
+  combatMode?.setAttribute('data-mode', state.in_combat ? 'combat' : 'explore');
   setText('enemy-name', enemy?.name ?? (state.in_combat ? 'No enemy' : 'No hostile'));
   setText('enemy-hp', enemy ? `${enemy.hp}/${enemy.max_hp}` : '--');
   renderEnemyBadgeState(enemy);
