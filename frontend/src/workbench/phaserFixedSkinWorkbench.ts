@@ -577,6 +577,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private sourceMaterialPanelsDrawn = 0;
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
+  private latestReadoutDetailsDrawn = 0;
   private logRowsDrawn = 0;
   private logOverflowCuesDrawn = 0;
   private logReadoutDetailsDrawn = 0;
@@ -674,6 +675,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialPanelsDrawn = 0;
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
+    this.latestReadoutDetailsDrawn = 0;
     this.logRowsDrawn = 0;
     this.logOverflowCuesDrawn = 0;
     this.logReadoutDetailsDrawn = 0;
@@ -734,6 +736,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       .map(([buttonId, state]) => `${buttonId}:${state}`)
       .sort()
       .join(',');
+    document.body.dataset.phaserLatestReadoutDetails = String(this.latestReadoutDetailsDrawn);
     document.body.dataset.phaserLogEntryCount = String(this.viewState.logs.length);
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
     document.body.dataset.phaserLogOverflowCues = String(this.logOverflowCuesDrawn);
@@ -1444,6 +1447,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
+    this.drawLatestReadoutHardware(latest, layout);
     this.addTextInRect('LATEST', layout.label, {
       fontSize: 10,
       color: this.theme.primaryText,
@@ -1455,6 +1459,71 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       fontStyle: 'bold',
       lineSpacing: this.profile.kind === 'mobileCompact' ? 1 : 2
     });
+  }
+
+  private drawLatestReadoutHardware(rect: FixedSkinRect, layout: FixedSkinRuntimeLayout['latest']): void {
+    const graphics = this.add.graphics();
+    const labelPlate = {
+      x: layout.label.x - 4,
+      y: layout.label.y - 3,
+      width: Math.min(72, rect.x + rect.width - layout.label.x - 10),
+      height: layout.label.height + 6
+    };
+    const messageWell = {
+      x: layout.message.x - 4,
+      y: layout.message.y - 4,
+      width: layout.message.width + 8,
+      height: layout.message.height + 6
+    };
+    const railX = rect.x + rect.width - 16;
+    const railTop = rect.y + 12;
+    const railBottom = rect.y + rect.height - 12;
+
+    graphics.fillStyle(0x020504, 0.88);
+    graphics.fillRoundedRect(labelPlate.x, labelPlate.y, labelPlate.width, labelPlate.height, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.66);
+    graphics.strokeRoundedRect(labelPlate.x + 0.5, labelPlate.y + 0.5, labelPlate.width - 1, labelPlate.height - 1, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.34);
+    graphics.lineBetween(labelPlate.x + labelPlate.width + 4, labelPlate.y + 7, railX - 8, labelPlate.y + 7);
+    graphics.lineStyle(1, this.theme.secondary, 0.24);
+    graphics.lineBetween(labelPlate.x + labelPlate.width + 4, labelPlate.y + 13, railX - 22, labelPlate.y + 13);
+
+    graphics.fillStyle(0x020504, 0.54);
+    graphics.fillRoundedRect(messageWell.x, messageWell.y, messageWell.width, messageWell.height, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.24);
+    graphics.strokeRoundedRect(messageWell.x + 0.5, messageWell.y + 0.5, messageWell.width - 1, messageWell.height - 1, 4);
+    graphics.fillStyle(this.theme.primary, 0.88);
+    graphics.fillRoundedRect(messageWell.x + 2, messageWell.y + 3, 3, messageWell.height - 6, 1.5);
+
+    graphics.lineStyle(1, this.theme.primary, 0.22);
+    graphics.lineBetween(messageWell.x + 9, messageWell.y + 5, messageWell.x + messageWell.width - 8, messageWell.y + 5);
+    graphics.lineStyle(1, 0xffffff, 0.08);
+    graphics.lineBetween(
+      messageWell.x + 9,
+      messageWell.y + messageWell.height - 5,
+      messageWell.x + messageWell.width - 8,
+      messageWell.y + messageWell.height - 5
+    );
+
+    graphics.fillStyle(0x020504, 0.82);
+    graphics.fillRoundedRect(railX, railTop, 8, railBottom - railTop, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.44);
+    graphics.strokeRoundedRect(railX + 0.5, railTop + 0.5, 7, railBottom - railTop - 1, 4);
+    for (let index = 0; index < 4; index += 1) {
+      const y = railTop + 5 + index * Math.max(5, Math.floor((railBottom - railTop - 10) / 4));
+      graphics.fillStyle(index === 0 ? this.theme.secondary : this.theme.primary, index === 0 ? 0.86 : 0.42);
+      graphics.fillRoundedRect(railX + 2, y, 4, 3, 1.5);
+    }
+
+    const tickY = rect.y + rect.height - 10;
+    for (let tick = 0; tick < 7; tick += 1) {
+      const x = messageWell.x + messageWell.width - 68 + tick * 8;
+      graphics.fillStyle(tick < 2 ? this.theme.secondary : this.theme.primary, tick < 2 ? 0.66 : 0.26);
+      graphics.fillRoundedRect(x, tickY, 4, 3, 1.5);
+    }
+
+    this.latestReadoutDetailsDrawn += 27;
+    this.hudDetailsDrawn += 8;
   }
 
   private drawTitle(): void {

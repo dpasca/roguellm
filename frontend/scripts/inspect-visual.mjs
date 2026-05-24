@@ -960,6 +960,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserCurrentTileTerrainIcons) ? `current tile icons ${metrics.phaserCurrentTileTerrainIcons}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
+      Number.isFinite(metrics.phaserLatestReadoutDetails) ? `latest readout ${metrics.phaserLatestReadoutDetails}` : null,
       Number.isFinite(metrics.phaserCombatReadoutDetails) ? `combat readout ${metrics.phaserCombatReadoutDetails}` : null,
       Number.isFinite(metrics.phaserTextSlots) ? `text slots ${metrics.phaserTextSlots}` : null,
       Number.isFinite(metrics.phaserTextOverflows) ? `text overflow ${metrics.phaserTextOverflows}` : null,
@@ -3768,6 +3769,7 @@ async function collectMetrics(page) {
       phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
       phaserButtonStates: document.body.dataset.phaserButtonStates ?? '',
       phaserPointerButtonState: document.body.dataset.phaserPointerButtonState ?? '',
+      phaserLatestReadoutDetails: Number(document.body.dataset.phaserLatestReadoutDetails ?? NaN),
       phaserLogEntryCount: Number(document.body.dataset.phaserLogEntryCount ?? NaN),
       phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
       phaserLogOverflowCues: Number(document.body.dataset.phaserLogOverflowCues ?? NaN),
@@ -4257,6 +4259,15 @@ function validatePhaserCombatReadout(metrics, failures, context) {
   }
 }
 
+function validatePhaserLatestReadout(metrics, failures, context) {
+  if (!Number.isFinite(metrics.phaserLatestReadoutDetails) || metrics.phaserLatestReadoutDetails < 24) {
+    failures.push(
+      `${context} expected detailed Phaser latest-message readout hardware, ` +
+      `got ${metrics.phaserLatestReadoutDetails ?? 'none'}`
+    );
+  }
+}
+
 function validatePhaserTextSlots(metrics, failures, context) {
   if (!Number.isFinite(metrics.phaserTextSlots) || metrics.phaserTextSlots < 16) {
     failures.push(`${context} expected measured fixed text slots, got ${metrics.phaserTextSlots ?? 'none'}`);
@@ -4316,6 +4327,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserActionLabels(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserControlAffordances(metrics, failures, 'Phaser workbench');
+  validatePhaserLatestReadout(metrics, failures, 'Phaser workbench');
   validatePhaserCombatReadout(metrics, failures, 'Phaser workbench');
   validatePhaserTextSlots(metrics, failures, 'Phaser workbench');
 
@@ -4516,6 +4528,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser runtime');
   validatePhaserControlAffordances(metrics, failures, 'Phaser runtime');
+  validatePhaserLatestReadout(metrics, failures, 'Phaser runtime');
   validatePhaserCombatReadout(metrics, failures, 'Phaser runtime');
   validatePhaserTextSlots(metrics, failures, 'Phaser runtime');
 
