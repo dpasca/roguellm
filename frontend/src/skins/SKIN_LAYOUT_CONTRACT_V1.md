@@ -390,7 +390,7 @@ Before cropping, validate the source pack and scaffold handoff together:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json
 ```
 
 This preflight checks the three required PNG filenames, exact chassis/widget
@@ -399,7 +399,11 @@ is deliberately about fixed source geometry; passing it does not mean the art is
 beautiful enough to promote.
 The review command writes a self-contained HTML contact sheet with source
 artboards, material-sheet crops, live regions, fixed widget crops, and Phaser
-runtime text/icon slots overlaid for manual rejection before build.
+runtime text/icon slots overlaid for manual rejection before build. Pass
+`--json` to also write a machine-readable `review.json` beside the HTML. Use
+`--fail-on-issue` for promotion scripts that should stop on geometry/source
+handoff problems, and reserve `--fail-on-warning` for stricter passes where
+measured quality signals should block promotion until manually resolved.
 
 The scaffold is contract-driven. It copies the exact v1 regions and layout
 rectangles, declares all required fixed-size assets, and adds a `build.crops`

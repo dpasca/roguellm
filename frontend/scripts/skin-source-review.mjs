@@ -29,11 +29,20 @@ if (!profile) {
 const outputPath = parsedArgs.options.out
   ? path.resolve(rootDir, parsedArgs.options.out)
   : path.resolve(rootDir, `../_artifacts/skin-reviews/${kit.id ?? path.basename(packDir)}/index.html`);
+const jsonOutputPath = jsonReviewPath(parsedArgs.options.json, outputPath);
 
 const review = await buildReview(packDir, kit, profile);
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
-await fs.writeFile(outputPath, review, 'utf8');
+await fs.writeFile(outputPath, review.html, 'utf8');
 console.error(`Wrote ${path.relative(process.cwd(), outputPath)}`);
+if (jsonOutputPath) {
+  await fs.mkdir(path.dirname(jsonOutputPath), { recursive: true });
+  await fs.writeFile(jsonOutputPath, `${JSON.stringify(review.report, null, 2)}\n`, 'utf8');
+  console.error(`Wrote ${path.relative(process.cwd(), jsonOutputPath)}`);
+}
+if (shouldFailReview(parsedArgs.options, review.report)) {
+  process.exitCode = 1;
+}
 
 async function buildReview(dir, skinKit, selectedProfile) {
   const stateSheetLayout = buildStateSheetLayout(selectedProfile);
@@ -48,8 +57,9 @@ async function buildReview(dir, skinKit, selectedProfile) {
   const metrics = await reviewMetrics(sources, selectedProfile);
   const issues = reviewIssues(sources, skinKit, selectedProfile);
   const warnings = reviewWarnings(metrics);
+  const report = buildReport(dir, skinKit, selectedProfile, sources, metrics, issues, warnings, stateSheetLayout, stateSheetRequired);
 
-  return [
+  const html = [
     '<!doctype html>',
     '<html lang="en">',
     '<head>',
@@ -92,6 +102,51 @@ async function buildReview(dir, skinKit, selectedProfile) {
     '</body>',
     '</html>'
   ].join('\n');
+
+  return { html, report };
+}
+
+function buildReport(dir, skinKit, selectedProfile, sources, metrics, issues, warnings, stateSheetLayout, stateSheetRequired) {
+  return {
+    skinId: skinKit.id ?? path.basename(dir),
+    label: skinKit.meta?.label ?? skinKit.id ?? path.basename(dir),
+    profile: skinKit.kind,
+    role: skinKit.meta?.role ?? 'unknown',
+    sourcePack: relativePath(dir),
+    issueCount: issues.length,
+    warningCount: warnings.length,
+    issues,
+    warnings,
+    expected: {
+      artboard: selectedProfile.size,
+      stateSheet: stateSheetLayout.size,
+      stateSheetRequired,
+      materials: {
+        minimumWidth: 152,
+        minimumHeight: 304
+      }
+    },
+    sources: {
+      chassis: sourceSummary(sources.chassis, selectedProfile.size),
+      widgets: sourceSummary(sources.widgets, selectedProfile.size),
+      stateSheet: sourceSummary(sources.stateSheet, stateSheetLayout.size, { optional: !stateSheetRequired }),
+      materials: sourceSummary(sources.materials, { width: 152, height: 304 }, { minimum: true })
+    },
+    metrics
+  };
+}
+
+function sourceSummary(source, expected, options = {}) {
+  return {
+    present: Boolean(source),
+    path: source ? relativePath(source.path) : null,
+    width: source?.width ?? null,
+    height: source?.height ?? null,
+    expectedWidth: expected.width,
+    expectedHeight: expected.height,
+    optional: Boolean(options.optional),
+    minimum: Boolean(options.minimum)
+  };
 }
 
 function stat(label, value) {
@@ -697,6 +752,35 @@ function parseArgs(values) {
   return { options, positionals };
 }
 
+function jsonReviewPath(optionValue, htmlOutputPath) {
+  if (optionValue === undefined) {
+    return null;
+  }
+
+  if (optionValue === 'true') {
+    return path.join(path.dirname(htmlOutputPath), 'review.json');
+  }
+
+  return path.resolve(rootDir, optionValue);
+}
+
+function shouldFailReview(options, report) {
+  const failOnWarning = options['fail-on-warning'] === 'true';
+  const failOnIssue = failOnWarning || options['fail-on-issue'] === 'true';
+
+  if (failOnIssue && report.issueCount > 0) {
+    console.error(`Source review found ${report.issueCount} issue${report.issueCount === 1 ? '' : 's'}.`);
+    return true;
+  }
+
+  if (failOnWarning && report.warningCount > 0) {
+    console.error(`Source review found ${report.warningCount} warning${report.warningCount === 1 ? '' : 's'}.`);
+    return true;
+  }
+
+  return false;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -751,6 +835,9 @@ function printUsage() {
     'Usage: pnpm -C frontend skin:review-source <skin-pack-dir|skin-kit.json> [options]',
     '',
     'Options:',
-    '  --out <path>  Write review HTML. Defaults to ../_artifacts/skin-reviews/<skin-id>/index.html.'
+    '  --out <path>         Write review HTML. Defaults to ../_artifacts/skin-reviews/<skin-id>/index.html.',
+    '  --json [path]        Write machine-readable review JSON. Defaults to review.json beside the HTML.',
+    '  --fail-on-issue      Exit nonzero if geometry/source issues are present.',
+    '  --fail-on-warning    Exit nonzero if issues or warning-level quality signals are present.'
   ].join('\n'));
 }

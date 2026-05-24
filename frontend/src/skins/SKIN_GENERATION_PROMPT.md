@@ -20,22 +20,27 @@ pnpm --silent -C frontend skin:prompt mobileCompact --theme "premium rain-city c
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
 pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
 pnpm -C frontend skin:guide mobilePortrait --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
+pnpm -C frontend skin:state-guide mobileCompact --out ../_artifacts/skin-guides/mobile-compact-state-sheet.png
 ```
 
 `skin:handoff` is the preferred starting point for real generation. It creates a
-single ignored bundle containing the prompt, exact live/crop/runtime guide
-images, a machine-readable handoff plan, and the scaffold/review/build commands
-to run after the generated source files arrive.
+single ignored bundle containing the prompt, exact live/crop/runtime/state-sheet
+guide images, a machine-readable handoff plan, and the scaffold/review/build
+commands to run after the generated source files arrive.
 
-For AI generation, prefer a three-file source pack over one clever flexible UI
+For AI generation, prefer a source pack over one clever flexible UI
 image:
 
 - `source-chassis.png`: exact-size clean chassis art for the chosen contract
   profile. It owns permanent shell, bezels, wells, screws, rails, glass frames,
   and decorative labels only.
 - `source-widgets.png`: exact-size widget crop art for fixed buttons, toggles,
-  and indicators. The scaffold crops idle assets from exact rectangles and then
-  derives hover, pressed, disabled, on, and off variants from fixed-size sprites.
+  and indicators. It can be used by itself for simple prototypes where the
+  scaffold derives state variants from idle crops.
+- `source-state-sheet.png`: exact-size fixed widget state sheet for premium
+  skins. It owns every button, toggle, status, and LED state in fixed slots, so
+  hover, pressed, active, disabled, ready, thinking, error, on, and off states
+  can have authored lighting and depth.
 - `source-materials.png`: repeat-safe panel/LCD/button fill tiles and transparent
   nine-slice frames. Material detail must be tile-safe or frame-safe, never a
   stretched decorative panel.
@@ -81,6 +86,8 @@ Hard rules:
 - Make button wells clean enough to crop separate transparent sprites for idle,
   hover, pressed, active, and disabled states. The active state is the latched
   on-state for Log and Inventory toggles.
+- For premium skins, deliver `source-state-sheet.png` using the state-sheet
+  guide instead of relying on generated state variants from one idle crop.
 - Pressed, hover, disabled, on, and off states must be fixed-size widget
   variants, not elastic or stretched layout treatments.
 - Include a restart button treatment that can be cropped into idle, hover,
@@ -103,6 +110,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --palette green,brass,graphite \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
+  --state-source source-state-sheet.png \
   --materials-source source-materials.png \
   --material-render-mode source \
   --out ../_artifacts/skin-kits/rain-city-deck
@@ -113,16 +121,18 @@ optional chassis crop `source` paths and run:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json
 pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend validate:skins
 ```
 
 The scaffold crop plan creates the fixed runtime assets from the source
-artboard: full chassis, button state variants, status indicator states, and LED
-states. With `--materials-source`, it also crops the six material PNGs from a
-separate 160x304-or-taller sheet: panel row at y=0, LCD row at y=104, button row
-at y=208, each with the 96x96 fill tile at x=0 and the 48x48 frame at x=104.
+artboard: full chassis, button states, status indicator states, and LED states.
+With `--state-source`, those widget states are cropped directly from
+`source-state-sheet.png`; without it, the scaffold derives state variants from
+idle crops. With `--materials-source`, it also crops the six material PNGs from
+a separate 160x304-or-taller sheet: panel row at y=0, LCD row at y=104, button
+row at y=208, each with the 96x96 fill tile at x=0 and the 48x48 frame at x=104.
 Those materials are rendered by Phaser as tiled sprites and nine-slice frames,
 not DOM stylesheet surfaces. Only promote a generated artboard into the default
 mobile profile after the diagnostics and visual inspection screenshots look cleaner than
@@ -133,5 +143,7 @@ source artboard and inspect the overlay. Reject the source if live apertures
 contain baked game content, if button wells miss the fixed crop rectangles, or
 if material detail crosses into the Phaser text/icon slots.
 `skin:review-source` also computes measured preflight tables for live-region
-cleanliness, widget crop occupancy/contrast, and material seam deltas. Treat
-yellow warnings as review prompts before building or promoting a generated skin.
+cleanliness, widget/state-sheet crop occupancy/contrast, and material seam
+deltas. The `--json` report records issue and warning counts for automation.
+Use `--fail-on-issue` in promotion scripts, and treat yellow warnings as review
+prompts before building or promoting a generated skin.
