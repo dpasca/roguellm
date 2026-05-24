@@ -131,3 +131,6 @@ Before building, run `skin:guide --source` against the exact-size generated
 source artboard and inspect the overlay. Reject the source if live apertures
 contain baked game content, if button wells miss the fixed crop rectangles, or
 if material detail crosses into the Phaser text/icon slots.
+`skin:review-source` also computes measured preflight tables for live-region
+cleanliness, widget crop occupancy/contrast, and material seam deltas. Treat
+yellow warnings as review prompts before building or promoting a generated skin.

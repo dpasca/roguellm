@@ -1,6 +1,9 @@
+import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
+const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
 const contract = JSON.parse(await fs.readFile(contractPath, 'utf8'));
@@ -38,7 +41,9 @@ async function buildReview(dir, skinKit, selectedProfile) {
     materials: await readOptionalImage(dir, 'source-materials.png')
   };
   const expected = selectedProfile.size;
+  const metrics = await reviewMetrics(sources, selectedProfile);
   const issues = reviewIssues(sources, skinKit, selectedProfile);
+  const warnings = reviewWarnings(metrics);
 
   return [
     '<!doctype html>',
@@ -60,7 +65,8 @@ async function buildReview(dir, skinKit, selectedProfile) {
     stat('Palette', (skinKit.meta?.palette ?? []).join(', ') || 'none'),
     stat('Source Pack', relativePath(dir)),
     '</section>',
-    checklist(issues),
+    checklist(issues, warnings),
+    metricsPanel(metrics),
     sourcePanel('source-chassis.png', sources.chassis, selectedProfile.size, [
       rectLayer('live regions', selectedProfile.regions, '#66ff99', 'rgba(102,255,153,0.10)'),
       rectLayer('runtime slots', flattenRuntimeSlots(selectedProfile.runtime), '#c9ff5a', 'rgba(201,255,90,0.10)', true)
@@ -85,12 +91,15 @@ function stat(label, value) {
   return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
-function checklist(issues) {
-  const items = issues.length > 0
-    ? issues.map((issue) => `<li class="bad">${escapeHtml(issue)}</li>`).join('\n')
-    : '<li class="good">Geometry preflight looks aligned. Manual art-quality review is still required.</li>';
+function checklist(issues, warnings) {
+  const issueItems = issues.map((issue) => `<li class="bad">${escapeHtml(issue)}</li>`);
+  const warningItems = warnings.map((warning) => `<li class="warn">${escapeHtml(warning)}</li>`);
+  const items = [...issueItems, ...warningItems];
+  const content = items.length > 0
+    ? items.join('\n')
+    : '<li class="good">Geometry and measured source-art preflight look aligned. Manual art-quality review is still required.</li>';
 
-  return `<section class="checklist"><h2>Preflight</h2><ul>${items}</ul></section>`;
+  return `<section class="checklist"><h2>Preflight</h2><ul>${content}</ul></section>`;
 }
 
 function sourcePanel(title, source, expectedSize, layers) {
@@ -149,6 +158,61 @@ function materialPanel(source, materials) {
     legend([layer]),
     '</section>'
   ].join('\n');
+}
+
+function metricsPanel(metrics) {
+  const liveRows = metrics.liveRegions.length > 0
+    ? metrics.liveRegions.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.name)}</td>
+        <td>${formatNumber(metric.contrast, 4)}</td>
+        <td>${formatNumber(metric.edgeMean, 4)}</td>
+        <td>${formatNumber(metric.uniqueColors, 0)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No chassis live-region metrics available.</td></tr>';
+  const widgetRows = metrics.widgetCrops.length > 0
+    ? metrics.widgetCrops.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.name)}</td>
+        <td>${formatPercent(metric.alphaMean)}</td>
+        <td>${formatNumber(metric.contrast, 4)}</td>
+        <td>${formatNumber(metric.edgeMean, 4)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No widget crop metrics available.</td></tr>';
+  const materialRows = metrics.materials.length > 0
+    ? metrics.materials.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.name)}</td>
+        <td>${formatNumber(metric.horizontalSeam, 4)}</td>
+        <td>${formatNumber(metric.verticalSeam, 4)}</td>
+        <td>${formatNumber(metric.contrast, 4)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No material metrics available.</td></tr>';
+
+  return `
+    <section class="panel metrics">
+      <h2>Measured Preflight</h2>
+      <p>These signals are review aids. They catch likely baked content, empty widget crops, and repeat-unsafe materials before a source pack is promoted.</p>
+      <h3>Chassis Live Regions</h3>
+      <table>
+        <thead><tr><th>Region</th><th>Contrast</th><th>Edge Mean</th><th>Colors</th></tr></thead>
+        <tbody>${liveRows}</tbody>
+      </table>
+      <h3>Widget Crops</h3>
+      <table>
+        <thead><tr><th>Crop</th><th>Alpha</th><th>Contrast</th><th>Edge Mean</th></tr></thead>
+        <tbody>${widgetRows}</tbody>
+      </table>
+      <h3>Material Tile Seams</h3>
+      <table>
+        <thead><tr><th>Material</th><th>Left/Right</th><th>Top/Bottom</th><th>Contrast</th></tr></thead>
+        <tbody>${materialRows}</tbody>
+      </table>
+    </section>
+  `;
 }
 
 function rectLayer(label, rects, stroke, fill, dashed = false) {
@@ -220,6 +284,243 @@ function reviewIssues(sources, skinKit, selectedProfile) {
   return issues;
 }
 
+async function reviewMetrics(sources, selectedProfile) {
+  const liveRegions = sources.chassis
+    ? await Promise.all(Object.entries(selectedProfile.regions)
+        .map(async ([name, rect]) => {
+          const metrics = await imageCropMetrics(sources.chassis.path, insetRect(rect, 8));
+          return {
+            name,
+            ...metrics,
+            warning: liveRegionLooksBusy(name, metrics)
+          };
+        }))
+    : [];
+  const widgetRects = {
+    ...selectedProfile.layout.buttons,
+    ...selectedProfile.layout.indicators
+  };
+  const widgetCrops = sources.widgets
+    ? await Promise.all(Object.entries(widgetRects)
+        .map(async ([name, rect]) => {
+          const metrics = await imageCropMetrics(sources.widgets.path, rect);
+          return {
+            name,
+            ...metrics,
+            warning: widgetCropLooksWeak(metrics)
+          };
+        }))
+    : [];
+  const materials = sources.materials
+    ? await Promise.all(Object.entries(selectedProfile.materials)
+        .flatMap(([name, material], index) => [
+          materialMetric(sources.materials.path, `${name}.fill`, {
+            x: 0,
+            y: index * 104,
+            width: material.fill.width,
+            height: material.fill.height
+          }),
+          materialMetric(sources.materials.path, `${name}.frame`, {
+            x: 104,
+            y: index * 104,
+            width: material.frame.width,
+            height: material.frame.height
+          })
+        ]))
+    : [];
+
+  return { liveRegions, widgetCrops, materials };
+}
+
+function reviewWarnings(metrics) {
+  const warnings = [];
+  for (const metric of metrics.liveRegions.filter((entry) => entry.warning)) {
+    warnings.push(
+      `Live region ${metric.name} looks visually busy; inspect for baked text, map tiles, item icons, or decorative detail crossing Phaser slots.`
+    );
+  }
+  for (const metric of metrics.widgetCrops.filter((entry) => entry.warning)) {
+    warnings.push(
+      `Widget crop ${metric.name} may be too empty or too flat; inspect before deriving button/indicator states.`
+    );
+  }
+  for (const metric of metrics.materials.filter((entry) => entry.warning)) {
+    warnings.push(
+      `Material crop ${metric.name} has high opposite-edge seam delta; inspect tile/nine-slice repeat safety.`
+    );
+  }
+  return warnings;
+}
+
+async function materialMetric(imagePath, name, rect) {
+  const [metrics, horizontalSeam, verticalSeam] = await Promise.all([
+    imageCropMetrics(imagePath, rect),
+    edgeDelta(imagePath, rect, 'horizontal'),
+    edgeDelta(imagePath, rect, 'vertical')
+  ]);
+  return {
+    name,
+    ...metrics,
+    horizontalSeam,
+    verticalSeam,
+    warning: horizontalSeam > 0.16 || verticalSeam > 0.16
+  };
+}
+
+async function imageCropMetrics(imagePath, rect) {
+  const crop = cropArg(rect);
+  const [basic, edgeMean, alphaMean, uniqueColors] = await Promise.all([
+    magick([
+      imagePath,
+      '-crop',
+      crop,
+      '+repage',
+      '-colorspace',
+      'sRGB',
+      '-format',
+      '%[fx:mean] %[fx:standard_deviation]',
+      'info:'
+    ]),
+    magick([
+      imagePath,
+      '-crop',
+      crop,
+      '+repage',
+      '-alpha',
+      'remove',
+      '-colorspace',
+      'Gray',
+      '-edge',
+      '1',
+      '-format',
+      '%[fx:mean]',
+      'info:'
+    ]),
+    magick([
+      imagePath,
+      '-crop',
+      crop,
+      '+repage',
+      '-alpha',
+      'extract',
+      '-format',
+      '%[fx:mean]',
+      'info:'
+    ]),
+    magick([
+      imagePath,
+      '-crop',
+      crop,
+      '+repage',
+      '-format',
+      '%k',
+      'info:'
+    ])
+  ]);
+  const [mean, contrast] = basic.trim().split(/\s+/).map(Number);
+  return {
+    mean,
+    contrast,
+    edgeMean: Number(edgeMean.trim()),
+    alphaMean: Number(alphaMean.trim()),
+    uniqueColors: Number(uniqueColors.trim())
+  };
+}
+
+async function edgeDelta(imagePath, rect, axis) {
+  const first = axis === 'horizontal'
+    ? { x: rect.x, y: rect.y, width: 1, height: rect.height }
+    : { x: rect.x, y: rect.y, width: rect.width, height: 1 };
+  const second = axis === 'horizontal'
+    ? { x: rect.x + rect.width - 1, y: rect.y, width: 1, height: rect.height }
+    : { x: rect.x, y: rect.y + rect.height - 1, width: rect.width, height: 1 };
+  const [firstMean, secondMean] = await Promise.all([
+    imageMeanRgb(imagePath, first),
+    imageMeanRgb(imagePath, second)
+  ]);
+  return Math.sqrt(
+    firstMean.reduce((total, value, index) => {
+      const delta = value - secondMean[index];
+      return total + delta * delta;
+    }, 0) / firstMean.length
+  );
+}
+
+async function imageMeanRgb(imagePath, rect) {
+  const output = await magick([
+    imagePath,
+    '-crop',
+    cropArg(rect),
+    '+repage',
+    '-alpha',
+    'remove',
+    '-colorspace',
+    'sRGB',
+    '-resize',
+    '1x1!',
+    '-depth',
+    '8',
+    'txt:-'
+  ]);
+  const match = output.match(/\((\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)\)/);
+  if (!match) {
+    return [0, 0, 0];
+  }
+  return [
+    Number(match[1]) / 255,
+    Number(match[2]) / 255,
+    Number(match[3]) / 255
+  ];
+}
+
+async function magick(args) {
+  try {
+    const { stdout } = await execFileAsync('magick', args, {
+      maxBuffer: 4 * 1024 * 1024
+    });
+    return stdout;
+  } catch (error) {
+    throw new Error(`ImageMagick failed for ${args.join(' ')}: ${error.message}`);
+  }
+}
+
+function liveRegionLooksBusy(name, metrics) {
+  const lenientRegions = new Set(['map', 'controls', 'endState']);
+  const edgeFloor = lenientRegions.has(name) ? 0.055 : 0.042;
+  const colorFloor = lenientRegions.has(name) ? 520 : 340;
+  return metrics.edgeMean > edgeFloor || metrics.uniqueColors > colorFloor;
+}
+
+function widgetCropLooksWeak(metrics) {
+  return metrics.alphaMean < 0.06 || metrics.contrast < 0.018;
+}
+
+function insetRect(rect, inset) {
+  const safeInset = Math.min(inset, Math.floor(rect.width / 3), Math.floor(rect.height / 3));
+  return {
+    x: rect.x + safeInset,
+    y: rect.y + safeInset,
+    width: rect.width - safeInset * 2,
+    height: rect.height - safeInset * 2
+  };
+}
+
+function cropArg(rect) {
+  return `${rect.width}x${rect.height}+${rect.x}+${rect.y}`;
+}
+
+function formatNumber(value, digits) {
+  if (!Number.isFinite(value)) {
+    return 'n/a';
+  }
+  const normalized = Math.abs(value) < 0.00005 ? 0 : value;
+  return normalized.toFixed(digits);
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${Math.round(value * 100)}%` : 'n/a';
+}
+
 function flattenRuntimeSlots(runtime) {
   const entries = [];
   collectRuntimeSlots('', runtime, entries);
@@ -268,6 +569,7 @@ async function readOptionalImage(dir, fileName) {
   const dimensions = imageDimensionsFor(data, filePath);
   return {
     ...dimensions,
+    path: filePath,
     dataUri: `data:${mimeTypeFor(filePath)};base64,${data.toString('base64')}`
   };
 }
@@ -363,6 +665,13 @@ function htmlStyles() {
     .checklist li { margin: 6px 0; }
     .good { color: #9cff86; }
     .bad { color: #ff91a2; }
+    .warn { color: #ffd460; }
+    .metrics h3 { margin: 18px 0 8px; color: #d7f7ef; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; overflow: hidden; border: 1px solid #26393a; border-radius: 6px; }
+    th, td { padding: 7px 9px; border-bottom: 1px solid #1b2a2b; text-align: left; font-size: 12px; }
+    th { color: #8de7ff; background: #101819; font-size: 11px; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .warn-row td { color: #ffd460; background: rgba(255, 212, 96, 0.06); }
     .artboard { position: relative; width: min(100%, 780px); background: #020504; border: 1px solid #314748; overflow: hidden; image-rendering: pixelated; }
     .artboard.material { max-width: 520px; }
     .artboard img, .missing, .artboard svg { position: absolute; inset: 0; width: 100%; height: 100%; }
