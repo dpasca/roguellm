@@ -672,13 +672,21 @@ const baseScenarios = [
   {
     name: 'desktop-ready',
     viewport: { width: 1280, height: 900 },
-    mode: 'ready'
+    mode: 'ready',
+    url: classicRuntimeUrl
   },
   {
     name: 'desktop-workbench',
     viewport: { width: 1280, height: 900 },
     mode: 'workbench',
     url: workbenchUrl
+  },
+  {
+    name: 'desktop-default-fixed-runtime-ready',
+    viewport: { width: 1280, height: 900 },
+    mode: 'phaser-fixed-runtime-ready',
+    url: entryUrl,
+    expectedFixedProfile: desktopFixedProfile
   },
   {
     name: 'desktop-fixed-runtime-ready',
@@ -3730,6 +3738,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
   validateNoPhaserDomStyles(metrics, failures, 'Phaser runtime');
 
   const expectedProfile = scenario.expectedFixedProfile ?? compactFixedProfile;
+  const isDesktopProfile = isDesktopFixedProfile(expectedProfile);
   if (metrics.fixedProfile !== expectedProfile) {
     failures.push(`expected ${expectedProfile} Phaser fixed runtime profile, got ${metrics.fixedProfile ?? 'none'}`);
   }
@@ -3751,7 +3760,8 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser runtime canvas icon marks, got ${metrics.phaserCanvasIconMarks ?? 'none'}`);
   }
 
-  if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < 5) {
+  const minMaterialPanels = isDesktopProfile ? 4 : 5;
+  if (!Number.isFinite(metrics.phaserMaterialPanels) || metrics.phaserMaterialPanels < minMaterialPanels) {
     failures.push(`expected Phaser runtime material panels, got ${metrics.phaserMaterialPanels ?? 'none'}`);
   }
 
@@ -3759,7 +3769,8 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
   validatePhaserControlAffordances(metrics, failures, 'Phaser runtime');
   validatePhaserTextSlots(metrics, failures, 'Phaser runtime');
 
-  if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
+  const minChromeDetails = isDesktopProfile ? 4 : 5;
+  if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < minChromeDetails) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
   }
 
@@ -3769,7 +3780,8 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   validatePhaserMapDetails(scenario, metrics, failures, 'Phaser runtime');
 
-  if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
+  const minControlDetails = isDesktopProfile ? 44 : 48;
+  if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < minControlDetails) {
     failures.push(`expected detailed Phaser runtime control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);
   }
 
@@ -3778,8 +3790,9 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`Phaser fixed runtime canvas does not fill the test viewport: ${canvas?.visibleWidth ?? 0}x${canvas?.visibleHeight ?? 0}`);
   }
 
-  const expectedCanvasHeight = scenario.viewport.height <= 700 ? 667 : 844;
-  if (metrics.phaserCanvas.width !== 390 || metrics.phaserCanvas.height !== expectedCanvasHeight) {
+  const expectedCanvasWidth = isDesktopProfile ? scenario.viewport.width : 390;
+  const expectedCanvasHeight = isDesktopProfile ? scenario.viewport.height : scenario.viewport.height <= 700 ? 667 : 844;
+  if (metrics.phaserCanvas.width !== expectedCanvasWidth || metrics.phaserCanvas.height !== expectedCanvasHeight) {
     failures.push(`Phaser fixed runtime canvas has wrong backing size: ${metrics.phaserCanvas.width}x${metrics.phaserCanvas.height}`);
   }
 

@@ -328,20 +328,22 @@ swaps do not quietly masquerade as new skins.
 
 ## Playable Runtime
 
-The fixed mobile skin is the default Game2 UI on mobile-width viewports, and
-the fixed-skin renderer is Phaser-first. DOM skinning is no longer the target;
-it is kept only as a legacy comparison path while the Phaser runtime catches up.
+The fixed-skin renderer is the default Game2 UI on all viewports, and that
+default renderer is Phaser/canvas. DOM skinning is no longer the target; it is
+kept only as an explicit legacy comparison path while the Phaser runtime catches
+up.
 
-Force the Phaser fixed-skin runtime with `ui=fixed-skin`, for example:
+The normal runtime URL should enter the Phaser fixed-skin renderer without
+stylesheet skinning:
 
 ```text
-http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-v3
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1
 ```
 
-For short-phone manual checks, force the compact profile:
+For targeted manual checks, force a profile while staying on Phaser:
 
 ```text
-http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&profile=reference-mobile-compact
+http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&profile=reference-mobile-compact
 ```
 
 For local Phaser fixed-skin workbench review, use:

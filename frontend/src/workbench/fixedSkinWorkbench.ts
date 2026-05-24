@@ -70,7 +70,7 @@ export function isFixedSkinWorkbench(): boolean {
   return workbench === 'fixed-skin' && isLegacyFixedRenderer(params);
 }
 
-export function isFixedSkinRuntime(location: Location = window.location, viewportWidth = window.innerWidth): boolean {
+export function isFixedSkinRuntime(location: Location = window.location): boolean {
   const params = new URL(location.href).searchParams;
   const requestedUi = params.get('ui')?.toLowerCase();
   if (requestedUi === 'classic' || requestedUi === 'responsive') {
@@ -82,8 +82,7 @@ export function isFixedSkinRuntime(location: Location = window.location, viewpor
   }
 
   return requestedUi === 'fixed-skin' ||
-    params.get('fixed_skin') === '1' ||
-    viewportWidth <= 860;
+    params.get('fixed_skin') === '1';
 }
 
 export function createFixedSkinRuntime(skin: GameSkin, onAction: (action: GameAction) => void): FixedSkinRuntimeUi {

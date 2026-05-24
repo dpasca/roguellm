@@ -174,7 +174,7 @@ export interface PhaserFixedSkinRuntimeUi {
   destroy(): void;
 }
 
-export function isPhaserFixedSkinRuntime(location: Location = window.location, viewportWidth = window.innerWidth): boolean {
+export function isPhaserFixedSkinRuntime(location: Location = window.location): boolean {
   const params = new URL(location.href).searchParams;
   const requestedUi = params.get('ui')?.toLowerCase();
   if (requestedUi === 'classic' || requestedUi === 'responsive') {
@@ -190,7 +190,7 @@ export function isPhaserFixedSkinRuntime(location: Location = window.location, v
     requestedUi === 'fixed-skin' ||
     params.get('fixed_skin') === '1' ||
     renderer === 'phaser' ||
-    viewportWidth <= 860;
+    renderer === '';
 }
 
 export function createPhaserFixedSkinRuntime(
