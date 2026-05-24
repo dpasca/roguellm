@@ -588,6 +588,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private mapTileDetailsDrawn = 0;
   private fogTileDetailsDrawn = 0;
   private mapScannerDetailsDrawn = 0;
+  private currentTileTerrainIconsDrawn = 0;
   private controlDetailsDrawn = 0;
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
@@ -680,6 +681,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.mapTileDetailsDrawn = 0;
     this.fogTileDetailsDrawn = 0;
     this.mapScannerDetailsDrawn = 0;
+    this.currentTileTerrainIconsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
@@ -733,6 +735,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserFogTileDetails = String(this.fogTileDetailsDrawn);
     document.body.dataset.phaserMapScannerDetails = String(this.mapScannerDetailsDrawn);
+    document.body.dataset.phaserCurrentTileTerrainIcons = String(this.currentTileTerrainIconsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
@@ -926,7 +929,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const boardHeight = tileHeight * state.map_height;
     const originX = region.x + Math.floor((region.width - boardWidth) / 2);
     const originY = region.y + Math.floor((region.height - boardHeight) / 2);
-    const contentCells = new Set<string>([cellKey(state.player_pos[0], state.player_pos[1])]);
+    const contentCells = new Set<string>();
     for (const item of state.item_placements ?? []) {
       if (!item.is_collected && state.explored[item.y]?.[item.x]) {
         contentCells.add(cellKey(item.x, item.y));
@@ -954,6 +957,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         const base = boostMapColor(parseHexColor(cell?.map_color));
         const tileX = originX + x * tileWidth;
         const tileY = originY + y * tileHeight;
+        const currentTile = x === state.player_pos[0] && y === state.player_pos[1];
         this.drawMapTile(graphics, tileX, tileY, tileWidth, tileHeight, base, explored);
 
         if (
@@ -972,6 +976,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
             iconTint,
             0.68
           );
+          if (currentTile) {
+            this.currentTileTerrainIconsDrawn += 1;
+          }
         }
 
       }

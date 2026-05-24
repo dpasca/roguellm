@@ -953,6 +953,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserFogTileDetails) ? `fog detail ${metrics.phaserFogTileDetails}` : null,
       Number.isFinite(metrics.phaserMapScannerDetails) ? `scanner detail ${metrics.phaserMapScannerDetails}` : null,
+      Number.isFinite(metrics.phaserCurrentTileTerrainIcons) ? `current tile icons ${metrics.phaserCurrentTileTerrainIcons}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
       Number.isFinite(metrics.phaserTextSlots) ? `text slots ${metrics.phaserTextSlots}` : null,
@@ -3738,6 +3739,7 @@ async function collectMetrics(page) {
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserFogTileDetails: Number(document.body.dataset.phaserFogTileDetails ?? NaN),
       phaserMapScannerDetails: Number(document.body.dataset.phaserMapScannerDetails ?? NaN),
+      phaserCurrentTileTerrainIcons: Number(document.body.dataset.phaserCurrentTileTerrainIcons ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
       phaserTextSlots: Number(document.body.dataset.phaserTextSlots ?? NaN),
@@ -4348,6 +4350,9 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (phaserButtonState(metrics, 'moveE') !== 'idle') {
       failures.push(`expected Phaser moveE button to be drawn and idle after pointer click, got ${phaserButtonState(metrics, 'moveE') ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserCurrentTileTerrainIcons) || metrics.phaserCurrentTileTerrainIcons < 1) {
+      failures.push(`expected current tile terrain icon to remain visible under the player marker, got ${metrics.phaserCurrentTileTerrainIcons ?? 'none'}`);
     }
   }
 
