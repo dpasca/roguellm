@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { buildStateSheetLayout } from './skin-state-sheet-layout.mjs';
 
 const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
@@ -83,10 +84,15 @@ await runScript('skin-state-sheet-guide.mjs', [
 guides.push(stateGuideName);
 
 const plan = buildPlan(skinId, profileName, theme, guides, role, stateSheetMode);
+const splitPrompts = sourceFilePrompts(plan, profile, artBlueprint);
 await fs.writeFile(path.join(outDir, 'handoff.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 await fs.writeFile(path.join(outDir, 'ART_DIRECTION.md'), artDirection(plan, artBlueprint), 'utf8');
 await fs.writeFile(path.join(outDir, 'README.md'), readme(plan), 'utf8');
 await fs.writeFile(path.join(outDir, 'QUALITY_BAR.md'), qualityBar(plan), 'utf8');
+await fs.mkdir(path.join(outDir, 'prompts'), { recursive: true });
+for (const promptFile of splitPrompts) {
+  await fs.writeFile(path.join(outDir, 'prompts', promptFile.file), promptFile.prompt, 'utf8');
+}
 
 console.error(`Wrote skin handoff bundle to ${path.relative(process.cwd(), outDir)}`);
 
@@ -125,6 +131,12 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
     },
     files: {
       prompt: 'prompt.txt',
+      splitPrompts: [
+        'prompts/source-chassis.prompt.txt',
+        'prompts/source-widgets.prompt.txt',
+        'prompts/source-state-sheet.prompt.txt',
+        'prompts/source-materials.prompt.txt'
+      ],
       artDirection: 'ART_DIRECTION.md',
       qualityBar: 'QUALITY_BAR.md',
       guides: guideNames,
@@ -143,11 +155,145 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
       `pnpm -C frontend build:skin-kit ${kitDir}`,
       'pnpm -C frontend validate:skins'
     ],
+    generationSteps: [
+      'Generate source-chassis.png first from prompts/source-chassis.prompt.txt and reject it unless the live-region overlay is clean.',
+      'Generate source-widgets.png second from prompts/source-widgets.prompt.txt using the accepted chassis as style reference, not as baked runtime content.',
+      'Generate source-state-sheet.png third from prompts/source-state-sheet.prompt.txt using the accepted widget/chassis style as reference.',
+      'Generate source-materials.png last from prompts/source-materials.prompt.txt, then inspect tile seams and nine-slice frame safety.',
+      'Only scaffold/build after all four source files pass human review against QUALITY_BAR.md.'
+    ],
     afterPromotion: [
       `VISUAL_SCENARIOS=mobile-${id}-production-diagnostics pnpm -C frontend inspect:visual`,
       'pnpm -C frontend check:visual:production'
     ]
   };
+}
+
+function sourceFilePrompts(plan, selectedProfile, blueprint) {
+  const canvas = `${plan.size.width}x${plan.size.height}`;
+  const permanentChrome = [
+    'single coherent manufactured handheld console',
+    'one light direction',
+    'shared bevel language',
+    'tactile screws, rails, seams, vents, glass lips, small permanent labels',
+    'orthographic flat asset sheet, no perspective camera'
+  ].join(', ');
+  const forbidden = blueprint.forbiddenDynamicContent.join(', ');
+  const promptHeader = [
+    `Theme: ${plan.theme}.`,
+    `Blueprint: ${blueprint.name} ${blueprint.version}.`,
+    `Contract profile: ${plan.profile}, exact canvas ${canvas}.`,
+    `Visual target: ${blueprint.visualTarget}`,
+    'Generate a production source asset for a Phaser canvas skin, not a gameplay screenshot and not a web mockup.',
+    `Permanent hardware language: ${permanentChrome}.`,
+    `Forbidden dynamic content: ${forbidden}.`,
+    'No CSS, no browser chrome, no sample gameplay, no sample text values, no watermark.'
+  ].join('\n');
+
+  const liveRegions = formatRectList(selectedProfile.regions);
+  const runtimeSlots = formatRuntimeSlots(selectedProfile.runtime);
+  const buttons = formatRectList(selectedProfile.layout.buttons);
+  const indicators = formatRectList(selectedProfile.layout.indicators);
+  const fills = formatRectList(selectedProfile.layout.fills);
+  const stateSheet = buildStateSheetLayout(selectedProfile);
+  const materials = formatMaterialList(selectedProfile.materials);
+
+  return [
+    {
+      file: 'source-chassis.prompt.txt',
+      target: 'source-chassis.png',
+      prompt: [
+        promptHeader,
+        '',
+        `Output file: source-chassis.png, exact ${canvas}.`,
+        'Purpose: full clean chassis artboard with shell, frames, apertures, glass, wells, rails, screws, vents, seams, and permanent decorative labels only.',
+        '',
+        'Live regions must remain visually calm and empty inside these rectangles:',
+        liveRegions,
+        '',
+        'Phaser will draw runtime text/icons into these slots; keep them readable and do not bake sample content:',
+        runtimeSlots,
+        '',
+        'Acceptance criteria:',
+        '- Reads as one premium physical handheld object at phone scale.',
+        '- Map aperture is framed like recessed glass, but contains no map tiles or icons.',
+        '- Latest/log/inventory/player/combat/control regions are framed, not filled with fake gameplay.',
+        '- Leave enough quiet space in the log and latest message surfaces for top-first text.',
+        '- Avoid loose pasted panels; all frames should share material, lighting, and manufacturing logic.'
+      ].join('\n')
+    },
+    {
+      file: 'source-widgets.prompt.txt',
+      target: 'source-widgets.png',
+      prompt: [
+        promptHeader,
+        '',
+        `Output file: source-widgets.png, exact ${canvas}.`,
+        'Purpose: fixed-position widget crop art aligned exactly to the contract rectangles.',
+        'Use source-chassis.png as style reference, but do not paste the full chassis into widget interiors.',
+        '',
+        'Button/toggle crop rectangles:',
+        buttons,
+        '',
+        'Indicator crop rectangles:',
+        indicators,
+        '',
+        'Runtime meter/readout crop rectangles:',
+        fills,
+        '',
+        'Acceptance criteria:',
+        '- Every button and toggle is centered in its exact crop rectangle.',
+        '- Action buttons are large tactile slabs; D-pad buttons read as one directional assembly.',
+        '- Log and Inventory toggles read as physical latches with room for active state crops.',
+        '- Status and combat LED wells are physical indicators, not text labels.',
+        '- Keep dynamic labels and values out of the art; Phaser owns runtime text.'
+      ].join('\n')
+    },
+    {
+      file: 'source-state-sheet.prompt.txt',
+      target: 'source-state-sheet.png',
+      prompt: [
+        promptHeader,
+        '',
+        `Output file: source-state-sheet.png, exact ${stateSheet.size.width}x${stateSheet.size.height}.`,
+        'Purpose: authored fixed-size state sprites for all buttons, toggles, status indicators, and LEDs.',
+        'Use the accepted chassis/widget style as reference. The sheet background should be transparent or neutral outside slots.',
+        '',
+        'Exact state slots:',
+        formatStateSheet(stateSheet),
+        '',
+        'Acceptance criteria:',
+        '- Idle, hover, pressed, disabled, active, ready, thinking, error, offline, on, and off states must differ physically.',
+        '- Pressed states visibly sink inward.',
+        '- Hover states add focus light without geometry drift.',
+        '- Disabled states look unpowered or guarded while remaining readable as hardware.',
+        '- Active/on states are latched or emitting, not just recolored text.',
+        '- Do not collapse states into near-identical copies.'
+      ].join('\n')
+    },
+    {
+      file: 'source-materials.prompt.txt',
+      target: 'source-materials.png',
+      prompt: [
+        promptHeader,
+        '',
+        'Output file: source-materials.png, at least 160x304.',
+        'Purpose: repeat-safe material tiles and transparent nine-slice frames matching the accepted chassis/widget style.',
+        '',
+        'Material layout:',
+        materials,
+        'Rows: panel y=0, LCD y=104, button y=208. Fill tile at x=0. Transparent nine-slice frame at x=104.',
+        '',
+        'Acceptance criteria:',
+        '- 96x96 fill tiles are seamless on all opposite edges.',
+        '- 48x48 frames keep visual detail on borders/corners, with quiet stretch-safe centers.',
+        '- Panel material supports player/combat/inventory/end-state surfaces.',
+        '- LCD material supports high-contrast latest/log text without noisy centers.',
+        '- Button material supports tactile controls and shares chassis light direction.',
+        '- Avoid unique center ornaments that would visibly repeat.'
+      ].join('\n')
+    }
+  ];
 }
 
 function promptArtDirection(blueprint, selectedProfile) {
@@ -250,6 +396,7 @@ Theme: ${plan.theme}
 ## Files
 
 - \`prompt.txt\`: paste this into the image generator.
+- \`${plan.files.splitPrompts.join('`, `')}\`: preferred one-file-at-a-time prompts. Use these before the combined prompt when trying to avoid collage output.
 - \`ART_DIRECTION.md\`: premium mobile skin blueprint for the generated source pack.
 - \`QUALITY_BAR.md\`: human review standard before promotion.
 - \`${plan.files.guides.join('`, `')}\`: exact live-region, crop-target, runtime-slot, state-sheet, and combined guides.
@@ -261,6 +408,10 @@ The generated art becomes fixed PNG assets for the Phaser renderer. Do not use
 CSS, DOM stylesheets, or responsive stretching to place or skin runtime widgets.
 This handoff is not a gameplay screenshot or a final mockup; it is source art
 that will be cropped into fixed runtime assets.
+
+## Recommended Generation Order
+
+${markdownList(plan.generationSteps)}
 
 ## After Generation
 
@@ -314,6 +465,8 @@ measured gates pass.
 - Material tiles must be safe to repeat, and frames must be safe to nine-slice; avoid unique center ornaments that would visibly duplicate.
 - Measured review warnings are promotion blockers for default/variant skins: state-sheet variants must be visibly different, widget crops cannot be flat, and live regions must stay quiet.
 - The compact profile is the mobile quality target. Desktop should get a separate profile later instead of stretching this art.
+- Prefer the split prompts in \`${plan.files.splitPrompts.join('`, `')}\` over one giant multi-file prompt. One accepted source file becomes the style reference for the next, which is the main defense against collage output.
+- Reject any generated source file that looks like a final gameplay screen instead of a clean source asset.
 
 ## Promotion Commands
 
@@ -331,6 +484,74 @@ ${plan.afterPromotion.join('\n')}
 
 function markdownList(values) {
   return values.map((value) => `- ${value}`).join('\n');
+}
+
+function formatRectList(rects) {
+  return Object.entries(rects)
+    .map(([name, rect]) => `- ${name}: x=${rect.x} y=${rect.y} w=${rect.width} h=${rect.height}.`)
+    .join('\n');
+}
+
+function formatRuntimeSlots(runtime) {
+  const entries = [];
+  collectRuntimeSlots('', runtime, entries);
+  return entries
+    .map(([name, rect]) => `- ${name}: x=${rect.x} y=${rect.y} w=${rect.width} h=${rect.height}.`)
+    .join('\n');
+}
+
+function collectRuntimeSlots(prefix, value, entries) {
+  if (!value || typeof value !== 'object') {
+    return;
+  }
+
+  if (isRect(value)) {
+    entries.push([prefix, value]);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      const name = entry?.id ? `${prefix}.${entry.id}` : `${prefix}[${index}]`;
+      collectRuntimeSlots(name, entry, entries);
+    });
+    return;
+  }
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === 'rowHeight' || key === 'id' || (key === 'label' && typeof nested === 'string')) {
+      continue;
+    }
+    collectRuntimeSlots(prefix ? `${prefix}.${key}` : key, nested, entries);
+  }
+}
+
+function isRect(value) {
+  return ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(value[key]));
+}
+
+function formatStateSheet(stateSheet) {
+  return stateSheet.sections
+    .map((section) => {
+      const rows = section.rows.flatMap((row) =>
+        row.states.map((state) => {
+          const slot = row.slots[state];
+          return `  - ${row.id}.${state}: ${row.assetPathForState(state)} x=${slot.x} y=${slot.y} w=${slot.width} h=${slot.height}.`;
+        })
+      );
+      return `- ${section.title}:\n${rows.join('\n')}`;
+    })
+    .join('\n');
+}
+
+function formatMaterialList(materials) {
+  return Object.entries(materials ?? {})
+    .map(([name, material], index) => {
+      const fill = material.fill;
+      const frame = material.frame;
+      return `- ${name}: row y=${index * 104}; fill ${fill.path} ${fill.width}x${fill.height}; frame ${frame.path} ${frame.width}x${frame.height}; slice=${material.slice}.`;
+    })
+    .join('\n');
 }
 
 function titleFromId(id) {

@@ -15,6 +15,7 @@ const compactFocus = summary.compactQualityFocus ?? inferCompactFocus(summary);
 const compactProfile = summary.profileSummaries?.find((profile) => profile.id === compactFocus?.id) ?? null;
 const compactAsset = summary.skinAssetSummaries?.find((asset) => asset.id === compactFocus?.id) ?? null;
 const imageCards = await buildImageCards(summary, compactFocus?.id ?? 'ai-cyberdeck-reference-v1');
+const handoff = await loadProgressHandoff();
 
 await fs.writeFile(outPath, buildHtml({
   summary,
@@ -22,7 +23,8 @@ await fs.writeFile(outPath, buildHtml({
   compactFocus,
   compactProfile,
   compactAsset,
-  imageCards
+  imageCards,
+  handoff
 }), 'utf8');
 
 console.log(`Wrote ${path.relative(process.cwd(), outPath)}`);
@@ -77,6 +79,69 @@ async function buildImageCards(report, profileId) {
   return cards.filter((card) => card.image);
 }
 
+async function loadProgressHandoff() {
+  const explicitPath = process.env.PROGRESS_SKIN_HANDOFF
+    ? path.resolve(process.env.PROGRESS_SKIN_HANDOFF)
+    : null;
+  const handoffPath = explicitPath
+    ? await normalizeHandoffPath(explicitPath)
+    : await latestHandoffPath();
+  if (!handoffPath) {
+    return null;
+  }
+
+  const handoffDir = path.dirname(handoffPath);
+  const plan = JSON.parse(await fs.readFile(handoffPath, 'utf8'));
+  return {
+    dir: handoffDir,
+    path: handoffPath,
+    plan,
+    guideImages: (plan.files?.guides ?? [])
+      .filter((file) => /\.(png|jpg|jpeg|webp)$/i.test(file))
+      .map((file) => ({
+        file,
+        image: path.relative(outDir, path.join(handoffDir, file))
+      })),
+    promptFiles: plan.files?.splitPrompts ?? [],
+    steps: plan.generationSteps ?? []
+  };
+}
+
+async function normalizeHandoffPath(candidatePath) {
+  try {
+    const stat = await fs.stat(candidatePath);
+    return stat.isDirectory() ? path.join(candidatePath, 'handoff.json') : candidatePath;
+  } catch {
+    return null;
+  }
+}
+
+async function latestHandoffPath() {
+  const handoffRoot = path.join(repoRoot, '_artifacts/skin-handoffs');
+  let entries;
+  try {
+    entries = await fs.readdir(handoffRoot, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const handoffPath = path.join(handoffRoot, entry.name, 'handoff.json');
+    try {
+      const stat = await fs.stat(handoffPath);
+      candidates.push({ handoffPath, mtimeMs: stat.mtimeMs });
+    } catch {
+      continue;
+    }
+  }
+
+  return candidates.sort((left, right) => right.mtimeMs - left.mtimeMs)[0]?.handoffPath ?? null;
+}
+
 async function existingRelativePath(filePath) {
   try {
     await fs.access(filePath);
@@ -125,7 +190,7 @@ function compactMetrics(metrics) {
   );
 }
 
-function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards }) {
+function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, handoff }) {
   const reportRelative = path.relative(outDir, reportPath);
   const reportHtmlRelative = reportRelative.replace(/\.json$/, '.html');
   const contractRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.md'));
@@ -357,9 +422,46 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
       `).join('')}
     </div>
   </section>
+  ${handoff ? handoffSection(handoff) : ''}
 </body>
 </html>
 `;
+}
+
+function handoffSection(handoff) {
+  const plan = handoff.plan;
+  const handoffRelative = path.relative(outDir, handoff.path);
+  const dirRelative = path.relative(outDir, handoff.dir);
+  const promptLinks = handoff.promptFiles
+    .map((file) => `<span><a href="${escapeHtml(path.relative(outDir, path.join(handoff.dir, file)))}">${escapeHtml(file)}</a></span>`)
+    .join('');
+  const guideFigures = handoff.guideImages
+    .map((guide) => `
+      <figure>
+        <a href="${escapeHtml(guide.image)}"><img src="${escapeHtml(guide.image)}" alt="${escapeHtml(guide.file)}"></a>
+        <figcaption>
+          <span>GUIDE/TEMPLATE</span>
+          <h3>${escapeHtml(guide.file)}</h3>
+          <p>Generated layout guide for the next fixed skin handoff.</p>
+        </figcaption>
+      </figure>
+    `)
+    .join('');
+
+  return `
+    <section class="panel">
+      <h2>Next Skin Handoff</h2>
+      <p>
+        Latest local handoff: <code>${escapeHtml(plan.skinId)}</code>, profile
+        <code>${escapeHtml(plan.profile)}</code>, role <code>${escapeHtml(plan.role)}</code>.
+        Directory: <a href="${escapeHtml(dirRelative)}">${escapeHtml(dirRelative)}</a>.
+        Plan JSON: <a href="${escapeHtml(handoffRelative)}">${escapeHtml(handoffRelative)}</a>.
+      </p>
+      <div class="chips">${promptLinks}</div>
+      <ul>${handoff.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ul>
+      <div class="shots">${guideFigures}</div>
+    </section>
+  `;
 }
 
 function escapeHtml(value) {
