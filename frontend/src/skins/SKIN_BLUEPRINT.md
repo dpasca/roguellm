@@ -379,6 +379,23 @@ For local Phaser fixed-skin workbench review, use:
 http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&profile=reference-mobile-compact
 ```
 
+For AI-generated full-device references that are visually promising but not
+contract-aligned enough to promote directly, use the reference import path:
+
+```bash
+pnpm -C frontend skin:import-reference <generated-image.png> <skin-id> mobileCompact \
+  --out ../_artifacts/skin-kits/<skin-id>
+pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/<skin-id>
+pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/<skin-id>
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/<skin-id> \
+  --out ../_artifacts/skin-reviews/<skin-id>/index.html --json --fail-on-issue
+```
+
+This creates a reference-import candidate: the generated bitmap is normalized
+to the fixed artboard, live regions are sanitized, and the manifest/state sheet
+remain contract-owned. It is still a human-review artifact until it is promoted
+into `src/skins/neo-tokyo-console/fixed/`.
+
 Use the Phaser renderer for all skin-quality work. It consumes the fixed profile
 manifests and PNG state assets directly, so improvements move into the live
 runtime without inventing a second skin format.
@@ -448,6 +465,10 @@ fail plainly instead of loading a stylesheet-backed fallback.
   green-screen, and retro-tech requests; it uses compact geometry plus its own
   chassis, fixed-state controls, indicators, and source-color material
   tiles/frames.
+- `ai-cyberdeck-reference-v1`: `390x667` prototype promoted from an
+  AI-generated full-device reference through the import sanitizer. It is
+  selectable for Phaser review but kept out of production cycling until human
+  review accepts the visual quality.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.

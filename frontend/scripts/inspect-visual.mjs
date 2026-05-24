@@ -39,10 +39,12 @@ const desktopFixedProfile = 'desktop-wide';
 const sourceMaterialPhaserProfiles = new Set([
   'terminal-green-mobile-compact',
   'neon-shrine-mobile-compact',
+  'ai-cyberdeck-reference-v1',
   'obsidian-rain-proto'
 ]);
 const actionLabelPhaserProfiles = new Set([
   'neon-shrine-mobile-compact',
+  'ai-cyberdeck-reference-v1',
   'obsidian-rain-proto'
 ]);
 const defaultPhaserMapDetailFloor = 520;
@@ -337,6 +339,27 @@ const baseScenarios = [
     mode: 'phaser-fixed-workbench-inventory',
     url: phaserFixedWorkbenchProfileUrl('obsidian-rain-proto'),
     expectedFixedProfile: 'obsidian-rain-proto'
+  },
+  {
+    name: 'mobile-short-phaser-ai-reference-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench',
+    url: phaserFixedWorkbenchProfileUrl('ai-cyberdeck-reference-v1'),
+    expectedFixedProfile: 'ai-cyberdeck-reference-v1'
+  },
+  {
+    name: 'mobile-short-phaser-ai-reference-fixed-workbench-log',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-log',
+    url: phaserFixedWorkbenchProfileUrl('ai-cyberdeck-reference-v1'),
+    expectedFixedProfile: 'ai-cyberdeck-reference-v1'
+  },
+  {
+    name: 'mobile-short-phaser-ai-reference-fixed-workbench-inventory',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-inventory',
+    url: phaserFixedWorkbenchProfileUrl('ai-cyberdeck-reference-v1'),
+    expectedFixedProfile: 'ai-cyberdeck-reference-v1'
   },
   {
     name: 'mobile-short-themed-amber-fixed-workbench',

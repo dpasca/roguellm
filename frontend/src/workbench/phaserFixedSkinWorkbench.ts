@@ -2043,12 +2043,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       });
 
       this.addTextInRect(item.name, rowText, {
-        fontSize: 12,
+        fontSize: this.profile.kind === 'mobileCompact' ? 11 : 12,
         color: this.theme.bodyText,
         fontStyle: 'bold'
       });
       this.addTextInRect(item.description, rowMeta, {
-        fontSize: 9,
+        fontSize: this.profile.kind === 'mobileCompact' ? 8 : 9,
         color: this.theme.mutedText
       });
       this.drawInventoryActionChip(rowAction.x, rowAction.y, rowAction.width, rowAction.height, action);
@@ -2994,6 +2994,7 @@ function fallbackRuntimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayou
   const inventory = profile.regions.inventory ?? profile.regions.log;
   const iconSize = profile.kind === 'mobileCompact' ? 17 : 20;
   const rowHeight = profile.kind === 'mobileCompact' ? 40 : 46;
+  const inventoryRowHeight = profile.kind === 'mobileCompact' ? 48 : 46;
   const statTop = stats.y + Math.max(0, Math.floor((stats.height - 16) / 2));
 
   return {
@@ -3032,12 +3033,12 @@ function fallbackRuntimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayou
       },
       inventory: {
         header: { x: inventory.x + 10, y: inventory.y + 10, width: inventory.width - 20, height: 16 },
-        rowPanel: { x: inventory.x + 8, y: inventory.y + 31, width: inventory.width - 16, height: rowHeight - 6 },
+        rowPanel: { x: inventory.x + 8, y: inventory.y + 31, width: inventory.width - 16, height: inventoryRowHeight - 8 },
         rowBadge: { x: inventory.x + 12, y: inventory.y + 38, width: 38, height: 22 },
-        rowText: { x: inventory.x + 58, y: inventory.y + 35, width: inventory.width - 138, height: rowHeight - 20 },
-        rowMeta: { x: inventory.x + 58, y: inventory.y + 53, width: inventory.width - 138, height: Math.max(12, rowHeight - 24) },
+        rowText: { x: inventory.x + 58, y: inventory.y + 35, width: inventory.width - 138, height: 17 },
+        rowMeta: { x: inventory.x + 58, y: inventory.y + 55, width: inventory.width - 138, height: Math.max(12, inventoryRowHeight - 27) },
         rowAction: { x: inventory.x + inventory.width - 72, y: inventory.y + 39, width: 54, height: 24 },
-        rowHeight,
+        rowHeight: inventoryRowHeight,
         emptyBox: { x: inventory.x + 18, y: inventory.y + 46, width: inventory.width - 36, height: Math.min(74, inventory.height - 66) },
         emptyTitle: { x: inventory.x + 30, y: inventory.y + 58, width: inventory.width - 60, height: 22 },
         emptyBody: { x: inventory.x + 34, y: inventory.y + 88, width: inventory.width - 68, height: 28 }
