@@ -412,11 +412,21 @@ function stateSheetWidget(row, state, theme) {
   const stateTheme = themeForButtonState(theme, row.id, state);
   const base = button(rect, row.id, stateTheme);
   const overlay = state === 'disabled'
-    ? `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${row.id.startsWith('move') ? 10 : 8}" fill="#111820" opacity="0.58"/>`
+    ? `<g>
+        <rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${row.id.startsWith('move') ? 10 : 8}" fill="#111820" opacity="0.5"/>
+        <rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${rect.height - 10}" rx="${row.id.startsWith('move') ? 8 : 7}" fill="none" stroke="${theme.accentSoft}" stroke-width="1.2" stroke-opacity="0.46"/>
+        <path d="M${rect.x + 12} ${rect.y + rect.height - 12}L${rect.x + rect.width - 12} ${rect.y + 12}" stroke="${theme.accentSoft}" stroke-width="1.4" stroke-opacity="0.34"/>
+        <path d="M${rect.x + 18} ${rect.y + rect.height - 8}L${rect.x + rect.width - 8} ${rect.y + 18}" stroke="#000000" stroke-width="2" stroke-opacity="0.34"/>
+      </g>`
     : state === 'hover'
       ? `<rect x="${rect.x + 3}" y="${rect.y + 3}" width="${rect.width - 6}" height="${rect.height - 6}" rx="${row.id.startsWith('move') ? 8 : 7}" fill="none" stroke="${theme.accentSoft}" stroke-width="1.6" opacity="0.8" filter="url(#softGlow)"/>`
     : state === 'pressed'
-      ? `<rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${rect.height - 10}" rx="7" fill="#010204" opacity="0.22"/>`
+      ? `<g>
+          <rect x="${rect.x + 3}" y="${rect.y + 3}" width="${rect.width - 6}" height="${rect.height - 6}" rx="8" fill="#010204" opacity="0.38"/>
+          <rect x="${rect.x + 8}" y="${rect.y + 9}" width="${rect.width - 16}" height="${rect.height - 18}" rx="6" fill="#010204" opacity="0.28"/>
+          <path d="M${rect.x + 8} ${rect.y + 8}H${rect.x + rect.width - 8}" stroke="#000000" stroke-opacity="0.82" stroke-width="2"/>
+          <path d="M${rect.x + 10} ${rect.y + rect.height - 9}H${rect.x + rect.width - 10}" stroke="${theme.combatHigh}" stroke-opacity="0.64" stroke-width="1.5"/>
+        </g>`
       : state === 'active'
         ? `<rect x="${rect.x + 4}" y="${rect.y + 4}" width="${rect.width - 8}" height="${rect.height - 8}" rx="6" fill="none" stroke="${theme.accent}" stroke-width="2" filter="url(#softGlow)"/>`
         : '';
@@ -431,6 +441,11 @@ function stateSheetStatus(rect, state, theme) {
   const base = statusIndicator(rect, stateTheme);
   const overlay = state === 'offline'
     ? `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="7" fill="#10161a" opacity="0.58"/>`
+    : state === 'thinking'
+      ? `<g>
+          <rect x="${rect.x + 6}" y="${rect.y + rect.height - 7}" width="${rect.width - 12}" height="3" rx="1.5" fill="${theme.warning}" opacity="0.86" filter="url(#softGlow)"/>
+          <path d="M${rect.x + 8} ${rect.y + 6}H${rect.x + 18}M${rect.x + 24} ${rect.y + 6}H${rect.x + 34}M${rect.x + 40} ${rect.y + 6}H${rect.x + 50}" stroke="${theme.warning}" stroke-width="1.4" stroke-opacity="0.72"/>
+        </g>`
     : '';
   return `<g>${base}${overlay}</g>`;
 }
@@ -464,10 +479,10 @@ function themeForButtonState(theme, id, state) {
 
   return {
     ...theme,
-    accent: id === 'run' || id.startsWith('move') || state === 'active' ? color : theme.accent,
+    accent: id === 'run' || id.startsWith('move') || state === 'active' || state === 'pressed' ? color : theme.accent,
     accentSoft: state === 'disabled' ? '#aab2b5' : theme.accentSoft,
     combat: id === 'attack' || state === 'pressed' ? color : theme.combat,
-    warning: id === 'log' || id === 'inventory' ? color : theme.warning
+    warning: id === 'log' || id === 'inventory' || id === 'restart' || state === 'pressed' ? color : theme.warning
   };
 }
 

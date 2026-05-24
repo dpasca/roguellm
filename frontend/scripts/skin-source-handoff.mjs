@@ -104,6 +104,7 @@ async function runScript(scriptName, args) {
 function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole, selectedStateSheetMode) {
   const sourceDir = `../_artifacts/skin-handoffs/${id}`;
   const kitDir = sourceDir;
+  const reviewFailureMode = isPromotedRole(selectedRole) ? '--fail-on-warning' : '--fail-on-issue';
   return {
     skinId: id,
     contract: contract.version,
@@ -127,7 +128,7 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
       `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --role ${selectedRole} --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
       `pnpm -C frontend validate:skin-source-packs ${kitDir}`,
-      `pnpm -C frontend skin:review-source ${kitDir} --json --fail-on-issue`,
+      `pnpm -C frontend skin:review-source ${kitDir} --json ${reviewFailureMode}`,
       `pnpm -C frontend build:skin-kit ${kitDir}`,
       'pnpm -C frontend validate:skins'
     ],
@@ -181,7 +182,9 @@ ${plan.afterPromotion.join('\n')}
 
 Reject the source pack if the overlay shows baked gameplay/text inside live
 regions, if button crops miss the fixed rectangles, or if material detail cannot
-tile or nine-slice cleanly.
+tile or nine-slice cleanly. Production-role handoffs treat measured review
+warnings as blockers so collapsed state sprites and weak materials cannot slip
+into promotion.
 `;
 }
 
@@ -205,6 +208,7 @@ runtime assets without stretching or repainting around dynamic content.
 - Buttons need tactile depth: idle, hover, pressed, disabled, active, and on/off states should differ by lighting, inset depth, glow, or hardware latch.
 - Live regions must remain clean: no baked map tiles, player/enemy/item icons, HP numbers, stat values, log copy, inventory names, or model status text.
 - Material tiles must be safe to repeat, and frames must be safe to nine-slice; avoid unique center ornaments that would visibly duplicate.
+- Measured review warnings are promotion blockers for default/variant skins: state-sheet variants must be visibly different, widget crops cannot be flat, and live regions must stay quiet.
 - The compact profile is the mobile quality target. Desktop should get a separate profile later instead of stretching this art.
 
 ## Promotion Commands

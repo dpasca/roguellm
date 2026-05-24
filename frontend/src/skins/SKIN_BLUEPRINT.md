@@ -307,6 +307,12 @@ directory, then run `validate:skins`. The current deterministic mobile baselines
 can be rebuilt with `build:fixed-skins`; use them as the fallback quality floor
 when generated art is not clean enough to slice.
 
+For default or variant source-pack handoffs, the generated promotion command
+uses `skin:review-source --json --fail-on-warning`. Measured warnings are
+treated as blockers because they catch quality failures that geometry alone
+cannot: collapsed idle/pressed/active state sprites, flat widget crops, busy
+live regions, and unsafe material seams.
+
 ## Diagnostics
 
 Every skin profile needs a diagnostics scenario that shows:
@@ -338,6 +344,12 @@ The report also includes a Similarity Watch that compares downsampled
 screenshots across profiles of the same fixed-skin kind. It flags
 near-duplicate visual signatures as review prompts, not hard gates, so palette
 swaps do not quietly masquerade as new skins.
+
+Source-pack reviews also report authored state differences for
+`source-state-sheet.png`. If hover, pressed, active, disabled, ready/thinking,
+or LED on/off sprites are too close to their base state, the review flags them
+before the skin is built. That keeps the fixed Phaser controls feeling like
+real hardware instead of one static crop reused everywhere.
 
 ## Playable Runtime
 

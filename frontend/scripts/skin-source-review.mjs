@@ -264,6 +264,16 @@ function metricsPanel(metrics) {
       </tr>
     `).join('\n')
     : '<tr><td colspan="4">No source-owned state-sheet metrics available.</td></tr>';
+  const stateDeltaRows = metrics.stateDeltas.length > 0
+    ? metrics.stateDeltas.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.name)}</td>
+        <td>${escapeHtml(metric.baseState)}</td>
+        <td>${escapeHtml(metric.state)}</td>
+        <td>${formatNumber(metric.delta, 4)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No authored state delta metrics available.</td></tr>';
 
   return `
     <section class="panel metrics">
@@ -283,6 +293,11 @@ function metricsPanel(metrics) {
       <table>
         <thead><tr><th>State Crop</th><th>Alpha</th><th>Contrast</th><th>Edge Mean</th></tr></thead>
         <tbody>${stateSheetRows}</tbody>
+      </table>
+      <h3>Authored State Difference</h3>
+      <table>
+        <thead><tr><th>Widget</th><th>Base</th><th>State</th><th>Visual Delta</th></tr></thead>
+        <tbody>${stateDeltaRows}</tbody>
       </table>
       <h3>Material Tile Seams</h3>
       <table>
@@ -449,8 +464,11 @@ async function reviewMetrics(sources, selectedProfile) {
           };
         }))
     : [];
+  const stateDeltas = sources.stateSheet
+    ? await stateDifferenceMetrics(sources.stateSheet.path, selectedProfile)
+    : [];
 
-  return { liveRegions, widgetCrops, stateSheetCrops, materials };
+  return { liveRegions, widgetCrops, stateSheetCrops, stateDeltas, materials };
 }
 
 function reviewWarnings(metrics) {
@@ -470,12 +488,70 @@ function reviewWarnings(metrics) {
       `State-sheet crop ${metric.name} may be too empty or too flat; inspect the authored state before build.`
     );
   }
+  for (const metric of metrics.stateDeltas.filter((entry) => entry.warning)) {
+    warnings.push(
+      `State-sheet ${metric.name}.${metric.state} is too close to ${metric.baseState}; inspect before promoting collapsed button or indicator states.`
+    );
+  }
   for (const metric of metrics.materials.filter((entry) => entry.warning)) {
     warnings.push(
       `Material crop ${metric.name} has high opposite-edge seam delta; inspect tile/nine-slice repeat safety.`
     );
   }
   return warnings;
+}
+
+async function stateDifferenceMetrics(imagePath, selectedProfile) {
+  const layout = buildStateSheetLayout(selectedProfile);
+  const rows = layout.sections.flatMap((section) => section.rows);
+  const metrics = [];
+
+  for (const row of rows) {
+    const baseState = baseStateForRow(row);
+    const baseRect = row.slots[baseState];
+    if (!baseRect) {
+      continue;
+    }
+
+    const basePixels = await imageCropRgbBuffer(imagePath, baseRect);
+    for (const state of row.states) {
+      if (state === baseState) {
+        continue;
+      }
+      const rect = row.slots[state];
+      const statePixels = await imageCropRgbBuffer(imagePath, rect);
+      const delta = meanPixelDelta(basePixels, statePixels);
+      metrics.push({
+        name: row.id,
+        baseState,
+        state,
+        delta,
+        warning: delta < stateDeltaFloor(state)
+      });
+    }
+  }
+
+  return metrics;
+}
+
+function baseStateForRow(row) {
+  if (row.states.includes('idle')) {
+    return 'idle';
+  }
+  if (row.states.includes('ready')) {
+    return 'ready';
+  }
+  if (row.states.includes('off')) {
+    return 'off';
+  }
+  return row.states[0];
+}
+
+function stateDeltaFloor(state) {
+  if (state === 'hover') {
+    return 0.006;
+  }
+  return 0.012;
 }
 
 async function materialMetric(imagePath, name, rect) {
@@ -553,6 +629,38 @@ async function imageCropMetrics(imagePath, rect) {
   };
 }
 
+async function imageCropRgbBuffer(imagePath, rect) {
+  return magickBuffer([
+    imagePath,
+    '-crop',
+    cropArg(rect),
+    '+repage',
+    '-background',
+    '#000000',
+    '-alpha',
+    'background',
+    '-alpha',
+    'off',
+    '-resize',
+    '24x24!',
+    '-depth',
+    '8',
+    'RGB:-'
+  ]);
+}
+
+function meanPixelDelta(first, second) {
+  const length = Math.min(first.length, second.length);
+  if (length === 0) {
+    return 0;
+  }
+  let total = 0;
+  for (let index = 0; index < length; index += 1) {
+    total += Math.abs(first[index] - second[index]) / 255;
+  }
+  return total / length;
+}
+
 async function edgeDelta(imagePath, rect, axis) {
   const first = axis === 'horizontal'
     ? { x: rect.x, y: rect.y, width: 1, height: rect.height }
@@ -602,6 +710,18 @@ async function imageMeanRgb(imagePath, rect) {
 async function magick(args) {
   try {
     const { stdout } = await execFileAsync('magick', args, {
+      maxBuffer: 4 * 1024 * 1024
+    });
+    return stdout;
+  } catch (error) {
+    throw new Error(`ImageMagick failed for ${args.join(' ')}: ${error.message}`);
+  }
+}
+
+async function magickBuffer(args) {
+  try {
+    const { stdout } = await execFileAsync('magick', args, {
+      encoding: 'buffer',
       maxBuffer: 4 * 1024 * 1024
     });
     return stdout;

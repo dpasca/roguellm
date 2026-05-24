@@ -404,6 +404,10 @@ runtime text/icon slots overlaid for manual rejection before build. Pass
 `--fail-on-issue` for promotion scripts that should stop on geometry/source
 handoff problems, and reserve `--fail-on-warning` for stricter passes where
 measured quality signals should block promotion until manually resolved.
+The generated `skin:handoff` promotion commands use `--fail-on-warning` for
+`default` and `variant` roles, so weak widget crops, busy live regions,
+unsafe material seams, and collapsed state-sheet variants stop the handoff
+before a skin is promoted.
 Generated source packs marked as `default` or `variant` must use
 `source-state-sheet.png` for authored button, toggle, status, and LED states;
 prototype source packs may still derive states while a visual direction is being
