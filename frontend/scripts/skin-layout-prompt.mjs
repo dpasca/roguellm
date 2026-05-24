@@ -10,7 +10,7 @@ const parsedArgs = parseArgs(args);
 const profileName = parsedArgs.positionals[0] ?? 'mobilePortrait';
 const profile = contract.profiles?.[profileName];
 const theme = parsedArgs.options.theme ?? 'premium neo-tokyo cyberdeck, dark graphite, green and amber luminous hardware';
-const outputKind = parsedArgs.options.output ?? 'source artboard';
+const outputKind = parsedArgs.options.output ?? 'source pack';
 
 if (!profile) {
   console.error(`Unknown profile "${profileName}". Expected one of: ${Object.keys(contract.profiles ?? {}).join(', ')}`);
@@ -21,6 +21,7 @@ console.log(buildPrompt(profileName, profile, theme, outputKind));
 
 function buildPrompt(profileName, profile, theme, outputKind) {
   const canvas = `${profile.size.width}x${profile.size.height}`;
+  const sourcePack = outputKind === 'source pack' || outputKind === 'source-pack';
   return [
     `Create a polished mobile roguelike cyberdeck skin ${outputKind}.`,
     '',
@@ -42,6 +43,14 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     formatMaterialList(profile.materials),
     'Optional material sheet layout for scaffold --materials-source: panel row y=0, LCD row y=104, button row y=208; fill tile at x=0, frame at x=104.',
     '',
+    ...(sourcePack ? [
+      'Required source-pack files:',
+      `- source-chassis.png: exact ${canvas} clean chassis art. Include shell, bezels, wells, screws, rails, glass frames, and decorative permanent labels only. Leave live regions clean.`,
+      `- source-widgets.png: exact ${canvas} widget crop art. Align every button/toggle/indicator to the crop rectangles above. Keep button interiors clean enough for Phaser-rendered icons/text unless a label is intentionally permanent.`,
+      '- source-materials.png: at least 160x304. Use row y=0 for panel material, y=104 for LCD material, y=208 for button material. In each row, put a repeat-safe 96x96 fill tile at x=0 and a transparent 48x48 nine-slice frame at x=104.',
+      '- Optional contact sheet: useful for review, but it must not be used as runtime source art.',
+      ''
+    ] : []),
     'Runtime meter rectangles:',
     formatRectList(profile.layout.fills, meterNotes()),
     '',
@@ -55,13 +64,21 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     '- Do not bake labels that change at runtime.',
     '- Make button and toggle wells suitable for separate transparent crops in idle, hover, pressed, and disabled states.',
     '- Make status and combat LED wells suitable for separate state sprites.',
-    '- Provide reusable panel, LCD, and button material fill tiles plus matching nine-slice frames; do not stretch decorative details into runtime panels.',
+    '- Provide reusable panel, LCD, and button material fill tiles plus matching nine-slice frames; decorative detail must be tile-safe or frame-safe, never stretched across runtime panels.',
+    '- Pressed, hover, disabled, on, and off states must be variants of fixed-size widgets, not elastic layout treatments.',
     '- Keep edges crisp. No blur over live content apertures.',
     '- No watermark, no brand logos.',
     '',
     'Delivery expectation:',
-    `- One full ${canvas} chassis/source artboard aligned exactly to the rectangles above.`,
-    '- Optional separate state sprite source strips are allowed, but they must preserve the same crop sizes.',
+    ...(sourcePack
+      ? [
+        '- Deliver the three required PNG files with the exact filenames above.',
+        '- The scaffold will crop fixed-size runtime assets from those files; do not change the rectangle coordinates.'
+      ]
+      : [
+        `- One full ${canvas} chassis/source artboard aligned exactly to the rectangles above.`,
+        '- Optional separate state sprite source strips are allowed, but they must preserve the same crop sizes.'
+      ]),
     '- Dynamic game content must remain absent from the art.'
   ].join('\n');
 }

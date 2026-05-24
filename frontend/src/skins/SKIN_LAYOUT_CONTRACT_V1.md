@@ -311,13 +311,14 @@ Use the prompt generator to produce an AI image-generation prompt directly from
 `SKIN_LAYOUT_CONTRACT_V1.json`:
 
 ```bash
-pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
-pnpm -C frontend skin:prompt mobileCompact --theme "industrial subway relay, worn graphite, amber LEDs"
+pnpm --silent -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches" --output source-pack
+pnpm --silent -C frontend skin:prompt mobileCompact --theme "industrial subway relay, worn graphite, amber LEDs" --output source-pack
 ```
 
 The generator prints the exact live-region rectangles, crop targets, indicator
-targets, and hard rules for the selected profile. Prefer it over manually
-copying tables into image-generation prompts.
+targets, material sheet layout, and hard rules for the selected profile. Prefer
+the default source-pack output over one flexible UI image: it asks for a clean
+chassis artboard, fixed widget crop artboard, and tile/nine-slice material sheet.
 
 ## Layout Guide Generator
 

@@ -282,13 +282,16 @@ When generating a new skin, request a blank mobile cyberdeck UI kit:
 If a generated artboard includes baked dynamic content, it is only reference
 material. It should not become the production chassis without cleanup.
 
-Use `SKIN_GENERATION_PROMPT.md` or `pnpm -C frontend skin:prompt` as the
-starting prompt for the next generated artboard. Once an artboard exists, create
-its prototype manifest with `pnpm -C frontend skin:scaffold <skin-id> <profile>`.
-Then place the source image at the manifest's `build.source` path, run
-`build:skin-kit` for that skin directory, then run `validate:skins`. The current
-deterministic mobile baselines can be rebuilt with `build:fixed-skins`; use them
-as the fallback quality floor when generated art is not clean enough to slice.
+Use `SKIN_GENERATION_PROMPT.md` or
+`pnpm --silent -C frontend skin:prompt <profile> --output source-pack` as the
+starting prompt for the next generated source pack. Prefer three exact files:
+`source-chassis.png`, `source-widgets.png`, and `source-materials.png`. Once the
+source pack exists, create its prototype manifest with
+`pnpm -C frontend skin:scaffold <skin-id> <profile>`, place the source files at
+the manifest's build paths, run `build:skin-kit` for that skin directory, then
+run `validate:skins`. The current deterministic mobile baselines can be rebuilt
+with `build:fixed-skins`; use them as the fallback quality floor when generated
+art is not clean enough to slice.
 
 ## Diagnostics
 

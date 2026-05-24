@@ -11,18 +11,35 @@ generation; create a new layout contract version first if the geometry changes.
 `validate:skins` enforces the matching machine-readable
 `SKIN_LAYOUT_CONTRACT_V1.json` geometry for production mobile profiles.
 
-Preferred handoff command:
+Preferred handoff commands:
 
 ```bash
 pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact --theme obsidian-rain --out ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:prompt mobilePortrait --theme "premium rain-city cyberdeck, dark glass, brass switches"
+pnpm --silent -C frontend skin:prompt mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --output source-pack > ../_artifacts/skin-prompts/rain-city-deck.txt
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
 pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
 pnpm -C frontend skin:guide mobilePortrait --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
 ```
 
+For AI generation, prefer a three-file source pack over one clever flexible UI
+image:
+
+- `source-chassis.png`: exact-size clean chassis art for the chosen contract
+  profile. It owns permanent shell, bezels, wells, screws, rails, glass frames,
+  and decorative labels only.
+- `source-widgets.png`: exact-size widget crop art for fixed buttons, toggles,
+  and indicators. The scaffold crops idle assets from exact rectangles and then
+  derives hover, pressed, disabled, on, and off variants from fixed-size sprites.
+- `source-materials.png`: repeat-safe panel/LCD/button fill tiles and transparent
+  nine-slice frames. Material detail must be tile-safe or frame-safe, never a
+  stretched decorative panel.
+
+This is intentionally closer to a Winamp-style skin pack than a responsive CSS
+theme. Phaser owns runtime text, icons, meters, and game state inside fixed
+slots; the generated art owns tactile hardware around those slots.
+
 ```text
-Create a polished mobile cyberdeck game UI skin kit artboard.
+Create a polished mobile cyberdeck game UI skin source pack.
 
 Canvas: 390x844 portrait.
 Style: premium skeuomorphic handheld console, dark graphite shell, subtle neon
@@ -57,6 +74,8 @@ Hard rules:
 - Leave all dynamic apertures clean and empty enough for live Phaser content.
 - Make button wells clean enough to crop separate transparent sprites for idle,
   hover, pressed, and disabled states.
+- Pressed, hover, disabled, on, and off states must be fixed-size widget
+  variants, not elastic or stretched layout treatments.
 - Include a restart button treatment that can be cropped into idle, hover,
   pressed, and disabled sprites.
 - Also deliver reusable material assets: repeat-safe 96x96 fill tiles and 48x48
