@@ -344,6 +344,16 @@ function metricsPanel(metrics) {
       </tr>
     `).join('\n')
     : '<tr><td colspan="4">No authored state delta metrics available.</td></tr>';
+  const sourceCoherenceRows = metrics.sourceCoherence.length > 0
+    ? metrics.sourceCoherence.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.left)}</td>
+        <td>${escapeHtml(metric.right)}</td>
+        <td>${formatNumber(metric.distance, 4)}</td>
+        <td>${formatNumber(metric.threshold, 4)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No complete source-file coherence metrics available.</td></tr>';
 
   return `
     <section class="panel metrics">
@@ -373,6 +383,11 @@ function metricsPanel(metrics) {
       <table>
         <thead><tr><th>Material</th><th>Left/Right</th><th>Top/Bottom</th><th>Contrast</th></tr></thead>
         <tbody>${materialRows}</tbody>
+      </table>
+      <h3>Source File Coherence</h3>
+      <table>
+        <thead><tr><th>Left</th><th>Right</th><th>Distance</th><th>Warning Floor</th></tr></thead>
+        <tbody>${sourceCoherenceRows}</tbody>
       </table>
     </section>
   `;
@@ -537,8 +552,9 @@ async function reviewMetrics(sources, selectedProfile) {
   const stateDeltas = sources.stateSheet
     ? await stateDifferenceMetrics(sources.stateSheet.path, selectedProfile)
     : [];
+  const sourceCoherence = await sourceCoherenceMetrics(sources);
 
-  return { liveRegions, widgetCrops, stateSheetCrops, stateDeltas, materials };
+  return { liveRegions, widgetCrops, stateSheetCrops, stateDeltas, materials, sourceCoherence };
 }
 
 function reviewWarnings(metrics) {
@@ -568,7 +584,55 @@ function reviewWarnings(metrics) {
       `Material crop ${metric.name} has high opposite-edge seam delta; inspect tile/nine-slice repeat safety.`
     );
   }
+  for (const metric of metrics.sourceCoherence.filter((entry) => entry.warning)) {
+    warnings.push(
+      `${metric.left} and ${metric.right} look visually disconnected ` +
+      `(signature distance ${metric.distance.toFixed(4)} > ${metric.threshold.toFixed(4)}); ` +
+      'inspect whether the split source files still read as one manufactured skin.'
+    );
+  }
   return warnings;
+}
+
+async function sourceCoherenceMetrics(sources) {
+  const entries = [
+    ['source-chassis.png', sources.chassis],
+    ['source-widgets.png', sources.widgets],
+    [stateSheetSourceFile, sources.stateSheet],
+    ['source-materials.png', sources.materials]
+  ].filter(([, source]) => source);
+  const signatures = new Map(
+    await Promise.all(entries.map(async ([name, source]) => [
+      name,
+      await imageSignature(source.path, { size: 12 })
+    ]))
+  );
+  const metrics = [];
+
+  for (let leftIndex = 0; leftIndex < entries.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < entries.length; rightIndex += 1) {
+      const left = entries[leftIndex][0];
+      const right = entries[rightIndex][0];
+      const distance = signatureDistance(signatures.get(left), signatures.get(right));
+      const threshold = sourceCoherenceThreshold(left, right);
+      metrics.push({
+        left,
+        right,
+        distance,
+        threshold,
+        warning: Number.isFinite(distance) && distance > threshold
+      });
+    }
+  }
+
+  return metrics;
+}
+
+function sourceCoherenceThreshold(left, right) {
+  if (left === 'source-materials.png' || right === 'source-materials.png') {
+    return 0.18;
+  }
+  return 0.14;
 }
 
 async function stateDifferenceMetrics(imagePath, selectedProfile) {
@@ -717,6 +781,49 @@ async function imageCropRgbBuffer(imagePath, rect) {
     '8',
     'RGB:-'
   ]);
+}
+
+async function imageSignature(imagePath, options = {}) {
+  const size = options.size ?? 12;
+  const output = await magick([
+    imagePath,
+    '-alpha',
+    'off',
+    '-resize',
+    `${size}x${size}!`,
+    '-colorspace',
+    'sRGB',
+    '-depth',
+    '8',
+    'txt:-'
+  ]);
+
+  return output
+    .split('\n')
+    .flatMap((line) => {
+      const match = line.match(/\((\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)(?:,\d+(?:\.\d+)?)?\)/);
+      if (!match) {
+        return [];
+      }
+      return [
+        Number(match[1]) / 255,
+        Number(match[2]) / 255,
+        Number(match[3]) / 255
+      ];
+    });
+}
+
+function signatureDistance(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length === 0 || right.length === 0) {
+    return null;
+  }
+
+  const length = Math.min(left.length, right.length);
+  const meanSquare = Array.from({ length }, (_, index) => {
+    const delta = left[index] - right[index];
+    return delta * delta;
+  }).reduce((total, value) => total + value, 0) / length;
+  return Math.sqrt(meanSquare);
 }
 
 function meanPixelDelta(first, second) {
