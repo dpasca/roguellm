@@ -43,8 +43,9 @@ const actionLabelPhaserProfiles = new Set([
   'neon-shrine-mobile-compact',
   'obsidian-rain-proto'
 ]);
+const defaultPhaserMapDetailFloor = 520;
 const phaserMapDetailFloors = new Map([
-  ['obsidian-rain-proto', 480]
+  ['obsidian-rain-proto', 700]
 ]);
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
@@ -3706,7 +3707,7 @@ function validatePhaserActionLabels(scenario, metrics, failures, context) {
 }
 
 function validatePhaserMapDetails(scenario, metrics, failures, context) {
-  const detailFloor = phaserMapDetailFloors.get(scenario.expectedFixedProfile) ?? 120;
+  const detailFloor = phaserMapDetailFloors.get(scenario.expectedFixedProfile) ?? defaultPhaserMapDetailFloor;
   if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < detailFloor) {
     failures.push(
       `${context} expected detailed Phaser map tiles for ${scenario.expectedFixedProfile ?? 'default profile'}, ` +

@@ -927,14 +927,15 @@ class PhaserFixedSkinScene extends Phaser.Scene {
           !contentCells.has(cellKey(x, y)) &&
           this.shouldDrawTerrainIcon(state, x, y, cell?.font_awesome_icon)
         ) {
+          const iconTint = colorToHex(mixRgb(this.theme.primary, base, 0.36));
           this.drawSemanticIcon(
             cell?.font_awesome_icon,
             '.',
             tileX + tileWidth * 0.5,
             tileY + tileHeight * 0.52,
-            Math.max(8, Math.floor(tileMinor * 0.36)),
-            this.theme.primaryDimText,
-            0.44
+            Math.max(10, Math.floor(tileMinor * 0.48)),
+            iconTint,
+            0.68
           );
         }
 
@@ -1059,7 +1060,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     const iconWeight = icon ? Array.from(icon).reduce((sum, char) => sum + char.charCodeAt(0), 0) : 0;
-    return (x * 31 + y * 17 + iconWeight) % 5 === 0;
+    return (x * 31 + y * 17 + iconWeight) % 3 === 0;
   }
 
   private drawMapBoardChrome(
@@ -1075,6 +1076,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.strokeRect(originX - 2.5, originY - 2.5, boardWidth + 4, boardHeight + 4);
     graphics.lineStyle(1, this.theme.secondary, 0.16);
     graphics.strokeRect(originX - 5.5, originY - 5.5, boardWidth + 10, boardHeight + 10);
+    graphics.fillStyle(0x020504, 0.36);
+    graphics.fillRect(originX - 5, originY - 6, boardWidth + 10, 3);
+    graphics.fillRect(originX - 5, originY + boardHeight + 3, boardWidth + 10, 3);
+    graphics.fillStyle(this.theme.primary, 0.32);
+    graphics.fillRect(originX + 4, originY - 5, Math.max(12, boardWidth * 0.18), 2);
+    graphics.fillStyle(this.theme.secondary, 0.3);
+    graphics.fillRect(originX + boardWidth - Math.max(12, boardWidth * 0.22) - 4, originY + boardHeight + 4, Math.max(12, boardWidth * 0.22), 2);
 
     graphics.lineStyle(1, this.theme.primary, 0.13);
     for (let x = originX; x <= originX + boardWidth; x += tileWidth) {
@@ -1090,7 +1098,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     for (let y = originY + 5; y < originY + boardHeight - 4; y += 6) {
       graphics.lineBetween(originX + 4, y, originX + boardWidth - 4, y);
     }
-    this.mapTileDetailsDrawn += 8;
+    this.mapTileDetailsDrawn += 14;
   }
 
   private drawMapTile(
@@ -1107,19 +1115,33 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const tileMinor = Math.min(tileWidth, tileHeight);
     const displayColor = explored ? color : this.theme.controlFrame;
     const scaled = scaleRgb(displayColor, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
-    const base = scaleRgb(scaled, explored ? 1.46 : 1.18);
-    const top = scaleRgb(scaled, explored ? 2.08 : 1.74);
+    const base = explored
+      ? mixRgb(scaleRgb(scaled, 1.58), this.theme.panelFill, 0.18)
+      : scaleRgb(scaled, 1.18);
+    const top = explored
+      ? mixRgb(scaleRgb(scaled, 2.24), this.theme.primary, 0.2)
+      : scaleRgb(scaled, 1.74);
     const shadow = scaleRgb(scaled, explored ? 0.46 : 0.34);
+    const signal = explored ? mixRgb(color, this.theme.secondary, 0.42) : this.theme.controlFrame;
+    const plate = explored ? mixRgb(base, 0xffffff, 0.1) : base;
 
     graphics.fillStyle(base, 1);
     graphics.fillRect(tileX, tileY, width, height);
     graphics.fillStyle(top, explored ? 0.32 : 0.09);
     graphics.fillRect(tileX + 1, tileY + 1, Math.max(1, width - 2), Math.max(1, Math.floor(height * 0.42)));
+    if (explored) {
+      graphics.fillStyle(plate, 0.2);
+      graphics.fillRoundedRect(tileX + 4, tileY + 4, Math.max(2, width - 8), Math.max(2, height - 8), 3);
+      graphics.fillStyle(signal, 0.58);
+      graphics.fillRect(tileX + 3, tileY + height - 5, Math.max(4, Math.floor(width * 0.46)), 2);
+      graphics.fillStyle(top, 0.48);
+      graphics.fillRoundedRect(tileX + width - 6, tileY + 4, 2, Math.max(3, Math.floor(height * 0.28)), 1);
+    }
 
     if (tileMinor >= 18) {
       const dotStepX = Math.max(5, Math.floor(tileWidth * 0.17));
       const dotStepY = Math.max(5, Math.floor(tileHeight * 0.22));
-      graphics.fillStyle(top, explored ? 0.52 : 0.1);
+      graphics.fillStyle(top, explored ? 0.58 : 0.1);
       for (let dotY = tileY + 5; dotY < tileY + height - 3; dotY += dotStepY) {
         for (let dotX = tileX + 6; dotX < tileX + width - 4; dotX += dotStepX) {
           graphics.fillRect(dotX, dotY, 1, 1);
@@ -1134,6 +1156,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.lineStyle(1, top, explored ? 0.16 : 0.04);
       for (let x = tileX + 8; x < tileX + width - 6; x += Math.max(8, Math.floor(tileWidth * 0.25))) {
         graphics.lineBetween(x, tileY + 5, Math.min(tileX + width - 4, x + 2), tileY + height - 5);
+      }
+
+      if (explored) {
+        graphics.lineStyle(1, signal, 0.22);
+        graphics.lineBetween(tileX + 5, tileY + height - 9, tileX + width - 7, tileY + 6);
       }
     }
 
@@ -1152,7 +1179,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawFogTileHardware(graphics, tileX, tileY, width, height, tileMinor);
     }
 
-    this.mapTileDetailsDrawn += tileMinor >= 18 ? 5 : 1;
+    this.mapTileDetailsDrawn += tileMinor >= 18 ? (explored ? 9 : 5) : (explored ? 3 : 1);
   }
 
   private drawFogTileHardware(
@@ -3296,6 +3323,19 @@ function isTerminalState(state: GameState): boolean {
 
 function clampRatio(value: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+}
+
+function mixRgb(base: number, overlay: number, amount: number): number {
+  const ratio = clampRatio(amount);
+  const inverse = 1 - ratio;
+  const red = Math.round(((base >> 16) & 0xff) * inverse + ((overlay >> 16) & 0xff) * ratio);
+  const green = Math.round(((base >> 8) & 0xff) * inverse + ((overlay >> 8) & 0xff) * ratio);
+  const blue = Math.round((base & 0xff) * inverse + (overlay & 0xff) * ratio);
+  return (red << 16) | (green << 8) | blue;
+}
+
+function colorToHex(color: number): string {
+  return `#${color.toString(16).padStart(6, '0')}`;
 }
 
 function fontAwesomeGlyph(iconClass: string | undefined): string | null {
