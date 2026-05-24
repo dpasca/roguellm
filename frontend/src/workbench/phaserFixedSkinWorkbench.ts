@@ -20,6 +20,7 @@ import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './wo
 
 type FixedButtonId = keyof FixedSkinProfile['buttons'];
 type PhaserFixedScenario = 'combat' | 'movement' | 'diagnostics' | 'status' | 'defeat' | 'victory';
+type SkinMotif = 'amber' | 'gold' | 'signal' | 'terminal' | 'reference';
 type PhaserTextStyle = {
   fontSize: number;
   color: string;
@@ -2094,6 +2095,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (options.scanlines) {
       this.drawScanlines(rect, alpha * 0.35);
     }
+    this.drawMaterialMotif(rect, kind, alpha * (useSourceColors ? 0.52 : 0.62));
 
     if (this.textures.exists(frameKey)) {
       const frame = this.add.nineslice(
@@ -2121,6 +2123,123 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.sourceMaterialPanelsDrawn += 1;
       this.sourceMaterialKindsDrawn.add(kind);
     }
+  }
+
+  private drawMaterialMotif(rect: FixedSkinRect, kind: FixedSkinMaterialKind, alpha: number): void {
+    if (rect.width < 70 || rect.height < 32) {
+      return;
+    }
+
+    const motif = this.skinMotif();
+    const graphics = this.add.graphics();
+    const primary = this.theme.primary;
+    const secondary = this.theme.secondary;
+    const inset = 8;
+    const left = rect.x + inset;
+    const right = rect.x + rect.width - inset;
+    const top = rect.y + inset;
+    const bottom = rect.y + rect.height - inset;
+    const centerX = rect.x + rect.width * 0.5;
+    const centerY = rect.y + rect.height * 0.5;
+    const motifAlpha = Math.min(kind === 'lcd' ? 0.16 : 0.13, Math.max(0.04, alpha * 0.18));
+
+    if (motif === 'amber') {
+      const spacing = Math.max(16, Math.floor(Math.min(rect.width, rect.height) * 0.28));
+      for (let x = rect.x - rect.height; x < rect.x + rect.width; x += spacing) {
+        graphics.lineStyle(2, primary, motifAlpha);
+        graphics.lineBetween(x, bottom, x + rect.height, top);
+        graphics.lineStyle(1, secondary, motifAlpha * 0.72);
+        graphics.lineBetween(x + 6, bottom, x + rect.height + 6, top);
+      }
+      graphics.lineStyle(1, secondary, motifAlpha * 1.2);
+      graphics.strokeRoundedRect(rect.x + 5.5, rect.y + 5.5, rect.width - 11, rect.height - 11, 4);
+      this.chromeDetailsDrawn += 5;
+      return;
+    }
+
+    if (motif === 'gold') {
+      const radius = Math.max(18, Math.min(rect.width, rect.height) * 0.36);
+      graphics.lineStyle(1, secondary, motifAlpha * 1.1);
+      graphics.strokeCircle(centerX, centerY, radius);
+      graphics.lineStyle(1, primary, motifAlpha * 0.72);
+      graphics.strokeCircle(centerX, centerY, radius * 0.62);
+      graphics.lineStyle(1, secondary, motifAlpha * 0.9);
+      graphics.lineBetween(left, top + 7, left + 32, top + 7);
+      graphics.lineBetween(left + 32, top + 7, left + 44, top + 18);
+      graphics.lineBetween(right - 44, bottom - 18, right - 32, bottom - 7);
+      graphics.lineBetween(right - 32, bottom - 7, right, bottom - 7);
+      this.chromeDetailsDrawn += 6;
+      return;
+    }
+
+    if (motif === 'signal') {
+      const rows = Math.max(2, Math.min(5, Math.floor(rect.height / 24)));
+      for (let row = 0; row < rows; row += 1) {
+        const y = top + 8 + row * Math.max(16, (bottom - top - 16) / Math.max(1, rows - 1));
+        let previousX = left;
+        let previousY = y;
+        const segments = 9;
+        for (let step = 1; step <= segments; step += 1) {
+          const x = left + ((right - left) * step) / segments;
+          const wave = Math.sin((step + row) * Math.PI * 0.7) * Math.min(9, rect.height * 0.08);
+          const nextY = y + wave;
+          graphics.lineStyle(1, step % 2 === 0 ? primary : secondary, motifAlpha * (step % 2 === 0 ? 1 : 0.72));
+          graphics.lineBetween(previousX, previousY, x, nextY);
+          previousX = x;
+          previousY = nextY;
+        }
+      }
+      graphics.lineStyle(1, secondary, motifAlpha * 0.8);
+      graphics.strokeCircle(right - 26, top + 24, Math.min(22, rect.height * 0.22));
+      this.chromeDetailsDrawn += 7;
+      return;
+    }
+
+    if (motif === 'terminal') {
+      graphics.lineStyle(1, primary, motifAlpha * 0.72);
+      for (let y = top; y <= bottom; y += 10) {
+        graphics.lineBetween(left, y, right, y);
+      }
+      graphics.lineStyle(1, secondary, motifAlpha * 0.45);
+      for (let x = left; x <= right; x += 18) {
+        graphics.lineBetween(x, top, x, bottom);
+      }
+      graphics.fillStyle(primary, motifAlpha * 1.3);
+      graphics.fillRect(left, bottom - 2, Math.min(rect.width * 0.42, 128), 2);
+      this.chromeDetailsDrawn += 7;
+      return;
+    }
+
+    graphics.lineStyle(1, primary, motifAlpha * 0.55);
+    graphics.lineBetween(left, top, left + 26, top);
+    graphics.lineBetween(left, top, left, top + 18);
+    graphics.lineBetween(right - 26, bottom, right, bottom);
+    graphics.lineBetween(right, bottom - 18, right, bottom);
+    this.chromeDetailsDrawn += 2;
+  }
+
+  private skinMotif(): SkinMotif {
+    const meta = this.profile.meta;
+    const tokens = new Set([
+      this.profile.id,
+      ...(meta?.tags ?? []),
+      ...(meta?.mood ?? []),
+      ...(meta?.palette ?? [])
+    ]);
+
+    if (tokens.has('terminal') || tokens.has('green-screen') || tokens.has('emerald')) {
+      return 'terminal';
+    }
+    if (tokens.has('amber') || tokens.has('industrial') || tokens.has('relay')) {
+      return 'amber';
+    }
+    if (tokens.has('gold')) {
+      return 'gold';
+    }
+    if (tokens.has('signal') || tokens.has('noir') || tokens.has('rain') || tokens.has('coral') || tokens.has('cyan')) {
+      return 'signal';
+    }
+    return 'reference';
   }
 
   private drawMaterialChrome(rect: FixedSkinRect, tint: number, alpha: number): void {

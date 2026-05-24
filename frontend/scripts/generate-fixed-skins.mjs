@@ -772,6 +772,7 @@ function chassisSvg(variant) {
     ${screw(365, 817, variant)}
 
     ${panels}
+    ${premiumThemeAccents(variant, 844)}
 
     <rect x="16" y="646" width="358" height="1" fill="${variant.panelStroke}"/>
     <rect x="70" y="668" width="65" height="161" rx="8" fill="#101d1f" stroke="${variant.panelStroke}" stroke-width="2"/>
@@ -878,6 +879,7 @@ function premiumChassisSvg(variant) {
     ${screw(365, 817, variant)}
 
     ${panels}
+    ${premiumThemeAccents(variant, 844)}
 
     <g opacity="0.72">
       <rect x="21" y="650" width="42" height="164" rx="5" fill="url(#speaker)" stroke="#27322f"/>
@@ -980,6 +982,7 @@ function compactPremiumChassisSvg(variant) {
     ${screw(365, 641, variant)}
 
     ${panels}
+    ${premiumThemeAccents(variant, 667)}
 
     <g opacity="0.72">
       <rect x="21" y="526" width="42" height="118" rx="5" fill="url(#speaker)" stroke="#27322f"/>
@@ -1011,6 +1014,121 @@ function compactPremiumChassisSvg(variant) {
     <text x="27" y="650" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.footer}</text>
     <text x="330" y="650" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.version}</text>
   `);
+}
+
+function premiumThemeAccents(variant, height) {
+  const compact = height <= 700;
+  const controlY = compact ? 514 : 642;
+  const controlHeight = compact ? 150 : 195;
+  const bottomY = compact ? 636 : 812;
+  const mapY = 48;
+  const mapHeight = compact ? 232 : 281;
+  const mapBottom = mapY + mapHeight;
+  const sideRailHeight = compact ? 432 : 560;
+  const motif = skinMotif(variant);
+
+  switch (motif) {
+    case 'amber':
+      return `
+        <g opacity="0.9">
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.035"/>
+          ${Array.from({ length: compact ? 12 : 15 }, (_, index) => {
+            const x = -18 + index * 34;
+            return `<path d="M${x} ${mapBottom - 10}L${x + 104} ${mapY + 8}" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="9" opacity="${index % 2 === 0 ? 0.075 : 0.055}"/>`;
+          }).join('')}
+          ${Array.from({ length: compact ? 5 : 6 }, (_, index) => `<path d="M${58 + index * 52} ${mapY + 18}l14 12l-14 12" fill="none" stroke="${variant.secondary}" stroke-width="2" opacity="0.22"/>`).join('')}
+          ${Array.from({ length: compact ? 17 : 23 }, (_, index) => {
+            const y = 58 + index * 22;
+            return `<path d="M14 ${y}L27 ${y + 13}M363 ${y + 13}L376 ${y}" stroke="${index % 2 === 0 ? variant.accentSoft : variant.secondary}" stroke-width="3" stroke-linecap="round" opacity="${index % 2 === 0 ? 0.48 : 0.30}"/>`;
+          }).join('')}
+          <rect x="26" y="${controlY + 6}" width="34" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.accent}" stroke-width="1.4" stroke-dasharray="6 5" opacity="0.38"/>
+          <rect x="331" y="${controlY + 6}" width="33" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.secondary}" stroke-width="1.4" stroke-dasharray="4 6" opacity="0.34"/>
+          <path d="M205 ${controlY + 12}H356M205 ${controlY + 22}H356M205 ${controlY + controlHeight - 22}H356" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
+          <text x="278" y="${controlY + controlHeight - 11}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.secondary}" opacity="0.72">RELAY BUS</text>
+        </g>
+      `;
+    case 'gold':
+      return `
+        <g opacity="0.88">
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.secondary}" opacity="0.026"/>
+          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 74 : 92}" fill="none" stroke="${variant.secondary}" stroke-width="2" opacity="0.12"/>
+          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 49 : 64}" fill="none" stroke="${variant.accentSoft}" stroke-width="1.3" opacity="0.10"/>
+          <path d="M74 ${mapY + 28}H118L129 ${mapY + 39}H260L272 ${mapY + 28}H316M74 ${mapBottom - 30}H118L129 ${mapBottom - 41}H260L272 ${mapBottom - 30}H316" fill="none" stroke="${variant.secondary}" stroke-width="1.8" opacity="0.22"/>
+          <path d="M58 45H124L132 53H258L266 45H332" fill="none" stroke="${variant.secondary}" stroke-width="2.4" opacity="0.52"/>
+          <path d="M63 50H112L120 58H270L278 50H327" fill="none" stroke="${variant.accentSoft}" stroke-width="1.1" opacity="0.32"/>
+          <path d="M20 62H36V94H28V251H20M370 62H354V94H362V251H370" fill="none" stroke="${variant.secondary}" stroke-width="2.2" opacity="0.44"/>
+          <path d="M72 ${controlY + 8}C78 ${controlY + 28} 125 ${controlY + 28} 132 ${controlY + 8}" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.36"/>
+          <path d="M209 ${controlY + 10}H352L358 ${controlY + 18}V${controlY + 54}L350 ${controlY + 63}H211L204 ${controlY + 54}V${controlY + 18}Z" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.34"/>
+          <path d="M209 ${controlY + 80}H352L358 ${controlY + 88}V${controlY + 124}L350 ${controlY + 133}H211L204 ${controlY + 124}V${controlY + 88}Z" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.34"/>
+          ${Array.from({ length: 5 }, (_, index) => `<circle cx="${155 + index * 20}" cy="${bottomY + 4}" r="${index === 2 ? 4 : 2.6}" fill="${index === 2 ? variant.secondary : variant.accent}" opacity="${index === 2 ? 0.82 : 0.52}"/>`).join('')}
+        </g>
+      `;
+    case 'signal':
+      return `
+        <g opacity="0.86">
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.030"/>
+          ${Array.from({ length: compact ? 6 : 8 }, (_, index) => {
+            const y = mapY + 24 + index * 28;
+            return `<path d="M38 ${y}C82 ${y - 22} 108 ${y + 22} 150 ${y}S222 ${y - 22} 264 ${y}S326 ${y + 22} 352 ${y}" fill="none" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="1.6" opacity="${index % 2 === 0 ? 0.16 : 0.10}"/>`;
+          }).join('')}
+          <circle cx="310" cy="${mapY + 48}" r="28" fill="none" stroke="${variant.accent}" stroke-width="1.5" opacity="0.18"/>
+          <path d="M310 ${mapY + 20}V${mapY + 76}M282 ${mapY + 48}H338" stroke="${variant.secondary}" stroke-width="1.2" opacity="0.16"/>
+          <path d="M29 54C49 74 49 103 29 123M36 61C50 78 50 99 36 116M361 54C341 74 341 103 361 123M354 61C340 78 340 99 354 116" fill="none" stroke="${variant.accent}" stroke-width="1.5" opacity="0.45"/>
+          <path d="M24 286C72 252 105 314 154 285S239 254 288 285S336 316 365 292" fill="none" stroke="${variant.secondary}" stroke-width="1.7" opacity="0.38"/>
+          <path d="M31 ${controlY + 16}H58M31 ${controlY + 32}H46M31 ${controlY + 48}H62M331 ${controlY + 18}H360M345 ${controlY + 34}H360M327 ${controlY + 50}H360" stroke="${variant.accentSoft}" stroke-width="2" stroke-linecap="round" opacity="0.38"/>
+          <path d="M206 ${controlY + 64}L356 ${controlY + 18}M206 ${controlY + 134}L356 ${controlY + 88}" stroke="${variant.secondary}" stroke-width="1.1" opacity="0.26"/>
+          <text x="194" y="36" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.secondary}" opacity="0.62">NOIR SIGNAL PATH</text>
+        </g>
+      `;
+    case 'terminal':
+      return `
+        <g opacity="0.82">
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.026"/>
+          ${Array.from({ length: compact ? 9 : 11 }, (_, index) => `<path d="M24 ${mapY + 18 + index * 22}H366" stroke="${variant.accent}" stroke-width="1" opacity="${index % 2 === 0 ? 0.12 : 0.07}"/>`).join('')}
+          ${Array.from({ length: 8 }, (_, index) => `<path d="M${48 + index * 40} ${mapY + 6}V${mapBottom - 8}" stroke="${variant.accent}" stroke-width="1" opacity="${index % 2 === 0 ? 0.08 : 0.045}"/>`).join('')}
+          <path d="M40 ${mapBottom - 32}H132V${mapBottom - 42}H188V${mapBottom - 18}H284V${mapBottom - 28}H350" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.18"/>
+          ${Array.from({ length: compact ? 14 : 20 }, (_, index) => {
+            const y = 58 + index * 20;
+            return `<rect x="30" y="${y}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 3 === 0 ? 0.45 : 0.20}"/><rect x="356" y="${y + 6}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 2 === 0 ? 0.34 : 0.18}"/>`;
+          }).join('')}
+          <path d="M52 ${controlY + 8}H136V${controlY + controlHeight - 8}H52Z" fill="none" stroke="${variant.accent}" stroke-width="1.1" stroke-dasharray="2 5" opacity="0.25"/>
+          <path d="M205 ${controlY + 14}H356M205 ${controlY + 84}H356" stroke="${variant.secondary}" stroke-width="2" opacity="0.30"/>
+          <path d="M24 ${bottomY - 6}H367" stroke="${variant.accent}" stroke-width="1" stroke-dasharray="3 8" opacity="0.36"/>
+          <text x="194" y="36" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="0.62">CRT TERMINAL CORE</text>
+        </g>
+      `;
+    default:
+      return `
+        <g opacity="0.55">
+          <path d="M27 56H48M342 56H363M27 ${sideRailHeight + 38}H48M342 ${sideRailHeight + 38}H363" stroke="${variant.accentSoft}" stroke-width="1.4"/>
+          <path d="M191 24V38M184 31H198" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.6"/>
+          <path d="M69 ${controlY + 10}H136M202 ${controlY + 10}H360M69 ${controlY + controlHeight - 12}H136M202 ${controlY + controlHeight - 12}H360" stroke="${variant.accentLine}" stroke-width="1.1" opacity="0.5"/>
+        </g>
+      `;
+  }
+}
+
+function skinMotif(variant) {
+  const tokens = new Set([
+    variant.id,
+    ...(variant.tags ?? []),
+    ...(variant.mood ?? []),
+    ...(variant.palette ?? [])
+  ]);
+
+  if (tokens.has('terminal') || tokens.has('green-screen') || tokens.has('emerald')) {
+    return 'terminal';
+  }
+  if (tokens.has('amber') || tokens.has('industrial') || tokens.has('relay')) {
+    return 'amber';
+  }
+  if (tokens.has('gold')) {
+    return 'gold';
+  }
+  if (tokens.has('signal') || tokens.has('noir') || tokens.has('rain') || tokens.has('coral') || tokens.has('cyan')) {
+    return 'signal';
+  }
+  return 'reference';
 }
 
 function premiumFrame(x, y, w, h, label, variant, mode) {
