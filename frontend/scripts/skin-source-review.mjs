@@ -341,9 +341,11 @@ function metricsPanel(metrics) {
         <td>${escapeHtml(metric.baseState)}</td>
         <td>${escapeHtml(metric.state)}</td>
         <td>${formatNumber(metric.delta, 4)}</td>
+        <td>${formatNumber(metric.floor, 4)}</td>
+        <td>${formatNumber(metric.margin, 4)}</td>
       </tr>
     `).join('\n')
-    : '<tr><td colspan="4">No authored state delta metrics available.</td></tr>';
+    : '<tr><td colspan="6">No authored state delta metrics available.</td></tr>';
   const sourceCoherenceRows = metrics.sourceCoherence.length > 0
     ? metrics.sourceCoherence.map((metric) => `
       <tr class="${metric.warning ? 'warn-row' : ''}">
@@ -376,7 +378,7 @@ function metricsPanel(metrics) {
       </table>
       <h3>Authored State Difference</h3>
       <table>
-        <thead><tr><th>Widget</th><th>Base</th><th>State</th><th>Visual Delta</th></tr></thead>
+        <thead><tr><th>Widget</th><th>Base</th><th>State</th><th>Visual Delta</th><th>Floor</th><th>Margin</th></tr></thead>
         <tbody>${stateDeltaRows}</tbody>
       </table>
       <h3>Material Tile Seams</h3>
@@ -576,7 +578,9 @@ function reviewWarnings(metrics) {
   }
   for (const metric of metrics.stateDeltas.filter((entry) => entry.warning)) {
     warnings.push(
-      `State-sheet ${metric.name}.${metric.state} is too close to ${metric.baseState}; inspect before promoting collapsed button or indicator states.`
+      `State-sheet ${metric.name}.${metric.state} is too close to ${metric.baseState} ` +
+      `(delta ${metric.delta.toFixed(4)} < floor ${metric.floor.toFixed(4)}); ` +
+      'inspect before promoting collapsed button or indicator states.'
     );
   }
   for (const metric of metrics.materials.filter((entry) => entry.warning)) {
@@ -655,12 +659,15 @@ async function stateDifferenceMetrics(imagePath, selectedProfile) {
       const rect = row.slots[state];
       const statePixels = await imageCropRgbBuffer(imagePath, rect);
       const delta = meanPixelDelta(basePixels, statePixels);
+      const floor = stateDeltaFloor(state);
       metrics.push({
         name: row.id,
         baseState,
         state,
         delta,
-        warning: delta < stateDeltaFloor(state)
+        floor,
+        margin: delta - floor,
+        warning: delta < floor
       });
     }
   }

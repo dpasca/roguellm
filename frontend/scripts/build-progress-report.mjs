@@ -164,6 +164,7 @@ async function loadSourceReview(profileId) {
       return {
         path: reviewPath,
         review,
+        stateDeltas: review.metrics?.stateDeltas ?? [],
         sourceCoherence: review.metrics?.sourceCoherence ?? []
       };
     } catch {
@@ -586,10 +587,17 @@ function sourceReviewSection(sourceReview) {
   const reviewHtmlRelative = reviewRelative.replace(/review\.json$/, 'index.html');
   const issueCount = sourceReview.review.issues?.length ?? 0;
   const warningCount = sourceReview.review.warnings?.length ?? 0;
+  const weakestStateDeltas = sourceReview.stateDeltas
+    .slice()
+    .sort((left, right) => stateDeltaMargin(left) - stateDeltaMargin(right))
+    .slice(0, 6);
   const coherenceWarnings = sourceReview.sourceCoherence.filter((metric) => metric.warning).length;
   const coherenceSummary = sourceReview.sourceCoherence.length
     ? `${sourceReview.sourceCoherence.length} source-pair checks, ${coherenceWarnings} warnings`
     : 'no source-pair checks available';
+  const stateSummary = weakestStateDeltas.length
+    ? `weakest authored state margin ${formatSignedNumber(stateDeltaMargin(weakestStateDeltas[0]), 4)}`
+    : 'no authored state delta metrics available';
 
   return `
     <section class="panel">
@@ -602,9 +610,36 @@ function sourceReviewSection(sourceReview) {
       </p>
       <div class="chips">
         <span>${escapeHtml(coherenceSummary)}</span>
+        <span>${escapeHtml(stateSummary)}</span>
+      </div>
+      <div class="chips">
+        ${weakestStateDeltas.map((metric) => `
+          <span>${escapeHtml(`${metric.name}.${metric.state}: delta ${formatNumber(metric.delta, 4)} / floor ${formatNumber(metric.floor, 4)} / margin ${formatSignedNumber(stateDeltaMargin(metric), 4)}`)}</span>
+        `).join('')}
       </div>
     </section>
   `;
+}
+
+function stateDeltaMargin(metric) {
+  if (Number.isFinite(metric.margin)) {
+    return metric.margin;
+  }
+  if (Number.isFinite(metric.delta) && Number.isFinite(metric.floor)) {
+    return metric.delta - metric.floor;
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
+function formatNumber(value, digits = 3) {
+  return Number.isFinite(value) ? Number(value).toFixed(digits) : 'n/a';
+}
+
+function formatSignedNumber(value, digits = 3) {
+  if (!Number.isFinite(value)) {
+    return 'n/a';
+  }
+  return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`;
 }
 
 function handoffSection(handoff) {
