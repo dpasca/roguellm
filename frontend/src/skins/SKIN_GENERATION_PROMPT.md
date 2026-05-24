@@ -14,12 +14,18 @@ generation; create a new layout contract version first if the geometry changes.
 Preferred handoff commands:
 
 ```bash
+pnpm -C frontend skin:handoff rain-city-deck mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --out ../_artifacts/skin-handoffs/rain-city-deck
 pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact --theme obsidian-rain --out ../_artifacts/skin-kits/rain-city-deck
 pnpm --silent -C frontend skin:prompt mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --output source-pack > ../_artifacts/skin-prompts/rain-city-deck.txt
 pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
 pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
 pnpm -C frontend skin:guide mobilePortrait --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
 ```
+
+`skin:handoff` is the preferred starting point for real generation. It creates a
+single ignored bundle containing the prompt, exact live/crop/runtime guide
+images, a machine-readable handoff plan, and the scaffold/review/build commands
+to run after the generated source files arrive.
 
 For AI generation, prefer a three-file source pack over one clever flexible UI
 image:
