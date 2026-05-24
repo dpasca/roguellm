@@ -972,6 +972,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserLogOverflowCues) ? `log overflow cues ${metrics.phaserLogOverflowCues}` : null,
       Number.isFinite(metrics.phaserLogReadoutDetails) ? `log readout ${metrics.phaserLogReadoutDetails}` : null,
       Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
+      Number.isFinite(metrics.phaserInventoryReadoutDetails) ? `inventory readout ${metrics.phaserInventoryReadoutDetails}` : null,
       Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
       Number.isFinite(metrics.phaserInventoryTextBackplates) ? `inventory text plates ${metrics.phaserInventoryTextBackplates}` : null,
       Number.isFinite(metrics.phaserDrawerToggleIcons) ? `drawer icons ${metrics.phaserDrawerToggleIcons}` : null,
@@ -3771,6 +3772,7 @@ async function collectMetrics(page) {
       phaserLogOverflowCues: Number(document.body.dataset.phaserLogOverflowCues ?? NaN),
       phaserLogReadoutDetails: Number(document.body.dataset.phaserLogReadoutDetails ?? NaN),
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
+      phaserInventoryReadoutDetails: Number(document.body.dataset.phaserInventoryReadoutDetails ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
       phaserInventoryTextBackplates: Number(document.body.dataset.phaserInventoryTextBackplates ?? NaN),
       phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
@@ -4374,6 +4376,9 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     if (!Number.isFinite(metrics.phaserInventoryRows) || metrics.phaserInventoryRows < 3) {
       failures.push(`expected at least 3 drawn Phaser inventory rows, got ${metrics.phaserInventoryRows ?? 'none'}`);
     }
+    if (!Number.isFinite(metrics.phaserInventoryReadoutDetails) || metrics.phaserInventoryReadoutDetails < 28) {
+      failures.push(`expected detailed Phaser inventory readout hardware, got ${metrics.phaserInventoryReadoutDetails ?? 'none'}`);
+    }
     if (!Number.isFinite(metrics.phaserInventoryActionChips) || metrics.phaserInventoryActionChips < 3) {
       failures.push(`expected at least 3 drawn Phaser inventory action chips, got ${metrics.phaserInventoryActionChips ?? 'none'}`);
     }
@@ -4551,6 +4556,9 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     }
     if (!Number.isFinite(metrics.phaserInventoryCount)) {
       failures.push(`expected Phaser runtime inventory count, got ${metrics.phaserInventoryCount ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryReadoutDetails) || metrics.phaserInventoryReadoutDetails < 28) {
+      failures.push(`expected detailed Phaser runtime inventory readout hardware, got ${metrics.phaserInventoryReadoutDetails ?? 'none'}`);
     }
   }
 

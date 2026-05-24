@@ -581,6 +581,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private logOverflowCuesDrawn = 0;
   private logReadoutDetailsDrawn = 0;
   private inventoryRowsDrawn = 0;
+  private inventoryReadoutDetailsDrawn = 0;
   private inventoryActionChipsDrawn = 0;
   private inventoryTextBackplatesDrawn = 0;
   private actionButtonLabelsDrawn = 0;
@@ -676,6 +677,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.logOverflowCuesDrawn = 0;
     this.logReadoutDetailsDrawn = 0;
     this.inventoryRowsDrawn = 0;
+    this.inventoryReadoutDetailsDrawn = 0;
     this.inventoryActionChipsDrawn = 0;
     this.inventoryTextBackplatesDrawn = 0;
     this.actionButtonLabelsDrawn = 0;
@@ -735,6 +737,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserLogOverflowCues = String(this.logOverflowCuesDrawn);
     document.body.dataset.phaserLogReadoutDetails = String(this.logReadoutDetailsDrawn);
     document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
+    document.body.dataset.phaserInventoryReadoutDetails = String(this.inventoryReadoutDetailsDrawn);
     document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
     document.body.dataset.phaserInventoryTextBackplates = String(this.inventoryTextBackplatesDrawn);
     document.body.dataset.phaserActionButtonLabels = String(this.actionButtonLabelsDrawn);
@@ -2269,12 +2272,14 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
+    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowPanel.y) / layout.rowHeight));
+    const visibleItems = this.viewState.state.inventory.slice(0, maxRows);
+    this.drawInventoryDrawerHardware(rect, layout, visibleItems.length);
     this.addTextInRect('INVENTORY', layout.header, {
       fontSize: 13,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowPanel.y) / layout.rowHeight));
     if (this.viewState.state.inventory.length === 0) {
       this.drawMaterialPanel(layout.emptyBox, 'panel', {
         alpha: 0.9,
@@ -2296,7 +2301,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return;
     }
 
-    this.viewState.state.inventory.slice(0, maxRows).forEach((item, index) => {
+    visibleItems.forEach((item, index) => {
       const action = inventoryRowAction(item, this.viewState);
       const rowPanel = offsetRect(layout.rowPanel, 0, layout.rowHeight * index);
       const rowBadge = offsetRect(layout.rowBadge, 0, layout.rowHeight * index);
@@ -2310,6 +2315,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         motif: false,
         chrome: false
       });
+      this.drawInventoryRowHardware(rowPanel, rowBadge, rowAction, item.is_equipped, item.type, index);
 
       const badgeColor = itemTypeColor(item.type);
       const graphics = this.add.graphics();
@@ -2337,6 +2343,92 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawInventoryActionChip(rowAction.x, rowAction.y, rowAction.width, rowAction.height, action);
       this.inventoryRowsDrawn += 1;
     });
+  }
+
+  private drawInventoryDrawerHardware(rect: FixedSkinRect, layout: ReturnType<typeof runtimeLayout>['drawers']['inventory'], rowCount: number): void {
+    const graphics = this.add.graphics();
+    const headerPlate = {
+      x: layout.header.x - 4,
+      y: layout.header.y - 3,
+      width: Math.min(94, rect.x + rect.width - layout.header.x - 12),
+      height: layout.header.height + 6
+    };
+    const railX = layout.rowBadge.x + Math.floor(layout.rowBadge.width * 0.5);
+    const railTop = layout.rowPanel.y - 5;
+    const railBottom = Math.min(rect.y + rect.height - 12, railTop + Math.max(1, rowCount) * layout.rowHeight + 2);
+    const actionBusX = layout.rowAction.x - 7;
+    const actionBusTop = layout.rowPanel.y - 3;
+    const actionBusBottom = Math.min(rect.y + rect.height - 13, actionBusTop + Math.max(1, rowCount) * layout.rowHeight - 2);
+
+    graphics.fillStyle(0x020504, 0.86);
+    graphics.fillRoundedRect(headerPlate.x, headerPlate.y, headerPlate.width, headerPlate.height, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.64);
+    graphics.strokeRoundedRect(headerPlate.x + 0.5, headerPlate.y + 0.5, headerPlate.width - 1, headerPlate.height - 1, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.3);
+    graphics.lineBetween(headerPlate.x + headerPlate.width + 4, headerPlate.y + 7, rect.x + rect.width - 34, headerPlate.y + 7);
+    graphics.lineStyle(1, this.theme.secondary, 0.2);
+    graphics.lineBetween(headerPlate.x + headerPlate.width + 4, headerPlate.y + 13, rect.x + rect.width - 56, headerPlate.y + 13);
+
+    graphics.lineStyle(3, 0x020504, 0.84);
+    graphics.lineBetween(railX, railTop, railX, railBottom);
+    graphics.lineStyle(1, this.theme.secondary, 0.42);
+    graphics.lineBetween(railX, railTop, railX, railBottom);
+    graphics.fillStyle(this.theme.secondary, 0.36);
+    graphics.fillCircle(railX, railTop, 2);
+    graphics.fillCircle(railX, railBottom, 2);
+
+    graphics.lineStyle(3, 0x020504, 0.76);
+    graphics.lineBetween(actionBusX, actionBusTop, actionBusX, actionBusBottom);
+    graphics.lineStyle(1, this.theme.primary, 0.28);
+    graphics.lineBetween(actionBusX, actionBusTop, actionBusX, actionBusBottom);
+    for (let offset = actionBusTop + 7; offset < actionBusBottom; offset += 11) {
+      graphics.lineStyle(1, this.theme.primary, 0.18);
+      graphics.lineBetween(actionBusX - 3, offset, actionBusX + 3, offset);
+    }
+
+    for (let index = 0; index < rowCount; index += 1) {
+      const cy = layout.rowPanel.y + layout.rowHeight * index + Math.floor(layout.rowPanel.height * 0.5);
+      graphics.fillStyle(0x020504, 0.84);
+      graphics.fillCircle(railX, cy, 3.5);
+      graphics.fillStyle(this.theme.secondary, index === 0 ? 0.82 : 0.46);
+      graphics.fillCircle(railX, cy, index === 0 ? 2 : 1.5);
+    }
+
+    this.inventoryReadoutDetailsDrawn += 14 + rowCount;
+  }
+
+  private drawInventoryRowHardware(
+    rowPanel: FixedSkinRect,
+    rowBadge: FixedSkinRect,
+    rowAction: FixedSkinRect,
+    equipped: boolean,
+    itemType: Item['type'],
+    index: number
+  ): void {
+    const graphics = this.add.graphics();
+    const tint = itemTypeColor(itemType);
+    const y = rowPanel.y + 3;
+    const bottom = rowPanel.y + rowPanel.height - 4;
+
+    graphics.fillStyle(equipped ? this.theme.secondary : tint, equipped ? 0.84 : 0.48);
+    graphics.fillRoundedRect(rowPanel.x + 3, y, 3, Math.max(6, bottom - y), 1.5);
+    graphics.lineStyle(1, tint, equipped ? 0.58 : 0.22);
+    graphics.lineBetween(rowBadge.x + rowBadge.width + 3, rowPanel.y + 9, rowAction.x - 8, rowPanel.y + 9);
+    graphics.lineBetween(rowBadge.x + rowBadge.width + 3, rowPanel.y + rowPanel.height - 8, rowAction.x - 8, rowPanel.y + rowPanel.height - 8);
+    graphics.fillStyle(0x020504, 0.82);
+    graphics.fillCircle(rowAction.x - 7, rowPanel.y + Math.floor(rowPanel.height * 0.5), 3);
+    graphics.fillStyle(equipped ? this.theme.secondary : this.theme.primary, equipped ? 0.86 : 0.4);
+    graphics.fillCircle(rowAction.x - 7, rowPanel.y + Math.floor(rowPanel.height * 0.5), 1.6);
+    if (equipped) {
+      graphics.fillStyle(this.theme.secondary, 0.82);
+      graphics.fillRoundedRect(rowPanel.x + rowPanel.width - 7, rowPanel.y + 5, 3, rowPanel.height - 10, 1.5);
+    }
+    if (index === 0) {
+      graphics.lineStyle(1, this.theme.primary, 0.4);
+      graphics.lineBetween(rowPanel.x + 8, rowPanel.y + 2, rowPanel.x + 42, rowPanel.y + 2);
+    }
+
+    this.inventoryReadoutDetailsDrawn += equipped ? 7 : 5;
   }
 
   private drawInventoryTextBackplate(titleRect: FixedSkinRect, metaRect: FixedSkinRect, equipped: boolean): void {
