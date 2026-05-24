@@ -783,6 +783,7 @@ const profileSummaries = buildProfileSummaries(results);
 const profileSimilarities = buildProfileSimilarities(profileSummaries);
 const skinAssetSummaries = await buildSkinAssetSummaries(productionMobileProfiles, outDir);
 const skinAssetSimilarities = buildSkinAssetSimilarities(skinAssetSummaries);
+const skinAssetFailures = buildSkinAssetFailures(skinAssetSimilarities);
 annotateProfileSimilarityFlags(profileSummaries, profileSimilarities);
 annotateProfileAssetSimilarityFlags(profileSummaries, skinAssetSimilarities);
 const summary = {
@@ -796,11 +797,12 @@ const summary = {
   profileSimilarities,
   skinAssetSummaries,
   skinAssetSimilarities,
+  skinAssetFailures,
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
   results,
-  ok: results.every((result) => result.failures.length === 0)
+  ok: results.every((result) => result.failures.length === 0) && skinAssetFailures.length === 0
 };
 
 await fs.writeFile(
@@ -822,9 +824,12 @@ const reportLines = results.flatMap((result) => {
     ? [header]
     : [header, ...result.failures.map((failure) => `  - ${failure}`)];
 });
+const skinAssetReportLines = skinAssetFailures.length === 0
+  ? []
+  : ['FAIL skin asset uniqueness gate', ...skinAssetFailures.map((failure) => `  - ${failure}`)];
 
 console.log(`Visual inspection output: ${path.relative(process.cwd(), outDir)}`);
-console.log(reportLines.join('\n'));
+console.log([...reportLines, ...skinAssetReportLines].join('\n'));
 
 if (!summary.ok) {
   process.exitCode = 1;
@@ -1157,6 +1162,7 @@ function buildHtmlReport(summary) {
     <span>${summary.results.length} scenarios</span>
     <span>${summary.productionMobileProfiles.length} production mobile profiles</span>
     <span>${summary.productionProfileRenderer ?? 'mixed'} production renderer</span>
+    <span>${summary.skinAssetFailures?.length ? `${summary.skinAssetFailures.length} skin asset failures` : 'skin asset gate OK'}</span>
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
   ${profileBench}
@@ -1349,6 +1355,25 @@ function buildSkinAssetSimilarities(summaries) {
   }
 
   return pairs.sort((left, right) => left.distance - right.distance);
+}
+
+function buildSkinAssetFailures(pairs) {
+  if (!enforcesProductionSkinAssets()) {
+    return [];
+  }
+
+  return pairs
+    .filter((pair) => pair.severity === 'near-duplicate')
+    .map((pair) =>
+      `${pair.left} and ${pair.right} are near-duplicate ${pair.kind} chassis assets ` +
+      `(material distance ${pair.distance.toFixed(4)})`
+    );
+}
+
+function enforcesProductionSkinAssets() {
+  return process.env.VISUAL_ENFORCE_SKIN_ASSETS === '1' ||
+    scenarioFilters.includes('production') ||
+    scenarioFilters.some((filter) => filter.includes('-production-'));
 }
 
 function annotateProfileSimilarityFlags(profiles, pairs) {
