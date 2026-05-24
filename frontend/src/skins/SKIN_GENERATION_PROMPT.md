@@ -106,6 +106,7 @@ optional chassis crop `source` paths and run:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend validate:skins
 ```

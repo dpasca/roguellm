@@ -12,6 +12,7 @@
     "skin:guide": "node scripts/skin-layout-guide.mjs",
     "skin:prompt": "node scripts/skin-layout-prompt.mjs",
     "skin:scaffold": "node scripts/skin-layout-scaffold.mjs",
+    "skin:review-source": "node scripts/skin-source-review.mjs",
     "skin:source-prototype": "node scripts/skin-source-prototype.mjs",
     "build": "tsc --noEmit && vite build",
     "check": "pnpm run build && pnpm run validate:bundle && pnpm run validate:phaser-style-boundary && pnpm run validate:skins && pnpm run validate:skin-source-packs",

@@ -375,12 +375,16 @@ Before cropping, validate the source pack and scaffold handoff together:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck
 ```
 
 This preflight checks the three required PNG filenames, exact chassis/widget
 artboard dimensions, material-sheet bounds, and the scaffold handoff paths. It
 is deliberately about fixed source geometry; passing it does not mean the art is
 beautiful enough to promote.
+The review command writes a self-contained HTML contact sheet with source
+artboards, material-sheet crops, live regions, fixed widget crops, and Phaser
+runtime text/icon slots overlaid for manual rejection before build.
 
 The scaffold is contract-driven. It copies the exact v1 regions and layout
 rectangles, declares all required fixed-size assets, and adds a `build.crops`
