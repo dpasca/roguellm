@@ -156,6 +156,9 @@ visual inspection gates so they behave like part of the skin:
   action column so generated drawer art never needs to stretch around content.
 - Visual inspection must fail when fixed inventory drawers contain item rows
   without visible/styled type badges.
+- Phaser inventory rows must draw dark text backplates inside the flexible text
+  column so item names and descriptions stay readable over source materials.
+  Visual inspection must fail when visible inventory rows lack those plates.
 - Equipped inventory rows expose a latched `ON` action state rather than a
   dimmed disabled button; visual inspection must fail if those actions are
   invisible, unstyled, clipped, or mislabeled.

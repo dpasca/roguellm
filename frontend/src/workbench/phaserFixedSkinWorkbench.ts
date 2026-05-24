@@ -552,6 +552,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private logRowsDrawn = 0;
   private inventoryRowsDrawn = 0;
   private inventoryActionChipsDrawn = 0;
+  private inventoryTextBackplatesDrawn = 0;
   private actionButtonLabelsDrawn = 0;
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
@@ -641,6 +642,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.logRowsDrawn = 0;
     this.inventoryRowsDrawn = 0;
     this.inventoryActionChipsDrawn = 0;
+    this.inventoryTextBackplatesDrawn = 0;
     this.actionButtonLabelsDrawn = 0;
     document.body.dataset.phaserPointerButtonState = '';
     this.chromeDetailsDrawn = 0;
@@ -692,6 +694,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
     document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
     document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
+    document.body.dataset.phaserInventoryTextBackplates = String(this.inventoryTextBackplatesDrawn);
     document.body.dataset.phaserActionButtonLabels = String(this.actionButtonLabelsDrawn);
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
@@ -2026,7 +2029,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawMaterialPanel(rowPanel, 'panel', {
         alpha: item.is_equipped ? 0.9 : 0.72,
         fillTint: item.is_equipped ? 0x163f20 : 0x101a14,
-        frameTint: item.is_equipped ? 0xaaff87 : 0x497055
+        frameTint: item.is_equipped ? 0xaaff87 : 0x497055,
+        motif: false,
+        chrome: false
       });
 
       const badgeColor = itemTypeColor(item.type);
@@ -2042,18 +2047,32 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         align: 'center'
       });
 
+      this.drawInventoryTextBackplate(rowText, rowMeta, item.is_equipped);
       this.addTextInRect(item.name, rowText, {
-        fontSize: this.profile.kind === 'mobileCompact' ? 11 : 12,
+        fontSize: 12,
         color: this.theme.bodyText,
         fontStyle: 'bold'
       });
       this.addTextInRect(item.description, rowMeta, {
-        fontSize: this.profile.kind === 'mobileCompact' ? 8 : 9,
+        fontSize: 9,
         color: this.theme.mutedText
       });
       this.drawInventoryActionChip(rowAction.x, rowAction.y, rowAction.width, rowAction.height, action);
       this.inventoryRowsDrawn += 1;
     });
+  }
+
+  private drawInventoryTextBackplate(titleRect: FixedSkinRect, metaRect: FixedSkinRect, equipped: boolean): void {
+    const x = titleRect.x - 3;
+    const y = titleRect.y - 2;
+    const width = Math.max(titleRect.width, metaRect.width) + 6;
+    const height = Math.max(18, metaRect.y + metaRect.height - y);
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x020504, equipped ? 0.8 : 0.74);
+    graphics.fillRoundedRect(x, y, width, height, 4);
+    graphics.lineStyle(1, equipped ? this.theme.secondary : this.theme.primary, equipped ? 0.28 : 0.18);
+    graphics.lineBetween(x + 4, y + 1, x + Math.min(width - 4, 72), y + 1);
+    this.inventoryTextBackplatesDrawn += 1;
   }
 
   private drawInventoryActionChip(x: number, y: number, width: number, height: number, rowAction: InventoryRowAction): void {
@@ -2189,6 +2208,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       fillTint?: number;
       frameTint?: number;
       scanlines?: boolean;
+      motif?: boolean;
+      chrome?: boolean;
     } = {}
   ): void {
     if (rect.width <= 0 || rect.height <= 0) {
@@ -2213,7 +2234,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (options.scanlines) {
       this.drawScanlines(rect, alpha * 0.35);
     }
-    this.drawMaterialMotif(rect, kind, alpha * (useSourceColors ? 0.52 : 0.62));
+    if (options.motif !== false) {
+      this.drawMaterialMotif(rect, kind, alpha * (useSourceColors ? 0.52 : 0.62));
+    }
 
     if (this.textures.exists(frameKey)) {
       const frame = this.add.nineslice(
@@ -2235,7 +2258,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         frame.setTint(options.frameTint);
       }
     }
-    this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), useSourceColors ? alpha * 0.58 : alpha);
+    if (options.chrome !== false) {
+      this.drawMaterialChrome(rect, options.frameTint ?? defaultMaterialTint(kind, this.theme), useSourceColors ? alpha * 0.58 : alpha);
+    }
     this.materialPanelsDrawn += 1;
     if (useSourceColors) {
       this.sourceMaterialPanelsDrawn += 1;
@@ -2994,7 +3019,7 @@ function fallbackRuntimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayou
   const inventory = profile.regions.inventory ?? profile.regions.log;
   const iconSize = profile.kind === 'mobileCompact' ? 17 : 20;
   const rowHeight = profile.kind === 'mobileCompact' ? 40 : 46;
-  const inventoryRowHeight = profile.kind === 'mobileCompact' ? 48 : 46;
+  const inventoryRowHeight = profile.kind === 'mobileCompact' ? 56 : 46;
   const statTop = stats.y + Math.max(0, Math.floor((stats.height - 16) / 2));
 
   return {
@@ -3034,10 +3059,10 @@ function fallbackRuntimeLayout(profile: FixedSkinProfile): FixedSkinRuntimeLayou
       inventory: {
         header: { x: inventory.x + 10, y: inventory.y + 10, width: inventory.width - 20, height: 16 },
         rowPanel: { x: inventory.x + 8, y: inventory.y + 31, width: inventory.width - 16, height: inventoryRowHeight - 8 },
-        rowBadge: { x: inventory.x + 12, y: inventory.y + 38, width: 38, height: 22 },
+        rowBadge: { x: inventory.x + 12, y: inventory.y + 39, width: 38, height: 22 },
         rowText: { x: inventory.x + 58, y: inventory.y + 35, width: inventory.width - 138, height: 17 },
-        rowMeta: { x: inventory.x + 58, y: inventory.y + 55, width: inventory.width - 138, height: Math.max(12, inventoryRowHeight - 27) },
-        rowAction: { x: inventory.x + inventory.width - 72, y: inventory.y + 39, width: 54, height: 24 },
+        rowMeta: { x: inventory.x + 58, y: inventory.y + 55, width: inventory.width - 138, height: Math.max(14, inventoryRowHeight - 35) },
+        rowAction: { x: inventory.x + inventory.width - 72, y: inventory.y + 40, width: 54, height: 24 },
         rowHeight: inventoryRowHeight,
         emptyBox: { x: inventory.x + 18, y: inventory.y + 46, width: inventory.width - 36, height: Math.min(74, inventory.height - 66) },
         emptyTitle: { x: inventory.x + 30, y: inventory.y + 58, width: inventory.width - 60, height: 22 },

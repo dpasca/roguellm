@@ -918,6 +918,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserLogRows) ? `log rows ${metrics.phaserLogRows}` : null,
       Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
       Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
+      Number.isFinite(metrics.phaserInventoryTextBackplates) ? `inventory text plates ${metrics.phaserInventoryTextBackplates}` : null,
       Number.isFinite(metrics.phaserDrawerToggleIcons) ? `drawer icons ${metrics.phaserDrawerToggleIcons}` : null,
       Number.isFinite(metrics.phaserMovementLockBadges) ? `movement lock ${metrics.phaserMovementLockBadges}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
@@ -3431,6 +3432,7 @@ async function collectMetrics(page) {
       phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
+      phaserInventoryTextBackplates: Number(document.body.dataset.phaserInventoryTextBackplates ?? NaN),
       phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
       phaserDrawerToggleIcons: Number(document.body.dataset.phaserDrawerToggleIcons ?? NaN),
       phaserMovementLockBadges: Number(document.body.dataset.phaserMovementLockBadges ?? NaN),
@@ -4013,6 +4015,12 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     }
     if (!Number.isFinite(metrics.phaserInventoryActionChips) || metrics.phaserInventoryActionChips < 3) {
       failures.push(`expected at least 3 drawn Phaser inventory action chips, got ${metrics.phaserInventoryActionChips ?? 'none'}`);
+    }
+    if (!Number.isFinite(metrics.phaserInventoryTextBackplates) || metrics.phaserInventoryTextBackplates < metrics.phaserInventoryRows) {
+      failures.push(
+        `expected Phaser inventory text backplates for every visible row, ` +
+        `got ${metrics.phaserInventoryTextBackplates ?? 'none'} for ${metrics.phaserInventoryRows ?? 'none'} rows`
+      );
     }
     if (!Number.isFinite(metrics.phaserEquippedCount) || metrics.phaserEquippedCount < 2) {
       failures.push(`expected equipped Phaser inventory states, got ${metrics.phaserEquippedCount ?? 'none'}`);
