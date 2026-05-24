@@ -962,7 +962,9 @@ function buildHtmlReport(summary) {
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
       metrics.phaserButtonStates ? `buttons ${metrics.phaserButtonStates}` : null,
       metrics.phaserPointerButtonState ? `pointer ${metrics.phaserPointerButtonState}` : null,
+      Number.isFinite(metrics.phaserLogEntryCount) ? `log entries ${metrics.phaserLogEntryCount}` : null,
       Number.isFinite(metrics.phaserLogRows) ? `log rows ${metrics.phaserLogRows}` : null,
+      Number.isFinite(metrics.phaserLogOverflowCues) ? `log overflow cues ${metrics.phaserLogOverflowCues}` : null,
       Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
       Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
       Number.isFinite(metrics.phaserInventoryTextBackplates) ? `inventory text plates ${metrics.phaserInventoryTextBackplates}` : null,
@@ -3722,7 +3724,9 @@ async function collectMetrics(page) {
       phaserSourceMaterialKinds: document.body.dataset.phaserSourceMaterialKinds ?? '',
       phaserButtonStates: document.body.dataset.phaserButtonStates ?? '',
       phaserPointerButtonState: document.body.dataset.phaserPointerButtonState ?? '',
+      phaserLogEntryCount: Number(document.body.dataset.phaserLogEntryCount ?? NaN),
       phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
+      phaserLogOverflowCues: Number(document.body.dataset.phaserLogOverflowCues ?? NaN),
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
       phaserInventoryTextBackplates: Number(document.body.dataset.phaserInventoryTextBackplates ?? NaN),
@@ -4286,6 +4290,12 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected at least 4 Phaser log rows, got ${metrics.phaserLogRows ?? 'none'}`);
   }
 
+  if ((scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-workbench-click-log') &&
+    metrics.phaserLogEntryCount > metrics.phaserLogRows &&
+    (!Number.isFinite(metrics.phaserLogOverflowCues) || metrics.phaserLogOverflowCues < 1)) {
+    failures.push(`expected Phaser log overflow cue, got ${metrics.phaserLogOverflowCues ?? 'none'}`);
+  }
+
   if (scenario.mode === 'phaser-fixed-workbench-click-log' && phaserButtonState(metrics, 'log') !== 'active') {
     failures.push(`expected Phaser log button active after pointer click, got ${phaserButtonState(metrics, 'log') ?? 'none'}`);
   }
@@ -4451,6 +4461,12 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-runtime-log' && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser runtime log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-log' &&
+    metrics.phaserLogEntryCount > metrics.phaserLogRows &&
+    (!Number.isFinite(metrics.phaserLogOverflowCues) || metrics.phaserLogOverflowCues < 1)) {
+    failures.push(`expected Phaser runtime log overflow cue, got ${metrics.phaserLogOverflowCues ?? 'none'}`);
   }
 
   if (scenario.mode === 'phaser-fixed-runtime-inventory') {

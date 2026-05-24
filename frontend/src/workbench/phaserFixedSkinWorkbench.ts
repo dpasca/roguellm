@@ -578,6 +578,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
   private logRowsDrawn = 0;
+  private logOverflowCuesDrawn = 0;
   private inventoryRowsDrawn = 0;
   private inventoryActionChipsDrawn = 0;
   private inventoryTextBackplatesDrawn = 0;
@@ -668,6 +669,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
     this.logRowsDrawn = 0;
+    this.logOverflowCuesDrawn = 0;
     this.inventoryRowsDrawn = 0;
     this.inventoryActionChipsDrawn = 0;
     this.inventoryTextBackplatesDrawn = 0;
@@ -719,7 +721,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       .map(([buttonId, state]) => `${buttonId}:${state}`)
       .sort()
       .join(',');
+    document.body.dataset.phaserLogEntryCount = String(this.viewState.logs.length);
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
+    document.body.dataset.phaserLogOverflowCues = String(this.logOverflowCuesDrawn);
     document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
     document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
     document.body.dataset.phaserInventoryTextBackplates = String(this.inventoryTextBackplatesDrawn);
@@ -2072,6 +2076,9 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       });
       this.logRowsDrawn += 1;
     });
+    if (this.viewState.logs.length > maxRows) {
+      this.drawLogOverflowCue(rect);
+    }
   }
 
   private drawLogRowHardware(label: FixedSkinRect, text: FixedSkinRect, rowHeight: number, index: number): void {
@@ -2093,6 +2100,38 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.strokeRoundedRect(label.x - 1.5, label.y - 2.5, label.width + 5, label.height + 6, 4);
     graphics.lineStyle(1, this.theme.primary, active ? 0.18 : 0.08);
     graphics.lineBetween(text.x, y + height - 4, text.x + text.width - 2, y + height - 4);
+  }
+
+  private drawLogOverflowCue(rect: FixedSkinRect): void {
+    const railWidth = 8;
+    const railX = rect.x + rect.width - 14;
+    const railY = rect.y + 34;
+    const railHeight = Math.max(24, rect.height - 50);
+    const cueHeight = 25;
+    const cueY = railY + railHeight - cueHeight;
+    const graphics = this.add.graphics();
+
+    graphics.fillStyle(0x020504, 0.72);
+    graphics.fillRoundedRect(railX, railY, railWidth, railHeight, 4);
+    graphics.lineStyle(1, this.theme.controlFrame, 0.38);
+    graphics.strokeRoundedRect(railX + 0.5, railY + 0.5, railWidth - 1, railHeight - 1, 4);
+    graphics.fillStyle(this.theme.primary, 0.16);
+    graphics.fillRoundedRect(railX - 2, cueY, railWidth + 4, cueHeight, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.72);
+    graphics.strokeRoundedRect(railX - 1.5, cueY + 0.5, railWidth + 3, cueHeight - 1, 5);
+    graphics.fillStyle(this.theme.secondary, 0.9);
+    graphics.fillCircle(railX + railWidth * 0.5, railY + 8, 1.5);
+    graphics.fillCircle(railX + railWidth * 0.5, railY + 15, 1.5);
+    this.addFontAwesomeIcon(
+      'fa-solid fa-caret-down',
+      'v',
+      railX + railWidth * 0.5,
+      cueY + cueHeight * 0.55,
+      12,
+      this.theme.primaryText
+    ).setOrigin(0.5, 0.5);
+    this.logOverflowCuesDrawn += 1;
+    this.hudDetailsDrawn += 7;
   }
 
   private drawInventoryDrawer(): void {

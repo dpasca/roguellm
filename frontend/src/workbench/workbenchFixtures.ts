@@ -4,7 +4,8 @@ export const WORKBENCH_LOGS = [
   'Rain beads across the deck glass as the alley grid wakes, each shrine marker blinking through the static.',
   'Your tonfa hums under the counterlight; the raincoat weave answers with a dull armored shimmer.',
   'A vendor relay coughs up a pocket stim, still warm from the vending slot and buzzing with borrowed voltage.',
-  'Somewhere past the shrine gate, the Chrome Oni Enforcer drags one metal claw along the wet concrete.'
+  'Somewhere past the shrine gate, the Chrome Oni Enforcer drags one metal claw along the wet concrete.',
+  'A low archive tone marks older entries below the rail, still readable when you open the full deck log.'
 ];
 
 export function applyWorkbenchAction(state: GameState, action: GameAction): GameState {

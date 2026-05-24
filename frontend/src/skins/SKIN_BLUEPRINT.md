@@ -171,6 +171,9 @@ visual inspection gates so they behave like part of the skin:
   must expose a skinned down-cue in the drawer rail; visual inspection must
   fail when the cue is missing, unstyled, unlabeled by state, or loses its
   Font Awesome chevron.
+- Phaser fixed log drawers expose the same overflow affordance as canvas
+  hardware and publish a `phaserLogOverflowCues` diagnostic count; visual
+  inspection must fail when an overflowing Phaser drawer has no cue.
 - Fixed combat rows use the structured `current_enemy.font_awesome_icon` value
   to render a small enemy badge before the enemy name and HP.
 - Visual inspection must fail when an active fixed combat state has a clipped,
