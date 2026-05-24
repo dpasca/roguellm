@@ -10,11 +10,15 @@ const states = {
   pressed: { y: 2, glow: 0.52, shade: -18, alpha: 1 },
   disabled: { y: 0, glow: 0.14, shade: -60, alpha: 0.62 }
 };
+const coreStateNames = ['idle', 'hover', 'pressed', 'disabled'];
+const toggleStateNames = coreStateNames;
 
 fs.mkdirSync(outDir, { recursive: true });
 
-for (const state of Object.keys(states)) {
+for (const state of toggleStateNames) {
   writePng(`inventory-${state}.png`, toggleSvg('BAG', state));
+}
+for (const state of coreStateNames) {
   writePng(`restart-${state}.png`, restartSvg(state));
 }
 
@@ -26,9 +30,10 @@ function writePng(filename, svgSource) {
 function toggleSvg(label, state) {
   const style = states[state];
   const isDisabled = state === 'disabled';
+  const isActive = state === 'active';
   const accent = isDisabled ? '#4e5957' : shift('#8dff6f', style.shade);
   const glow = isDisabled ? '#1d2624' : shift('#2bee3a', style.shade);
-  const text = isDisabled ? '#59625f' : '#dfffd2';
+  const text = isDisabled ? '#59625f' : isActive ? '#f4ffe8' : '#dfffd2';
 
   return svg(43, 31, `
     <defs>
@@ -50,6 +55,7 @@ function toggleSvg(label, state) {
       <rect x="3" y="3" width="37" height="21" rx="3" fill="url(#body)" stroke="${accent}" stroke-width="1"/>
       <rect x="6" y="6" width="31" height="4" rx="2" fill="${glow}" opacity="${style.glow * 0.36}"/>
       <line x1="7" y1="22" x2="36" y2="22" stroke="${glow}" stroke-width="1" opacity="${style.glow * 0.5}"/>
+      ${isActive ? `<circle cx="35" cy="8" r="3" fill="#ffbf55" stroke="#06100a" stroke-width="1"/>` : ''}
       <text x="21.5" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${text}" filter="url(#glow)">${label}</text>
     </g>
   `);

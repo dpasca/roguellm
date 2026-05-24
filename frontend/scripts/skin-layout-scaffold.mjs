@@ -123,7 +123,7 @@ function buildCrops(selectedProfile, options) {
       path: `${buttonPrefix(name)}-idle.png`,
       rect: cloneRect(rect),
       alphaRadius: buttonAlphaRadius(name),
-      variants: 'button'
+      variants: isToggleButton(selectedProfile, name) ? 'toggle-button' : 'button'
     });
   }
 
@@ -185,6 +185,10 @@ function buttonPrefix(name) {
     moveE: 'dpad-e',
     moveW: 'dpad-w'
   }[name] ?? name;
+}
+
+function isToggleButton(selectedProfile, name) {
+  return new Set(selectedProfile.requiredStates.toggleButtons ?? []).has(name);
 }
 
 function buttonAlphaRadius(name) {

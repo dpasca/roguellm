@@ -213,7 +213,7 @@ visual inspection gates so they behave like part of the skin:
 - Visual inspection must fail when the closed-state latest LCD loses its
   physical styling or clips the latest message.
 - Fixed drawer toggles are stateful hardware buttons: closed drawers use
-  `idle`; the active Log or Inventory drawer uses `pressed`, with matching
+  `idle`; the active Log or Inventory drawer uses `active`, with matching
   `aria-pressed` and `aria-expanded`.
 - Visual inspection must fail when drawer toggles are clipped, missing fixed
   sprites, or reporting visual/ARIA state that disagrees with drawer state.
@@ -232,6 +232,10 @@ Required button states:
 - `hover`
 - `pressed`
 - `disabled`
+
+Required drawer-toggle state:
+
+- `active`
 
 Required status states:
 

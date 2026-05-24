@@ -141,6 +141,10 @@ function fixedAsset(path: string): string {
   return asset;
 }
 
+function optionalFixedAsset(path: string): string | undefined {
+  return fixedAssetUrls[`./neo-tokyo-console/fixed/${path}`];
+}
+
 function materialAsset(path: string): string {
   const asset = materialAssetUrls[`./neo-tokyo-console/assets/${path}`];
   if (!asset) {
@@ -244,13 +248,18 @@ function manifestTextColor(profile: FixedAssetProfile, key: keyof FixedSkinRende
 function fixedButton(
   profile: FixedAssetProfile,
   name: FixedButtonAssetName
-): Record<'idle' | 'hover' | 'pressed' | 'disabled', string> {
-  return {
+): Record<'idle' | 'hover' | 'pressed' | 'disabled', string> & Partial<Record<'active', string>> {
+  const states: Record<'idle' | 'hover' | 'pressed' | 'disabled', string> & Partial<Record<'active', string>> = {
     idle: fixedAsset(`${profile}/${name}-idle.png`),
     hover: fixedAsset(`${profile}/${name}-hover.png`),
     pressed: fixedAsset(`${profile}/${name}-pressed.png`),
     disabled: fixedAsset(`${profile}/${name}-disabled.png`)
   };
+  const active = optionalFixedAsset(`${profile}/${name}-active.png`);
+  if (active) {
+    states.active = active;
+  }
+  return states;
 }
 
 function fixedIndicators(profile: FixedAssetProfile) {

@@ -84,6 +84,18 @@ async function buildCrop(sourcePath, kitDir, crop) {
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-hover.png'), ['-modulate', '116,118,100']);
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-pressed.png'), ['-modulate', '72,116,100']);
     await writeVariant(outputPath, outputPath.replace('-idle.png', '-disabled.png'), ['-colorspace', 'Gray', '-modulate', '46,42,100']);
+  } else if (crop.variants === 'toggle-button') {
+    await writeVariant(outputPath, outputPath.replace('-idle.png', '-hover.png'), ['-modulate', '116,118,100']);
+    await writeVariant(outputPath, outputPath.replace('-idle.png', '-pressed.png'), ['-modulate', '72,116,100']);
+    await writeVariant(outputPath, outputPath.replace('-idle.png', '-active.png'), [
+      '-fill',
+      '#7cff6a',
+      '-colorize',
+      '32',
+      '-modulate',
+      '126,145,100'
+    ]);
+    await writeVariant(outputPath, outputPath.replace('-idle.png', '-disabled.png'), ['-colorspace', 'Gray', '-modulate', '46,42,100']);
   } else if (crop.variants === 'status-indicator') {
     await writeVariant(outputPath, replaceSuffix(outputPath, '-ready.png', '-thinking.png'), [
       '-fill',

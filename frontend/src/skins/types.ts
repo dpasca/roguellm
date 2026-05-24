@@ -20,14 +20,14 @@ export interface FixedSkinRect {
 
 export type FixedSkinProfileKind = 'mobilePortrait' | 'mobileCompact' | 'desktopWide';
 
-export type FixedSkinButtonState = 'idle' | 'hover' | 'pressed' | 'disabled';
+export type FixedSkinButtonState = 'idle' | 'hover' | 'pressed' | 'active' | 'disabled';
 
 export interface FixedSkinButton {
   rect: FixedSkinRect;
   label: string;
   icon?: string;
   hideLabel?: boolean;
-  states: Record<FixedSkinButtonState, string>;
+  states: Record<'idle' | 'hover' | 'pressed' | 'disabled', string> & Partial<Record<'active', string>>;
 }
 
 export type FixedSkinMaterialKind = 'panel' | 'lcd' | 'button';

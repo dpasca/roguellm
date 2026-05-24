@@ -1430,7 +1430,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
     const disabled = this.isButtonDisabled(buttonId);
     const active = (buttonId === 'log' && this.viewState.logOpen) || (buttonId === 'inventory' && this.viewState.inventoryOpen);
-    const state: FixedSkinButtonState = disabled ? 'disabled' : active ? 'pressed' : 'idle';
+    const state: FixedSkinButtonState = disabled ? 'disabled' : active ? activeButtonState(button) : 'idle';
     this.buttonStatesDrawn.set(buttonId, state);
     const key = buttonKey(this.profile, buttonId, state);
     if (!this.textures.exists(key)) {
@@ -1442,12 +1442,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (!disabled) {
       image.setInteractive({ useHandCursor: true });
       image.on('pointerover', () => {
-        const nextState = active ? 'pressed' : 'hover';
+        const nextState = active ? activeButtonState(button) : 'hover';
         image.setTexture(buttonKey(this.profile, buttonId, nextState));
         this.setPointerButtonState(buttonId, nextState);
       });
       image.on('pointerout', () => {
-        const nextState = active ? 'pressed' : 'idle';
+        const nextState = active ? activeButtonState(button) : 'idle';
         image.setTexture(buttonKey(this.profile, buttonId, nextState));
         this.setPointerButtonState(buttonId, nextState);
       });
@@ -2848,6 +2848,10 @@ function createScenarioLogs(scenario: PhaserFixedScenario): string[] {
 function buttonEntries(profile: FixedSkinProfile): ButtonEntry[] {
   return Object.entries(profile.buttons)
     .filter((entry): entry is ButtonEntry => Boolean(entry[1]));
+}
+
+function activeButtonState(button: FixedSkinButton): FixedSkinButtonState {
+  return button.states.active ? 'active' : 'pressed';
 }
 
 function assetKey(profile: FixedSkinProfile, asset: string): string {

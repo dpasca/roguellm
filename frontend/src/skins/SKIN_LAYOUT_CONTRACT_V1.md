@@ -95,8 +95,8 @@ when the source and target rectangles are identical in size.
 | `attack` | 205 | 666 | 152 | 66 | `idle`, `hover`, `pressed`, `disabled` |
 | `run` | 205 | 746 | 152 | 66 | `idle`, `hover`, `pressed`, `disabled` |
 | `restart` | 82 | 578 | 226 | 66 | `idle`, `hover`, `pressed`, `disabled` |
-| `log` | 315 | 348 | 46 | 32 | `idle`, `hover`, `pressed`, `disabled` |
-| `inventory` | 315 | 392 | 46 | 32 | `idle`, `hover`, `pressed`, `disabled` |
+| `log` | 315 | 348 | 46 | 32 | `idle`, `hover`, `pressed`, `active`, `disabled` |
+| `inventory` | 315 | 392 | 46 | 32 | `idle`, `hover`, `pressed`, `active`, `disabled` |
 | `moveN` | 73 | 672 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
 | `moveS` | 73 | 768 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
 | `moveE` | 121 | 720 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
@@ -109,8 +109,8 @@ when the source and target rectangles are identical in size.
 | `attack` | 205 | 522 | 152 | 66 | `idle`, `hover`, `pressed`, `disabled` |
 | `run` | 205 | 592 | 152 | 66 | `idle`, `hover`, `pressed`, `disabled` |
 | `restart` | 82 | 462 | 226 | 66 | `idle`, `hover`, `pressed`, `disabled` |
-| `log` | 315 | 296 | 46 | 32 | `idle`, `hover`, `pressed`, `disabled` |
-| `inventory` | 315 | 336 | 46 | 32 | `idle`, `hover`, `pressed`, `disabled` |
+| `log` | 315 | 296 | 46 | 32 | `idle`, `hover`, `pressed`, `active`, `disabled` |
+| `inventory` | 315 | 336 | 46 | 32 | `idle`, `hover`, `pressed`, `active`, `disabled` |
 | `moveN` | 73 | 520 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
 | `moveS` | 73 | 608 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
 | `moveE` | 121 | 564 | 58 | 58 | `idle`, `hover`, `pressed`, `disabled` |
@@ -230,10 +230,12 @@ restart-disabled.png
 log-idle.png
 log-hover.png
 log-pressed.png
+log-active.png
 log-disabled.png
 inventory-idle.png
 inventory-hover.png
 inventory-pressed.png
+inventory-active.png
 inventory-disabled.png
 dpad-n-idle.png
 dpad-n-hover.png
@@ -398,6 +400,8 @@ The scaffold crop plan assumes a single full source artboard:
 
 - `chassis.png` is cropped from the full canvas.
 - Button idle crops generate `hover`, `pressed`, and `disabled` variants.
+- Log and Inventory toggle crops generate those states plus the latched
+  `active` variant.
 - `status-ready.png` generates `thinking`, `error`, and `offline` variants.
 - `led-off.png` generates `led-on.png`.
 - If `--materials-source` is provided, material fill tiles and nine-slice frames

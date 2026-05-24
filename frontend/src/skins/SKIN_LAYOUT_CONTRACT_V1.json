@@ -205,6 +205,17 @@
           "pressed",
           "disabled"
         ],
+        "toggleButtons": [
+          "log",
+          "inventory"
+        ],
+        "toggleButtonStates": [
+          "idle",
+          "hover",
+          "pressed",
+          "active",
+          "disabled"
+        ],
         "status": [
           "ready",
           "thinking",
@@ -647,6 +658,17 @@
           "idle",
           "hover",
           "pressed",
+          "disabled"
+        ],
+        "toggleButtons": [
+          "log",
+          "inventory"
+        ],
+        "toggleButtonStates": [
+          "idle",
+          "hover",
+          "pressed",
+          "active",
           "disabled"
         ],
         "status": [

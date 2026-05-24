@@ -79,7 +79,8 @@ Hard rules:
 - Stable decorative labels are allowed only if small and nonessential.
 - Leave all dynamic apertures clean and empty enough for live Phaser content.
 - Make button wells clean enough to crop separate transparent sprites for idle,
-  hover, pressed, and disabled states.
+  hover, pressed, active, and disabled states. The active state is the latched
+  on-state for Log and Inventory toggles.
 - Pressed, hover, disabled, on, and off states must be fixed-size widget
   variants, not elastic or stretched layout treatments.
 - Include a restart button treatment that can be cropped into idle, hover,

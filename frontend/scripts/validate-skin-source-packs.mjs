@@ -171,13 +171,14 @@ function validateBuildHandoff(prefix, kit, profile) {
 
   for (const [name, rect] of Object.entries(profile.layout.buttons)) {
     const crop = build.crops.find((entry) => entry.path === `${buttonPrefix(name)}-idle.png`);
+    const expectedVariants = (profile.requiredStates.toggleButtons ?? []).includes(name) ? 'toggle-button' : 'button';
     if (!crop) {
       failures.push(`${prefix} build.crops missing ${buttonPrefix(name)}-idle.png`);
       continue;
     }
     validateExactCrop(prefix, `${name} button crop`, crop, { rect });
-    if (crop.variants !== 'button') {
-      failures.push(`${prefix} ${name} button crop must declare variants="button"`);
+    if (crop.variants !== expectedVariants && !(expectedVariants === 'toggle-button' && crop.variants === 'button')) {
+      failures.push(`${prefix} ${name} button crop must declare variants="${expectedVariants}"`);
     }
   }
 

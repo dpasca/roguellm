@@ -11,7 +11,7 @@ const mobileCompact = layoutContract.profiles.mobileCompact;
 const buttonStates = mobilePortrait.requiredStates.buttons;
 const materialKinds = Object.keys(mobilePortrait.materials ?? {});
 const profileRoles = new Set(['default', 'variant', 'prototype', 'legacy']);
-const cropVariantKinds = new Set(['button', 'status-indicator', 'combat-led']);
+const cropVariantKinds = new Set(['button', 'toggle-button', 'status-indicator', 'combat-led']);
 const materialRenderModes = new Set(['tinted', 'source']);
 const metadataTokenPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const renderThemeKeys = [
@@ -101,7 +101,7 @@ async function validateKit(kitPath) {
 
   for (const [name, asset] of Object.entries(kit.assets?.buttons ?? {})) {
     const stateAssets = [];
-    for (const state of buttonStates) {
+    for (const state of buttonStatesForKit(kit, name)) {
       const png = await validateAsset(kitDir, prefix, `${name}.${state}`, {
         ...asset,
         path: `${asset.prefix}-${state}.png`
@@ -196,6 +196,12 @@ function validateRequiredContract(prefix, kit) {
     }
   }
 
+  for (const button of contract.requiredStates.toggleButtons ?? []) {
+    if (!kit.assets?.buttons?.[button]) {
+      failures.push(`${prefix} missing required toggle button asset ${button}`);
+    }
+  }
+
   for (const material of materialKinds) {
     if (!kit.assets?.materials?.[material]) {
       failures.push(`${prefix} missing required material asset ${material}`);
@@ -231,6 +237,20 @@ function validateRequiredContract(prefix, kit) {
     validateRuntimeLayout(prefix, kit, contract);
     validateProductionMobileGeometry(prefix, kit, contract);
   }
+}
+
+function buttonStatesForKit(kit, buttonName) {
+  if (kit.kind !== 'mobilePortrait' && kit.kind !== 'mobileCompact') {
+    return buttonStates;
+  }
+
+  const contract = kit.kind === 'mobileCompact' ? mobileCompact : mobilePortrait;
+  const toggleButtons = new Set(contract.requiredStates.toggleButtons ?? []);
+  if (isProductionMobileMeta(kit.meta) && toggleButtons.has(buttonName)) {
+    return contract.requiredStates.toggleButtonStates ?? buttonStates;
+  }
+
+  return buttonStates;
 }
 
 function validateMetadata(prefix, kit) {
@@ -704,8 +724,8 @@ function validateCropRect(prefix, label, rect, source) {
 
 function validateCropVariantPath(prefix, label, crop) {
   const filename = path.basename(crop.path ?? '');
-  if (crop.variants === 'button' && !filename.endsWith('-idle.png')) {
-    failures.push(`${prefix} ${label}.path must end with -idle.png for button variants`);
+  if ((crop.variants === 'button' || crop.variants === 'toggle-button') && !filename.endsWith('-idle.png')) {
+    failures.push(`${prefix} ${label}.path must end with -idle.png for ${crop.variants} variants`);
   }
 
   if (crop.variants === 'status-indicator' && !filename.endsWith('-ready.png')) {

@@ -34,7 +34,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     formatRectList(profile.regions, liveRegionNotes()),
     '',
     'Button and toggle crop targets:',
-    formatRectList(profile.layout.buttons, buttonNotes(profile.requiredStates.buttons)),
+    formatRectList(profile.layout.buttons, buttonNotes(profile.requiredStates)),
     '',
     'Indicator crop targets:',
     formatRectList(profile.layout.indicators, indicatorNotes(profile.requiredStates)),
@@ -154,10 +154,16 @@ function liveRegionNotes() {
   };
 }
 
-function buttonNotes(states) {
+function buttonNotes(requiredStates) {
+  const toggleButtons = new Set(requiredStates.toggleButtons ?? []);
+  const buttonStates = requiredStates.buttons ?? [];
+  const toggleStates = requiredStates.toggleButtonStates ?? buttonStates;
   return Object.fromEntries(
     ['attack', 'run', 'restart', 'log', 'inventory', 'moveN', 'moveS', 'moveE', 'moveW']
-      .map((name) => [name, `Required states: ${states.join(', ')}.`])
+      .map((name) => [
+        name,
+        `Required states: ${(toggleButtons.has(name) ? toggleStates : buttonStates).join(', ')}.`
+      ])
   );
 }
 

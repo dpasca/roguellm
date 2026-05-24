@@ -406,8 +406,11 @@ const buttonStates = {
   idle: { y: 0, glow: 0.62, shade: 0, alpha: 1 },
   hover: { y: -1, glow: 0.9, shade: 8, alpha: 1 },
   pressed: { y: 2, glow: 0.44, shade: -10, alpha: 1 },
+  active: { y: 0, glow: 1.08, shade: 16, alpha: 1 },
   disabled: { y: 0, glow: 0.12, shade: -48, alpha: 0.62 }
 };
+const coreButtonStateNames = ['idle', 'hover', 'pressed', 'disabled'];
+const toggleButtonStateNames = ['idle', 'hover', 'pressed', 'active', 'disabled'];
 
 for (const variant of variants) {
   generateVariant(variant, standardSkinProfile);
@@ -465,7 +468,7 @@ function generateVariant(variant, profile) {
   const runAsset = assets.buttons.run;
   const restartAsset = assets.buttons.restart;
 
-  for (const state of Object.keys(buttonStates)) {
+  for (const state of coreButtonStateNames) {
     if (!attackAsset.sourceProfile) {
       writePng(outDir, `attack-${state}.png`, variant.premium
         ? premiumActionButtonSvg('ATTACK', attackAsset.width, attackAsset.height, state, variant.action.attack)
@@ -481,12 +484,6 @@ function generateVariant(variant, profile) {
         ? premiumActionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart)
         : actionButtonSvg('RESTART', restartAsset.width, restartAsset.height, state, variant.action.restart));
     }
-    if (!assets.buttons.log.sourceProfile) {
-      writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
-    }
-    if (!assets.buttons.inventory.sourceProfile) {
-      writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
-    }
     if (!assets.buttons.moveN.sourceProfile) {
       writePng(outDir, `dpad-n-${state}.png`, variant.premium ? premiumDpadButtonSvg('n', state, variant) : dpadButtonSvg('n', state, variant));
     }
@@ -498,6 +495,14 @@ function generateVariant(variant, profile) {
     }
     if (!assets.buttons.moveW.sourceProfile) {
       writePng(outDir, `dpad-w-${state}.png`, variant.premium ? premiumDpadButtonSvg('w', state, variant) : dpadButtonSvg('w', state, variant));
+    }
+  }
+  for (const state of toggleButtonStateNames) {
+    if (!assets.buttons.log.sourceProfile) {
+      writePng(outDir, `log-${state}.png`, variant.premium ? premiumToggleSvg('LOG', state, variant) : smallToggleSvg('LOG', state, variant));
+    }
+    if (!assets.buttons.inventory.sourceProfile) {
+      writePng(outDir, `inventory-${state}.png`, variant.premium ? premiumToggleSvg('BAG', state, variant) : smallToggleSvg('BAG', state, variant));
     }
   }
 
@@ -533,9 +538,11 @@ function generateDesktopPrototypeAddons() {
   };
 
   fs.mkdirSync(outDir, { recursive: true });
-  for (const state of Object.keys(buttonStates)) {
+  for (const state of toggleButtonStateNames) {
     writePng(outDir, `log-${state}.png`, desktopToggleSvg('LOG', state, variant));
     writePng(outDir, `inventory-${state}.png`, desktopToggleSvg('BAG', state, variant));
+  }
+  for (const state of coreButtonStateNames) {
     writePng(outDir, `restart-${state}.png`, desktopActionButtonSvg(state, variant.action.restart));
   }
 }
@@ -1261,16 +1268,18 @@ function premiumActionButtonSvg(label, width, height, state, palette) {
 
 function smallToggleSvg(label, state, variant) {
   const style = buttonStates[state];
-  const active = state === 'pressed';
+  const active = state === 'pressed' || state === 'active';
+  const latched = state === 'active';
   const stroke = state === 'disabled' ? '#536060' : active ? '#fff1c7' : variant.accentSoft;
-  const fill = state === 'disabled' ? '#111819' : active ? shift(variant.accentDim, -28) : '#06130b';
-  const text = state === 'disabled' ? '#5c6868' : variant.accentSoft;
+  const fill = state === 'disabled' ? '#111819' : latched ? shift(variant.accentDim, -6) : active ? shift(variant.accentDim, -28) : '#06130b';
+  const text = state === 'disabled' ? '#5c6868' : latched ? '#f3ffe8' : variant.accentSoft;
 
   return svg(46, 32, `
     <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
       <rect x="1" y="4" width="44" height="26" rx="5" fill="#020505" opacity="0.8"/>
       <rect x="3" y="1" width="40" height="26" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
       <rect x="8" y="6" width="30" height="6" rx="3" fill="none" stroke="${stroke}" opacity="${style.glow}"/>
+      ${latched ? `<circle cx="37" cy="8" r="3" fill="${variant.secondary}" opacity="0.95"/>` : ''}
       <text x="23" y="20" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="10" fill="${text}">${label}</text>
     </g>
   `);
@@ -1278,10 +1287,11 @@ function smallToggleSvg(label, state, variant) {
 
 function premiumToggleSvg(label, state, variant) {
   const style = buttonStates[state];
-  const active = state === 'pressed';
+  const active = state === 'pressed' || state === 'active';
+  const latched = state === 'active';
   const stroke = state === 'disabled' ? '#46524f' : active ? '#d8ffd0' : variant.accentSoft;
-  const fill = state === 'disabled' ? '#111716' : active ? '#145d2a' : '#050908';
-  const text = state === 'disabled' ? '#72807b' : variant.accentSoft;
+  const fill = state === 'disabled' ? '#111716' : latched ? shift(variant.accentDim, -2) : active ? '#145d2a' : '#050908';
+  const text = state === 'disabled' ? '#72807b' : latched ? '#f1ffe5' : variant.accentSoft;
 
   return svg(46, 32, `
     <defs>
@@ -1297,6 +1307,7 @@ function premiumToggleSvg(label, state, variant) {
       <rect x="1" y="5" width="44" height="25" rx="4" fill="#010202" opacity="0.88"/>
       <rect x="3" y="2" width="40" height="24" rx="3" fill="#111716" stroke="#485551" stroke-width="1.2"/>
       <rect x="6" y="5" width="34" height="18" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.1"/>
+      ${latched ? `<circle cx="37" cy="8" r="3" fill="${variant.secondary}" stroke="#06100a" stroke-width="1" opacity="0.98"/>` : ''}
       <line x1="9" y1="20" x2="37" y2="20" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow * 0.7}"/>
       <text x="23" y="18" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${text}" filter="url(#toggleGlow)">${label}</text>
     </g>
@@ -1305,10 +1316,11 @@ function premiumToggleSvg(label, state, variant) {
 
 function desktopToggleSvg(label, state, variant) {
   const style = buttonStates[state];
-  const active = state === 'pressed';
+  const active = state === 'pressed' || state === 'active';
+  const latched = state === 'active';
   const stroke = state === 'disabled' ? '#536060' : active ? '#fff1c7' : variant.accentSoft;
-  const fill = state === 'disabled' ? '#111819' : active ? shift(variant.accentDim, -24) : '#06130b';
-  const text = state === 'disabled' ? '#5c6868' : variant.accentSoft;
+  const fill = state === 'disabled' ? '#111819' : latched ? shift(variant.accentDim, -4) : active ? shift(variant.accentDim, -24) : '#06130b';
+  const text = state === 'disabled' ? '#5c6868' : latched ? '#fff9d8' : variant.accentSoft;
 
   return svg(72, 36, `
     <g transform="translate(0 ${style.y})" opacity="${style.alpha}">
@@ -1317,6 +1329,7 @@ function desktopToggleSvg(label, state, variant) {
       <rect x="7" y="5" width="58" height="20" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
       <rect x="11" y="8" width="50" height="5" rx="2.5" fill="none" stroke="${stroke}" opacity="${style.glow}"/>
       <line x1="12" y1="22" x2="60" y2="22" stroke="${stroke}" stroke-width="1.2" opacity="${style.glow * 0.7}"/>
+      ${latched ? `<circle cx="59" cy="10" r="4" fill="${variant.accentSoft}" opacity="0.95"/>` : ''}
       <text x="36" y="21" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="10" fill="${text}">${label}</text>
     </g>
   `);

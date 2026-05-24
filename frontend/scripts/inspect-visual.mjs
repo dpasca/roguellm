@@ -3784,8 +3784,8 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected at least 4 Phaser log rows, got ${metrics.phaserLogRows ?? 'none'}`);
   }
 
-  if (scenario.mode === 'phaser-fixed-workbench-click-log' && phaserButtonState(metrics, 'log') !== 'pressed') {
-    failures.push(`expected Phaser log button pressed after pointer click, got ${phaserButtonState(metrics, 'log') ?? 'none'}`);
+  if (scenario.mode === 'phaser-fixed-workbench-click-log' && phaserButtonState(metrics, 'log') !== 'active') {
+    failures.push(`expected Phaser log button active after pointer click, got ${phaserButtonState(metrics, 'log') ?? 'none'}`);
   }
 
   if (scenario.mode === 'phaser-fixed-workbench-inventory' ||
@@ -3817,8 +3817,8 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     }
   }
 
-  if (scenario.mode === 'phaser-fixed-workbench-click-inventory' && phaserButtonState(metrics, 'inventory') !== 'pressed') {
-    failures.push(`expected Phaser inventory button pressed after pointer click, got ${phaserButtonState(metrics, 'inventory') ?? 'none'}`);
+  if (scenario.mode === 'phaser-fixed-workbench-click-inventory' && phaserButtonState(metrics, 'inventory') !== 'active') {
+    failures.push(`expected Phaser inventory button active after pointer click, got ${phaserButtonState(metrics, 'inventory') ?? 'none'}`);
   }
 
   if (scenario.mode === 'phaser-fixed-workbench-click-move') {
