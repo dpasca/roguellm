@@ -22,6 +22,7 @@ type FixedAssetProfile =
   | 'terminal-green-mobile-compact'
   | 'neon-shrine-mobile-compact'
   | 'ai-cyberdeck-reference-v1'
+  | 'premium-cyberdeck-v2'
   | 'obsidian-rain-proto'
   | 'gold-mobile'
   | 'amber-mobile'
@@ -388,6 +389,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('terminal-green-mobile-compact'),
   createManifestProfile('neon-shrine-mobile-compact'),
   createManifestProfile('ai-cyberdeck-reference-v1'),
+  createManifestProfile('premium-cyberdeck-v2'),
   createManifestProfile('obsidian-rain-proto'),
   createManifestProfile('reference-mobile-v3'),
   createManifestProfile('signal-noir-mobile'),
