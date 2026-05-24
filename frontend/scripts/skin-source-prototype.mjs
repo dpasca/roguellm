@@ -5,7 +5,9 @@ import { buildStateSheetLayout } from './skin-state-sheet-layout.mjs';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
+const artBlueprintPath = path.join(rootDir, 'src/skins/SKIN_ART_BLUEPRINT_V1.json');
 const contract = JSON.parse(await fs.readFile(contractPath, 'utf8'));
+const artBlueprint = JSON.parse(await fs.readFile(artBlueprintPath, 'utf8'));
 const parsedArgs = parseArgs(process.argv.slice(2));
 const skinId = parsedArgs.positionals[0];
 const profileName = parsedArgs.positionals[1] ?? 'mobileCompact';
@@ -29,7 +31,8 @@ await writePng(path.join(outDir, 'source-chassis.png'), chassisSvg(profile, them
 await writePng(path.join(outDir, 'source-widgets.png'), chassisSvg(profile, theme, { widgets: true }));
 await writePng(path.join(outDir, 'source-state-sheet.png'), stateSheetSvg(profile, theme));
 await writePng(path.join(outDir, 'source-materials.png'), materialSheetSvg(theme));
-await fs.writeFile(path.join(outDir, 'SOURCE_NOTES.md'), sourceNotes(skinId, profileName, theme), 'utf8');
+await fs.writeFile(path.join(outDir, 'ART_DIRECTION.md'), artDirection(skinId, profileName, theme, artBlueprint), 'utf8');
+await fs.writeFile(path.join(outDir, 'SOURCE_NOTES.md'), sourceNotes(skinId, profileName, theme, artBlueprint), 'utf8');
 
 console.error(`Wrote source prototype artboards to ${path.relative(process.cwd(), outDir)}`);
 
@@ -725,15 +728,62 @@ function themeFor(name) {
   return themes[name] ?? themes['obsidian-rain'];
 }
 
-function sourceNotes(skinId, profileName, theme) {
+function artDirection(skinId, profileName, theme, blueprint) {
+  return [
+    `# ${skinId} Art Direction`,
+    '',
+    `Blueprint: ${blueprint.name} ${blueprint.version}`,
+    `Contract profile: ${profileName}`,
+    `Prototype theme preset: ${theme.name}`,
+    `Primary blueprint target: ${blueprint.targetProfile}`,
+    '',
+    blueprint.intent,
+    '',
+    blueprint.visualTarget,
+    '',
+    '## Source Responsibilities',
+    '',
+    ...Object.entries(blueprint.sourceFiles ?? {}).flatMap(([fileName, source]) => [
+      `### ${fileName}`,
+      '',
+      source.purpose,
+      '',
+      ...(source.must?.length ? ['Must:', markdownList(source.must), ''] : []),
+      ...(source.mustNot?.length ? ['Must not:', markdownList(source.mustNot), ''] : [])
+    ]),
+    '## Widget Families',
+    '',
+    ...(blueprint.widgetFamilies ?? []).flatMap((family) => [
+      `### ${titleFromId(family.id)}`,
+      '',
+      `Assets: \`${(family.assets ?? []).join('`, `')}\``,
+      `Shape: ${family.shape}`,
+      family.states?.length ? `States: \`${family.states.join('`, `')}\`` : '',
+      '',
+      ...(family.must?.length ? ['Must:', markdownList(family.must), ''] : [])
+    ]),
+    '## Quality Gates',
+    '',
+    markdownList(blueprint.qualityGates ?? []),
+    '',
+    '## Forbidden Dynamic Content',
+    '',
+    markdownList(blueprint.forbiddenDynamicContent ?? []),
+    ''
+  ].join('\n');
+}
+
+function sourceNotes(skinId, profileName, theme, blueprint) {
   return [
     `# ${skinId} Source Prototype`,
     '',
     `Profile: ${profileName}`,
     `Theme: ${theme.name}`,
+    `Art blueprint: ${blueprint.name} ${blueprint.version}`,
     '',
     'Generated files:',
     '',
+    '- `ART_DIRECTION.md`: premium mobile visual target and manual rejection gates.',
     '- `source-chassis.png`: clean full-size chassis artboard.',
     '- `source-widgets.png`: full-size widget source with fixed button and indicator crops.',
     '- `source-state-sheet.png`: fixed widget states with separate authored slots.',
@@ -758,6 +808,18 @@ function sourceNotes(skinId, profileName, theme) {
     '```',
     ''
   ].join('\n');
+}
+
+function markdownList(values) {
+  return values.map((value) => `- ${value}`).join('\n');
+}
+
+function titleFromId(id) {
+  return String(id ?? '')
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ');
 }
 
 function labelFromId(id) {
