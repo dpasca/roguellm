@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { buildStateSheetLayout, stateSheetCropsForProfile, stateSheetSourceFile } from './skin-state-sheet-layout.mjs';
 
 const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
@@ -35,9 +36,12 @@ await fs.writeFile(outputPath, review, 'utf8');
 console.error(`Wrote ${path.relative(process.cwd(), outputPath)}`);
 
 async function buildReview(dir, skinKit, selectedProfile) {
+  const stateSheetLayout = buildStateSheetLayout(selectedProfile);
+  const stateSheetRequired = (skinKit.build?.crops ?? []).some((crop) => path.basename(crop.source ?? '') === stateSheetSourceFile);
   const sources = {
     chassis: await readOptionalImage(dir, 'source-chassis.png'),
     widgets: await readOptionalImage(dir, 'source-widgets.png'),
+    stateSheet: await readOptionalImage(dir, stateSheetSourceFile),
     materials: await readOptionalImage(dir, 'source-materials.png')
   };
   const expected = selectedProfile.size;
@@ -76,6 +80,9 @@ async function buildReview(dir, skinKit, selectedProfile) {
       rectLayer('indicator crops', selectedProfile.layout.indicators, '#68d8ff', 'rgba(104,216,255,0.16)'),
       rectLayer('meter crops', selectedProfile.layout.fills, '#ff6de8', 'rgba(255,109,232,0.15)', true)
     ]),
+    sourcePanel(stateSheetSourceFile, sources.stateSheet, stateSheetLayout.size, [
+      rectLayer('state crops', stateSheetRectMap(selectedProfile), '#80ff74', 'rgba(128,255,116,0.10)')
+    ], { optional: !stateSheetRequired }),
     materialPanel(sources.materials, selectedProfile.materials),
     '<section class="notes">',
     '<h2>Review Notes</h2>',
@@ -102,10 +109,10 @@ function checklist(issues, warnings) {
   return `<section class="checklist"><h2>Preflight</h2><ul>${content}</ul></section>`;
 }
 
-function sourcePanel(title, source, expectedSize, layers) {
+function sourcePanel(title, source, expectedSize, layers, options = {}) {
   const image = source
     ? `<img src="${source.dataUri}" alt="${escapeHtml(title)}">`
-    : `<div class="missing">Missing ${escapeHtml(title)}</div>`;
+    : `<div class="missing">${options.optional ? `Optional ${escapeHtml(title)} not present` : `Missing ${escapeHtml(title)}`}</div>`;
   const width = source?.width ?? expectedSize.width;
   const height = source?.height ?? expectedSize.height;
 
@@ -191,6 +198,16 @@ function metricsPanel(metrics) {
       </tr>
     `).join('\n')
     : '<tr><td colspan="4">No material metrics available.</td></tr>';
+  const stateSheetRows = metrics.stateSheetCrops.length > 0
+    ? metrics.stateSheetCrops.map((metric) => `
+      <tr class="${metric.warning ? 'warn-row' : ''}">
+        <td>${escapeHtml(metric.name)}</td>
+        <td>${formatPercent(metric.alphaMean)}</td>
+        <td>${formatNumber(metric.contrast, 4)}</td>
+        <td>${formatNumber(metric.edgeMean, 4)}</td>
+      </tr>
+    `).join('\n')
+    : '<tr><td colspan="4">No source-owned state-sheet metrics available.</td></tr>';
 
   return `
     <section class="panel metrics">
@@ -205,6 +222,11 @@ function metricsPanel(metrics) {
       <table>
         <thead><tr><th>Crop</th><th>Alpha</th><th>Contrast</th><th>Edge Mean</th></tr></thead>
         <tbody>${widgetRows}</tbody>
+      </table>
+      <h3>State Sheet Crops</h3>
+      <table>
+        <thead><tr><th>State Crop</th><th>Alpha</th><th>Contrast</th><th>Edge Mean</th></tr></thead>
+        <tbody>${stateSheetRows}</tbody>
       </table>
       <h3>Material Tile Seams</h3>
       <table>
@@ -231,6 +253,12 @@ function rectLayer(label, rects, stroke, fill, dashed = false) {
   return { label, stroke, svg };
 }
 
+function stateSheetRectMap(selectedProfile) {
+  return Object.fromEntries(
+    stateSheetCropsForProfile(selectedProfile).map((crop) => [`${crop.id}.${crop.state}`, crop.rect])
+  );
+}
+
 function legend(layers) {
   return `<div class="legend">${layers.map((layer) => `<span><i style="background:${layer.stroke}"></i>${escapeHtml(layer.label)}</span>`).join('')}</div>`;
 }
@@ -255,6 +283,8 @@ function grid(width, height) {
 function reviewIssues(sources, skinKit, selectedProfile) {
   const issues = [];
   const expected = selectedProfile.size;
+  const stateSheetLayout = buildStateSheetLayout(selectedProfile);
+  const buildUsesStateSheet = (skinKit.build?.crops ?? []).some((crop) => path.basename(crop.source ?? '') === stateSheetSourceFile);
 
   for (const [name, source] of Object.entries({ chassis: sources.chassis, widgets: sources.widgets })) {
     if (!source) {
@@ -270,6 +300,20 @@ function reviewIssues(sources, skinKit, selectedProfile) {
     issues.push('Missing source-materials.png');
   } else if (sources.materials.width < 152 || sources.materials.height < 304) {
     issues.push(`source-materials.png is ${sources.materials.width}x${sources.materials.height}; expected at least 152x304`);
+  }
+
+  if (buildUsesStateSheet || sources.stateSheet) {
+    if (!sources.stateSheet) {
+      issues.push(`Missing ${stateSheetSourceFile}`);
+    } else if (
+      sources.stateSheet.width !== stateSheetLayout.size.width ||
+      sources.stateSheet.height !== stateSheetLayout.size.height
+    ) {
+      issues.push(
+        `${stateSheetSourceFile} is ${sources.stateSheet.width}x${sources.stateSheet.height}; ` +
+        `expected ${stateSheetLayout.size.width}x${stateSheetLayout.size.height}`
+      );
+    }
   }
 
   if (skinKit.build?.source !== 'source-widgets.png') {
@@ -328,8 +372,19 @@ async function reviewMetrics(sources, selectedProfile) {
           })
         ]))
     : [];
+  const stateSheetCrops = sources.stateSheet
+    ? await Promise.all(stateSheetCropsForProfile(selectedProfile)
+        .map(async (crop) => {
+          const metrics = await imageCropMetrics(sources.stateSheet.path, crop.rect);
+          return {
+            name: `${crop.id}.${crop.state}`,
+            ...metrics,
+            warning: widgetCropLooksWeak(metrics)
+          };
+        }))
+    : [];
 
-  return { liveRegions, widgetCrops, materials };
+  return { liveRegions, widgetCrops, stateSheetCrops, materials };
 }
 
 function reviewWarnings(metrics) {
@@ -342,6 +397,11 @@ function reviewWarnings(metrics) {
   for (const metric of metrics.widgetCrops.filter((entry) => entry.warning)) {
     warnings.push(
       `Widget crop ${metric.name} may be too empty or too flat; inspect before deriving button/indicator states.`
+    );
+  }
+  for (const metric of metrics.stateSheetCrops.filter((entry) => entry.warning)) {
+    warnings.push(
+      `State-sheet crop ${metric.name} may be too empty or too flat; inspect the authored state before build.`
     );
   }
   for (const metric of metrics.materials.filter((entry) => entry.warning)) {
