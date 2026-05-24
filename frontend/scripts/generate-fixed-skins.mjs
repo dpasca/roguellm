@@ -1060,6 +1060,23 @@ function premiumThemeAccents(variant, height) {
           <path d="M72 ${controlY + 8}C78 ${controlY + 28} 125 ${controlY + 28} 132 ${controlY + 8}" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.36"/>
           <path d="M209 ${controlY + 10}H352L358 ${controlY + 18}V${controlY + 54}L350 ${controlY + 63}H211L204 ${controlY + 54}V${controlY + 18}Z" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.34"/>
           <path d="M209 ${controlY + 80}H352L358 ${controlY + 88}V${controlY + 124}L350 ${controlY + 133}H211L204 ${controlY + 124}V${controlY + 88}Z" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.34"/>
+          <g opacity="${compact ? 0.94 : 0.72}">
+            <path d="M35 ${mapY + 52}H126L148 ${mapY + 74}H244L266 ${mapY + 52}H356V${mapY + 78}H276L252 ${mapY + 101}H140L116 ${mapY + 78}H35Z" fill="${variant.secondary}" opacity="0.055"/>
+            <path d="M36 ${mapBottom - 68}H116L140 ${mapBottom - 92}H252L276 ${mapBottom - 68}H354V${mapBottom - 43}H266L244 ${mapBottom - 21}H148L126 ${mapBottom - 43}H36Z" fill="${variant.accentSoft}" opacity="0.046"/>
+            <circle cx="102" cy="${controlY + (compact ? 77 : 96)}" r="${compact ? 34 : 42}" fill="${variant.secondary}" opacity="0.035" stroke="${variant.secondary}" stroke-width="4"/>
+            <circle cx="102" cy="${controlY + (compact ? 77 : 96)}" r="${compact ? 21 : 27}" fill="none" stroke="${variant.accentSoft}" stroke-width="1.8" opacity="0.28"/>
+            ${Array.from({ length: compact ? 7 : 9 }, (_, index) => {
+              const x = 39 + index * 13;
+              const y = controlY + (index % 2 === 0 ? 30 : 102);
+              return `<path d="M${x} ${y}l7 -4l7 4v8l-7 4l-7 -4z" fill="${variant.secondary}" opacity="${index % 2 === 0 ? 0.22 : 0.14}" stroke="${variant.accentSoft}" stroke-width="0.8"/>`;
+            }).join('')}
+          </g>
+          <g opacity="${compact ? 0.62 : 0.48}">
+            ${Array.from({ length: 4 }, (_, index) => {
+              const x = 246 + index * 28;
+              return `<path d="M${x} ${mapY + 54}v${mapHeight - 112}M${x - 9} ${mapY + 68}h18M${x - 9} ${mapBottom - 68}h18" stroke="${variant.secondary}" stroke-width="2" stroke-linecap="round"/>`;
+            }).join('')}
+          </g>
           ${Array.from({ length: 5 }, (_, index) => `<circle cx="${155 + index * 20}" cy="${bottomY + 4}" r="${index === 2 ? 4 : 2.6}" fill="${index === 2 ? variant.secondary : variant.accent}" opacity="${index === 2 ? 0.82 : 0.52}"/>`).join('')}
         </g>
       `;
@@ -1077,6 +1094,18 @@ function premiumThemeAccents(variant, height) {
           <path d="M24 286C72 252 105 314 154 285S239 254 288 285S336 316 365 292" fill="none" stroke="${variant.secondary}" stroke-width="1.7" opacity="0.38"/>
           <path d="M31 ${controlY + 16}H58M31 ${controlY + 32}H46M31 ${controlY + 48}H62M331 ${controlY + 18}H360M345 ${controlY + 34}H360M327 ${controlY + 50}H360" stroke="${variant.accentSoft}" stroke-width="2" stroke-linecap="round" opacity="0.38"/>
           <path d="M206 ${controlY + 64}L356 ${controlY + 18}M206 ${controlY + 134}L356 ${controlY + 88}" stroke="${variant.secondary}" stroke-width="1.1" opacity="0.26"/>
+          <g opacity="${compact ? 0.98 : 0.74}">
+            <path d="M28 ${mapY + 60}C68 ${mapY + 30} 96 ${mapY + 92} 136 ${mapY + 60}S204 ${mapY + 28} 244 ${mapY + 60}S314 ${mapY + 94} 362 ${mapY + 58}" fill="none" stroke="${variant.secondary}" stroke-width="4" stroke-linecap="round" opacity="0.20"/>
+            <path d="M28 ${mapBottom - 62}C70 ${mapBottom - 32} 103 ${mapBottom - 94} 146 ${mapBottom - 62}S216 ${mapBottom - 30} 258 ${mapBottom - 62}S326 ${mapBottom - 96} 362 ${mapBottom - 66}" fill="none" stroke="${variant.accent}" stroke-width="3" stroke-linecap="round" opacity="0.22"/>
+            <path d="M22 ${mapY + 94}C82 ${mapY + 128} 111 ${mapY + 108} 154 ${mapY + 138}S246 ${mapY + 172} 292 ${mapY + 130}S344 ${mapY + 92} 368 ${mapY + 124}V${mapY + 176}C320 ${mapY + 142} 278 ${mapY + 198} 226 ${mapY + 164}S138 ${mapY + 120} 92 ${mapY + 154}S42 ${mapY + 172} 22 ${mapY + 148}Z" fill="${variant.accent}" opacity="0.045"/>
+            <path d="M294 ${mapY + 34}A42 42 0 0 1 344 ${mapY + 84}" fill="none" stroke="${variant.accentSoft}" stroke-width="2.2" opacity="0.24"/>
+            <path d="M284 ${mapY + 24}A58 58 0 0 1 354 ${mapY + 94}" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.18"/>
+            ${Array.from({ length: compact ? 8 : 11 }, (_, index) => `<circle cx="${48 + index * 38}" cy="${mapY + 196 + (index % 3) * 8}" r="${index % 2 === 0 ? 2.4 : 1.6}" fill="${index % 2 === 0 ? variant.accent : variant.secondary}" opacity="${index % 2 === 0 ? 0.34 : 0.22}"/>`).join('')}
+          </g>
+          <g opacity="${compact ? 0.74 : 0.52}">
+            ${Array.from({ length: 8 }, (_, index) => `<rect x="${35 + index * 10}" y="${controlY + 28 + (index % 3) * 7}" width="4" height="${50 + (index % 4) * 10}" rx="2" fill="${index % 2 === 0 ? variant.accent : variant.secondary}" opacity="${index % 2 === 0 ? 0.32 : 0.22}"/>`).join('')}
+            ${Array.from({ length: 4 }, (_, index) => `<path d="M${222 + index * 28} ${controlY + 26}C${254 + index * 9} ${controlY + 52} ${254 + index * 9} ${controlY + 90} ${222 + index * 28} ${controlY + 116}" fill="none" stroke="${variant.secondary}" stroke-width="1.5" opacity="0.36"/>`).join('')}
+          </g>
           <text x="194" y="36" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.secondary}" opacity="0.62">NOIR SIGNAL PATH</text>
         </g>
       `;
