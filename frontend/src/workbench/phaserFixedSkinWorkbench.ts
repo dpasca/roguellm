@@ -578,6 +578,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
   private latestReadoutDetailsDrawn = 0;
+  private playerReadoutDetailsDrawn = 0;
   private logRowsDrawn = 0;
   private logOverflowCuesDrawn = 0;
   private logReadoutDetailsDrawn = 0;
@@ -676,6 +677,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
     this.latestReadoutDetailsDrawn = 0;
+    this.playerReadoutDetailsDrawn = 0;
     this.logRowsDrawn = 0;
     this.logOverflowCuesDrawn = 0;
     this.logReadoutDetailsDrawn = 0;
@@ -737,6 +739,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       .sort()
       .join(',');
     document.body.dataset.phaserLatestReadoutDetails = String(this.latestReadoutDetailsDrawn);
+    document.body.dataset.phaserPlayerReadoutDetails = String(this.playerReadoutDetailsDrawn);
     document.body.dataset.phaserLogEntryCount = String(this.viewState.logs.length);
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
     document.body.dataset.phaserLogOverflowCues = String(this.logOverflowCuesDrawn);
@@ -1622,11 +1625,48 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   ): void {
     const graphics = this.add.graphics();
     const statsBounds = unionRects(layout.stats.flatMap((slot) => [slot.labelRect, slot.valueRect]));
+    const hpLabelPlate = {
+      x: layout.hpLabel.x - 4,
+      y: layout.hpLabel.y - 3,
+      width: layout.hpLabel.width + 14,
+      height: layout.hpLabel.height + 6
+    };
+    const hpValuePlate = {
+      x: layout.hpValue.x - 5,
+      y: layout.hpValue.y - 3,
+      width: layout.hpValue.width + 10,
+      height: layout.hpValue.height + 6
+    };
 
     graphics.fillStyle(0x020504, 0.34);
     graphics.fillRoundedRect(panel.x + 5, panel.y + 5, panel.width - 10, panel.height - 10, 5);
     graphics.lineStyle(1, this.theme.primary, 0.16);
     graphics.strokeRoundedRect(panel.x + 5.5, panel.y + 5.5, panel.width - 11, panel.height - 11, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.32);
+    drawCornerBrackets(
+      graphics,
+      panel.x + 8,
+      panel.y + 8,
+      panel.x + panel.width - 8,
+      panel.y + panel.height - 8,
+      12
+    );
+    graphics.lineStyle(1, this.theme.secondary, 0.18);
+    graphics.lineBetween(panel.x + 12, panel.y + 28, panel.x + panel.width - 12, panel.y + 28);
+
+    graphics.fillStyle(0x020504, 0.78);
+    graphics.fillRoundedRect(hpLabelPlate.x, hpLabelPlate.y, hpLabelPlate.width, hpLabelPlate.height, 4);
+    graphics.fillRoundedRect(hpValuePlate.x, hpValuePlate.y, hpValuePlate.width, hpValuePlate.height, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.42);
+    graphics.strokeRoundedRect(hpLabelPlate.x + 0.5, hpLabelPlate.y + 0.5, hpLabelPlate.width - 1, hpLabelPlate.height - 1, 4);
+    graphics.strokeRoundedRect(hpValuePlate.x + 0.5, hpValuePlate.y + 0.5, hpValuePlate.width - 1, hpValuePlate.height - 1, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.2);
+    graphics.lineBetween(
+      hpLabelPlate.x + hpLabelPlate.width + 4,
+      hpLabelPlate.y + 8,
+      hpValuePlate.x - 6,
+      hpValuePlate.y + 8
+    );
 
     graphics.fillStyle(0x020504, 0.72);
     graphics.fillRoundedRect(hpFill.x - 4, hpFill.y - 4, hpFill.width + 8, hpFill.height + 8, 3);
@@ -1647,6 +1687,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.fillRoundedRect(statsBounds.x - 4, statsBounds.y - 3, statsBounds.width + 8, statsBounds.height + 5, 4);
       graphics.lineStyle(1, this.theme.primary, 0.18);
       graphics.strokeRoundedRect(statsBounds.x - 3.5, statsBounds.y - 2.5, statsBounds.width + 7, statsBounds.height + 4, 4);
+      graphics.lineStyle(1, 0xffffff, 0.08);
+      graphics.lineBetween(statsBounds.x - 1, statsBounds.y, statsBounds.x + statsBounds.width + 1, statsBounds.y);
       for (let index = 1; index < layout.stats.length; index += 1) {
         const previous = layout.stats[index - 1];
         const current = layout.stats[index];
@@ -1654,8 +1696,32 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         graphics.lineStyle(1, this.theme.controlFrame, 0.3);
         graphics.lineBetween(x, statsBounds.y - 1, x, statsBounds.y + statsBounds.height + 1);
       }
+      for (const slot of layout.stats) {
+        const accent = parseHexColor(statAccentColor(slot.id), this.theme.primary);
+        const left = slot.labelRect.x - 2;
+        const top = slot.labelRect.y - 3;
+        const right = slot.valueRect.x + slot.valueRect.width + 2;
+        const bottom = slot.valueRect.y + slot.valueRect.height + 1;
+        const width = Math.max(8, right - left);
+        const height = Math.max(8, bottom - top);
+        graphics.fillStyle(accent, slot.id === 'tile' ? 0.12 : 0.08);
+        graphics.fillRoundedRect(left, top, width, height, 3);
+        graphics.lineStyle(1, accent, slot.id === 'tile' ? 0.46 : 0.3);
+        graphics.lineBetween(left + 3, top + 1, right - 3, top + 1);
+        graphics.fillStyle(accent, slot.id === 'tile' ? 0.88 : 0.64);
+        graphics.fillRoundedRect(left + 3, top + height - 5, 5, 2, 1);
+        graphics.lineStyle(1, accent, 0.2);
+        graphics.lineBetween(slot.valueRect.x - 4, top + 4, slot.valueRect.x - 4, bottom - 4);
+      }
+      const readoutRailY = Math.min(panel.y + panel.height - 6, statsBounds.y + statsBounds.height - 2);
+      for (let index = 0; index < 12; index += 1) {
+        const x = statsBounds.x + 4 + index * 8;
+        graphics.fillStyle(index % 4 === 0 ? this.theme.secondary : this.theme.primary, index % 4 === 0 ? 0.58 : 0.25);
+        graphics.fillRoundedRect(x, readoutRailY, 4, 2, 1);
+      }
     }
 
+    this.playerReadoutDetailsDrawn += statsBounds ? 48 : 32;
     this.hudDetailsDrawn += statsBounds ? 25 : 18;
   }
 
