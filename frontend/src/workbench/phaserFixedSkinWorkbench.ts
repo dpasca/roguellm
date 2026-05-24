@@ -578,6 +578,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly sourceMaterialKindsDrawn = new Set<FixedSkinMaterialKind>();
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
   private latestReadoutDetailsDrawn = 0;
+  private titleReadoutDetailsDrawn = 0;
   private playerReadoutDetailsDrawn = 0;
   private logRowsDrawn = 0;
   private logOverflowCuesDrawn = 0;
@@ -677,6 +678,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.sourceMaterialKindsDrawn.clear();
     this.buttonStatesDrawn.clear();
     this.latestReadoutDetailsDrawn = 0;
+    this.titleReadoutDetailsDrawn = 0;
     this.playerReadoutDetailsDrawn = 0;
     this.logRowsDrawn = 0;
     this.logOverflowCuesDrawn = 0;
@@ -739,6 +741,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       .sort()
       .join(',');
     document.body.dataset.phaserLatestReadoutDetails = String(this.latestReadoutDetailsDrawn);
+    document.body.dataset.phaserTitleReadoutDetails = String(this.titleReadoutDetailsDrawn);
     document.body.dataset.phaserPlayerReadoutDetails = String(this.playerReadoutDetailsDrawn);
     document.body.dataset.phaserLogEntryCount = String(this.viewState.logs.length);
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
@@ -1559,23 +1562,58 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private drawTitleReadoutHardware(layout: FixedSkinRuntimeLayout['title']): void {
     const rect = this.profile.regions.title;
     const graphics = this.add.graphics();
+    const titlePlate = {
+      x: layout.gameTitle.x - 5,
+      y: layout.gameTitle.y - 2,
+      width: layout.gameTitle.width + 8,
+      height: layout.gameTitle.height + 4
+    };
+    const iconPlate = {
+      x: layout.playerIcon.x - 5,
+      y: layout.playerIcon.y - 5,
+      width: layout.playerIcon.width + 10,
+      height: layout.playerIcon.height + 10
+    };
+
     graphics.fillStyle(0x020504, 0.42);
     graphics.fillRoundedRect(rect.x - 3, rect.y - 2, rect.width + 6, rect.height + 4, 6);
     graphics.lineStyle(1, this.theme.primary, 0.24);
     graphics.strokeRoundedRect(rect.x - 2.5, rect.y - 1.5, rect.width + 5, rect.height + 3, 6);
+    graphics.fillStyle(0x020504, 0.52);
+    graphics.fillRoundedRect(titlePlate.x, titlePlate.y, titlePlate.width, titlePlate.height, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.2);
+    graphics.strokeRoundedRect(titlePlate.x + 0.5, titlePlate.y + 0.5, titlePlate.width - 1, titlePlate.height - 1, 5);
     graphics.fillStyle(this.theme.primary, 0.11);
-    graphics.fillRoundedRect(layout.playerIcon.x - 4, layout.playerIcon.y - 4, layout.playerIcon.width + 8, layout.playerIcon.height + 8, 5);
+    graphics.fillRoundedRect(iconPlate.x, iconPlate.y, iconPlate.width, iconPlate.height, 5);
     graphics.lineStyle(1, this.theme.primary, 0.42);
-    graphics.strokeRoundedRect(layout.playerIcon.x - 3.5, layout.playerIcon.y - 3.5, layout.playerIcon.width + 7, layout.playerIcon.height + 7, 5);
+    graphics.strokeRoundedRect(iconPlate.x + 0.5, iconPlate.y + 0.5, iconPlate.width - 1, iconPlate.height - 1, 5);
+    graphics.lineStyle(1, this.theme.primary, 0.28);
+    graphics.lineBetween(iconPlate.x + iconPlate.width + 3, rect.y + 9, layout.gameTitle.x - 8, rect.y + 9);
+    graphics.lineStyle(1, this.theme.secondary, 0.18);
+    graphics.lineBetween(iconPlate.x + iconPlate.width + 3, rect.y + rect.height - 8, layout.gameTitle.x - 8, rect.y + rect.height - 8);
     graphics.lineStyle(1, this.theme.primary, 0.35);
     graphics.lineBetween(layout.gameTitle.x, rect.y + rect.height - 4, layout.gameTitle.x + layout.gameTitle.width, rect.y + rect.height - 4);
     graphics.lineStyle(1, 0xffffff, 0.1);
     graphics.lineBetween(layout.gameTitle.x, rect.y + 4, layout.gameTitle.x + layout.gameTitle.width, rect.y + 4);
+    graphics.lineStyle(1, this.theme.primary, 0.18);
+    drawCornerBrackets(
+      graphics,
+      rect.x + 2,
+      rect.y + 2,
+      rect.x + rect.width - 2,
+      rect.y + rect.height - 2,
+      7
+    );
     for (let index = 0; index < 5; index += 1) {
       const alpha = 0.18 + index * 0.08;
       graphics.fillStyle(index < 3 ? this.theme.primary : this.theme.secondary, alpha);
       graphics.fillRoundedRect(rect.x + rect.width - 46 + index * 8, rect.y + 6, 4, 8 + index, 2);
     }
+    for (let index = 0; index < 4; index += 1) {
+      graphics.fillStyle(index === 0 ? this.theme.secondary : this.theme.primary, index === 0 ? 0.78 : 0.34);
+      graphics.fillRoundedRect(rect.x + rect.width - 18 + index * 4, rect.y + rect.height - 8, 2, 2, 1);
+    }
+    this.titleReadoutDetailsDrawn += 30;
     this.hudDetailsDrawn += 12;
   }
 
