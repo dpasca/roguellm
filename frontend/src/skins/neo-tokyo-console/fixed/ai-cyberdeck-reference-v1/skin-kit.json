@@ -1,14 +1,15 @@
 {
   "id": "ai-cyberdeck-reference-v1",
   "meta": {
-    "label": "AI Cyberdeck Reference",
+    "label": "Rain City Cyberdeck",
     "family": "Generated Contract V1",
-    "role": "prototype",
+    "role": "variant",
     "tags": [
-      "ai-reference",
       "cyberpunk",
       "handheld",
-      "rain-city"
+      "rain-city",
+      "premium",
+      "short-phone"
     ],
     "mood": [
       "premium",
@@ -20,7 +21,7 @@
       "magenta",
       "brass"
     ],
-    "defaultPriority": 0,
+    "defaultPriority": 98,
     "generation": "imagegen-reference-import"
   },
   "kind": "mobileCompact",

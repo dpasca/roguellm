@@ -1,8 +1,8 @@
-# AI Cyberdeck Reference Reference Import
+# Rain City Cyberdeck Reference Import
 
 Skin id: `ai-cyberdeck-reference-v1`
 Profile: `mobileCompact`
-Role: `prototype`
+Role: `variant`
 Prototype theme preset: `neon-shrine`
 
 This source pack was seeded from a local image-generation bitmap reference that
@@ -20,7 +20,7 @@ Promotion checks:
 ```bash
 pnpm -C frontend validate:skin-source-packs src/skins/neo-tokyo-console/fixed/ai-cyberdeck-reference-v1
 pnpm -C frontend validate:skins
-VISUAL_SCENARIOS=mobile-short-phaser-ai-reference-fixed-workbench,mobile-short-phaser-ai-reference-fixed-workbench-log,mobile-short-phaser-ai-reference-fixed-workbench-inventory pnpm -C frontend inspect:visual
+VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual
 ```
 
-This is a runtime-selectable prototype, not production default art.
+This is now a production compact variant and the short-mobile default.

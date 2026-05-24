@@ -34,7 +34,7 @@ const fixedWorkbenchProfileUrl = (profile) =>
 const phaserFixedWorkbenchProfileUrl = (profile, extraParams = {}) =>
   withQueryParams(defaultFixedWorkbenchProfileUrl(profile), extraParams);
 const defaultFixedProfile = 'reference-mobile-v3';
-const compactFixedProfile = 'neon-shrine-mobile-compact';
+const compactFixedProfile = 'ai-cyberdeck-reference-v1';
 const desktopFixedProfile = 'desktop-wide';
 const sourceMaterialPhaserProfiles = new Set([
   'terminal-green-mobile-compact',

@@ -445,11 +445,14 @@ fail plainly instead of loading a stylesheet-backed fallback.
 - `reference-mobile-v3`: mobile portrait default, using the gold layout
   proportions with richer reference-style chrome and full terminal/drawer
   coverage.
-- `neon-shrine-mobile-compact`: `390x667` short-phone profile selected
-  automatically on short mobile viewports; it is the current visual baseline for
-  source-owned compact skins, with clean source artboards, authored state-sheet
-  controls, source-color material tiles, jade phosphor, magenta combat hardware,
-  and brass inlays.
+- `ai-cyberdeck-reference-v1`: `390x667` short-phone variant promoted from an
+  AI-generated full-device reference through the import sanitizer. It is the
+  current short-mobile default because its sanitized fixed chassis reads as the
+  most coherent handheld cyberdeck.
+- `neon-shrine-mobile-compact`: earlier `390x667` short-phone visual baseline
+  for source-owned compact skins, with clean source artboards, authored
+  state-sheet controls, source-color material tiles, jade phosphor, magenta
+  combat hardware, and brass inlays.
 - `reference-mobile-compact`: older `390x667` short-phone profile kept as a
   production comparison target; it has compact geometry and reuses the
   reference control sprites.
@@ -468,10 +471,6 @@ fail plainly instead of loading a stylesheet-backed fallback.
   green-screen, and retro-tech requests; it uses compact geometry plus its own
   chassis, fixed-state controls, indicators, and source-color material
   tiles/frames.
-- `ai-cyberdeck-reference-v1`: `390x667` prototype promoted from an
-  AI-generated full-device reference through the import sanitizer. It is
-  selectable for Phaser review but kept out of production cycling until human
-  review accepts the visual quality.
 - `gold-mobile`: deterministic layout target and terminal-flow quality gate.
 - `amber-mobile`: second deterministic mobile profile proving the same fixed
   widget contract can support theme variants without layout changes.
