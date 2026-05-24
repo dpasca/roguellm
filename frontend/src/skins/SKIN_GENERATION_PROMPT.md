@@ -40,7 +40,8 @@ image:
 - `source-state-sheet.png`: exact-size fixed widget state sheet for premium
   skins. It owns every button, toggle, status, and LED state in fixed slots, so
   hover, pressed, active, disabled, ready, thinking, error, on, and off states
-  can have authored lighting and depth.
+  can have authored lighting and depth. It is required before a generated source
+  pack can be promoted to a `default` or `variant` skin role.
 - `source-materials.png`: repeat-safe panel/LCD/button fill tiles and transparent
   nine-slice frames. Material detail must be tile-safe or frame-safe, never a
   stretched decorative panel.
@@ -121,7 +122,7 @@ optional chassis crop `source` paths and run:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-issue
 pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
 pnpm -C frontend validate:skins
 ```
@@ -146,4 +147,6 @@ if material detail crosses into the Phaser text/icon slots.
 cleanliness, widget/state-sheet crop occupancy/contrast, and material seam
 deltas. The `--json` report records issue and warning counts for automation.
 Use `--fail-on-issue` in promotion scripts, and treat yellow warnings as review
-prompts before building or promoting a generated skin.
+prompts before building or promoting a generated skin. A generated source pack
+with role `default` or `variant` must use `source-state-sheet.png`; prototype
+skins may still derive states while exploring.

@@ -177,6 +177,12 @@ function validateBuildHandoff(prefix, kit, profile) {
   const stateSheetCrops = stateSheetCropsForProfile(profile);
   const hasStateSheetCrops = build.crops.some((crop) => isStateSheetSource(crop.source));
 
+  if (sourcePackRequiresStateSheet(kit) && !hasStateSheetCrops) {
+    failures.push(
+      `${prefix} promoted source packs with role="${kit.meta?.role}" must crop button, toggle, status, and LED states from ${stateSheetSourceFile}`
+    );
+  }
+
   for (const [name, rect] of Object.entries(profile.layout.buttons)) {
     const crop = build.crops.find((entry) => entry.path === `${buttonPrefix(name)}-idle.png`);
     const expectedVariants = (profile.requiredStates.toggleButtons ?? []).includes(name) ? 'toggle-button' : 'button';
@@ -279,6 +285,10 @@ function validateInBounds(prefix, label, png, rect) {
 
 function usesStateSheet(kit) {
   return (kit.build?.crops ?? []).some((crop) => isStateSheetSource(crop.source));
+}
+
+function sourcePackRequiresStateSheet(kit) {
+  return new Set(['default', 'variant']).has(kit.meta?.role);
 }
 
 function isStateSheetSource(source) {

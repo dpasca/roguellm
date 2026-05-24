@@ -390,7 +390,7 @@ Before cropping, validate the source pack and scaffold handoff together:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-issue
 ```
 
 This preflight checks the three required PNG filenames, exact chassis/widget
@@ -404,6 +404,10 @@ runtime text/icon slots overlaid for manual rejection before build. Pass
 `--fail-on-issue` for promotion scripts that should stop on geometry/source
 handoff problems, and reserve `--fail-on-warning` for stricter passes where
 measured quality signals should block promotion until manually resolved.
+Generated source packs marked as `default` or `variant` must use
+`source-state-sheet.png` for authored button, toggle, status, and LED states;
+prototype source packs may still derive states while a visual direction is being
+explored.
 
 The scaffold is contract-driven. It copies the exact v1 regions and layout
 rectangles, declares all required fixed-size assets, and adds a `build.crops`
@@ -490,9 +494,11 @@ A generated skin may be promoted to a production `default` or `variant` profile
 only after:
 
 1. `pnpm -C frontend build:skin-kit src/skins/neo-tokyo-console/fixed/<skin-id>`
-2. `pnpm -C frontend validate:skins`
-3. `VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual`
-4. Manual review of at least movement, log, inventory, defeat, victory, restart,
+2. `pnpm -C frontend validate:skin-source-packs src/skins/neo-tokyo-console/fixed/<skin-id>`
+3. `pnpm -C frontend skin:review-source src/skins/neo-tokyo-console/fixed/<skin-id> --json --fail-on-issue`
+4. `pnpm -C frontend validate:skins`
+5. `VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual`
+6. Manual review of at least movement, log, inventory, defeat, victory, restart,
    and diagnostics screenshots.
 
 The visual review should compare against the current gold profile, but it should

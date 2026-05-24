@@ -109,7 +109,7 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames) {
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
       `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
       `pnpm -C frontend validate:skin-source-packs ${kitDir}`,
-      `pnpm -C frontend skin:review-source ${kitDir} --json`,
+      `pnpm -C frontend skin:review-source ${kitDir} --json --fail-on-issue`,
       `pnpm -C frontend build:skin-kit ${kitDir}`,
       'pnpm -C frontend validate:skins'
     ],

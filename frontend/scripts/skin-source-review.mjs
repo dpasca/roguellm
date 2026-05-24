@@ -46,7 +46,8 @@ if (shouldFailReview(parsedArgs.options, review.report)) {
 
 async function buildReview(dir, skinKit, selectedProfile) {
   const stateSheetLayout = buildStateSheetLayout(selectedProfile);
-  const stateSheetRequired = (skinKit.build?.crops ?? []).some((crop) => path.basename(crop.source ?? '') === stateSheetSourceFile);
+  const buildUsesStateSheet = (skinKit.build?.crops ?? []).some((crop) => path.basename(crop.source ?? '') === stateSheetSourceFile);
+  const stateSheetRequired = buildUsesStateSheet || sourcePackRequiresStateSheet(skinKit);
   const sources = {
     chassis: await readOptionalImage(dir, 'source-chassis.png'),
     widgets: await readOptionalImage(dir, 'source-widgets.png'),
@@ -341,6 +342,12 @@ function reviewIssues(sources, skinKit, selectedProfile) {
   const stateSheetLayout = buildStateSheetLayout(selectedProfile);
   const buildUsesStateSheet = (skinKit.build?.crops ?? []).some((crop) => path.basename(crop.source ?? '') === stateSheetSourceFile);
 
+  if (sourcePackRequiresStateSheet(skinKit) && !buildUsesStateSheet) {
+    issues.push(
+      `Promoted source packs with role="${skinKit.meta?.role}" must crop button, toggle, status, and LED states from ${stateSheetSourceFile}.`
+    );
+  }
+
   for (const [name, source] of Object.entries({ chassis: sources.chassis, widgets: sources.widgets })) {
     if (!source) {
       issues.push(`Missing source-${name}.png`);
@@ -357,7 +364,7 @@ function reviewIssues(sources, skinKit, selectedProfile) {
     issues.push(`source-materials.png is ${sources.materials.width}x${sources.materials.height}; expected at least 152x304`);
   }
 
-  if (buildUsesStateSheet || sources.stateSheet) {
+  if (buildUsesStateSheet || sourcePackRequiresStateSheet(skinKit) || sources.stateSheet) {
     if (!sources.stateSheet) {
       issues.push(`Missing ${stateSheetSourceFile}`);
     } else if (
@@ -381,6 +388,10 @@ function reviewIssues(sources, skinKit, selectedProfile) {
   }
 
   return issues;
+}
+
+function sourcePackRequiresStateSheet(skinKit) {
+  return new Set(['default', 'variant']).has(skinKit.meta?.role);
 }
 
 async function reviewMetrics(sources, selectedProfile) {
