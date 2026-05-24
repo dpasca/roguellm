@@ -288,14 +288,20 @@ material. It should not become the production chassis without cleanup.
 
 Use `SKIN_GENERATION_PROMPT.md` or
 `pnpm --silent -C frontend skin:prompt <profile> --output source-pack` as the
-starting prompt for the next generated source pack. Prefer three exact files:
-`source-chassis.png`, `source-widgets.png`, and `source-materials.png`. Once the
-source pack exists, create its prototype manifest with
+starting prompt for the next generated source pack. Prefer four exact files:
+`source-chassis.png`, `source-widgets.png`, `source-state-sheet.png`, and
+`source-materials.png`. Prototype manifests may derive state variants while a
+direction is being explored, but any generated source pack promoted to
+`default` or `variant` must crop authored widget states from
+`source-state-sheet.png`.
+
+Once the source pack exists, create its prototype manifest with
 `pnpm -C frontend skin:scaffold <skin-id> <profile>`, place the source files at
-the manifest's build paths, run `build:skin-kit` for that skin directory, then
-run `validate:skins`. The current deterministic mobile baselines can be rebuilt
-with `build:fixed-skins`; use them as the fallback quality floor when generated
-art is not clean enough to slice.
+the manifest's build paths, run `validate:skin-source-packs`, run
+`skin:review-source --json --fail-on-issue`, run `build:skin-kit` for that skin
+directory, then run `validate:skins`. The current deterministic mobile baselines
+can be rebuilt with `build:fixed-skins`; use them as the fallback quality floor
+when generated art is not clean enough to slice.
 
 ## Diagnostics
 
