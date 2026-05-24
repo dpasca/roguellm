@@ -20,6 +20,7 @@ type FixedAssetProfile =
   | 'gold-mobile-compact'
   | 'amber-mobile-compact'
   | 'terminal-green-mobile-compact'
+  | 'neon-shrine-mobile-compact'
   | 'obsidian-rain-proto'
   | 'gold-mobile'
   | 'amber-mobile'
@@ -384,6 +385,7 @@ const fixedProfiles: FixedSkinProfile[] = [
   createManifestProfile('gold-mobile-compact'),
   createManifestProfile('amber-mobile-compact'),
   createManifestProfile('terminal-green-mobile-compact'),
+  createManifestProfile('neon-shrine-mobile-compact'),
   createManifestProfile('obsidian-rain-proto'),
   createManifestProfile('reference-mobile-v3'),
   createManifestProfile('signal-noir-mobile'),

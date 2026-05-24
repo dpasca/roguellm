@@ -85,6 +85,7 @@ function chassisSvg(selectedProfile, theme, options) {
     <rect x="15" y="45" width="7" height="${height - 172}" rx="3.5" fill="url(#sideRail)" filter="url(#softGlow)" opacity="0.82"/>
     <rect x="${width - 23}" y="45" width="6" height="${height - 172}" rx="3" fill="url(#sideRail)" opacity="0.38"/>
     ${rails}
+    ${motifLayer(selectedProfile, theme)}
     ${panels}
     ${controlsWell(selectedProfile, theme)}
     ${widgets}
@@ -153,6 +154,49 @@ function bottomConsole(width, height, theme) {
       ${moduleMarkup}
       <rect x="${width / 2 - 48}" y="${y}" width="96" height="24" rx="4" fill="#05070a" stroke="${theme.panelStroke}" stroke-opacity="0.45"/>
       ${bars}
+    </g>
+  `;
+}
+
+function motifLayer(selectedProfile, theme) {
+  if (theme.motif !== 'neon-shrine') {
+    return '';
+  }
+
+  const { width, height } = selectedProfile.size;
+  const map = selectedProfile.regions.map;
+  const latest = selectedProfile.regions.latest;
+  const controls = selectedProfile.regions.controls;
+  const bottomY = height - 45;
+  const beadRows = Array.from({ length: 7 }, (_, index) => {
+    const y = latest.y + 8 + index * 10;
+    return `
+      <circle cx="17" cy="${y}" r="${index % 2 === 0 ? 2.2 : 1.4}" fill="${index % 3 === 0 ? theme.warning : theme.accent}" opacity="${0.42 + index * 0.035}" filter="url(#softGlow)"/>
+      <circle cx="${width - 18}" cy="${y + 4}" r="${index % 2 === 0 ? 1.4 : 2.2}" fill="${index % 3 === 1 ? theme.combat : theme.warning}" opacity="${0.34 + index * 0.035}"/>
+    `;
+  }).join('\n');
+
+  return `
+    <g opacity="0.95">
+      <path d="M${map.x - 9} ${map.y + 20}Q${width / 2} ${map.y - 22} ${map.x + map.width + 9} ${map.y + 20}" fill="none" stroke="${theme.warning}" stroke-width="1.4" stroke-opacity="0.42"/>
+      <path d="M${map.x - 5} ${map.y + map.height + 14}Q${width / 2} ${map.y + map.height + 42} ${map.x + map.width + 5} ${map.y + map.height + 14}" fill="none" stroke="${theme.combat}" stroke-width="1.2" stroke-opacity="0.36"/>
+      <path d="M${map.x - 12} ${map.y + 28}V${map.y + map.height - 22}M${map.x + map.width + 12} ${map.y + 28}V${map.y + map.height - 22}" stroke="${theme.warning}" stroke-width="1" stroke-dasharray="5 8" stroke-opacity="0.44"/>
+      <rect x="28" y="42" width="44" height="6" rx="3" fill="${theme.warning}" opacity="0.24"/>
+      <rect x="${width - 72}" y="42" width="44" height="6" rx="3" fill="${theme.combat}" opacity="0.22"/>
+      <path d="M34 39L44 30H76M${width - 34} 39L${width - 44} 30H${width - 76}" fill="none" stroke="${theme.accent}" stroke-opacity="0.34" stroke-width="1.2"/>
+      <text x="${width / 2}" y="37" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${theme.warning}" opacity="0.78">NEON SHRINE BUS</text>
+      ${beadRows}
+      <g opacity="0.76">
+        <rect x="${controls.x + 18}" y="${controls.y + 8}" width="30" height="5" rx="2.5" fill="${theme.warning}" opacity="0.32"/>
+        <rect x="${controls.x + controls.width - 48}" y="${controls.y + 8}" width="30" height="5" rx="2.5" fill="${theme.warning}" opacity="0.32"/>
+        <path d="M${controls.x + 22} ${controls.y + controls.height - 12}H${controls.x + 78}M${controls.x + controls.width - 78} ${controls.y + controls.height - 12}H${controls.x + controls.width - 22}" stroke="${theme.combat}" stroke-width="1.5" stroke-opacity="0.55"/>
+      </g>
+      <g opacity="0.72">
+        ${Array.from({ length: 5 }, (_, index) => {
+          const x = width / 2 - 38 + index * 19;
+          return `<path d="M${x} ${bottomY}l7 -7 7 7" fill="none" stroke="${index % 2 === 0 ? theme.warning : theme.accent}" stroke-width="1.4" stroke-opacity="${0.34 + index * 0.05}"/>`;
+        }).join('\n')}
+      </g>
     </g>
   `;
 }
@@ -331,6 +375,8 @@ function stateSheetWidget(row, state, theme) {
   const base = button(rect, row.id, stateTheme);
   const overlay = state === 'disabled'
     ? `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${row.id.startsWith('move') ? 10 : 8}" fill="#111820" opacity="0.58"/>`
+    : state === 'hover'
+      ? `<rect x="${rect.x + 3}" y="${rect.y + 3}" width="${rect.width - 6}" height="${rect.height - 6}" rx="${row.id.startsWith('move') ? 8 : 7}" fill="none" stroke="${theme.accentSoft}" stroke-width="1.6" opacity="0.8" filter="url(#softGlow)"/>`
     : state === 'pressed'
       ? `<rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${rect.height - 10}" rx="7" fill="#010204" opacity="0.22"/>`
       : state === 'active'
@@ -366,6 +412,8 @@ function stateSheetLed(rect, state, theme) {
 function themeForButtonState(theme, id, state) {
   const color = state === 'disabled'
     ? '#7a8589'
+    : state === 'hover'
+      ? theme.accentSoft
     : state === 'pressed'
       ? theme.combatHigh
       : state === 'active'
@@ -591,6 +639,33 @@ function themeFor(name) {
       buttonFill: '#261106',
       textDim: '#ead8bd',
       textFaint: '#9d8464'
+    },
+    'neon-shrine': {
+      name: 'neon-shrine',
+      motif: 'neon-shrine',
+      headerLabel: 'JADE SHRINE DECK',
+      accent: '#58ffc4',
+      accentSoft: '#d4ffe9',
+      accentDark: '#073f30',
+      accentLine: '#62ff9b',
+      combat: '#ff2d76',
+      combatHigh: '#ff9bc1',
+      combatDark: '#46041a',
+      warning: '#ffd66b',
+      panelStroke: '#b58946',
+      outerStroke: '#3a2029',
+      shellHigh: '#34232a',
+      shellMid: '#11080d',
+      shellLow: '#030104',
+      shellEdge: '#4c2232',
+      glassHigh: '#10251e',
+      glassMid: '#06130f',
+      glassLow: '#010302',
+      panelFill: '#10160f',
+      lcdFill: '#04180f',
+      buttonFill: '#220815',
+      textDim: '#eadfcb',
+      textFaint: '#b69a68'
     }
   };
 
@@ -669,7 +744,7 @@ function printUsage() {
     'Usage: pnpm -C frontend skin:source-prototype <skin-id> [mobilePortrait|mobileCompact] [options]',
     '',
     'Options:',
-    '  --theme <obsidian-rain|amber-foundry>  Visual theme preset. Defaults to obsidian-rain.',
+    '  --theme <obsidian-rain|amber-foundry|neon-shrine>  Visual theme preset. Defaults to obsidian-rain.',
     '  --out <path>                           Output directory. Defaults to ../_artifacts/skin-kits/<skin-id>.'
   ].join('\n'));
 }

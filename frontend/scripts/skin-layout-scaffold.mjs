@@ -339,6 +339,25 @@ function renderThemeForPalette(palette) {
     };
   }
 
+  if (tokens.has('jade') || tokens.has('shrine')) {
+    return {
+      primary: '#58ffc4',
+      primaryText: '#d4ffe9',
+      primaryDimText: '#75aa8f',
+      secondary: '#ffd66b',
+      secondaryText: '#ffe7a4',
+      lcdFill: '#04180f',
+      panelFill: '#10160f',
+      controlFrame: '#b58946',
+      buttonFrame: '#ff2d76',
+      titleText: '#fff5dc',
+      bodyText: '#f1ffe9',
+      mutedText: '#c8bfa9',
+      combat: '#ff2d76',
+      combatText: '#ff9bc1'
+    };
+  }
+
   return {
     primary: '#8dff70',
     primaryText: '#aaff8d',
