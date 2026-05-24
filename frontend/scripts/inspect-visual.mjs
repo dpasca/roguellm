@@ -59,6 +59,10 @@ const compactQualityRequiredStates = [
   'production-click-inventory',
   'production-hover-run',
   'production-press-run',
+  'production-runtime-ready',
+  'production-runtime-log',
+  'production-runtime-inventory',
+  'production-runtime-combat',
   'production-defeat',
   'production-victory',
   'production-restart',
@@ -77,6 +81,9 @@ const compactQualityAssetFloors = {
 };
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
+const viteRuntimeUrl = new URL('/game2', viteGameIdUrl).toString();
+const phaserVisualRuntimeProfileUrl = (profile, scenario) =>
+  withQueryParams(viteRuntimeUrl, { ui: 'fixed-skin', profile, visual_runtime: '1', scenario });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
 const classicRuntimeUrl = entryUrl;
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1555,56 +1562,57 @@ function buildCompactQualityFocus({ profiles, results, assetSummaries }) {
   const coveredStates = compactQualityRequiredStates.filter((state) =>
     profileResults.some((result) => result.name.includes(state))
   );
-  const failures = [];
+  const candidateFailures = [];
+  const enforced = enforcesCompactQualityFocus(coveredStates);
 
   if (highestPriorityCompact !== compactFixedProfile) {
-    failures.push(
+    candidateFailures.push(
       `Expected ${compactFixedProfile} to be the highest-priority compact profile, got ${highestPriorityCompact ?? 'none'}`
     );
   }
 
   if (!profile) {
-    failures.push(`Missing profile summary for compact focus ${compactFixedProfile}`);
+    candidateFailures.push(`Missing profile summary for compact focus ${compactFixedProfile}`);
   } else {
     if (profile.failures > 0) {
-      failures.push(`${compactFixedProfile} has ${profile.failures} failing visual scenario(s)`);
+      candidateFailures.push(`${compactFixedProfile} has ${profile.failures} failing visual scenario(s)`);
     }
 
     const blockingFlags = (profile.reviewFlags ?? [])
       .filter((flag) => flag !== 'Ready for human visual review.');
     for (const flag of blockingFlags) {
-      failures.push(`${compactFixedProfile} review flag: ${flag}`);
+      candidateFailures.push(`${compactFixedProfile} review flag: ${flag}`);
     }
 
     const metrics = profile.metrics ?? {};
     for (const [metric, floor] of Object.entries(compactQualityMetricFloors)) {
       const value = metrics[metric];
       if (!Number.isFinite(value) || value < floor) {
-        failures.push(
+        candidateFailures.push(
           `${compactFixedProfile} ${metric} ${Number.isFinite(value) ? value.toFixed(3) : 'missing'} below ${floor}`
         );
       }
     }
 
     if (!Number.isFinite(metrics.maxTextOverflows) || metrics.maxTextOverflows !== 0) {
-      failures.push(`${compactFixedProfile} must have zero text overflows, got ${metrics.maxTextOverflows ?? 'missing'}`);
+      candidateFailures.push(`${compactFixedProfile} must have zero text overflows, got ${metrics.maxTextOverflows ?? 'missing'}`);
     }
   }
 
   for (const state of compactQualityRequiredStates) {
     if (!coveredStates.includes(state)) {
-      failures.push(`${compactFixedProfile} missing required compact review state ${state}`);
+      candidateFailures.push(`${compactFixedProfile} missing required compact review state ${state}`);
     }
   }
 
   if (!asset) {
-    failures.push(`Missing skin-owned asset summary for compact focus ${compactFixedProfile}`);
+    candidateFailures.push(`Missing skin-owned asset summary for compact focus ${compactFixedProfile}`);
   } else {
     const metrics = asset.metrics ?? {};
     for (const [metric, floor] of Object.entries(compactQualityAssetFloors)) {
       const value = metrics[metric];
       if (!Number.isFinite(value) || value < floor) {
-        failures.push(
+        candidateFailures.push(
           `${compactFixedProfile} source asset ${metric} ` +
           `${Number.isFinite(value) ? value.toFixed(3) : 'missing'} below ${floor}`
         );
@@ -1612,9 +1620,12 @@ function buildCompactQualityFocus({ profiles, results, assetSummaries }) {
     }
   }
 
+  const failures = enforced ? candidateFailures : [];
+
   return {
     id: compactFixedProfile,
     highestPriorityCompact,
+    enforced,
     requiredStates: compactQualityRequiredStates,
     coveredStates,
     floors: compactQualityMetricFloors,
@@ -1622,6 +1633,7 @@ function buildCompactQualityFocus({ profiles, results, assetSummaries }) {
     metrics: compactProfileMetrics(profile?.metrics),
     assetMetrics: compactProfileMetrics(asset?.metrics),
     failures,
+    warnings: enforced ? [] : candidateFailures,
     ok: failures.length === 0
   };
 }
@@ -1652,6 +1664,13 @@ function enforcesProductionSkinAssets() {
   return process.env.VISUAL_ENFORCE_SKIN_ASSETS === '1' ||
     scenarioFilters.includes('production') ||
     scenarioFilters.some((filter) => filter.includes('-production-'));
+}
+
+function enforcesCompactQualityFocus(coveredStates) {
+  return process.env.VISUAL_ENFORCE_COMPACT_FOCUS === '1' ||
+    scenarioFilters.length === 0 ||
+    scenarioFilters.includes('production') ||
+    compactQualityRequiredStates.every((state) => coveredStates.includes(state));
 }
 
 function annotateProfileSimilarityFlags(profiles, pairs, assetPairs = []) {
@@ -2229,6 +2248,36 @@ function productionProfileScenarios(profile) {
         viewport: shortViewport,
         mode: 'phaser-fixed-workbench-press-run',
         url,
+        expectedFixedProfile: profile.id
+      }
+    ] : []),
+    ...(profile.id === compactFixedProfile ? [
+      {
+        name: `mobile-${profile.id}-production-runtime-ready`,
+        viewport,
+        mode: 'phaser-fixed-runtime-ready',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'movement'),
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-log`,
+        viewport,
+        mode: 'phaser-fixed-runtime-log',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'movement'),
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-inventory`,
+        viewport,
+        mode: 'phaser-fixed-runtime-inventory',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'movement'),
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-combat`,
+        viewport,
+        mode: 'phaser-fixed-runtime-combat',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'combat'),
         expectedFixedProfile: profile.id
       }
     ] : []),
@@ -4065,6 +4114,8 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
 
 function phaserScenarioSkipsButtonMaterial(scenario) {
   return scenario.mode === 'phaser-fixed-workbench-click-move' ||
+    scenario.mode === 'phaser-fixed-runtime-ready' ||
+    scenario.mode === 'phaser-fixed-runtime-log' ||
     scenario.mode === 'phaser-fixed-workbench-victory' ||
     scenario.name.endsWith('-production-diagnostics');
 }

@@ -340,6 +340,34 @@ export function createPhaserFixedSkinRuntime(
   };
 }
 
+export function startPhaserFixedSkinRuntimeFixture(skin: GameSkin): void {
+  const scenario = selectScenario();
+  let state = createScenarioState(scenario);
+  let ui: PhaserFixedSkinRuntimeUi | null = null;
+
+  function dispatchAction(action: GameAction): void {
+    state = action.action === 'restart'
+      ? createScenarioState('combat')
+      : applyWorkbenchAction(state, action);
+    ui?.render(state);
+    ui?.addLog(action.action === 'restart' ? createScenarioLogs('combat')[0] : describeAction(action));
+    ui?.setActionPending(false);
+    ui?.setConnectionStatus('ready');
+  }
+
+  document.body.dataset.fixedScenario = scenario;
+  ui = createPhaserFixedSkinRuntime(skin, dispatchAction);
+  ui.render(state);
+  ui.setConnectionStatus('ready');
+  for (const message of [...createScenarioLogs(scenario)].reverse()) {
+    ui.addLog(message);
+  }
+
+  window.addEventListener('beforeunload', () => {
+    ui?.destroy();
+  });
+}
+
 export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
   const profile = selectFixedSkinProfile(skin);
   if (!profile) {

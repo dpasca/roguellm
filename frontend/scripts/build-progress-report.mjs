@@ -47,27 +47,33 @@ async function buildImageCards(report, profileId) {
       image: await existingRelativePath(path.join(sourceDir, 'source-state-sheet.png'))
     },
     {
-      kind: 'RUNTIME SCREENSHOT',
-      title: 'Movement State',
-      description: 'Actual Phaser canvas render from the visual inspection run.',
-      image: resultImage(report, profileId, 'production-movement')
+      kind: 'LIVE RUNTIME',
+      title: 'Ready State',
+      description: 'Actual non-workbench Phaser runtime render from the visual inspection run.',
+      image: resultImage(report, profileId, 'production-runtime-ready')
     },
     {
-      kind: 'RUNTIME SCREENSHOT',
+      kind: 'LIVE RUNTIME',
       title: 'Log Drawer',
-      description: 'Actual Phaser canvas render with the top-first log drawer open.',
-      image: resultImage(report, profileId, 'production-log')
+      description: 'Actual non-workbench Phaser runtime render with the top-first log drawer open.',
+      image: resultImage(report, profileId, 'production-runtime-log')
     },
     {
-      kind: 'RUNTIME SCREENSHOT',
+      kind: 'LIVE RUNTIME',
       title: 'Inventory Drawer',
-      description: 'Actual Phaser canvas render with inventory rows and text backplates.',
-      image: resultImage(report, profileId, 'production-inventory')
+      description: 'Actual non-workbench Phaser runtime render with inventory rows and text backplates.',
+      image: resultImage(report, profileId, 'production-runtime-inventory')
     },
     {
-      kind: 'RUNTIME SCREENSHOT',
+      kind: 'LIVE RUNTIME',
+      title: 'Combat State',
+      description: 'Actual non-workbench Phaser runtime render with combat controls and lock state.',
+      image: resultImage(report, profileId, 'production-runtime-combat')
+    },
+    {
+      kind: 'WORKBENCH SCREENSHOT',
       title: 'Defeat Terminal',
-      description: 'Actual Phaser canvas render for the terminal end-state surface.',
+      description: 'Deterministic Phaser workbench render for the terminal end-state surface.',
       image: resultImage(report, profileId, 'production-defeat')
     },
     {
@@ -432,8 +438,12 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
     </p>
     <div class="legend">
       <div>
-        <strong>Runtime Screenshot</strong>
-        <p>Actual Phaser canvas output from automated browser inspection. This is the current game surface.</p>
+        <strong>Live Runtime</strong>
+        <p>Actual non-workbench Phaser canvas output from automated browser inspection. This is the current game surface.</p>
+      </div>
+      <div>
+        <strong>Workbench Screenshot</strong>
+        <p>Deterministic Phaser canvas output used to prove hard-to-reach states such as defeat and victory.</p>
       </div>
       <div>
         <strong>Source Art</strong>

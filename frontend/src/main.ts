@@ -2,7 +2,7 @@ import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
 import { getSkinFromLocation } from './skins/registry';
 import type { GameSkin } from './skins/types';
-import { createPhaserFixedSkinRuntime, isPhaserFixedSkinRuntime, isPhaserFixedSkinWorkbench, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
+import { createPhaserFixedSkinRuntime, isPhaserFixedSkinRuntime, isPhaserFixedSkinWorkbench, startPhaserFixedSkinRuntimeFixture, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
 const GAME2_SESSION_QUERY_PARAMS = [
@@ -55,6 +55,11 @@ async function bootstrap(): Promise<void> {
 
   if (phaserFixedWorkbench) {
     startPhaserFixedSkinWorkbench(activeSkin);
+    return;
+  }
+
+  if (phaserFixedRuntime && isLocalPhaserRuntimeFixture()) {
+    startPhaserFixedSkinRuntimeFixture(activeSkin);
     return;
   }
 
@@ -266,6 +271,11 @@ function isLegacyDomRequest(location: Location = window.location): boolean {
     renderer === 'html' ||
     renderer === 'legacy' ||
     workbench === 'skin';
+}
+
+function isLocalPhaserRuntimeFixture(location: Location = window.location): boolean {
+  const params = new URL(location.href).searchParams;
+  return params.get('visual_runtime') === '1' || params.get('fixture') === 'visual-runtime';
 }
 
 function createUnsupportedRuntime(skin: GameSkin): RuntimeUi {
