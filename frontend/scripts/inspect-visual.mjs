@@ -1826,6 +1826,36 @@ function productionProfileScenarios(profile) {
       url: `${url}&scenario=defeat`,
       expectedFixedProfile: profile.id
     },
+    ...(profile.kind === 'mobileCompact' ? [
+      {
+        name: `mobile-${profile.id}-production-click-log`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-click-log',
+        url,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-click-inventory`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-click-inventory',
+        url,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-hover-run`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-hover-run',
+        url,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-press-run`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-press-run',
+        url,
+        expectedFixedProfile: profile.id
+      }
+    ] : []),
     {
       name: `mobile-${profile.id}-production-diagnostics`,
       viewport,
