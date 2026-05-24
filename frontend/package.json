@@ -17,6 +17,7 @@
     "skin:review-source": "node scripts/skin-source-review.mjs",
     "skin:source-prototype": "node scripts/skin-source-prototype.mjs",
     "skin:import-reference": "node scripts/skin-source-import-reference.mjs",
+    "progress:report": "node scripts/build-progress-report.mjs",
     "build": "tsc --noEmit && vite build",
     "check": "pnpm run build && pnpm run validate:bundle && pnpm run validate:phaser-style-boundary && pnpm run validate:workbench-copy && pnpm run validate:skins && pnpm run validate:skin-source-packs && pnpm run validate:skin-art-blueprint",
     "check:visual": "pnpm run inspect:visual",

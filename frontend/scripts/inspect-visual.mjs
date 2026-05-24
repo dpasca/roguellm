@@ -51,6 +51,30 @@ const defaultPhaserMapDetailFloor = 520;
 const phaserMapDetailFloors = new Map([
   ['obsidian-rain-proto', 700]
 ]);
+const compactQualityRequiredStates = [
+  'production-movement',
+  'production-log',
+  'production-inventory',
+  'production-click-log',
+  'production-click-inventory',
+  'production-hover-run',
+  'production-press-run',
+  'production-defeat',
+  'production-victory',
+  'production-restart',
+  'production-diagnostics'
+];
+const compactQualityMetricFloors = {
+  contrast: 0.14,
+  saturation: 0.30,
+  sampledUniqueColors: 3600,
+  minShellDetails: 130,
+  minControlDetails: 80
+};
+const compactQualityAssetFloors = {
+  saturationMean: 0.22,
+  sampledUniqueColors: 3500
+};
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
@@ -814,6 +838,11 @@ const skinAssetSimilarities = buildSkinAssetSimilarities(skinAssetSummaries);
 const skinAssetFailures = buildSkinAssetFailures(skinAssetSimilarities);
 annotateProfileSimilarityFlags(profileSummaries, profileSimilarities, skinAssetSimilarities);
 annotateProfileAssetSimilarityFlags(profileSummaries, skinAssetSimilarities);
+const compactQualityFocus = buildCompactQualityFocus({
+  profiles: profileSummaries,
+  results,
+  assetSummaries: skinAssetSummaries
+});
 const summary = {
   entryUrl,
   workbenchUrl,
@@ -826,12 +855,15 @@ const summary = {
   skinAssetSummaries,
   skinAssetSimilarities,
   skinAssetFailures,
+  compactQualityFocus,
   artBlueprint: visualArtBlueprintSummary(artBlueprint, productionMobileProfiles),
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
   results,
-  ok: results.every((result) => result.failures.length === 0) && skinAssetFailures.length === 0
+  ok: results.every((result) => result.failures.length === 0) &&
+    skinAssetFailures.length === 0 &&
+    compactQualityFocus.failures.length === 0
 };
 
 await fs.writeFile(
@@ -856,9 +888,12 @@ const reportLines = results.flatMap((result) => {
 const skinAssetReportLines = skinAssetFailures.length === 0
   ? []
   : ['FAIL skin asset uniqueness gate', ...skinAssetFailures.map((failure) => `  - ${failure}`)];
+const compactFocusReportLines = compactQualityFocus.failures.length === 0
+  ? []
+  : ['FAIL compact skin quality focus', ...compactQualityFocus.failures.map((failure) => `  - ${failure}`)];
 
 console.log(`Visual inspection output: ${path.relative(process.cwd(), outDir)}`);
-console.log([...reportLines, ...skinAssetReportLines].join('\n'));
+console.log([...reportLines, ...skinAssetReportLines, ...compactFocusReportLines].join('\n'));
 
 if (!summary.ok) {
   process.exitCode = 1;
@@ -866,6 +901,7 @@ if (!summary.ok) {
 
 function buildHtmlReport(summary) {
   const blueprintReview = buildBlueprintReview(summary);
+  const compactFocusReview = buildCompactFocusReview(summary);
   const profileBench = buildProfileBench(summary);
   const skinAssetWatch = buildSkinAssetWatch(summary);
   const similarityWatch = buildSimilarityWatch(summary);
@@ -998,6 +1034,32 @@ function buildHtmlReport(summary) {
       border: 1px solid #315057;
       background: linear-gradient(180deg, #101819, #080d0d);
       box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+    }
+    .quality-focus {
+      margin: 0 0 26px;
+      padding: 14px;
+      border: 1px solid #3e5350;
+      background: linear-gradient(180deg, #101714, #070b0a);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+    }
+    .quality-focus.fail {
+      border-color: #7b3342;
+      background: linear-gradient(180deg, #1a1012, #080607);
+    }
+    .quality-focus h3 {
+      margin: 14px 0 8px;
+      color: #ffe386;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .quality-focus .review-flags {
+      padding-bottom: 0;
+    }
+    .focus-ok {
+      color: #98ff84;
+    }
+    .focus-fail {
+      color: #ff8ea1;
     }
     .blueprint-summary {
       display: grid;
@@ -1261,6 +1323,7 @@ function buildHtmlReport(summary) {
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
   ${blueprintReview}
+  ${compactFocusReview}
   ${profileBench}
   ${skinAssetWatch}
   ${similarityWatch}
@@ -1481,6 +1544,110 @@ function visualArtBlueprintSummary(blueprint, profiles) {
   };
 }
 
+function buildCompactQualityFocus({ profiles, results, assetSummaries }) {
+  const compactProfiles = productionMobileProfiles.filter((profile) => profile.kind === 'mobileCompact');
+  const highestPriorityCompact = compactProfiles[0]?.id ?? null;
+  const profile = profiles.find((entry) => entry.id === compactFixedProfile);
+  const asset = assetSummaries.find((entry) => entry.id === compactFixedProfile);
+  const profileResults = results.filter((result) =>
+    (result.metrics?.fixedProfile ?? result.expectedFixedProfile) === compactFixedProfile
+  );
+  const coveredStates = compactQualityRequiredStates.filter((state) =>
+    profileResults.some((result) => result.name.includes(state))
+  );
+  const failures = [];
+
+  if (highestPriorityCompact !== compactFixedProfile) {
+    failures.push(
+      `Expected ${compactFixedProfile} to be the highest-priority compact profile, got ${highestPriorityCompact ?? 'none'}`
+    );
+  }
+
+  if (!profile) {
+    failures.push(`Missing profile summary for compact focus ${compactFixedProfile}`);
+  } else {
+    if (profile.failures > 0) {
+      failures.push(`${compactFixedProfile} has ${profile.failures} failing visual scenario(s)`);
+    }
+
+    const blockingFlags = (profile.reviewFlags ?? [])
+      .filter((flag) => flag !== 'Ready for human visual review.');
+    for (const flag of blockingFlags) {
+      failures.push(`${compactFixedProfile} review flag: ${flag}`);
+    }
+
+    const metrics = profile.metrics ?? {};
+    for (const [metric, floor] of Object.entries(compactQualityMetricFloors)) {
+      const value = metrics[metric];
+      if (!Number.isFinite(value) || value < floor) {
+        failures.push(
+          `${compactFixedProfile} ${metric} ${Number.isFinite(value) ? value.toFixed(3) : 'missing'} below ${floor}`
+        );
+      }
+    }
+
+    if (!Number.isFinite(metrics.maxTextOverflows) || metrics.maxTextOverflows !== 0) {
+      failures.push(`${compactFixedProfile} must have zero text overflows, got ${metrics.maxTextOverflows ?? 'missing'}`);
+    }
+  }
+
+  for (const state of compactQualityRequiredStates) {
+    if (!coveredStates.includes(state)) {
+      failures.push(`${compactFixedProfile} missing required compact review state ${state}`);
+    }
+  }
+
+  if (!asset) {
+    failures.push(`Missing skin-owned asset summary for compact focus ${compactFixedProfile}`);
+  } else {
+    const metrics = asset.metrics ?? {};
+    for (const [metric, floor] of Object.entries(compactQualityAssetFloors)) {
+      const value = metrics[metric];
+      if (!Number.isFinite(value) || value < floor) {
+        failures.push(
+          `${compactFixedProfile} source asset ${metric} ` +
+          `${Number.isFinite(value) ? value.toFixed(3) : 'missing'} below ${floor}`
+        );
+      }
+    }
+  }
+
+  return {
+    id: compactFixedProfile,
+    highestPriorityCompact,
+    requiredStates: compactQualityRequiredStates,
+    coveredStates,
+    floors: compactQualityMetricFloors,
+    assetFloors: compactQualityAssetFloors,
+    metrics: compactProfileMetrics(profile?.metrics),
+    assetMetrics: compactProfileMetrics(asset?.metrics),
+    failures,
+    ok: failures.length === 0
+  };
+}
+
+function compactProfileMetrics(metrics) {
+  if (!metrics) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    [
+      'contrast',
+      'saturation',
+      'sampledUniqueColors',
+      'minShellDetails',
+      'minControlDetails',
+      'maxTextOverflows',
+      'saturationMean',
+      'saturationStandardDeviation'
+    ]
+      .map((key) => [key, metrics[key]])
+      .filter(([, value]) => Number.isFinite(value))
+      .map(([key, value]) => [key, Math.round(value * 1000) / 1000])
+  );
+}
+
 function enforcesProductionSkinAssets() {
   return process.env.VISUAL_ENFORCE_SKIN_ASSETS === '1' ||
     scenarioFilters.includes('production') ||
@@ -1618,6 +1785,60 @@ function buildSimilarityWatch(summary) {
         <p>Closest same-format profile pairs by downsampled screenshot signature. Treat this as a review prompt, not a pass/fail gate.</p>
       </div>
       <div class="similarity-grid">${cards}</div>
+    </section>
+  `;
+}
+
+function buildCompactFocusReview(summary) {
+  const focus = summary.compactQualityFocus;
+  if (!focus) {
+    return '';
+  }
+
+  const covered = new Set(focus.coveredStates ?? []);
+  const stateChips = (focus.requiredStates ?? [])
+    .map((state) => `<span>${escapeHtml(state)}: ${covered.has(state) ? 'covered' : 'missing'}</span>`)
+    .join('');
+  const metricChips = Object.entries(focus.metrics ?? {})
+    .map(([key, value]) => `<span>${escapeHtml(`${key} ${value}`)}</span>`)
+    .join('');
+  const assetChips = Object.entries(focus.assetMetrics ?? {})
+    .map(([key, value]) => `<span>${escapeHtml(`asset ${key} ${value}`)}</span>`)
+    .join('');
+  const failureList = (focus.failures ?? [])
+    .map((failure) => `<li>${escapeHtml(failure)}</li>`)
+    .join('');
+
+  return `
+    <section class="quality-focus ${focus.ok ? 'pass' : 'fail'}">
+      <div class="section-heading">
+        <h2>Compact Skin Quality Focus</h2>
+        <p>
+          Explicit gate for the promoted short-phone skin. Passing means the compact default rendered every required
+          mobile state, stayed within the fixed artboard, avoided text overflow, and met minimum visual-depth metrics.
+        </p>
+      </div>
+      <div class="blueprint-summary">
+        <div>
+          <span>Focus Profile</span>
+          <strong>${escapeHtml(focus.id)}</strong>
+        </div>
+        <div>
+          <span>Highest Priority Compact</span>
+          <strong>${escapeHtml(focus.highestPriorityCompact ?? 'none')}</strong>
+        </div>
+        <div>
+          <span>Gate</span>
+          <strong class="${focus.ok ? 'focus-ok' : 'focus-fail'}">${focus.ok ? 'passing' : 'failing'}</strong>
+        </div>
+      </div>
+      <h3>Required States</h3>
+      <div class="blueprint-chips">${stateChips}</div>
+      <h3>Runtime Metrics</h3>
+      <div class="blueprint-chips">${metricChips}</div>
+      <h3>Skin Asset Metrics</h3>
+      <div class="blueprint-chips">${assetChips}</div>
+      ${focus.ok ? '<p class="focus-ok">Compact quality focus passed. This remains a visual evidence gate, not a replacement for taste review.</p>' : `<ul class="review-flags">${failureList}</ul>`}
     </section>
   `;
 }
