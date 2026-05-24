@@ -21,6 +21,7 @@ const imageCards = await buildImageCards(summary, compactFocus?.id ?? 'ai-cyberd
 const sourceReview = await loadSourceReview(compactFocus?.id);
 const handoff = await loadProgressHandoff();
 const gitStatus = await loadGitStatus();
+const styleBoundary = await loadStyleBoundary();
 
 await fs.writeFile(outPath, buildHtml({
   summary,
@@ -31,7 +32,8 @@ await fs.writeFile(outPath, buildHtml({
   imageCards,
   sourceReview,
   handoff,
-  gitStatus
+  gitStatus,
+  styleBoundary
 }), 'utf8');
 
 console.log(`Wrote ${path.relative(process.cwd(), outPath)}`);
@@ -54,6 +56,71 @@ async function loadGitStatus() {
   } catch {
     return null;
   }
+}
+
+async function loadStyleBoundary() {
+  const manifestPath = path.join(repoRoot, 'static/game2/.vite/manifest.json');
+  const srcCssFiles = await findFiles(path.join(rootDir, 'src'), (file) => /\.css$/i.test(file));
+  const issues = [];
+  let manifest = null;
+
+  try {
+    manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  } catch {
+    issues.push('built Vite manifest missing; run pnpm -C frontend build before trusting CSS boundary metrics');
+  }
+
+  const manifestEntries = manifest ? Object.values(manifest) : [];
+  const appEntry = manifest?.['index.html'];
+  const phaserEntry = manifestEntries.find((entry) => entry?.name === 'phaser-no-physics');
+  const entryCss = appEntry?.css ?? [];
+  const phaserCss = phaserEntry?.css ?? [];
+  const cssAssets = manifestEntries
+    .map((entry) => String(entry?.file ?? ''))
+    .filter((file) => file.endsWith('.css'));
+
+  if (entryCss.length > 0) {
+    issues.push(`index.html loads CSS assets: ${entryCss.join(', ')}`);
+  }
+  if (phaserCss.length > 0) {
+    issues.push(`phaser-no-physics chunk loads CSS assets: ${phaserCss.join(', ')}`);
+  }
+  if (cssAssets.length > 0) {
+    issues.push(`Vite manifest contains CSS assets: ${cssAssets.join(', ')}`);
+  }
+  if (srcCssFiles.length > 0) {
+    issues.push(`frontend/src contains CSS files: ${srcCssFiles.map((file) => path.relative(rootDir, file)).join(', ')}`);
+  }
+
+  return {
+    ok: issues.length === 0,
+    manifestPath,
+    entryCssCount: entryCss.length,
+    phaserCssCount: phaserCss.length,
+    cssAssetCount: cssAssets.length,
+    sourceCssCount: srcCssFiles.length,
+    issues
+  };
+}
+
+async function findFiles(dir, predicate) {
+  let entries;
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const matches = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      matches.push(...await findFiles(fullPath, predicate));
+    } else if (predicate(fullPath)) {
+      matches.push(fullPath);
+    }
+  }
+  return matches;
 }
 
 async function gitOutput(args) {
@@ -258,7 +325,7 @@ function compactMetrics(metrics) {
   );
 }
 
-function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff, gitStatus }) {
+function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff, gitStatus, styleBoundary }) {
   const reportRelative = path.relative(outDir, reportPath);
   const reportHtmlRelative = reportRelative.replace(/\.json$/, '.html');
   const contractRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.md'));
@@ -465,6 +532,10 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
         <strong class="${sourceReviewOk(sourceReview) ? 'ok' : 'warn'}">${escapeHtml(sourceReviewLabel(sourceReview))}</strong>
       </div>
       <div class="metric">
+        <span>Runtime CSS</span>
+        <strong class="${styleBoundary?.ok ? 'ok' : 'warn'}">${styleBoundary?.ok ? 'none' : 'check'}</strong>
+      </div>
+      <div class="metric">
         <span>Generated</span>
         <strong>${escapeHtml(generatedAt)}</strong>
       </div>
@@ -506,6 +577,24 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
         <p>Future handoff material for image generation or cropping. This is not an implemented skin.</p>
       </div>
     </div>
+  </section>
+
+  <section class="panel">
+    <h2>Canvas Skin Boundary</h2>
+    <p>
+      Fixed-skin gameplay UI is owned by Phaser canvas rendering and fixed PNG crops, not runtime DOM stylesheets.
+      This progress page uses its own ignored HTML/CSS for evidence only; it is not part of the game bundle.
+    </p>
+    <div class="chips">
+      <span>Vite CSS assets: ${styleBoundary?.cssAssetCount ?? 'unknown'}</span>
+      <span>index.html CSS refs: ${styleBoundary?.entryCssCount ?? 'unknown'}</span>
+      <span>Phaser chunk CSS refs: ${styleBoundary?.phaserCssCount ?? 'unknown'}</span>
+      <span>frontend/src CSS files: ${styleBoundary?.sourceCssCount ?? 'unknown'}</span>
+      <span>validator: pnpm -C frontend validate:phaser-style-boundary</span>
+    </div>
+    ${styleBoundary?.issues?.length
+      ? `<ul>${styleBoundary.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join('')}</ul>`
+      : '<p class="lede ok">The built fixed-skin runtime has no stylesheet asset path. Only the Phaser host shell may size the canvas viewport.</p>'}
   </section>
 
   <section class="panel">
