@@ -786,7 +786,7 @@ const profileSimilarities = buildProfileSimilarities(profileSummaries);
 const skinAssetSummaries = await buildSkinAssetSummaries(productionMobileProfiles, outDir);
 const skinAssetSimilarities = buildSkinAssetSimilarities(skinAssetSummaries);
 const skinAssetFailures = buildSkinAssetFailures(skinAssetSimilarities);
-annotateProfileSimilarityFlags(profileSummaries, profileSimilarities);
+annotateProfileSimilarityFlags(profileSummaries, profileSimilarities, skinAssetSimilarities);
 annotateProfileAssetSimilarityFlags(profileSummaries, skinAssetSimilarities);
 const summary = {
   entryUrl,
@@ -1378,9 +1378,14 @@ function enforcesProductionSkinAssets() {
     scenarioFilters.some((filter) => filter.includes('-production-'));
 }
 
-function annotateProfileSimilarityFlags(profiles, pairs) {
+function annotateProfileSimilarityFlags(profiles, pairs, assetPairs = []) {
   const watchPairs = pairs.filter((pair) => pair.severity !== 'distinct');
   for (const pair of watchPairs) {
+    const assetPair = findSimilarityPair(assetPairs, pair.left, pair.right, pair.kind);
+    if (assetPair?.severity === 'distinct') {
+      continue;
+    }
+
     for (const [profileId, otherId] of [[pair.left, pair.right], [pair.right, pair.left]]) {
       const profile = profiles.find((entry) => entry.id === profileId);
       if (!profile) {
@@ -1393,6 +1398,14 @@ function annotateProfileSimilarityFlags(profiles, pairs) {
       );
     }
   }
+}
+
+function findSimilarityPair(pairs, leftId, rightId, kind) {
+  return pairs.find((pair) =>
+    pair.kind === kind &&
+    ((pair.left === leftId && pair.right === rightId) ||
+      (pair.left === rightId && pair.right === leftId))
+  );
 }
 
 function annotateProfileAssetSimilarityFlags(profiles, pairs) {
