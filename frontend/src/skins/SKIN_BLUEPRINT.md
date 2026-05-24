@@ -317,6 +317,10 @@ available with `VISUAL_PRODUCTION_RENDERER=dom`, but Phaser is the default
 production renderer.
 Shortcut scripts are available as `pnpm -C frontend check:visual:production`
 and `pnpm -C frontend check:visual:production:dom`.
+The generated `report.html` starts with a Skin Bench section that groups
+profile-level thumbnails, aggregate screenshot metrics, hardware detail counts,
+and review flags before the raw scenario grid. Use that bench to compare
+whether variants feel visually distinct enough to promote.
 
 ## Playable Runtime
 

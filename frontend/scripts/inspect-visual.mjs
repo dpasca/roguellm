@@ -772,6 +772,7 @@ try {
   stopManagedServer(managedViteServer);
 }
 
+const profileSummaries = buildProfileSummaries(results);
 const summary = {
   entryUrl,
   workbenchUrl,
@@ -779,6 +780,7 @@ const summary = {
   scenarioFilters,
   productionProfileRenderer,
   productionMobileProfiles,
+  profileSummaries,
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
@@ -814,6 +816,7 @@ if (!summary.ok) {
 }
 
 function buildHtmlReport(summary) {
+  const profileBench = buildProfileBench(summary);
   const cards = summary.results.map((result) => {
     const passed = result.failures.length === 0;
     const image = path.basename(result.screenshotPath);
@@ -932,6 +935,85 @@ function buildHtmlReport(summary) {
       border: 1px solid #263938;
       background: #0c1313;
     }
+    .profile-bench {
+      margin: 0 0 26px;
+    }
+    .section-heading {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 0 0 12px;
+    }
+    .section-heading h2 {
+      margin: 0;
+      color: #d9ffd5;
+      font-size: 18px;
+    }
+    .section-heading p {
+      max-width: 760px;
+      color: #9caaa6;
+    }
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .profile-card {
+      min-width: 0;
+      border: 1px solid #28413d;
+      background: linear-gradient(180deg, #0d1514, #070b0b);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
+    }
+    .profile-card header {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #203332;
+    }
+    .profile-thumbs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+      gap: 8px;
+      padding: 10px 10px 0;
+    }
+    .profile-thumbs a {
+      position: relative;
+      overflow: hidden;
+      min-height: 120px;
+      border: 1px solid #1f3431;
+      color: #d7ffd0;
+      text-decoration: none;
+      background: #030606;
+    }
+    .profile-thumbs img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+    .profile-thumbs span {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      padding: 3px 5px;
+      color: #061006;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      background: #8dff77;
+    }
+    .review-flags {
+      display: grid;
+      gap: 4px;
+      margin: 0;
+      padding: 0 10px 12px 26px;
+      color: #d3ddd9;
+      font-size: 12px;
+    }
     main {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1006,12 +1088,233 @@ function buildHtmlReport(summary) {
     <span>${summary.ok ? 'All scenarios passed' : 'Failures detected'}</span>
     <span>${summary.results.length} scenarios</span>
     <span>${summary.productionMobileProfiles.length} production mobile profiles</span>
+    <span>${summary.productionProfileRenderer ?? 'mixed'} production renderer</span>
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
+  ${profileBench}
   <main>${cards}</main>
 </body>
 </html>
 `;
+}
+
+function buildProfileSummaries(results) {
+  const groups = new Map();
+  for (const result of results) {
+    const metrics = result.metrics ?? {};
+    const profileId = metrics.fixedProfile ?? result.expectedFixedProfile;
+    if (!profileId) {
+      continue;
+    }
+
+    const profileMeta = productionMobileProfiles.find((profile) => profile.id === profileId);
+    const group = groups.get(profileId) ?? {
+      id: profileId,
+      role: metrics.fixedProfileRole ?? profileMeta?.role ?? null,
+      kind: metrics.fixedProfileKind ?? profileMeta?.kind ?? null,
+      defaultPriority: profileMeta?.defaultPriority ?? null,
+      scenarios: 0,
+      failures: 0,
+      modes: new Set(),
+      thumbnails: {},
+      means: [],
+      contrasts: [],
+      saturations: [],
+      colors: [],
+      shellDetails: [],
+      controlDetails: [],
+      textOverflows: []
+    };
+
+    group.scenarios += 1;
+    group.failures += result.failures.length;
+    group.modes.add(result.mode);
+    group.role ??= metrics.fixedProfileRole ?? profileMeta?.role ?? null;
+    group.kind ??= metrics.fixedProfileKind ?? profileMeta?.kind ?? null;
+    addFinite(group.means, metrics.screenshot?.mean);
+    addFinite(group.contrasts, metrics.screenshot?.standardDeviation);
+    addFinite(group.saturations, metrics.screenshot?.saturationMean);
+    addFinite(group.colors, metrics.screenshot?.sampledUniqueColors);
+    addFinite(group.shellDetails, metrics.phaserShellDetails);
+    addFinite(group.controlDetails, metrics.phaserControlDetails);
+    addFinite(group.textOverflows, metrics.phaserTextOverflows);
+    recordProfileThumbnail(group.thumbnails, result);
+    groups.set(profileId, group);
+  }
+
+  return [...groups.values()]
+    .map((group) => {
+      const summary = {
+        id: group.id,
+        role: group.role,
+        kind: group.kind,
+        defaultPriority: group.defaultPriority,
+        scenarios: group.scenarios,
+        modes: [...group.modes].sort(),
+        failures: group.failures,
+        thumbnails: group.thumbnails,
+        metrics: {
+          mean: average(group.means),
+          contrast: average(group.contrasts),
+          saturation: average(group.saturations),
+          sampledUniqueColors: average(group.colors),
+          minShellDetails: minimum(group.shellDetails),
+          minControlDetails: minimum(group.controlDetails),
+          maxTextOverflows: maximum(group.textOverflows)
+        }
+      };
+      return {
+        ...summary,
+        reviewFlags: profileReviewFlags(summary)
+      };
+    })
+    .sort((left, right) =>
+      kindSort(left.kind) - kindSort(right.kind) ||
+      roleSort(left.role) - roleSort(right.role) ||
+      left.id.localeCompare(right.id)
+    );
+}
+
+function buildProfileBench(summary) {
+  const profiles = summary.profileSummaries ?? [];
+  if (profiles.length === 0) {
+    return '';
+  }
+
+  const cards = profiles.map((profile) => {
+    const metrics = profile.metrics ?? {};
+    const chips = [
+      profile.kind,
+      profile.role,
+      Number.isFinite(profile.defaultPriority) ? `priority ${profile.defaultPriority}` : null,
+      `${profile.scenarios} states`,
+      profile.failures ? `${profile.failures} failures` : 'passing',
+      Number.isFinite(metrics.contrast) ? `contrast ${metrics.contrast.toFixed(3)}` : null,
+      Number.isFinite(metrics.saturation) ? `sat ${metrics.saturation.toFixed(3)}` : null,
+      Number.isFinite(metrics.sampledUniqueColors) ? `colors ${Math.round(metrics.sampledUniqueColors)}` : null,
+      Number.isFinite(metrics.minShellDetails) ? `shell ${metrics.minShellDetails}` : null,
+      Number.isFinite(metrics.minControlDetails) ? `controls ${metrics.minControlDetails}` : null,
+      Number.isFinite(metrics.maxTextOverflows) ? `text overflow ${metrics.maxTextOverflows}` : null
+    ].filter(Boolean);
+    const thumbs = ['diagnostics', 'log', 'inventory', 'terminal', 'movement']
+      .map((slot) => profile.thumbnails?.[slot] ? { slot, image: profile.thumbnails[slot] } : null)
+      .filter(Boolean);
+
+    return `
+      <article class="profile-card ${profile.failures ? 'fail' : 'pass'}">
+        <header>
+          <div>
+            <h2>${escapeHtml(profile.id)}</h2>
+            <p>${escapeHtml([profile.kind, profile.role].filter(Boolean).join(' / '))}</p>
+          </div>
+          <span class="badge">${profile.failures ? 'CHECK' : 'PASS'}</span>
+        </header>
+        <div class="profile-thumbs">
+          ${thumbs.map((thumb) => `
+            <a href="${escapeHtml(thumb.image)}">
+              <img src="${escapeHtml(thumb.image)}" alt="${escapeHtml(`${profile.id} ${thumb.slot}`)} screenshot">
+              <span>${escapeHtml(thumb.slot)}</span>
+            </a>
+          `).join('')}
+        </div>
+        <div class="chips">${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join('')}</div>
+        <ul class="review-flags">${profile.reviewFlags.map((flag) => `<li>${escapeHtml(flag)}</li>`).join('')}</ul>
+      </article>
+    `;
+  }).join('\n');
+
+  return `
+    <section class="profile-bench">
+      <div class="section-heading">
+        <h2>Skin Bench</h2>
+        <p>Profile-level comparison for visual review. These cards are review aids; scenario failures remain the hard gate.</p>
+      </div>
+      <div class="profile-grid">${cards}</div>
+    </section>
+  `;
+}
+
+function recordProfileThumbnail(thumbnails, result) {
+  const image = path.basename(result.screenshotPath);
+  const name = result.name;
+  if (name.endsWith('-production-diagnostics') || result.mode === 'fixed-workbench-diagnostics') {
+    thumbnails.diagnostics ??= image;
+  } else if (name.includes('-production-log')) {
+    thumbnails.log ??= image;
+  } else if (name.includes('-production-inventory')) {
+    thumbnails.inventory ??= image;
+  } else if (name.includes('-production-defeat') || name.includes('-production-victory')) {
+    thumbnails.terminal ??= image;
+  } else if (name.includes('-production-movement')) {
+    thumbnails.movement ??= image;
+  }
+}
+
+function profileReviewFlags(profile) {
+  const metrics = profile.metrics ?? {};
+  const flags = [];
+  if (profile.failures > 0) {
+    flags.push('Has failing scenarios.');
+  }
+  if (Number.isFinite(metrics.maxTextOverflows) && metrics.maxTextOverflows > 0) {
+    flags.push('Text overflow needs layout work.');
+  }
+  if (Number.isFinite(metrics.contrast) && metrics.contrast < 0.13) {
+    flags.push('Low average contrast; check readability and material depth.');
+  }
+  if (Number.isFinite(metrics.saturation) && metrics.saturation < 0.28) {
+    flags.push('Muted average saturation; check whether the skin reads as a distinct theme.');
+  }
+  if (Number.isFinite(metrics.sampledUniqueColors) && metrics.sampledUniqueColors < 3200) {
+    flags.push('Low sampled color variety; inspect for flat or one-note surfaces.');
+  }
+  if (Number.isFinite(metrics.minShellDetails) && metrics.minShellDetails < 130) {
+    flags.push('Shell detail is close to the production floor.');
+  }
+  if (Number.isFinite(metrics.minControlDetails) && metrics.minControlDetails < 80) {
+    flags.push('Control hardware detail is close to the production floor.');
+  }
+  return flags.length > 0 ? flags : ['Ready for human visual review.'];
+}
+
+function addFinite(values, value) {
+  if (Number.isFinite(value)) {
+    values.push(value);
+  }
+}
+
+function average(values) {
+  return values.length > 0
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : null;
+}
+
+function minimum(values) {
+  return values.length > 0 ? Math.min(...values) : null;
+}
+
+function maximum(values) {
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+function kindSort(kind) {
+  if (kind === 'mobileCompact') {
+    return 0;
+  }
+  if (kind === 'mobilePortrait') {
+    return 1;
+  }
+  return 2;
+}
+
+function roleSort(role) {
+  if (role === 'default') {
+    return 0;
+  }
+  if (role === 'variant') {
+    return 1;
+  }
+  return 2;
 }
 
 function escapeHtml(value) {
