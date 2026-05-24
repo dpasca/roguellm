@@ -352,13 +352,41 @@ const compactVariants = [
     id: 'gold-mobile-compact',
     displayLabel: 'Gold Mobile Short Deck',
     label: 'GOLD MOBILE SHORT',
-    footer: 'SHORT GOLD'
+    footer: 'SHORT GOLD',
+    palette: ['brass', 'gold', 'graphite'],
+    accent: '#ffd24a',
+    accentSoft: '#fff0a3',
+    accentDim: '#8a6416',
+    accentLine: '#c89422',
+    secondary: '#78ff63',
+    textMuted: '#e0c98b',
+    textDim: '#8f7642',
+    shellTop: '#51401d',
+    shellMid: '#151007',
+    shellStroke: '#9b7a34',
+    panelStroke: '#8d6f2d',
+    panelInset: '#201706',
+    noise: '#3c2e15'
   }),
   compactVariant('amber-mobile', {
     id: 'amber-mobile-compact',
     displayLabel: 'Amber Relay Short Deck',
     label: 'AMBER RELAY SHORT',
-    footer: 'SHORT AMBER'
+    footer: 'SHORT AMBER',
+    palette: ['amber', 'orange', 'charcoal'],
+    accent: '#ff7a24',
+    accentSoft: '#ffc074',
+    accentDim: '#8a310b',
+    accentLine: '#d35a1c',
+    secondary: '#ff4e2e',
+    textMuted: '#d8b38a',
+    textDim: '#8d6547',
+    shellTop: '#3e2111',
+    shellMid: '#120906',
+    shellStroke: '#8a4e24',
+    panelStroke: '#8f5424',
+    panelInset: '#211007',
+    noise: '#3b2111'
   }),
   {
     id: 'terminal-green-mobile-compact',
@@ -925,9 +953,9 @@ function compactPremiumChassisSvg(variant) {
       ${defs(variant)}
       <linearGradient id="premiumShell" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="${variant.shellTop}"/>
-        <stop offset="0.16" stop-color="#252c2a"/>
-        <stop offset="0.54" stop-color="#0b1110"/>
-        <stop offset="1" stop-color="#303836"/>
+        <stop offset="0.18" stop-color="${variant.noise}"/>
+        <stop offset="0.54" stop-color="${variant.shellMid}"/>
+        <stop offset="1" stop-color="${variant.panelStroke}"/>
       </linearGradient>
       <linearGradient id="sideRail" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="${variant.secondary}" stop-opacity="0.9"/>
@@ -935,8 +963,8 @@ function compactPremiumChassisSvg(variant) {
         <stop offset="1" stop-color="${variant.secondary}" stop-opacity="0.72"/>
       </linearGradient>
       <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#123625"/>
-        <stop offset="0.42" stop-color="#05110d"/>
+        <stop offset="0" stop-color="${variant.accentDim}"/>
+        <stop offset="0.42" stop-color="${variant.panelInset}"/>
         <stop offset="1" stop-color="#010403"/>
       </linearGradient>
       <radialGradient id="consoleBloom" cx="0.5" cy="0.18" r="0.82">
@@ -945,8 +973,8 @@ function compactPremiumChassisSvg(variant) {
         <stop offset="1" stop-color="#000000" stop-opacity="0"/>
       </radialGradient>
       <pattern id="brushed" width="8" height="8" patternUnits="userSpaceOnUse">
-        <path d="M0 1H8M0 4H8M0 7H8" stroke="#77837d" stroke-opacity="0.16"/>
-        <path d="M2 0V8M6 0V8" stroke="#030606" stroke-opacity="0.42"/>
+        <path d="M0 1H8M0 4H8M0 7H8" stroke="${variant.shellStroke}" stroke-opacity="0.18"/>
+        <path d="M2 0V8M6 0V8" stroke="${variant.shellMid}" stroke-opacity="0.46"/>
       </pattern>
       <pattern id="speaker" width="8" height="8" patternUnits="userSpaceOnUse">
         <circle cx="2" cy="2" r="1" fill="#0a100f"/>
@@ -961,7 +989,7 @@ function compactPremiumChassisSvg(variant) {
       </filter>
     </defs>
     <rect width="390" height="667" fill="#010303"/>
-    <rect x="1" y="1" width="388" height="665" rx="14" fill="#050707" stroke="#33403d" stroke-width="2"/>
+    <rect x="1" y="1" width="388" height="665" rx="14" fill="${variant.shellMid}" stroke="${variant.shellStroke}" stroke-width="2"/>
     <rect x="5" y="5" width="380" height="657" rx="12" fill="url(#premiumShell)" stroke="#0b0f0f" stroke-width="2"/>
     <rect x="10" y="10" width="370" height="647" rx="10" fill="url(#brushed)" opacity="0.72"/>
     <rect x="10" y="10" width="370" height="647" rx="10" fill="url(#consoleBloom)" opacity="0.92"/>
@@ -970,7 +998,7 @@ function compactPremiumChassisSvg(variant) {
     <rect x="367" y="44" width="6" height="451" rx="3" fill="url(#sideRail)" opacity="0.36"/>
     <rect x="18" y="44" width="4" height="451" fill="url(#scan)" opacity="0.24"/>
 
-    <rect x="17" y="18" width="356" height="22" rx="5" fill="#151a1a" stroke="#38433f"/>
+    <rect x="17" y="18" width="356" height="22" rx="5" fill="${variant.panelInset}" stroke="${variant.panelStroke}"/>
     <rect x="18" y="19" width="354" height="5" rx="2" fill="#ffffff" opacity="0.06"/>
     <rect x="22" y="22" width="27" height="12" rx="6" fill="#090d0c" stroke="#5b6763"/>
     <rect x="25" y="25" width="18" height="6" rx="3" fill="${variant.secondary}" filter="url(#premiumGlow)"/>
@@ -999,7 +1027,7 @@ function compactPremiumChassisSvg(variant) {
       <rect x="191" y="643" width="10" height="3" rx="1.5" fill="${variant.secondary}" opacity="0.55"/>
       <rect x="206" y="643" width="10" height="3" rx="1.5" fill="${variant.accent}" opacity="0.65"/>
     </g>
-    <rect x="66" y="516" width="74" height="146" rx="10" fill="#151f1e" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="66" y="516" width="74" height="146" rx="10" fill="${variant.panelInset}" stroke="${variant.panelStroke}" stroke-width="2"/>
     <rect x="69" y="519" width="68" height="20" rx="8" fill="#ffffff" opacity="0.035"/>
     <rect x="78" y="552" width="50" height="74" rx="7" fill="#08100f" stroke="#3c4b45"/>
     <rect x="86" y="562" width="34" height="50" rx="5" fill="#020504" stroke="#1b2823"/>
@@ -1012,10 +1040,10 @@ function compactPremiumChassisSvg(variant) {
       <rect x="24" y="563" width="60" height="58" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
       <rect x="120" y="563" width="60" height="58" rx="9" fill="none" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
     </g>
-    <rect x="196" y="518" width="168" height="68" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="196" y="518" width="168" height="68" rx="9" fill="${variant.panelInset}" stroke="${variant.panelStroke}" stroke-width="2"/>
     <rect x="200" y="522" width="160" height="60" rx="8" fill="none" stroke="#1c2b25"/>
     <rect x="204" y="526" width="152" height="10" rx="5" fill="#ffffff" opacity="0.035"/>
-    <rect x="196" y="588" width="168" height="68" rx="9" fill="#0b1211" stroke="${variant.panelStroke}" stroke-width="2"/>
+    <rect x="196" y="588" width="168" height="68" rx="9" fill="${variant.panelInset}" stroke="${variant.panelStroke}" stroke-width="2"/>
     <rect x="200" y="592" width="160" height="60" rx="8" fill="none" stroke="#1c2b25"/>
     <rect x="204" y="596" width="152" height="10" rx="5" fill="#ffffff" opacity="0.035"/>
     <text x="27" y="650" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="#8c9995">${variant.footer}</text>
@@ -1038,18 +1066,20 @@ function premiumThemeAccents(variant, height) {
     case 'amber':
       return `
         <g opacity="0.9">
-          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.035"/>
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="${compact ? 0.085 : 0.052}"/>
+          <rect x="12" y="${mapY + 34}" width="18" height="${mapHeight - 70}" rx="4" fill="${variant.accent}" opacity="${compact ? 0.18 : 0.12}"/>
+          <rect x="360" y="${mapY + 20}" width="18" height="${mapHeight - 42}" rx="4" fill="${variant.secondary}" opacity="${compact ? 0.14 : 0.10}"/>
           ${Array.from({ length: compact ? 12 : 15 }, (_, index) => {
             const x = -18 + index * 34;
-            return `<path d="M${x} ${mapBottom - 10}L${x + 104} ${mapY + 8}" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="9" opacity="${index % 2 === 0 ? 0.075 : 0.055}"/>`;
+            return `<path d="M${x} ${mapBottom - 10}L${x + 104} ${mapY + 8}" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="${compact ? 13 : 10}" opacity="${index % 2 === 0 ? 0.18 : 0.13}"/>`;
           }).join('')}
-          ${Array.from({ length: compact ? 5 : 6 }, (_, index) => `<path d="M${58 + index * 52} ${mapY + 18}l14 12l-14 12" fill="none" stroke="${variant.secondary}" stroke-width="2" opacity="0.22"/>`).join('')}
+          ${Array.from({ length: compact ? 5 : 6 }, (_, index) => `<path d="M${58 + index * 52} ${mapY + 18}l14 12l-14 12" fill="none" stroke="${variant.secondary}" stroke-width="2.8" opacity="0.44"/>`).join('')}
           ${Array.from({ length: compact ? 17 : 23 }, (_, index) => {
             const y = 58 + index * 22;
-            return `<path d="M14 ${y}L27 ${y + 13}M363 ${y + 13}L376 ${y}" stroke="${index % 2 === 0 ? variant.accentSoft : variant.secondary}" stroke-width="3" stroke-linecap="round" opacity="${index % 2 === 0 ? 0.48 : 0.30}"/>`;
+            return `<path d="M14 ${y}L27 ${y + 13}M363 ${y + 13}L376 ${y}" stroke="${index % 2 === 0 ? variant.accentSoft : variant.secondary}" stroke-width="3.4" stroke-linecap="round" opacity="${index % 2 === 0 ? 0.70 : 0.48}"/>`;
           }).join('')}
-          <rect x="26" y="${controlY + 6}" width="34" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.accent}" stroke-width="1.4" stroke-dasharray="6 5" opacity="0.38"/>
-          <rect x="331" y="${controlY + 6}" width="33" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.secondary}" stroke-width="1.4" stroke-dasharray="4 6" opacity="0.34"/>
+          <rect x="26" y="${controlY + 6}" width="34" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.accent}" stroke-width="2" stroke-dasharray="6 5" opacity="0.60"/>
+          <rect x="331" y="${controlY + 6}" width="33" height="${controlHeight - 18}" rx="4" fill="none" stroke="${variant.secondary}" stroke-width="2" stroke-dasharray="4 6" opacity="0.54"/>
           <path d="M205 ${controlY + 12}H356M205 ${controlY + 22}H356M205 ${controlY + controlHeight - 22}H356" stroke="${variant.accentSoft}" stroke-width="1" opacity="0.20"/>
           <text x="278" y="${controlY + controlHeight - 11}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.secondary}" opacity="0.72">RELAY BUS</text>
         </g>
@@ -1057,12 +1087,13 @@ function premiumThemeAccents(variant, height) {
     case 'gold':
       return `
         <g opacity="0.88">
-          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.secondary}" opacity="0.026"/>
-          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 74 : 92}" fill="none" stroke="${variant.secondary}" stroke-width="2" opacity="0.12"/>
-          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 49 : 64}" fill="none" stroke="${variant.accentSoft}" stroke-width="1.3" opacity="0.10"/>
-          <path d="M74 ${mapY + 28}H118L129 ${mapY + 39}H260L272 ${mapY + 28}H316M74 ${mapBottom - 30}H118L129 ${mapBottom - 41}H260L272 ${mapBottom - 30}H316" fill="none" stroke="${variant.secondary}" stroke-width="1.8" opacity="0.22"/>
-          <path d="M58 45H124L132 53H258L266 45H332" fill="none" stroke="${variant.secondary}" stroke-width="2.4" opacity="0.52"/>
-          <path d="M63 50H112L120 58H270L278 50H327" fill="none" stroke="${variant.accentSoft}" stroke-width="1.1" opacity="0.32"/>
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.secondary}" opacity="${compact ? 0.075 : 0.042}"/>
+          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 74 : 92}" fill="none" stroke="${variant.secondary}" stroke-width="3.6" opacity="0.28"/>
+          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 49 : 64}" fill="none" stroke="${variant.accentSoft}" stroke-width="2.4" opacity="0.22"/>
+          <circle cx="195" cy="${mapY + mapHeight * 0.52}" r="${compact ? 28 : 38}" fill="${variant.secondary}" opacity="${compact ? 0.10 : 0.07}"/>
+          <path d="M74 ${mapY + 28}H118L129 ${mapY + 39}H260L272 ${mapY + 28}H316M74 ${mapBottom - 30}H118L129 ${mapBottom - 41}H260L272 ${mapBottom - 30}H316" fill="none" stroke="${variant.secondary}" stroke-width="2.6" opacity="0.42"/>
+          <path d="M58 45H124L132 53H258L266 45H332" fill="none" stroke="${variant.secondary}" stroke-width="3.2" opacity="0.70"/>
+          <path d="M63 50H112L120 58H270L278 50H327" fill="none" stroke="${variant.accentSoft}" stroke-width="1.8" opacity="0.52"/>
           <path d="M20 62H36V94H28V251H20M370 62H354V94H362V251H370" fill="none" stroke="${variant.secondary}" stroke-width="2.2" opacity="0.44"/>
           <path d="M72 ${controlY + 8}C78 ${controlY + 28} 125 ${controlY + 28} 132 ${controlY + 8}" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.36"/>
           <path d="M209 ${controlY + 10}H352L358 ${controlY + 18}V${controlY + 54}L350 ${controlY + 63}H211L204 ${controlY + 54}V${controlY + 18}Z" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.34"/>
@@ -1090,14 +1121,15 @@ function premiumThemeAccents(variant, height) {
     case 'signal':
       return `
         <g opacity="0.86">
-          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.030"/>
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="${compact ? 0.082 : 0.046}"/>
+          <rect x="28" y="${mapY + 12}" width="334" height="${mapHeight - 24}" rx="18" fill="none" stroke="${variant.secondary}" stroke-width="2.4" stroke-dasharray="10 8" opacity="${compact ? 0.22 : 0.16}"/>
           ${Array.from({ length: compact ? 6 : 8 }, (_, index) => {
             const y = mapY + 24 + index * 28;
-            return `<path d="M38 ${y}C82 ${y - 22} 108 ${y + 22} 150 ${y}S222 ${y - 22} 264 ${y}S326 ${y + 22} 352 ${y}" fill="none" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="1.6" opacity="${index % 2 === 0 ? 0.16 : 0.10}"/>`;
+            return `<path d="M38 ${y}C82 ${y - 22} 108 ${y + 22} 150 ${y}S222 ${y - 22} 264 ${y}S326 ${y + 22} 352 ${y}" fill="none" stroke="${index % 2 === 0 ? variant.accent : variant.secondary}" stroke-width="2.4" opacity="${index % 2 === 0 ? 0.34 : 0.25}"/>`;
           }).join('')}
-          <circle cx="310" cy="${mapY + 48}" r="28" fill="none" stroke="${variant.accent}" stroke-width="1.5" opacity="0.18"/>
-          <path d="M310 ${mapY + 20}V${mapY + 76}M282 ${mapY + 48}H338" stroke="${variant.secondary}" stroke-width="1.2" opacity="0.16"/>
-          <path d="M29 54C49 74 49 103 29 123M36 61C50 78 50 99 36 116M361 54C341 74 341 103 361 123M354 61C340 78 340 99 354 116" fill="none" stroke="${variant.accent}" stroke-width="1.5" opacity="0.45"/>
+          <circle cx="310" cy="${mapY + 48}" r="28" fill="none" stroke="${variant.accent}" stroke-width="2.4" opacity="0.36"/>
+          <path d="M310 ${mapY + 20}V${mapY + 76}M282 ${mapY + 48}H338" stroke="${variant.secondary}" stroke-width="1.8" opacity="0.30"/>
+          <path d="M29 54C49 74 49 103 29 123M36 61C50 78 50 99 36 116M361 54C341 74 341 103 361 123M354 61C340 78 340 99 354 116" fill="none" stroke="${variant.accent}" stroke-width="2.2" opacity="0.70"/>
           <path d="M24 286C72 252 105 314 154 285S239 254 288 285S336 316 365 292" fill="none" stroke="${variant.secondary}" stroke-width="1.7" opacity="0.38"/>
           <path d="M31 ${controlY + 16}H58M31 ${controlY + 32}H46M31 ${controlY + 48}H62M331 ${controlY + 18}H360M345 ${controlY + 34}H360M327 ${controlY + 50}H360" stroke="${variant.accentSoft}" stroke-width="2" stroke-linecap="round" opacity="0.38"/>
           <path d="M206 ${controlY + 64}L356 ${controlY + 18}M206 ${controlY + 134}L356 ${controlY + 88}" stroke="${variant.secondary}" stroke-width="1.1" opacity="0.26"/>
@@ -1119,10 +1151,10 @@ function premiumThemeAccents(variant, height) {
     case 'terminal':
       return `
         <g opacity="0.82">
-          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="0.026"/>
-          ${Array.from({ length: compact ? 9 : 11 }, (_, index) => `<path d="M24 ${mapY + 18 + index * 22}H366" stroke="${variant.accent}" stroke-width="1" opacity="${index % 2 === 0 ? 0.12 : 0.07}"/>`).join('')}
-          ${Array.from({ length: 8 }, (_, index) => `<path d="M${48 + index * 40} ${mapY + 6}V${mapBottom - 8}" stroke="${variant.accent}" stroke-width="1" opacity="${index % 2 === 0 ? 0.08 : 0.045}"/>`).join('')}
-          <path d="M40 ${mapBottom - 32}H132V${mapBottom - 42}H188V${mapBottom - 18}H284V${mapBottom - 28}H350" fill="none" stroke="${variant.secondary}" stroke-width="1.4" opacity="0.18"/>
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="${compact ? 0.085 : 0.050}"/>
+          ${Array.from({ length: compact ? 9 : 11 }, (_, index) => `<path d="M24 ${mapY + 18 + index * 22}H366" stroke="${variant.accent}" stroke-width="1.7" opacity="${index % 2 === 0 ? 0.28 : 0.18}"/>`).join('')}
+          ${Array.from({ length: 8 }, (_, index) => `<path d="M${48 + index * 40} ${mapY + 6}V${mapBottom - 8}" stroke="${variant.accent}" stroke-width="1.5" opacity="${index % 2 === 0 ? 0.20 : 0.12}"/>`).join('')}
+          <path d="M40 ${mapBottom - 32}H132V${mapBottom - 42}H188V${mapBottom - 18}H284V${mapBottom - 28}H350" fill="none" stroke="${variant.secondary}" stroke-width="2.2" opacity="0.34"/>
           ${Array.from({ length: compact ? 14 : 20 }, (_, index) => {
             const y = 58 + index * 20;
             return `<rect x="30" y="${y}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 3 === 0 ? 0.45 : 0.20}"/><rect x="356" y="${y + 6}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 2 === 0 ? 0.34 : 0.18}"/>`;
