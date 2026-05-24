@@ -14,6 +14,7 @@ import type {
   GameSkin
 } from '../skins/types';
 import { parseHexColor, scaleRgb } from '../game/color';
+import { cycleFixedSkinProfile } from './fixedSkinProfileCycling';
 import { selectFixedSkinProfile } from './fixedSkinProfileSelection';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './workbenchFixtures';
 
@@ -390,6 +391,10 @@ export function startPhaserFixedSkinWorkbench(skin: GameSkin): void {
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.repeat) {
+      return;
+    }
+
+    if (cycleFixedSkinProfile(skin, profile, event)) {
       return;
     }
 

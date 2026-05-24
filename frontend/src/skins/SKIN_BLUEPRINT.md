@@ -373,9 +373,12 @@ fixed-skin scenarios as a failure.
 graph and checks the built Vite manifest so stylesheets can only remain in the
 explicit legacy DOM style loader.
 
-In workbench mode, the `[` and `]` keys cycle profiles of the same fixed-skin
-kind, which makes compact mobile variants quick to compare without editing the
-URL between screenshots.
+In workbench mode, the `[` and `]` keys cycle production profiles of the same
+fixed-skin kind (`default` and `variant` roles), which makes compact mobile
+variants quick to compare without editing the URL between screenshots.
+Prototype profiles remain directly addressable by `profile=...`, but normal
+cycling skips them so source-pack experiments do not interrupt production skin
+comparison.
 
 The backend preserves `skin`, `ui`, `renderer`, `fixed_skin`, `profile`,
 `skin_tags`, `skin_mood`, and `skin_palette` query params when it creates or

@@ -374,6 +374,13 @@ const baseScenarios = [
     expectedFixedProfile: 'signal-noir-mobile-compact'
   },
   {
+    name: 'mobile-short-phaser-profile-cycle-fixed-workbench',
+    viewport: { width: 390, height: 667 },
+    mode: 'phaser-fixed-workbench-profile-cycle',
+    url: phaserFixedWorkbenchProfileUrl(compactFixedProfile),
+    expectedFixedProfile: 'signal-noir-mobile-compact'
+  },
+  {
     name: 'mobile-rain-city-derived-compact-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench',
@@ -1379,7 +1386,7 @@ async function runScenario(page, scenario) {
     await waitForFixedDrawerClosed(page);
   }
 
-  if (scenario.mode === 'fixed-workbench-profile-cycle') {
+  if (scenario.mode === 'fixed-workbench-profile-cycle' || scenario.mode === 'phaser-fixed-workbench-profile-cycle') {
     await Promise.all([
       page.waitForURL(
         (url) => url.searchParams.get('profile') === scenario.expectedFixedProfile,
@@ -1387,7 +1394,11 @@ async function runScenario(page, scenario) {
       ),
       page.keyboard.press(']')
     ]);
-    await waitForFixedWorkbenchReady(page);
+    if (scenario.mode === 'phaser-fixed-workbench-profile-cycle') {
+      await waitForPhaserFixedWorkbenchReady(page);
+    } else {
+      await waitForFixedWorkbenchReady(page);
+    }
   }
 
   if (

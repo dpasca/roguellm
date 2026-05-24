@@ -3,6 +3,7 @@ import { RogueScene } from '../game/RogueScene';
 import type { Direction, GameAction, GameState, Item } from '../protocol/types';
 import type { FixedSkinButton, FixedSkinButtonState, FixedSkinProfile, FixedSkinRect, GameSkin } from '../skins/types';
 import { normalizeFontAwesomeClass } from '../ui/icons';
+import { cycleFixedSkinProfile } from './fixedSkinProfileCycling';
 import { selectFixedSkinProfile } from './fixedSkinProfileSelection';
 import { applyWorkbenchAction, createWorkbenchState, WORKBENCH_LOGS } from './workbenchFixtures';
 
@@ -282,7 +283,7 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (!event.repeat) {
-      if (cycleWorkbenchProfile(skin, profile, event)) {
+      if (cycleFixedSkinProfile(skin, profile, event)) {
         return;
       }
       handleDrawerKey(event);
@@ -314,43 +315,6 @@ export function startFixedSkinWorkbench(skin: GameSkin): void {
     renderInventoryState(state, dispatchAction, true);
     renderButtonState(profile, buttons, state, scenario === 'status', { log: logOpen, inventory: inventoryOpen });
   }
-}
-
-function cycleWorkbenchProfile(skin: GameSkin, currentProfile: FixedSkinProfile, event: KeyboardEvent): boolean {
-  const direction = profileCycleDirection(event);
-  if (!direction) {
-    return false;
-  }
-
-  const profiles = (skin.fixedProfiles ?? []).filter((profile) => profile.kind === currentProfile.kind);
-  if (profiles.length <= 1) {
-    return false;
-  }
-
-  const currentIndex = Math.max(0, profiles.findIndex((profile) => profile.id === currentProfile.id));
-  const nextIndex = (currentIndex + direction + profiles.length) % profiles.length;
-  const nextProfile = profiles[nextIndex];
-  const url = new URL(window.location.href);
-  url.searchParams.set('profile', nextProfile.id);
-  event.preventDefault();
-  window.location.assign(url.toString());
-  return true;
-}
-
-function profileCycleDirection(event: KeyboardEvent): -1 | 1 | null {
-  if (event.ctrlKey || event.metaKey || event.altKey) {
-    return null;
-  }
-
-  if (event.key === '[') {
-    return -1;
-  }
-
-  if (event.key === ']') {
-    return 1;
-  }
-
-  return null;
 }
 
 function nextDrawerStateForKey(event: KeyboardEvent, current: DrawerState): DrawerState | null {
