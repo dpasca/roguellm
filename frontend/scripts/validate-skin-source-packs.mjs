@@ -177,7 +177,7 @@ function validateBuildHandoff(prefix, kit, profile) {
       continue;
     }
     validateExactCrop(prefix, `${name} button crop`, crop, { rect });
-    if (crop.variants !== expectedVariants && !(expectedVariants === 'toggle-button' && crop.variants === 'button')) {
+    if (crop.variants !== expectedVariants) {
       failures.push(`${prefix} ${name} button crop must declare variants="${expectedVariants}"`);
     }
   }

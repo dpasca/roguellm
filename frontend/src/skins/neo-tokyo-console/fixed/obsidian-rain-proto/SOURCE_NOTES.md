@@ -6,8 +6,12 @@ Theme: obsidian-rain
 Generated files:
 
 - `source-chassis.png`: clean full-size chassis artboard.
-- `source-widgets.png`: full-size widget source with fixed button and indicator crops.
+- `source-widgets.png`: full-size widget source with fixed button, toggle-button, and indicator crops.
 - `source-materials.png`: material sheet for panel, LCD, and button fill/frame crops.
+
+The `log` and `inventory` crops are toggle buttons. Building this pack must
+produce `idle`, `hover`, `pressed`, `active`, and `disabled` state PNGs for
+both controls so the Phaser drawer state is skin-owned on canvas.
 
 Suggested next commands:
 

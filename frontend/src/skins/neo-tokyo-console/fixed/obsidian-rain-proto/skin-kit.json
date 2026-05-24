@@ -607,7 +607,7 @@
           "height": 32
         },
         "alphaRadius": 6,
-        "variants": "button"
+        "variants": "toggle-button"
       },
       {
         "path": "inventory-idle.png",
@@ -618,7 +618,7 @@
           "height": 32
         },
         "alphaRadius": 6,
-        "variants": "button"
+        "variants": "toggle-button"
       },
       {
         "path": "dpad-n-idle.png",
