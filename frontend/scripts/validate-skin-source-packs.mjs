@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { buildStateSheetLayout, stateSheetCropsForProfile, stateSheetSourceFile } from './skin-state-sheet-layout.mjs';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const fixedDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
@@ -76,9 +77,13 @@ async function validateSourcePack(packDir) {
     return;
   }
 
+  const stateSheetLayout = buildStateSheetLayout(profile);
   const chassis = await validatePng(prefix, packDir, 'source-chassis.png', profile.size.width, profile.size.height);
   const widgets = await validatePng(prefix, packDir, 'source-widgets.png', profile.size.width, profile.size.height);
   const materials = await validatePng(prefix, packDir, 'source-materials.png');
+  if (usesStateSheet(kit)) {
+    await validatePng(prefix, packDir, stateSheetSourceFile, stateSheetLayout.size.width, stateSheetLayout.size.height);
+  }
 
   if (chassis && chassis.hasAlpha === false) {
     failures.push(`${prefix} source-chassis.png should keep an alpha channel for clean crop/export parity`);
@@ -169,6 +174,9 @@ function validateBuildHandoff(prefix, kit, profile) {
     });
   }
 
+  const stateSheetCrops = stateSheetCropsForProfile(profile);
+  const hasStateSheetCrops = build.crops.some((crop) => isStateSheetSource(crop.source));
+
   for (const [name, rect] of Object.entries(profile.layout.buttons)) {
     const crop = build.crops.find((entry) => entry.path === `${buttonPrefix(name)}-idle.png`);
     const expectedVariants = (profile.requiredStates.toggleButtons ?? []).includes(name) ? 'toggle-button' : 'button';
@@ -176,9 +184,38 @@ function validateBuildHandoff(prefix, kit, profile) {
       failures.push(`${prefix} build.crops missing ${buttonPrefix(name)}-idle.png`);
       continue;
     }
+    if (isStateSheetSource(crop.source)) {
+      validateStateSheetCropSet(prefix, build.crops, stateSheetCrops, name);
+      continue;
+    }
     validateExactCrop(prefix, `${name} button crop`, crop, { rect });
     if (crop.variants !== expectedVariants) {
       failures.push(`${prefix} ${name} button crop must declare variants="${expectedVariants}"`);
+    }
+  }
+
+  if (hasStateSheetCrops) {
+    validateStateSheetCropSet(prefix, build.crops, stateSheetCrops, 'status');
+    validateStateSheetCropSet(prefix, build.crops, stateSheetCrops, 'combatLed');
+  } else {
+    const statusCrop = build.crops.find((entry) => entry.path === 'status-ready.png');
+    if (!statusCrop) {
+      failures.push(`${prefix} build.crops missing status-ready.png`);
+    } else {
+      validateExactCrop(prefix, 'status indicator crop', statusCrop, { rect: profile.layout.indicators.status });
+      if (statusCrop.variants !== 'status-indicator') {
+        failures.push(`${prefix} status indicator crop must declare variants="status-indicator"`);
+      }
+    }
+
+    const ledCrop = build.crops.find((entry) => entry.path === 'led-off.png');
+    if (!ledCrop) {
+      failures.push(`${prefix} build.crops missing led-off.png`);
+    } else {
+      validateExactCrop(prefix, 'combat LED crop', ledCrop, { rect: profile.layout.indicators.combatLed });
+      if (ledCrop.variants !== 'combat-led') {
+        failures.push(`${prefix} combat LED crop must declare variants="combat-led"`);
+      }
     }
   }
 
@@ -193,6 +230,23 @@ function validateBuildHandoff(prefix, kit, profile) {
       source: 'source-materials.png',
       rect: { x: 104, y: rowY, width: material.frame.width, height: material.frame.height }
     });
+  }
+}
+
+function validateStateSheetCropSet(prefix, crops, expectedCrops, id) {
+  for (const expected of expectedCrops.filter((crop) => crop.id === id)) {
+    const crop = crops.find((entry) => entry.path === expected.path);
+    if (!crop) {
+      failures.push(`${prefix} build.crops missing state-sheet crop ${expected.path}`);
+      continue;
+    }
+    if (!isStateSheetSource(crop.source)) {
+      failures.push(`${prefix} ${expected.path} crop source must be ${stateSheetSourceFile}`);
+    }
+    if (crop.variants) {
+      failures.push(`${prefix} ${expected.path} state-sheet crop must not declare generated variants`);
+    }
+    validateExactCrop(prefix, `${expected.path} state-sheet crop`, crop, { rect: expected.rect });
   }
 }
 
@@ -221,6 +275,14 @@ function validateInBounds(prefix, label, png, rect) {
   if (rect.x + rect.width > png.width || rect.y + rect.height > png.height) {
     failures.push(`${prefix} ${label} crop ${rect.width}x${rect.height}+${rect.x}+${rect.y} escapes ${png.width}x${png.height}`);
   }
+}
+
+function usesStateSheet(kit) {
+  return (kit.build?.crops ?? []).some((crop) => isStateSheetSource(crop.source));
+}
+
+function isStateSheetSource(source) {
+  return source === stateSheetSourceFile || path.basename(source ?? '') === stateSheetSourceFile;
 }
 
 async function readPngHeader(assetPath) {

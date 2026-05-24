@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { buildStateSheetLayout } from './skin-state-sheet-layout.mjs';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
@@ -22,6 +23,7 @@ console.log(buildPrompt(profileName, profile, theme, outputKind));
 function buildPrompt(profileName, profile, theme, outputKind) {
   const canvas = `${profile.size.width}x${profile.size.height}`;
   const sourcePack = outputKind === 'source pack' || outputKind === 'source-pack';
+  const stateSheet = buildStateSheetLayout(profile);
   return [
     `Create a polished mobile roguelike cyberdeck skin ${outputKind}.`,
     '',
@@ -36,6 +38,10 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     'Button and toggle crop targets:',
     formatRectList(profile.layout.buttons, buttonNotes(profile.requiredStates)),
     '',
+    'Optional source-owned widget state sheet:',
+    `- source-state-sheet.png: exact ${stateSheet.size.width}x${stateSheet.size.height}. Use it when you want every button/toggle/indicator state hand-authored instead of generated from the idle crop.`,
+    formatStateSheet(stateSheet),
+    '',
     'Indicator crop targets:',
     formatRectList(profile.layout.indicators, indicatorNotes(profile.requiredStates)),
     '',
@@ -47,6 +53,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
       'Required source-pack files:',
       `- source-chassis.png: exact ${canvas} clean chassis art. Include shell, bezels, wells, screws, rails, glass frames, and decorative permanent labels only. Leave live regions clean.`,
       `- source-widgets.png: exact ${canvas} widget crop art. Align every button/toggle/indicator to the crop rectangles above. Keep button interiors clean enough for Phaser-rendered icons/text unless a label is intentionally permanent.`,
+      '- source-state-sheet.png: optional but preferred for premium skins. Follow the exact state-sheet slots above when states should have unique drawn lighting, depth, or on/off hardware.',
       '- source-materials.png: at least 160x304. Use row y=0 for panel material, y=104 for LCD material, y=208 for button material. In each row, put a repeat-safe 96x96 fill tile at x=0 and a transparent 48x48 nine-slice frame at x=104.',
       '- Optional contact sheet: useful for review, but it must not be used as runtime source art.',
       ''
@@ -63,6 +70,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     '- Do not include map tiles, player markers, enemies, items, HP values, stat values, enemy names, inventory names, chat/log text, terminal copy, or model status text.',
     '- Do not bake labels that change at runtime.',
     '- Make button and toggle wells suitable for separate transparent crops in idle, hover, pressed, and disabled states.',
+    '- Log and Inventory toggles also need a distinct active/on state.',
     '- Make status and combat LED wells suitable for separate state sprites.',
     '- Provide reusable panel, LCD, and button material fill tiles plus matching nine-slice frames; decorative detail must be tile-safe or frame-safe, never stretched across runtime panels.',
     '- Pressed, hover, disabled, on, and off states must be variants of fixed-size widgets, not elastic layout treatments.',
@@ -81,6 +89,20 @@ function buildPrompt(profileName, profile, theme, outputKind) {
       ]),
     '- Dynamic game content must remain absent from the art.'
   ].join('\n');
+}
+
+function formatStateSheet(stateSheet) {
+  return stateSheet.sections
+    .map((section) => {
+      const rows = section.rows.flatMap((row) =>
+        row.states.map((state) => {
+          const slot = row.slots[state];
+          return `  - ${row.id}.${state}: ${row.assetPathForState(state)} x=${slot.x} y=${slot.y} w=${slot.width} h=${slot.height}.`;
+        })
+      );
+      return `- ${section.title}:\n${rows.join('\n')}`;
+    })
+    .join('\n');
 }
 
 function formatRectList(rects, notes) {

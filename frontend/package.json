@@ -10,6 +10,7 @@
     "build:fixed-skins": "node scripts/generate-fixed-skins.mjs && node scripts/generate-reference-v2-addons.mjs",
     "build:gold-mobile-skin": "pnpm run build:fixed-skins",
     "skin:guide": "node scripts/skin-layout-guide.mjs",
+    "skin:state-guide": "node scripts/skin-state-sheet-guide.mjs",
     "skin:handoff": "node scripts/skin-source-handoff.mjs",
     "skin:prompt": "node scripts/skin-layout-prompt.mjs",
     "skin:scaffold": "node scripts/skin-layout-scaffold.mjs",

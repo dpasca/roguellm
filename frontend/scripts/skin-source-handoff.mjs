@@ -56,6 +56,15 @@ for (const view of ['live', 'crops', 'runtime', 'all']) {
   guides.push(guideName);
 }
 
+const stateGuideName = `${profileName}-state-sheet.${guideFormat}`;
+const stateGuidePath = path.join(outDir, stateGuideName);
+await runScript('skin-state-sheet-guide.mjs', [
+  profileName,
+  '--out',
+  path.relative(rootDir, stateGuidePath)
+]);
+guides.push(stateGuideName);
+
 const plan = buildPlan(skinId, profileName, theme, guides);
 await fs.writeFile(path.join(outDir, 'handoff.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 await fs.writeFile(path.join(outDir, 'README.md'), readme(plan), 'utf8');
@@ -79,7 +88,7 @@ async function runScript(scriptName, args) {
 
 function buildPlan(id, selectedProfile, selectedTheme, guideNames) {
   const sourceDir = `../_artifacts/skin-handoffs/${id}`;
-  const kitDir = `../_artifacts/skin-kits/${id}`;
+  const kitDir = sourceDir;
   return {
     skinId: id,
     contract: contract.version,
@@ -92,12 +101,13 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames) {
       expectedSourcePack: [
         'source-chassis.png',
         'source-widgets.png',
+        'source-state-sheet.png',
         'source-materials.png'
       ]
     },
     commands: [
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
-      `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source ${sourceDir}/source-widgets.png --chassis-source ${sourceDir}/source-chassis.png --materials-source ${sourceDir}/source-materials.png --material-render-mode source --out ${kitDir}`,
+      `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
       `pnpm -C frontend validate:skin-source-packs ${kitDir}`,
       `pnpm -C frontend skin:review-source ${kitDir}`,
       `pnpm -C frontend build:skin-kit ${kitDir}`,
@@ -121,7 +131,7 @@ Theme: ${plan.theme}
 ## Files
 
 - \`prompt.txt\`: paste this into the image generator.
-- \`${plan.files.guides.join('`, `')}\`: exact live-region, crop-target, runtime-slot, and combined guides.
+- \`${plan.files.guides.join('`, `')}\`: exact live-region, crop-target, runtime-slot, state-sheet, and combined guides.
 - Expected generated files: \`${plan.files.expectedSourcePack.join('`, `')}\`.
 
 ## Runtime Rule
@@ -131,8 +141,9 @@ CSS, DOM stylesheets, or responsive stretching to place or skin runtime widgets.
 
 ## After Generation
 
-Put the generated \`source-chassis.png\`, \`source-widgets.png\`, and
-\`source-materials.png\` in this handoff directory, then run:
+Put the generated \`source-chassis.png\`, \`source-widgets.png\`,
+\`source-state-sheet.png\`, and \`source-materials.png\` in this handoff
+directory, then run:
 
 \`\`\`bash
 ${plan.commands.join('\n')}

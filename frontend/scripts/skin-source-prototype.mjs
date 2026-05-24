@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { buildStateSheetLayout } from './skin-state-sheet-layout.mjs';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
@@ -26,6 +27,7 @@ const theme = themeFor(parsedArgs.options.theme ?? 'obsidian-rain');
 await fs.mkdir(outDir, { recursive: true });
 await writePng(path.join(outDir, 'source-chassis.png'), chassisSvg(profile, theme, { widgets: false }));
 await writePng(path.join(outDir, 'source-widgets.png'), chassisSvg(profile, theme, { widgets: true }));
+await writePng(path.join(outDir, 'source-state-sheet.png'), stateSheetSvg(profile, theme));
 await writePng(path.join(outDir, 'source-materials.png'), materialSheetSvg(theme));
 await fs.writeFile(path.join(outDir, 'SOURCE_NOTES.md'), sourceNotes(skinId, profileName, theme), 'utf8');
 
@@ -277,6 +279,112 @@ function combatLed(rect, theme) {
   `;
 }
 
+function stateSheetSvg(selectedProfile, theme) {
+  const layout = buildStateSheetLayout(selectedProfile);
+  return svg(layout.size.width, layout.size.height, `
+    <defs>${defs(theme)}</defs>
+    <rect width="${layout.size.width}" height="${layout.size.height}" fill="#020406"/>
+    <rect x="0" y="0" width="${layout.size.width}" height="36" fill="#11181d"/>
+    <text x="14" y="23" font-family="Arial Black, Arial, sans-serif" font-size="12" fill="${theme.accentSoft}">ROGUELLM SOURCE STATE SHEET</text>
+    <text x="${layout.size.width - 14}" y="23" text-anchor="end" font-family="Arial, sans-serif" font-size="9" fill="${theme.textDim}">${layout.source} ${layout.size.width}x${layout.size.height}</text>
+    ${layout.sections.map((section) => stateSheetSection(section, theme)).join('\n')}
+  `);
+}
+
+function stateSheetSection(section, theme) {
+  const labels = Array.from({ length: Math.max(...section.rows.map((row) => row.states.length)) }, (_, index) => {
+    const state = section.rows.find((row) => row.states[index])?.states[index] ?? '';
+    const x = 16 + section.labelWidth + index * (section.columnWidth + 10) + section.columnWidth / 2;
+    return `<text x="${x}" y="${section.y + 35}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${theme.textFaint}">${state.toUpperCase()}</text>`;
+  }).join('\n');
+
+  return `
+    <g>
+      <rect x="16" y="${section.y}" width="${section.width - 32}" height="20" rx="5" fill="#071016" stroke="${theme.panelStroke}" stroke-opacity="0.6"/>
+      <text x="26" y="${section.y + 14}" font-family="Arial Black, Arial, sans-serif" font-size="9" fill="${theme.accentSoft}">${section.title.toUpperCase()}</text>
+      ${labels}
+      ${section.rows.map((row) => stateSheetRow(section, row, theme)).join('\n')}
+    </g>
+  `;
+}
+
+function stateSheetRow(section, row, theme) {
+  const labelY = row.y + section.rowHeight / 2 + 4;
+  return `
+    <g>
+      <text x="26" y="${labelY}" font-family="Arial Black, Arial, sans-serif" font-size="8" fill="${theme.textDim}">${row.label.toUpperCase()}</text>
+      ${row.states.map((state) => stateSheetWidget(row, state, theme)).join('\n')}
+    </g>
+  `;
+}
+
+function stateSheetWidget(row, state, theme) {
+  const rect = row.slots[state];
+  if (row.id === 'status') {
+    return stateSheetStatus(rect, state, theme);
+  }
+  if (row.id === 'combatLed') {
+    return stateSheetLed(rect, state, theme);
+  }
+
+  const stateTheme = themeForButtonState(theme, row.id, state);
+  const base = button(rect, row.id, stateTheme);
+  const overlay = state === 'disabled'
+    ? `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${row.id.startsWith('move') ? 10 : 8}" fill="#111820" opacity="0.58"/>`
+    : state === 'pressed'
+      ? `<rect x="${rect.x + 5}" y="${rect.y + 5}" width="${rect.width - 10}" height="${rect.height - 10}" rx="7" fill="#010204" opacity="0.22"/>`
+      : state === 'active'
+        ? `<rect x="${rect.x + 4}" y="${rect.y + 4}" width="${rect.width - 8}" height="${rect.height - 8}" rx="6" fill="none" stroke="${theme.accent}" stroke-width="2" filter="url(#softGlow)"/>`
+        : '';
+  return `<g>${base}${overlay}</g>`;
+}
+
+function stateSheetStatus(rect, state, theme) {
+  const stateTheme = {
+    ...theme,
+    accent: state === 'error' ? theme.combat : state === 'thinking' ? theme.warning : state === 'offline' ? '#778083' : theme.accent
+  };
+  const base = statusIndicator(rect, stateTheme);
+  const overlay = state === 'offline'
+    ? `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="7" fill="#10161a" opacity="0.58"/>`
+    : '';
+  return `<g>${base}${overlay}</g>`;
+}
+
+function stateSheetLed(rect, state, theme) {
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  const lit = state === 'on';
+  return `
+    <g>
+      ${combatLed(rect, theme)}
+      <circle cx="${cx}" cy="${cy}" r="${Math.min(rect.width, rect.height) / 2 - 4}" fill="${lit ? theme.accent : '#1b2226'}" opacity="${lit ? 0.96 : 0.55}" ${lit ? 'filter="url(#softGlow)"' : ''}/>
+    </g>
+  `;
+}
+
+function themeForButtonState(theme, id, state) {
+  const color = state === 'disabled'
+    ? '#7a8589'
+    : state === 'pressed'
+      ? theme.combatHigh
+      : state === 'active'
+        ? theme.accent
+        : undefined;
+
+  if (!color) {
+    return theme;
+  }
+
+  return {
+    ...theme,
+    accent: id === 'run' || id.startsWith('move') || state === 'active' ? color : theme.accent,
+    accentSoft: state === 'disabled' ? '#aab2b5' : theme.accentSoft,
+    combat: id === 'attack' || state === 'pressed' ? color : theme.combat,
+    warning: id === 'log' || id === 'inventory' ? color : theme.warning
+  };
+}
+
 function materialSheetSvg(theme) {
   return svg(160, 304, `
     <defs>${defs(theme)}</defs>
@@ -500,6 +608,7 @@ function sourceNotes(skinId, profileName, theme) {
     '',
     '- `source-chassis.png`: clean full-size chassis artboard.',
     '- `source-widgets.png`: full-size widget source with fixed button and indicator crops.',
+    '- `source-state-sheet.png`: fixed widget states with separate authored slots.',
     '- `source-materials.png`: material sheet for panel, LCD, and button fill/frame crops.',
     '',
     'Suggested next commands:',
@@ -512,6 +621,7 @@ function sourceNotes(skinId, profileName, theme) {
     '  --palette cyan,magenta,graphite \\',
     '  --source source-widgets.png \\',
     '  --chassis-source source-chassis.png \\',
+    '  --state-source source-state-sheet.png \\',
     '  --materials-source source-materials.png \\',
     '  --material-render-mode source \\',
     `  --out ../_artifacts/skin-kits/${skinId}`,

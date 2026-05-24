@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { stateSheetCropsForProfile } from './skin-state-sheet-layout.mjs';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
@@ -105,6 +106,7 @@ function buildManifest(id, kind, selectedProfile, options) {
 
 function buildCrops(selectedProfile, options) {
   const materialSource = options['materials-source'] ?? options['material-source'];
+  const stateSource = options['state-source'] ?? options['states-source'];
   const crops = [
     {
       path: 'chassis.png',
@@ -118,28 +120,37 @@ function buildCrops(selectedProfile, options) {
     }
   ];
 
-  for (const [name, rect] of Object.entries(selectedProfile.layout.buttons)) {
+  if (stateSource) {
+    crops.push(...stateSheetCropsForProfile(selectedProfile).map((crop) => ({
+      path: crop.path,
+      source: stateSource,
+      rect: cloneRect(crop.rect),
+      alphaRadius: crop.alphaRadius
+    })));
+  } else {
+    for (const [name, rect] of Object.entries(selectedProfile.layout.buttons)) {
+      crops.push({
+        path: `${buttonPrefix(name)}-idle.png`,
+        rect: cloneRect(rect),
+        alphaRadius: buttonAlphaRadius(name),
+        variants: isToggleButton(selectedProfile, name) ? 'toggle-button' : 'button'
+      });
+    }
+
     crops.push({
-      path: `${buttonPrefix(name)}-idle.png`,
-      rect: cloneRect(rect),
-      alphaRadius: buttonAlphaRadius(name),
-      variants: isToggleButton(selectedProfile, name) ? 'toggle-button' : 'button'
+      path: 'status-ready.png',
+      rect: cloneRect(selectedProfile.layout.indicators.status),
+      alphaRadius: 6,
+      variants: 'status-indicator'
+    });
+
+    crops.push({
+      path: 'led-off.png',
+      rect: cloneRect(selectedProfile.layout.indicators.combatLed),
+      alphaRadius: 9,
+      variants: 'combat-led'
     });
   }
-
-  crops.push({
-    path: 'status-ready.png',
-    rect: cloneRect(selectedProfile.layout.indicators.status),
-    alphaRadius: 6,
-    variants: 'status-indicator'
-  });
-
-  crops.push({
-    path: 'led-off.png',
-    rect: cloneRect(selectedProfile.layout.indicators.combatLed),
-    alphaRadius: 9,
-    variants: 'combat-led'
-  });
 
   if (materialSource) {
     crops.push(...buildMaterialCrops(selectedProfile.materials, materialSource));

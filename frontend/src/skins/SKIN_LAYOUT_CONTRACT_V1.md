@@ -320,9 +320,10 @@ pnpm --silent -C frontend skin:prompt mobileCompact --theme "industrial subway r
 ```
 
 The generator prints the exact live-region rectangles, crop targets, indicator
-targets, material sheet layout, and hard rules for the selected profile. Prefer
-the default source-pack output over one flexible UI image: it asks for a clean
-chassis artboard, fixed widget crop artboard, and tile/nine-slice material sheet.
+targets, optional source-owned state sheet layout, material sheet layout, and
+hard rules for the selected profile. Prefer the default source-pack output over
+one flexible UI image: it asks for a clean chassis artboard, fixed widget crop
+artboard, optional fixed widget state sheet, and tile/nine-slice material sheet.
 
 ## Layout Guide Generator
 
@@ -333,6 +334,7 @@ pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-
 pnpm -C frontend skin:guide mobileCompact --view crops --out ../_artifacts/skin-guides/mobile-compact-crops.png
 pnpm -C frontend skin:guide mobileCompact --view runtime --out ../_artifacts/skin-guides/mobile-compact-runtime.svg
 pnpm -C frontend skin:guide mobileCompact --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
+pnpm -C frontend skin:state-guide mobileCompact --out ../_artifacts/skin-guides/mobile-compact-state-sheet.svg
 ```
 
 The guide renders the same contract rectangles as an annotated image. Use
@@ -343,6 +345,12 @@ review and for pairing with generated source art; they are not runtime assets.
 Pass `--source <path>` to place an exact-size generated source artboard
 underneath the guide overlay for alignment review before building a skin kit.
 PNG sources must match the selected profile dimensions.
+
+The state-sheet guide is separate because state sprites are fixed-size widgets,
+not runtime layout regions. It renders the exact `source-state-sheet.png`
+dimensions and every expected state slot. Use it for premium skins where hover,
+pressed, disabled, active, ready, thinking, error, on, and off states should be
+drawn intentionally instead of derived from one idle crop.
 
 ## Manifest Scaffold Generator
 
@@ -358,6 +366,8 @@ pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact \
 This writes `source-chassis.png`, `source-widgets.png`, and
 `source-materials.png`. Treat those as a contract-aligned baseline or as paint
 overs for image generation; they are not a substitute for final art review.
+Premium generated skins may also provide `source-state-sheet.png`, following
+the state-sheet guide, so each fixed widget state is source-owned.
 
 After generating a source artboard, use the scaffold generator to create the
 matching `skin-kit.json` from the same contract profile:
@@ -370,6 +380,7 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --palette green,brass,graphite \
   --source source-widgets.png \
   --chassis-source source-chassis.png \
+  --state-source source-state-sheet.png \
   --materials-source source-materials.png \
   --material-render-mode source \
   --out ../_artifacts/skin-kits/rain-city-deck
@@ -396,7 +407,8 @@ plan for `build:skin-kit`. The default `meta.role` is `prototype`; do not move a
 generated scaffold into `src/skins/neo-tokyo-console/fixed` as a production
 `default` or `variant` until the PNG assets exist and validation passes.
 
-The scaffold crop plan assumes a single full source artboard:
+Without `--state-source`, the scaffold crop plan assumes a single full widget
+source artboard:
 
 - `chassis.png` is cropped from the full canvas.
 - Button idle crops generate `hover`, `pressed`, and `disabled` variants.
@@ -408,6 +420,12 @@ The scaffold crop plan assumes a single full source artboard:
   are cropped from a separate material sheet. Without that option, keep the
   material PNGs repeat-safe and place them beside the generated skin-kit
   manifest before promotion.
+
+With `--state-source source-state-sheet.png`, buttons, toggles, the status
+indicator, and the combat LED are cropped directly from the state-sheet guide
+slots. In that workflow no generated hover/pressed/disabled/active variants are
+used for widgets; each state can have its own authored lighting, bevel depth,
+and on/off hardware.
 
 Material source sheet layout:
 
