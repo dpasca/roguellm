@@ -843,6 +843,8 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserFogTileDetails) ? `fog detail ${metrics.phaserFogTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
+      Number.isFinite(metrics.phaserTextSlots) ? `text slots ${metrics.phaserTextSlots}` : null,
+      Number.isFinite(metrics.phaserTextOverflows) ? `text overflow ${metrics.phaserTextOverflows}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
       Number.isFinite(metrics.phaserSourceMaterialPanels) ? `source materials ${metrics.phaserSourceMaterialPanels}` : null,
       metrics.phaserSourceMaterialKinds ? `source kinds ${metrics.phaserSourceMaterialKinds}` : null,
@@ -2479,6 +2481,10 @@ async function collectMetrics(page) {
       phaserFogTileDetails: Number(document.body.dataset.phaserFogTileDetails ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
+      phaserTextSlots: Number(document.body.dataset.phaserTextSlots ?? NaN),
+      phaserTextShrinks: Number(document.body.dataset.phaserTextShrinks ?? NaN),
+      phaserTextEllipses: Number(document.body.dataset.phaserTextEllipses ?? NaN),
+      phaserTextOverflows: Number(document.body.dataset.phaserTextOverflows ?? NaN),
       phaserCanvas: {
         count: document.querySelectorAll('#phaser-fixed-skin-workbench canvas').length,
         width: document.querySelector('#phaser-fixed-skin-workbench canvas')?.width ?? 0,
@@ -2915,6 +2921,21 @@ function validatePhaserControlAffordances(metrics, failures, context) {
   }
 }
 
+function validatePhaserTextSlots(metrics, failures, context) {
+  if (!Number.isFinite(metrics.phaserTextSlots) || metrics.phaserTextSlots < 16) {
+    failures.push(`${context} expected measured fixed text slots, got ${metrics.phaserTextSlots ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserTextOverflows)) {
+    failures.push(`${context} missing Phaser text overflow metric`);
+  } else if (metrics.phaserTextOverflows > 0) {
+    failures.push(
+      `${context} has ${metrics.phaserTextOverflows} Phaser text slot overflow(s) ` +
+      `(shrinks=${metrics.phaserTextShrinks ?? 'none'}, ellipses=${metrics.phaserTextEllipses ?? 'none'})`
+    );
+  }
+}
+
 function phaserButtonState(metrics, buttonId) {
   return Object.fromEntries(
     String(metrics.phaserButtonStates ?? '')
@@ -2959,6 +2980,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserActionLabels(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserControlAffordances(metrics, failures, 'Phaser workbench');
+  validatePhaserTextSlots(metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
@@ -3123,6 +3145,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser runtime');
   validatePhaserControlAffordances(metrics, failures, 'Phaser runtime');
+  validatePhaserTextSlots(metrics, failures, 'Phaser runtime');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);

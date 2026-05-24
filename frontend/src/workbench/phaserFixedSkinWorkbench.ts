@@ -25,6 +25,7 @@ type PhaserTextStyle = {
   fontStyle?: string;
   align?: 'left' | 'center' | 'right';
   lineSpacing?: number;
+  minFontSize?: number;
 };
 
 interface SceneConfig {
@@ -554,6 +555,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
   private movementLockBadgesDrawn = 0;
+  private textSlotsDrawn = 0;
+  private textSlotsShrunk = 0;
+  private textSlotsEllipsized = 0;
+  private textSlotOverflows = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -639,6 +644,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
     this.movementLockBadgesDrawn = 0;
+    this.textSlotsDrawn = 0;
+    this.textSlotsShrunk = 0;
+    this.textSlotsEllipsized = 0;
+    this.textSlotOverflows = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawShellHardware();
@@ -684,6 +693,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
     document.body.dataset.phaserMovementLockBadges = String(this.movementLockBadgesDrawn);
+    document.body.dataset.phaserTextSlots = String(this.textSlotsDrawn);
+    document.body.dataset.phaserTextShrinks = String(this.textSlotsShrunk);
+    document.body.dataset.phaserTextEllipses = String(this.textSlotsEllipsized);
+    document.body.dataset.phaserTextOverflows = String(this.textSlotOverflows);
   }
 
   private drawShellHardware(): void {
@@ -1438,7 +1451,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         color: disabled ? '#9aa0a8' : this.theme.titleText,
         fontStyle: 'bold',
         align: 'center'
-      });
+      }, Math.max(14, button.rect.height - 18));
       if (buttonId === 'attack' || buttonId === 'run') {
         this.actionButtonLabelsDrawn += 1;
       }
@@ -2505,6 +2518,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       wordWrap: { width, useAdvancedWrap: true }
     });
     object.setLineSpacing(style.lineSpacing ?? 1);
+    this.fitTextToSlot(object, text, width, maxHeight, style);
     if (style.align === 'center') {
       object.setFixedSize(width, maxHeight ?? 0);
     }
@@ -2512,10 +2526,89 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       object.setOrigin(0, 0);
       object.setFixedSize(width, maxHeight ?? 0);
     }
-    if (maxHeight && object.height > maxHeight) {
-      object.setFontSize(Math.max(9, Math.floor(style.fontSize * maxHeight / object.height)));
-    }
     return object;
+  }
+
+  private fitTextToSlot(
+    object: Phaser.GameObjects.Text,
+    text: string,
+    width: number,
+    maxHeight: number | undefined,
+    style: PhaserTextStyle
+  ): void {
+    if (!Number.isFinite(width) || width <= 0) {
+      return;
+    }
+
+    this.textSlotsDrawn += 1;
+    const minFontSize = Math.min(style.fontSize, style.minFontSize ?? 8);
+    let fontSize = style.fontSize;
+    let shrunk = false;
+
+    while (this.textOverflowsSlot(object, width, maxHeight) && fontSize > minFontSize) {
+      fontSize -= 1;
+      object.setFontSize(fontSize);
+      shrunk = true;
+    }
+
+    if (shrunk) {
+      this.textSlotsShrunk += 1;
+    }
+
+    if (this.textOverflowsSlot(object, width, maxHeight) && text.length > 3) {
+      const fitted = this.ellipsizeTextForSlot(object, text, width, maxHeight);
+      if (fitted) {
+        this.textSlotsEllipsized += 1;
+      }
+    }
+
+    if (this.textOverflowsSlot(object, width, maxHeight)) {
+      this.textSlotOverflows += 1;
+    }
+  }
+
+  private ellipsizeTextForSlot(
+    object: Phaser.GameObjects.Text,
+    text: string,
+    width: number,
+    maxHeight: number | undefined
+  ): boolean {
+    const trimmed = text.trim();
+    const suffix = '...';
+    if (trimmed.length <= suffix.length) {
+      return false;
+    }
+
+    let low = 1;
+    let high = trimmed.length - suffix.length;
+    let best = '';
+
+    while (low <= high) {
+      const midpoint = Math.floor((low + high) / 2);
+      const candidate = `${trimmed.slice(0, midpoint).trimEnd()}${suffix}`;
+      object.setText(candidate);
+      if (this.textOverflowsSlot(object, width, maxHeight)) {
+        high = midpoint - 1;
+      } else {
+        best = candidate;
+        low = midpoint + 1;
+      }
+    }
+
+    if (best) {
+      object.setText(best);
+      return true;
+    }
+
+    object.setText(suffix);
+    return !this.textOverflowsSlot(object, width, maxHeight);
+  }
+
+  private textOverflowsSlot(object: Phaser.GameObjects.Text, width: number, maxHeight: number | undefined): boolean {
+    const tolerance = 1.25;
+    const tooWide = object.width > width + tolerance;
+    const tooTall = maxHeight !== undefined && object.height > maxHeight + tolerance;
+    return tooWide || tooTall;
   }
 
   private addTextInRect(
