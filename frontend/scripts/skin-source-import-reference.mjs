@@ -31,6 +31,14 @@ const label = parsedArgs.options.label ?? labelFromId(skinId);
 const tags = parsedArgs.options.tags ?? 'ai-reference,cyberpunk,handheld,rain-city';
 const mood = parsedArgs.options.mood ?? 'premium,nocturnal,tactile';
 const palette = parsedArgs.options.palette ?? 'jade,magenta,brass';
+const defaultPriority = parsedArgs.options['default-priority'] ?? '0';
+const referenceGravity = parsedArgs.options.gravity ?? 'center';
+const keepReferenceSources = parsedArgs.options['keep-reference'] === 'true';
+
+if (!['center', 'north'].includes(referenceGravity)) {
+  console.error(`Unknown --gravity "${referenceGravity}". Expected center or north.`);
+  process.exit(1);
+}
 
 await fs.mkdir(outDir, { recursive: true });
 await runNode('skin-source-prototype.mjs', [
@@ -43,12 +51,20 @@ await runNode('skin-source-prototype.mjs', [
 ]);
 
 const originalPath = path.join(outDir, 'source-reference-original.png');
-const normalizedPath = path.join(outDir, 'source-reference-normalized.png');
+const normalizedPath = path.join(
+  outDir,
+  keepReferenceSources ? 'source-reference-normalized.png' : '.source-reference-normalized.tmp.png'
+);
 const chassisPath = path.join(outDir, 'source-chassis.png');
 
-await fs.copyFile(sourcePath, originalPath);
-await normalizeReference(sourcePath, normalizedPath, profile.size);
+if (keepReferenceSources) {
+  await fs.copyFile(sourcePath, originalPath);
+}
+await normalizeReference(sourcePath, normalizedPath, profile.size, referenceGravity);
 await writeSanitizedChassis(normalizedPath, chassisPath, profile);
+if (!keepReferenceSources) {
+  await fs.rm(normalizedPath, { force: true });
+}
 await runNode('skin-layout-scaffold.mjs', [
   skinId,
   profileName,
@@ -62,8 +78,10 @@ await runNode('skin-layout-scaffold.mjs', [
   mood,
   '--palette',
   palette,
+  '--default-priority',
+  defaultPriority,
   '--generation',
-  'imagegen-reference-import',
+  `imagegen-reference-import:${referenceGravity}-gravity`,
   '--source',
   'source-widgets.png',
   '--chassis-source',
@@ -85,14 +103,14 @@ await fs.writeFile(
 
 console.error(`Imported reference source pack to ${path.relative(process.cwd(), outDir)}`);
 
-async function normalizeReference(inputPath, outputPath, size) {
+async function normalizeReference(inputPath, outputPath, size, gravity) {
   await magick([
     inputPath,
     '-auto-orient',
     '-resize',
     `${size.width}x${size.height}^`,
     '-gravity',
-    'center',
+    gravity,
     '-extent',
     `${size.width}x${size.height}`,
     '-strip',
@@ -220,6 +238,7 @@ Skin id: \`${skinId}\`
 Profile: \`${profileName}\`
 Role: \`${role}\`
 Prototype theme preset: \`${theme}\`
+Reference crop gravity: \`${referenceGravity}\`
 
 This source pack was seeded from an external bitmap reference:
 
@@ -290,6 +309,9 @@ function printUsage() {
     '  --role <role>             default, variant, prototype, or legacy. Defaults to prototype.',
     '  --tags <a,b,c>            Metadata tokens. Defaults to ai-reference,cyberpunk,handheld,rain-city.',
     '  --mood <a,b,c>            Metadata tokens. Defaults to premium,nocturnal,tactile.',
-    '  --palette <a,b,c>         Metadata tokens. Defaults to jade,magenta,brass.'
+    '  --palette <a,b,c>         Metadata tokens. Defaults to jade,magenta,brass.',
+    '  --default-priority <n>    Manifest selection priority. Defaults to 0.',
+    '  --gravity <mode>          Reference crop gravity: center or north. Defaults to center.',
+    '  --keep-reference true     Keep source-reference-original/normalized beside the source pack.'
   ].join('\n'));
 }
