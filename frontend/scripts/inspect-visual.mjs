@@ -32,13 +32,15 @@ const fixedWorkbenchProfileUrl = (profile) =>
 const phaserFixedWorkbenchProfileUrl = (profile, extraParams = {}) =>
   withQueryParams(defaultFixedWorkbenchProfileUrl(profile), extraParams);
 const defaultFixedProfile = 'reference-mobile-v3';
-const compactFixedProfile = 'reference-mobile-compact';
+const compactFixedProfile = 'neon-shrine-mobile-compact';
 const desktopFixedProfile = 'desktop-wide';
 const sourceMaterialPhaserProfiles = new Set([
   'terminal-green-mobile-compact',
+  'neon-shrine-mobile-compact',
   'obsidian-rain-proto'
 ]);
 const actionLabelPhaserProfiles = new Set([
+  'neon-shrine-mobile-compact',
   'obsidian-rain-proto'
 ]);
 const phaserMapDetailFloors = new Map([
@@ -182,7 +184,7 @@ const baseScenarios = [
   {
     name: 'mobile-short-default-fixed-workbench',
     viewport: { width: 390, height: 667 },
-    mode: 'fixed-workbench',
+    mode: 'phaser-fixed-workbench',
     url: fixedWorkbenchUrl,
     expectedFixedProfile: compactFixedProfile
   },
@@ -371,14 +373,14 @@ const baseScenarios = [
     viewport: { width: 390, height: 667 },
     mode: 'fixed-workbench-profile-cycle',
     url: fixedWorkbenchProfileUrl(compactFixedProfile),
-    expectedFixedProfile: 'signal-noir-mobile-compact'
+    expectedFixedProfile: 'reference-mobile-compact'
   },
   {
     name: 'mobile-short-phaser-profile-cycle-fixed-workbench',
     viewport: { width: 390, height: 667 },
     mode: 'phaser-fixed-workbench-profile-cycle',
     url: phaserFixedWorkbenchProfileUrl(compactFixedProfile),
-    expectedFixedProfile: 'signal-noir-mobile-compact'
+    expectedFixedProfile: 'reference-mobile-compact'
   },
   {
     name: 'mobile-rain-city-derived-compact-fixed-workbench',

@@ -22,7 +22,7 @@
       "brass",
       "graphite"
     ],
-    "defaultPriority": 86,
+    "defaultPriority": 95,
     "generation": "deterministic-source-prototype-neon-shrine"
   },
   "kind": "mobileCompact",

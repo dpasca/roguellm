@@ -403,12 +403,17 @@ fail plainly instead of loading a stylesheet-backed fallback.
 ## Current Profiles
 
 - `mobile-portrait`: early generated placeholder profile.
-- `reference-mobile-v3`: compact mobile default, using the gold layout
+- `reference-mobile-v3`: mobile portrait default, using the gold layout
   proportions with richer reference-style chrome and full terminal/drawer
   coverage.
-- `reference-mobile-compact`: `390x667` short-phone profile selected
-  automatically on short mobile viewports; it has compact geometry and reuses
-  the reference control sprites.
+- `neon-shrine-mobile-compact`: `390x667` short-phone profile selected
+  automatically on short mobile viewports; it is the current visual baseline for
+  source-owned compact skins, with clean source artboards, authored state-sheet
+  controls, source-color material tiles, jade phosphor, magenta combat hardware,
+  and brass inlays.
+- `reference-mobile-compact`: older `390x667` short-phone profile kept as a
+  production comparison target; it has compact geometry and reuses the
+  reference control sprites.
 - `rain-city-derived-compact`: generated-reference prototype that uses the v1
   compact contract with separate clean chassis and widget source artboards.
 - `signal-noir-mobile-compact`: `390x667` short-phone variant for noir/signal
