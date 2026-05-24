@@ -1,0 +1,60 @@
+{
+  "version": "v1",
+  "name": "RogueLLM Mobile Compact Composition Gate",
+  "targetProfile": "mobileCompact",
+  "intent": "Keep the fixed mobile UI on a single short-phone canvas with enough room for map inspection, newest story text, open log or inventory drawers, combat state, and touch controls.",
+  "visualGoal": "A premium handheld game surface should read as one physical device, with clear hierarchy and no hidden lower log/control content on a 390x667 mobile canvas.",
+  "hierarchy": [
+    "map",
+    "latest",
+    "title",
+    "player",
+    "combat",
+    "controls"
+  ],
+  "closedStateRegions": [
+    "map",
+    "latest",
+    "title",
+    "player",
+    "combat",
+    "controls"
+  ],
+  "drawerRegions": [
+    "log",
+    "inventory"
+  ],
+  "floors": {
+    "mapAreaRatioMin": 0.28,
+    "mapAreaRatioMax": 0.34,
+    "latestHeightMin": 70,
+    "latestMessageHeightMin": 44,
+    "drawerHeightMin": 230,
+    "drawerRowCapacityMin": 5,
+    "drawerControlsOverlapMax": 12,
+    "playerHeightMax": 52,
+    "combatHeightMax": 54,
+    "controlsHeightMin": 145,
+    "controlsBottomGapMax": 0,
+    "actionButtonWidthMin": 140,
+    "actionButtonHeightMin": 60,
+    "dpadButtonSizeMin": 52,
+    "toggleWidthMin": 42,
+    "toggleHeightMin": 28,
+    "tileValueWidthMin": 80,
+    "enemyNameWidthMin": 190,
+    "enemyHpWidthMin": 70,
+    "mapToLatestGapMin": 8,
+    "compactChromeTopMax": 52
+  },
+  "rules": [
+    "Closed-state regions must not overlap each other.",
+    "The map must remain the primary surface without taking over the phone canvas.",
+    "The latest-message surface must be readable while leaving dedicated toggle wells.",
+    "Open log and inventory drawers may overlay status/player/combat content, but they must not consume the bottom control deck.",
+    "The bottom control deck must stay anchored to the artboard bottom on short phones.",
+    "Runtime title, stat, combat, drawer, and button slots must remain contained by their owning contract regions.",
+    "D-pad and action buttons must keep fixed touch targets; visual polish cannot shrink them.",
+    "Skin art may frame these zones, but Phaser owns all runtime text, icons, meters, and game state inside them."
+  ]
+}

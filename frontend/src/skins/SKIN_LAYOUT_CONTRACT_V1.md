@@ -13,6 +13,11 @@ The current visual-quality direction is machine-readable in
 art blueprint defines what a generated mobile compact source pack must feel like
 before it is good enough to promote.
 
+The current short-phone composition budget is machine-readable in
+`SKIN_MOBILE_COMPOSITION_V1.json`. It turns the mobile-first layout intent into
+validation floors for screen hierarchy, drawer row capacity, control anchoring,
+map budget, and fixed runtime slot containment.
+
 The v1 contract is mobile-first and has two artboard variants:
 
 - `mobilePortrait`: `390x844`

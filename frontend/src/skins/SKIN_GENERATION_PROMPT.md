@@ -4,12 +4,13 @@ Use this when generating the next production artboard from the gold mobile
 layout. The intended output is a source artboard for a skin kit, not a screenshot
 of gameplay.
 
-Before using this prompt, choose the `mobilePortrait` or `mobileCompact`
-geometry from `SKIN_LAYOUT_CONTRACT_V1.md` and paste the exact live-region and
+Before using this prompt, choose the `mobileCompact` geometry from
+`SKIN_LAYOUT_CONTRACT_V1.md` and paste the exact live-region, runtime-slot, and
 crop-target tables into the prompt. Do not invent alternate coordinates during
 generation; create a new layout contract version first if the geometry changes.
 `validate:skins` enforces the matching machine-readable
-`SKIN_LAYOUT_CONTRACT_V1.json` geometry for production mobile profiles.
+`SKIN_LAYOUT_CONTRACT_V1.json` geometry for production mobile profiles, and
+`validate:mobile-composition` enforces the current short-phone hierarchy budget.
 
 Preferred handoff commands:
 
@@ -17,9 +18,9 @@ Preferred handoff commands:
 pnpm -C frontend skin:handoff rain-city-deck mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --out ../_artifacts/skin-handoffs/rain-city-deck
 pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact --theme obsidian-rain --out ../_artifacts/skin-kits/rain-city-deck
 pnpm --silent -C frontend skin:prompt mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --output source-pack > ../_artifacts/skin-prompts/rain-city-deck.txt
-pnpm -C frontend skin:guide mobilePortrait --view live --out ../_artifacts/skin-guides/mobile-portrait-live.png
-pnpm -C frontend skin:guide mobilePortrait --view crops --out ../_artifacts/skin-guides/mobile-portrait-crops.png
-pnpm -C frontend skin:guide mobilePortrait --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
+pnpm -C frontend skin:guide mobileCompact --view live --out ../_artifacts/skin-guides/mobile-compact-live.png
+pnpm -C frontend skin:guide mobileCompact --view crops --out ../_artifacts/skin-guides/mobile-compact-crops.png
+pnpm -C frontend skin:guide mobileCompact --view all --source ../_artifacts/skin-kits/rain-city-deck/source-chassis.png --out ../_artifacts/skin-guides/rain-city-overlay.svg
 pnpm -C frontend skin:state-guide mobileCompact --out ../_artifacts/skin-guides/mobile-compact-state-sheet.png
 ```
 
@@ -53,27 +54,27 @@ slots; the generated art owns tactile hardware around those slots.
 ```text
 Create a polished mobile cyberdeck game UI skin source pack.
 
-Canvas: 390x844 portrait.
+Canvas: 390x667 mobile compact.
 Style: premium skeuomorphic handheld console, dark graphite shell, subtle neon
 green/orange status lights, tactile buttons, glass LCD apertures, fine bevels,
 small screws, restrained sci-fi hardware details. Beautiful but readable.
 
 Layout:
 - Header/status chrome from y=0 to y=44.
-- Empty live map aperture at x=22 y=48 w=346 h=281.
-- Empty latest-message LCD area at x=24 y=344 w=284 h=86.
-- Fixed log-toggle button well at x=315 y=348 w=46 h=32.
-- Fixed inventory-toggle button well at x=315 y=392 w=46 h=32, sharing the
+- Empty live map aperture at x=22 y=48 w=346 h=232.
+- Empty latest-message LCD area at x=24 y=292 w=284 h=74.
+- Fixed log-toggle button well at x=315 y=296 w=46 h=32.
+- Fixed inventory-toggle button well at x=315 y=336 w=46 h=32, sharing the
   expanded drawer surface with the log.
-- Title/model status band around y=454.
-- Empty player HP/stat area at x=24 y=488 w=342 h=54.
-- Empty combat/enemy area at x=24 y=562 w=342 h=64.
-- Terminal/end-state panel area at x=38 y=360 w=314 h=292; it may be a
+- Title/model status band around y=374.
+- Empty player HP/stat area at x=24 y=406 w=342 h=48.
+- Empty combat/enemy area at x=24 y=464 w=342 h=50.
+- Terminal/end-state panel area at x=38 y=292 w=314 h=238; it may be a
   reusable empty alert module or an overlay crop, but it must leave room for
   live title, message, HP, XP, and restart button content.
-- Bottom control deck from y=646 to y=833, with D-pad well on the left and two
+- Bottom control deck from y=518 to y=667, with D-pad well on the left and two
   large action-button wells on the right.
-- Restart button sprite target at x=82 y=578 w=226 h=66.
+- Restart button sprite target at x=82 y=462 w=226 h=66.
 
 Hard rules:
 - Do not include gameplay map tiles, item icons, enemy icons, player marker, HP
@@ -104,7 +105,7 @@ Hard rules:
 After generation, create a prototype manifest from the same contract profile:
 
 ```bash
-pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
+pnpm -C frontend skin:scaffold rain-city-deck mobileCompact \
   --label "Rain City Deck" \
   --tags cyberpunk,rain-city \
   --mood premium,nocturnal \

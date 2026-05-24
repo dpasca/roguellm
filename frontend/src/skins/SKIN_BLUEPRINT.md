@@ -8,9 +8,13 @@ For exact v1 artboard coordinates, crop targets, required state assets, and the
 AI-generation handoff checklist, see `SKIN_LAYOUT_CONTRACT_V1.md`. Automated
 validation loads `SKIN_LAYOUT_CONTRACT_V1.json`. For the current premium art
 direction, see `SKIN_ART_BLUEPRINT_V1.json`; `skin:handoff` copies that into an
-`ART_DIRECTION.md` file beside generated-skin prompts and guides. This document
+`ART_DIRECTION.md` file beside generated-skin prompts and guides. The
+short-phone composition budget lives in `SKIN_MOBILE_COMPOSITION_V1.json` and is
+validated by `pnpm -C frontend validate:mobile-composition`. This document
 explains broad intent; the layout contract is the source of truth for geometry,
-and the art blueprint is the source of truth for current mobile visual quality.
+the composition gate is the source of truth for mobile hierarchy and minimum
+usable space, and the art blueprint is the source of truth for current mobile
+visual quality.
 
 ## Goals
 
@@ -121,6 +125,13 @@ must stay inside their panels, movement/action buttons must remain inside the
 control bay, and the highest-priority mobile profile must be the single
 `default`. Use `prototype` or `legacy` for reference skins that are useful to
 compare against but should not carry production geometry promises.
+
+`validate:mobile-composition` adds a separate contract-level guard for the
+current `mobileCompact` target. It checks that the map stays within the intended
+screen budget, the latest message and drawers keep enough text room, log and
+inventory can show at least five rows, drawers do not swallow the bottom control
+deck, controls remain bottom-anchored, and key runtime text slots stay large
+enough for generated names.
 
 ## Runtime Layers
 

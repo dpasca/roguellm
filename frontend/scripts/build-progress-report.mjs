@@ -22,6 +22,7 @@ const sourceReview = await loadSourceReview(compactFocus?.id);
 const handoff = await loadProgressHandoff();
 const gitStatus = await loadGitStatus();
 const styleBoundary = await loadStyleBoundary();
+const mobileComposition = await loadMobileComposition();
 
 await fs.writeFile(outPath, buildHtml({
   summary,
@@ -33,7 +34,8 @@ await fs.writeFile(outPath, buildHtml({
   sourceReview,
   handoff,
   gitStatus,
-  styleBoundary
+  styleBoundary,
+  mobileComposition
 }), 'utf8');
 
 console.log(`Wrote ${path.relative(process.cwd(), outPath)}`);
@@ -101,6 +103,94 @@ async function loadStyleBoundary() {
     sourceCssCount: srcCssFiles.length,
     issues
   };
+}
+
+async function loadMobileComposition() {
+  const compositionPath = path.join(rootDir, 'src/skins/SKIN_MOBILE_COMPOSITION_V1.json');
+  const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
+  try {
+    const [composition, contract] = await Promise.all([
+      fs.readFile(compositionPath, 'utf8').then(JSON.parse),
+      fs.readFile(contractPath, 'utf8').then(JSON.parse)
+    ]);
+    const profile = contract.profiles?.[composition.targetProfile];
+    if (!profile) {
+      return {
+        ok: false,
+        path: compositionPath,
+        targetProfile: composition.targetProfile ?? 'missing',
+        failures: [`target profile ${composition.targetProfile ?? 'missing'} is missing from the layout contract`],
+        chips: []
+      };
+    }
+
+    const floors = composition.floors ?? {};
+    const logRows = drawerCapacity(profile, 'log');
+    const inventoryRows = drawerCapacity(profile, 'inventory');
+    const map = profile.regions.map;
+    const latest = profile.regions.latest;
+    const controls = profile.regions.controls;
+    const player = profile.regions.player;
+    const combat = profile.regions.combat;
+    const screenArea = profile.size.width * profile.size.height;
+    const mapAreaRatio = map.width * map.height / screenArea;
+    const controlsBottomGap = profile.size.height - (controls.y + controls.height);
+    const failures = [];
+
+    if (mapAreaRatio < floors.mapAreaRatioMin || mapAreaRatio > floors.mapAreaRatioMax) {
+      failures.push(`map area ratio ${formatPercent(mapAreaRatio)} is outside ${formatPercent(floors.mapAreaRatioMin)}-${formatPercent(floors.mapAreaRatioMax)}`);
+    }
+    if (latest.height < floors.latestHeightMin) {
+      failures.push(`latest height ${latest.height}px is below ${floors.latestHeightMin}px`);
+    }
+    if (profile.runtime.latest.message.height < floors.latestMessageHeightMin) {
+      failures.push(`latest message slot ${profile.runtime.latest.message.height}px is below ${floors.latestMessageHeightMin}px`);
+    }
+    if (logRows < floors.drawerRowCapacityMin || inventoryRows < floors.drawerRowCapacityMin) {
+      failures.push(`drawer rows ${logRows}/${inventoryRows} are below ${floors.drawerRowCapacityMin}`);
+    }
+    if (controlsBottomGap > floors.controlsBottomGapMax) {
+      failures.push(`controls bottom gap ${controlsBottomGap}px is above ${floors.controlsBottomGapMax}px`);
+    }
+
+    return {
+      ok: failures.length === 0,
+      path: compositionPath,
+      targetProfile: composition.targetProfile,
+      name: composition.name,
+      visualGoal: composition.visualGoal,
+      failures,
+      chips: [
+        `artboard ${profile.size.width}x${profile.size.height}`,
+        `map ${formatPercent(mapAreaRatio)} screen`,
+        `latest ${latest.height}px / message ${profile.runtime.latest.message.height}px`,
+        `drawer rows log ${logRows} / inventory ${inventoryRows}`,
+        `controls ${controls.height}px / bottom gap ${controlsBottomGap}px`,
+        `player ${player.height}px / combat ${combat.height}px`,
+        `tile slot ${profile.runtime.player.stats.find((slot) => slot.id === 'tile')?.valueRect.width ?? 'missing'}px`,
+        `enemy name ${profile.runtime.combat.enemyName.width}px`,
+        'validator: pnpm -C frontend validate:mobile-composition'
+      ]
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      path: compositionPath,
+      targetProfile: 'missing',
+      failures: [error.message],
+      chips: []
+    };
+  }
+}
+
+function drawerCapacity(profile, drawerName) {
+  const region = profile.regions?.[drawerName];
+  const drawer = profile.runtime?.drawers?.[drawerName];
+  const firstRow = drawerName === 'log' ? drawer?.rowText : drawer?.rowPanel;
+  if (!region || !drawer || !firstRow || !Number.isFinite(drawer.rowHeight) || drawer.rowHeight <= 0) {
+    return NaN;
+  }
+  return Math.floor((region.y + region.height - firstRow.y) / drawer.rowHeight);
 }
 
 async function findFiles(dir, predicate) {
@@ -186,6 +276,12 @@ async function buildImageCards(report, profileId) {
       title: 'Defeat Terminal',
       description: 'Deterministic Phaser workbench render for the terminal end-state surface.',
       image: resultImage(report, profileId, 'production-defeat')
+    },
+    {
+      kind: 'GUIDE/TEMPLATE',
+      title: 'Mobile Composition Guide',
+      description: 'Exact mobileCompact live/crop/runtime overlay used to keep generated skins aligned to the fixed canvas contract.',
+      image: await existingRelativePath(path.join(repoRoot, '_artifacts/skin-guides/mobile-compact-all-layout-guide.png'))
     },
     {
       kind: 'GUIDE/TEMPLATE',
@@ -337,11 +433,14 @@ function compactMetrics(metrics) {
   );
 }
 
-function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff, gitStatus, styleBoundary }) {
+function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff, gitStatus, styleBoundary, mobileComposition }) {
   const reportRelative = path.relative(outDir, reportPath);
   const reportHtmlRelative = reportRelative.replace(/\.json$/, '.html');
   const contractRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.md'));
   const blueprintRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_ART_BLUEPRINT_V1.json'));
+  const compositionRelative = mobileComposition?.path
+    ? path.relative(outDir, mobileComposition.path)
+    : path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_MOBILE_COMPOSITION_V1.json'));
   const profileFlags = compactProfile?.reviewFlags ?? [];
   const failures = compactFocus?.failures ?? [];
   const generatedAt = summary.generatedAt ?? 'unknown';
@@ -565,7 +664,8 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
       </div>
     </div>
     <p class="lede">
-      Source of truth: <a href="${escapeHtml(contractRelative)}">layout contract</a> and
+      Source of truth: <a href="${escapeHtml(contractRelative)}">layout contract</a>,
+      <a href="${escapeHtml(compositionRelative)}">mobile composition gate</a>, and
       <a href="${escapeHtml(blueprintRelative)}">art blueprint</a>. Visual evidence:
       <a href="${escapeHtml(reportHtmlRelative)}">latest visual report</a> and
       <a href="${escapeHtml(reportRelative)}">report JSON</a>.
@@ -608,6 +708,8 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
       ? `<ul>${styleBoundary.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join('')}</ul>`
       : '<p class="lede ok">The built fixed-skin runtime has no stylesheet asset path. Only the Phaser host shell may size the canvas viewport.</p>'}
   </section>
+
+  ${mobileComposition ? mobileCompositionSection(mobileComposition, compositionRelative) : ''}
 
   <section class="panel">
     <h2>Compact Skin Quality Focus</h2>
@@ -659,6 +761,26 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
 </body>
 </html>
 `;
+}
+
+function mobileCompositionSection(composition, compositionRelative) {
+  return `
+    <section class="panel">
+      <h2>Mobile Composition Blueprint</h2>
+      <p>
+        The compact short-phone target is <code>${escapeHtml(composition.targetProfile)}</code>.
+        This is a fixed Phaser/canvas composition gate, not a responsive CSS layout.
+        Source: <a href="${escapeHtml(compositionRelative)}">${escapeHtml(compositionRelative)}</a>.
+      </p>
+      ${composition.visualGoal ? `<p class="lede">${escapeHtml(composition.visualGoal)}</p>` : ''}
+      <div class="chips">
+        ${(composition.chips ?? []).map((chip) => `<span>${escapeHtml(chip)}</span>`).join('')}
+      </div>
+      ${composition.failures?.length
+        ? `<ul>${composition.failures.map((failure) => `<li>${escapeHtml(failure)}</li>`).join('')}</ul>`
+        : '<p class="lede ok">The compact mobile composition gate is passing: the closed screen fits, drawers retain row capacity, and controls stay anchored.</p>'}
+    </section>
+  `;
 }
 
 function sourceReviewOk(sourceReview) {
@@ -741,6 +863,10 @@ function formatSignedNumber(value, digits = 3) {
     return 'n/a';
   }
   return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`;
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : 'n/a';
 }
 
 function handoffSection(handoff) {
