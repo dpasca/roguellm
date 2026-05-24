@@ -63,6 +63,9 @@ const compactQualityRequiredStates = [
   'production-runtime-log',
   'production-runtime-inventory',
   'production-runtime-combat',
+  'production-runtime-defeat',
+  'production-runtime-victory',
+  'production-runtime-restart',
   'production-defeat',
   'production-victory',
   'production-restart',
@@ -2306,6 +2309,27 @@ function productionProfileScenarios(profile) {
         mode: 'phaser-fixed-runtime-combat',
         url: phaserVisualRuntimeProfileUrl(profile.id, 'combat'),
         expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-defeat`,
+        viewport,
+        mode: 'phaser-fixed-runtime-defeat',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'defeat'),
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-victory`,
+        viewport,
+        mode: 'phaser-fixed-runtime-victory',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'victory'),
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-runtime-restart`,
+        viewport,
+        mode: 'phaser-fixed-runtime-restart',
+        url: phaserVisualRuntimeProfileUrl(profile.id, 'defeat'),
+        expectedFixedProfile: profile.id
       }
     ] : []),
     {
@@ -2447,6 +2471,20 @@ async function runScenario(page, scenario) {
 
   if (scenario.mode === 'phaser-fixed-runtime-combat') {
     await enterPhaserFixedRuntimeCombat(page);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-defeat') {
+    await waitForPhaserTerminalState(page, 'defeat');
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-victory') {
+    await waitForPhaserTerminalState(page, 'victory');
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-restart') {
+    await waitForPhaserTerminalState(page, 'defeat');
+    await page.keyboard.press('r');
+    await waitForPhaserTerminalState(page, 'active');
   }
 
   if (scenario.mode === 'fixed-runtime-inventory') {
@@ -4147,6 +4185,7 @@ function phaserScenarioSkipsButtonMaterial(scenario) {
   return scenario.mode === 'phaser-fixed-workbench-click-move' ||
     scenario.mode === 'phaser-fixed-runtime-ready' ||
     scenario.mode === 'phaser-fixed-runtime-log' ||
+    scenario.mode === 'phaser-fixed-runtime-victory' ||
     scenario.mode === 'phaser-fixed-workbench-victory' ||
     scenario.name.endsWith('-production-diagnostics');
 }
@@ -4503,6 +4542,32 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     }
     if (metrics.phaserTerminalState !== 'active') {
       failures.push(`expected active Phaser runtime terminal state in combat, got ${metrics.phaserTerminalState ?? 'none'}`);
+    }
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-defeat' && metrics.phaserTerminalState !== 'defeat') {
+    failures.push(`expected Phaser runtime defeat terminal state, got ${metrics.phaserTerminalState ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-victory' && metrics.phaserTerminalState !== 'victory') {
+    failures.push(`expected Phaser runtime victory terminal state, got ${metrics.phaserTerminalState ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-defeat' || scenario.mode === 'phaser-fixed-runtime-victory') {
+    if (!Number.isFinite(metrics.phaserTerminalDetails) || metrics.phaserTerminalDetails < 20) {
+      failures.push(`expected detailed Phaser runtime terminal hardware, got ${metrics.phaserTerminalDetails ?? 'none'}`);
+    }
+    if (phaserButtonState(metrics, 'restart') !== 'idle') {
+      failures.push(`expected visible Phaser runtime restart hardware, got ${phaserButtonState(metrics, 'restart') ?? 'none'}`);
+    }
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-restart') {
+    if (metrics.phaserTerminalState !== 'active') {
+      failures.push(`expected Phaser runtime restart to return to active state, got ${metrics.phaserTerminalState ?? 'none'}`);
+    }
+    if (metrics.phaserInCombat !== '1') {
+      failures.push(`expected Phaser runtime restart to restore combat scenario, got inCombat=${metrics.phaserInCombat ?? 'none'}`);
     }
   }
 }

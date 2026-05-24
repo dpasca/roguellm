@@ -170,6 +170,18 @@ async function buildImageCards(report, profileId) {
       image: resultImage(report, profileId, 'production-runtime-combat')
     },
     {
+      kind: 'LIVE RUNTIME',
+      title: 'Runtime Defeat Terminal',
+      description: 'Actual non-workbench Phaser runtime fixture render for the defeat end-state and restart hardware.',
+      image: resultImage(report, profileId, 'production-runtime-defeat')
+    },
+    {
+      kind: 'LIVE RUNTIME',
+      title: 'Runtime Victory Terminal',
+      description: 'Actual non-workbench Phaser runtime fixture render for the victory end-state and restart hardware.',
+      image: resultImage(report, profileId, 'production-runtime-victory')
+    },
+    {
       kind: 'WORKBENCH SCREENSHOT',
       title: 'Defeat Terminal',
       description: 'Deterministic Phaser workbench render for the terminal end-state surface.',
