@@ -113,7 +113,7 @@ const baseScenarios = [
   {
     name: 'mobile-default-fixed-runtime-ready',
     viewport: { width: 390, height: 844 },
-    mode: 'fixed-runtime-ready',
+    mode: 'phaser-fixed-runtime-ready',
     url: entryUrl,
     expectedFixedProfile: defaultFixedProfile
   },
