@@ -557,6 +557,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
   private fogTileDetailsDrawn = 0;
+  private mapScannerDetailsDrawn = 0;
   private controlDetailsDrawn = 0;
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
@@ -646,6 +647,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
     this.fogTileDetailsDrawn = 0;
+    this.mapScannerDetailsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
@@ -695,6 +697,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserFogTileDetails = String(this.fogTileDetailsDrawn);
+    document.body.dataset.phaserMapScannerDetails = String(this.mapScannerDetailsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
@@ -938,6 +941,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       }
     }
 
+    this.drawMapScannerOverlay(graphics, originX, originY, boardWidth, boardHeight, tileWidth, tileHeight);
+
     for (const item of state.item_placements ?? []) {
       if (item.is_collected || !state.explored[item.y]?.[item.x]) {
         continue;
@@ -953,6 +958,92 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     this.drawPlayerMarker(originX, originY, tileWidth, tileHeight);
+  }
+
+  private drawMapScannerOverlay(
+    graphics: Phaser.GameObjects.Graphics,
+    originX: number,
+    originY: number,
+    boardWidth: number,
+    boardHeight: number,
+    tileWidth: number,
+    tileHeight: number
+  ): void {
+    const state = this.viewState.state;
+    const [playerX, playerY] = state.player_pos;
+    const boardRight = originX + boardWidth;
+    const boardBottom = originY + boardHeight;
+    const playerCenterX = originX + playerX * tileWidth + tileWidth * 0.5;
+    const playerCenterY = originY + playerY * tileHeight + tileHeight * 0.5;
+    const primary = this.theme.primary;
+    const secondary = this.theme.secondary;
+    const combat = this.theme.combat;
+
+    graphics.fillStyle(primary, 0.12);
+    graphics.fillRect(originX + 2, originY + playerY * tileHeight + 3, boardWidth - 4, Math.max(3, tileHeight - 6));
+    graphics.fillStyle(secondary, 0.1);
+    graphics.fillRect(originX + playerX * tileWidth + 3, originY + 2, Math.max(3, tileWidth - 6), boardHeight - 4);
+
+    graphics.lineStyle(1, primary, 0.38);
+    for (let y = 0; y < state.map_height; y += 1) {
+      for (let x = 0; x < state.map_width; x += 1) {
+        if (!state.explored[y]?.[x]) {
+          continue;
+        }
+
+        const centerX = originX + x * tileWidth + tileWidth * 0.5;
+        const centerY = originY + y * tileHeight + tileHeight * 0.5;
+        if (state.explored[y]?.[x + 1]) {
+          graphics.lineBetween(centerX + tileWidth * 0.16, centerY, centerX + tileWidth * 0.84, centerY);
+          this.mapScannerDetailsDrawn += 1;
+        }
+        if (state.explored[y + 1]?.[x]) {
+          graphics.lineBetween(centerX, centerY + tileHeight * 0.16, centerX, centerY + tileHeight * 0.84);
+          this.mapScannerDetailsDrawn += 1;
+        }
+      }
+    }
+
+    graphics.lineStyle(1, primary, 0.78);
+    graphics.lineBetween(originX + 4, playerCenterY, boardRight - 4, playerCenterY);
+    graphics.lineStyle(1, secondary, 0.68);
+    graphics.lineBetween(playerCenterX, originY + 4, playerCenterX, boardBottom - 4);
+
+    graphics.lineStyle(1, combat, 0.64);
+    const sweepInset = Math.max(4, Math.floor(Math.min(tileWidth, tileHeight) * 0.18));
+    graphics.strokeRoundedRect(
+      originX + playerX * tileWidth + sweepInset + 0.5,
+      originY + playerY * tileHeight + sweepInset + 0.5,
+      Math.max(4, tileWidth - sweepInset * 2),
+      Math.max(4, tileHeight - sweepInset * 2),
+      3
+    );
+
+    for (let index = 0; index < 4; index += 1) {
+      const alpha = 0.62 - index * 0.085;
+      const radius = Math.max(5, Math.min(tileWidth, tileHeight) * (0.36 + index * 0.16));
+      graphics.lineStyle(1, index % 2 === 0 ? primary : secondary, alpha);
+      graphics.strokeCircle(playerCenterX, playerCenterY, radius);
+    }
+
+    graphics.fillStyle(primary, 0.84);
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const x = playerX + dx;
+      const y = playerY + dy;
+      if (!state.explored[y]?.[x]) {
+        continue;
+      }
+      graphics.fillRoundedRect(
+        originX + x * tileWidth + tileWidth * 0.5 - 2,
+        originY + y * tileHeight + tileHeight * 0.5 - 2,
+        5,
+        5,
+        2.5
+      );
+      this.mapScannerDetailsDrawn += 1;
+    }
+
+    this.mapScannerDetailsDrawn += 9;
   }
 
   private shouldDrawTerrainIcon(state: GameState, x: number, y: number, icon: string | undefined): boolean {

@@ -141,6 +141,10 @@ visual inspection gates so they behave like part of the skin:
   Phaser canvas while keeping map icons above the glass for readability.
 - Visual inspection must fail when the map glass is unstyled, can intercept
   pointer input, sits below the canvas, or covers the icon overlay.
+- Phaser fixed maps must expose a tactical scanner layer around the player:
+  explored-cell route traces, player row/column scan lines, and neighbor pips
+  should make the board read as an active instrument instead of a flat icon
+  grid. Visual inspection must fail if that scanner detail metric disappears.
 - Inventory item rows use structured `Item.type`, not item-name parsing, to
   render fixed type badges.
 - Known inventory badge labels are `WPN`, `ARM`, and `USE`, with a fallback

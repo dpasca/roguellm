@@ -877,6 +877,7 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserFogTileDetails) ? `fog detail ${metrics.phaserFogTileDetails}` : null,
+      Number.isFinite(metrics.phaserMapScannerDetails) ? `scanner detail ${metrics.phaserMapScannerDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
       Number.isFinite(metrics.phaserTextSlots) ? `text slots ${metrics.phaserTextSlots}` : null,
@@ -3253,6 +3254,7 @@ async function collectMetrics(page) {
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserFogTileDetails: Number(document.body.dataset.phaserFogTileDetails ?? NaN),
+      phaserMapScannerDetails: Number(document.body.dataset.phaserMapScannerDetails ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
       phaserTextSlots: Number(document.body.dataset.phaserTextSlots ?? NaN),
@@ -3684,6 +3686,10 @@ function validatePhaserMapDetails(scenario, metrics, failures, context) {
 
   if (!Number.isFinite(metrics.phaserFogTileDetails) || metrics.phaserFogTileDetails < 24) {
     failures.push(`${context} expected visible Phaser fog tile hardware, got ${metrics.phaserFogTileDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserMapScannerDetails) || metrics.phaserMapScannerDetails < 12) {
+    failures.push(`${context} expected Phaser map scanner overlay details, got ${metrics.phaserMapScannerDetails ?? 'none'}`);
   }
 }
 
