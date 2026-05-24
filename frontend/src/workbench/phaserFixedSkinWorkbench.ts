@@ -917,15 +917,20 @@ class PhaserFixedSkinScene extends Phaser.Scene {
         const tileY = originY + y * tileHeight;
         this.drawMapTile(graphics, tileX, tileY, tileWidth, tileHeight, base, explored);
 
-        if (explored && tileMinor >= 20 && !contentCells.has(cellKey(x, y))) {
+        if (
+          explored &&
+          tileMinor >= 20 &&
+          !contentCells.has(cellKey(x, y)) &&
+          this.shouldDrawTerrainIcon(state, x, y, cell?.font_awesome_icon)
+        ) {
           this.drawSemanticIcon(
             cell?.font_awesome_icon,
             '.',
             tileX + tileWidth * 0.5,
             tileY + tileHeight * 0.52,
-            Math.max(9, Math.floor(tileMinor * 0.42)),
+            Math.max(8, Math.floor(tileMinor * 0.36)),
             this.theme.primaryDimText,
-            0.52
+            0.44
           );
         }
 
@@ -947,6 +952,22 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     this.drawPlayerMarker(originX, originY, tileWidth, tileHeight);
+  }
+
+  private shouldDrawTerrainIcon(state: GameState, x: number, y: number, icon: string | undefined): boolean {
+    const [playerX, playerY] = state.player_pos;
+    const nearPlayer = Math.abs(x - playerX) + Math.abs(y - playerY) <= 1;
+    if (nearPlayer) {
+      return true;
+    }
+
+    const onMapEdge = x === 0 || y === 0 || x === state.map_width - 1 || y === state.map_height - 1;
+    if (onMapEdge && (x + y) % 3 === 0) {
+      return true;
+    }
+
+    const iconWeight = icon ? Array.from(icon).reduce((sum, char) => sum + char.charCodeAt(0), 0) : 0;
+    return (x * 31 + y * 17 + iconWeight) % 5 === 0;
   }
 
   private drawMapBoardChrome(
