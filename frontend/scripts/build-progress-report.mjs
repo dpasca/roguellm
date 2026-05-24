@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises';
+import { execFile } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const repoRoot = path.resolve(rootDir, '..');
@@ -7,6 +9,7 @@ const defaultReportPath = path.join(repoRoot, '_artifacts/visual/rain-city-produ
 const reportPath = path.resolve(process.env.PROGRESS_VISUAL_REPORT ?? defaultReportPath);
 const outPath = path.resolve(process.env.PROGRESS_OUT ?? path.join(repoRoot, '_artifacts/progress.html'));
 const outDir = path.dirname(outPath);
+const execFileAsync = promisify(execFile);
 
 const summary = JSON.parse(await fs.readFile(reportPath, 'utf8'));
 await fs.mkdir(outDir, { recursive: true });
@@ -17,6 +20,7 @@ const compactAsset = summary.skinAssetSummaries?.find((asset) => asset.id === co
 const imageCards = await buildImageCards(summary, compactFocus?.id ?? 'ai-cyberdeck-reference-v1');
 const sourceReview = await loadSourceReview(compactFocus?.id);
 const handoff = await loadProgressHandoff();
+const gitStatus = await loadGitStatus();
 
 await fs.writeFile(outPath, buildHtml({
   summary,
@@ -26,10 +30,38 @@ await fs.writeFile(outPath, buildHtml({
   compactAsset,
   imageCards,
   sourceReview,
-  handoff
+  handoff,
+  gitStatus
 }), 'utf8');
 
 console.log(`Wrote ${path.relative(process.cwd(), outPath)}`);
+
+async function loadGitStatus() {
+  try {
+    const [branch, sha, subject, status] = await Promise.all([
+      gitOutput(['rev-parse', '--abbrev-ref', 'HEAD']),
+      gitOutput(['rev-parse', '--short', 'HEAD']),
+      gitOutput(['log', '-1', '--pretty=%s']),
+      gitOutput(['status', '--short'])
+    ]);
+    const statusLines = status.split('\n').map((line) => line.trim()).filter(Boolean);
+    return {
+      branch,
+      sha,
+      subject,
+      dirtyCount: statusLines.length
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function gitOutput(args) {
+  const result = await execFileAsync('git', ['-C', repoRoot, ...args], {
+    maxBuffer: 1024 * 1024
+  });
+  return result.stdout.trim();
+}
 
 async function buildImageCards(report, profileId) {
   const sourceDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed', profileId);
@@ -225,7 +257,7 @@ function compactMetrics(metrics) {
   );
 }
 
-function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff }) {
+function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff, gitStatus }) {
   const reportRelative = path.relative(outDir, reportPath);
   const reportHtmlRelative = reportRelative.replace(/\.json$/, '.html');
   const contractRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.md'));
@@ -233,6 +265,12 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
   const profileFlags = compactProfile?.reviewFlags ?? [];
   const failures = compactFocus?.failures ?? [];
   const generatedAt = summary.generatedAt ?? 'unknown';
+  const gitSummary = gitStatus
+    ? `${gitStatus.sha} ${gitStatus.subject}`
+    : 'unavailable';
+  const worktreeLabel = gitStatus
+    ? gitStatus.dirtyCount === 0 ? 'clean' : `${gitStatus.dirtyCount} changed file${gitStatus.dirtyCount === 1 ? '' : 's'}`
+    : 'unknown';
 
   return `<!doctype html>
 <html lang="en">
@@ -429,12 +467,25 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
         <span>Generated</span>
         <strong>${escapeHtml(generatedAt)}</strong>
       </div>
+      <div class="metric">
+        <span>Branch</span>
+        <strong>${escapeHtml(gitStatus?.branch ?? 'unknown')}</strong>
+      </div>
+      <div class="metric">
+        <span>Repo Commit</span>
+        <strong>${escapeHtml(gitStatus?.sha ?? 'unknown')}</strong>
+      </div>
+      <div class="metric">
+        <span>Worktree</span>
+        <strong class="${gitStatus?.dirtyCount === 0 ? 'ok' : 'warn'}">${escapeHtml(worktreeLabel)}</strong>
+      </div>
     </div>
     <p class="lede">
       Source of truth: <a href="${escapeHtml(contractRelative)}">layout contract</a> and
       <a href="${escapeHtml(blueprintRelative)}">art blueprint</a>. Visual evidence:
       <a href="${escapeHtml(reportHtmlRelative)}">latest visual report</a> and
       <a href="${escapeHtml(reportRelative)}">report JSON</a>.
+      Repo evidence: <code>${escapeHtml(gitSummary)}</code>.
     </p>
     <div class="legend">
       <div>
