@@ -255,7 +255,7 @@ Follow-up checks:
 \`\`\`bash
 pnpm -C frontend validate:skin-source-packs ${relativeOut}
 pnpm -C frontend build:skin-kit ${relativeOut}
-pnpm -C frontend skin:review-source ${relativeOut} --out ../_artifacts/skin-reviews/${skinId}/index.html --json --fail-on-issue
+pnpm -C frontend skin:review-source ${relativeOut} --out ../_artifacts/skin-reviews/${skinId}/index.html --json --fail-on-warning
 \`\`\`
 
 This is a reference-import candidate, not promoted production art.
