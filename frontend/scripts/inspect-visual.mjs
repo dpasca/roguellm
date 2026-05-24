@@ -960,6 +960,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserCurrentTileTerrainIcons) ? `current tile icons ${metrics.phaserCurrentTileTerrainIcons}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
+      Number.isFinite(metrics.phaserCombatReadoutDetails) ? `combat readout ${metrics.phaserCombatReadoutDetails}` : null,
       Number.isFinite(metrics.phaserTextSlots) ? `text slots ${metrics.phaserTextSlots}` : null,
       Number.isFinite(metrics.phaserTextOverflows) ? `text overflow ${metrics.phaserTextOverflows}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
@@ -3778,6 +3779,7 @@ async function collectMetrics(page) {
       phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
       phaserDrawerToggleIcons: Number(document.body.dataset.phaserDrawerToggleIcons ?? NaN),
       phaserMovementLockBadges: Number(document.body.dataset.phaserMovementLockBadges ?? NaN),
+      phaserCombatReadoutDetails: Number(document.body.dataset.phaserCombatReadoutDetails ?? NaN),
       phaserTerminalDetails: Number(document.body.dataset.phaserTerminalDetails ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
@@ -4245,6 +4247,16 @@ function validatePhaserControlAffordances(metrics, failures, context) {
   }
 }
 
+function validatePhaserCombatReadout(metrics, failures, context) {
+  const detailFloor = metrics.phaserInCombat === '1' ? 34 : 24;
+  if (!Number.isFinite(metrics.phaserCombatReadoutDetails) || metrics.phaserCombatReadoutDetails < detailFloor) {
+    failures.push(
+      `${context} expected detailed Phaser combat/explore readout hardware, ` +
+      `got ${metrics.phaserCombatReadoutDetails ?? 'none'} below ${detailFloor}`
+    );
+  }
+}
+
 function validatePhaserTextSlots(metrics, failures, context) {
   if (!Number.isFinite(metrics.phaserTextSlots) || metrics.phaserTextSlots < 16) {
     failures.push(`${context} expected measured fixed text slots, got ${metrics.phaserTextSlots ?? 'none'}`);
@@ -4304,6 +4316,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserActionLabels(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserControlAffordances(metrics, failures, 'Phaser workbench');
+  validatePhaserCombatReadout(metrics, failures, 'Phaser workbench');
   validatePhaserTextSlots(metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
@@ -4503,6 +4516,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser runtime');
   validatePhaserControlAffordances(metrics, failures, 'Phaser runtime');
+  validatePhaserCombatReadout(metrics, failures, 'Phaser runtime');
   validatePhaserTextSlots(metrics, failures, 'Phaser runtime');
 
   const minChromeDetails = isDesktopProfile ? 4 : 5;

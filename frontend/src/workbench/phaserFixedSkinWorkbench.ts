@@ -596,6 +596,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
   private movementLockBadgesDrawn = 0;
+  private combatReadoutDetailsDrawn = 0;
   private terminalDetailsDrawn = 0;
   private textSlotsDrawn = 0;
   private textSlotsShrunk = 0;
@@ -693,6 +694,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
     this.movementLockBadgesDrawn = 0;
+    this.combatReadoutDetailsDrawn = 0;
     this.terminalDetailsDrawn = 0;
     this.textSlotsDrawn = 0;
     this.textSlotsShrunk = 0;
@@ -752,6 +754,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
     document.body.dataset.phaserMovementLockBadges = String(this.movementLockBadgesDrawn);
+    document.body.dataset.phaserCombatReadoutDetails = String(this.combatReadoutDetailsDrawn);
     document.body.dataset.phaserTerminalDetails = String(this.terminalDetailsDrawn);
     document.body.dataset.phaserTextSlots = String(this.textSlotsDrawn);
     document.body.dataset.phaserTextShrinks = String(this.textSlotsShrunk);
@@ -1653,6 +1656,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillRoundedRect(layout.mode.x - 3, layout.mode.y - 2, layout.mode.width + 8, layout.mode.height + 5, 4);
     graphics.lineStyle(1, tint, active ? 0.62 : 0.38);
     graphics.strokeRoundedRect(layout.mode.x - 2.5, layout.mode.y - 1.5, layout.mode.width + 7, layout.mode.height + 4, 4);
+    this.drawCombatStatusRail(graphics, rect, tint, active);
 
     if (active) {
       const enemyWell = {
@@ -1665,14 +1669,30 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.fillRoundedRect(enemyWell.x, enemyWell.y, enemyWell.width, enemyWell.height, 4);
       graphics.lineStyle(1, this.theme.combat, 0.26);
       graphics.strokeRoundedRect(enemyWell.x + 0.5, enemyWell.y + 0.5, enemyWell.width - 1, enemyWell.height - 1, 4);
+      graphics.fillStyle(this.theme.combat, 0.84);
+      graphics.fillRoundedRect(enemyWell.x + 3, enemyWell.y + 3, 3, enemyWell.height - 6, 1.5);
+      graphics.lineStyle(1, this.theme.combat, 0.34);
+      graphics.lineBetween(enemyWell.x + enemyWell.width + 3, enemyWell.y + 5, rect.x + rect.width - 18, enemyWell.y + 5);
+      graphics.lineBetween(enemyWell.x + enemyWell.width + 3, enemyWell.y + enemyWell.height - 5, rect.x + rect.width - 18, enemyWell.y + enemyWell.height - 5);
       graphics.lineStyle(1, this.theme.combat, 0.28);
       const meter = this.profile.regions.enemyHpFill;
       graphics.strokeRoundedRect(meter.x - 4.5, meter.y - 4.5, meter.width + 9, meter.height + 8, 3);
+      graphics.lineStyle(1, 0x020504, 0.7);
+      for (let tick = 1; tick < 5; tick += 1) {
+        const x = meter.x + Math.floor((meter.width * tick) / 5);
+        graphics.lineBetween(x, meter.y - 3, x, meter.y + meter.height + 4);
+      }
       for (let tick = 0; tick < 6; tick += 1) {
         const x = rect.x + rect.width - 68 + tick * 9;
         graphics.fillStyle(this.theme.combat, 0.18 + tick * 0.045);
         graphics.fillRoundedRect(x, rect.y + 9, 5, 4 + tick, 2);
       }
+      for (let stripe = 0; stripe < 4; stripe += 1) {
+        const stripeX = rect.x + rect.width - 42 + stripe * 8;
+        graphics.lineStyle(1, this.theme.combat, 0.22);
+        graphics.lineBetween(stripeX, rect.y + rect.height - 8, stripeX + 7, rect.y + rect.height - 18);
+      }
+      this.combatReadoutDetailsDrawn += 28;
       this.hudDetailsDrawn += 16;
       return;
     }
@@ -1681,7 +1701,36 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.lineBetween(layout.exploreText.x, layout.exploreText.y - 4, layout.exploreText.x + layout.exploreText.width - 10, layout.exploreText.y - 4);
     graphics.lineStyle(1, 0xffffff, 0.08);
     graphics.lineBetween(layout.exploreText.x, layout.exploreText.y + layout.exploreText.height + 2, layout.exploreText.x + layout.exploreText.width - 10, layout.exploreText.y + layout.exploreText.height + 2);
+    graphics.fillStyle(0x020504, 0.62);
+    graphics.fillRoundedRect(layout.exploreText.x - 3, layout.exploreText.y - 1, layout.exploreText.width - 16, layout.exploreText.height + 3, 3);
+    graphics.lineStyle(1, this.theme.primary, 0.2);
+    graphics.strokeRoundedRect(layout.exploreText.x - 2.5, layout.exploreText.y - 0.5, layout.exploreText.width - 17, layout.exploreText.height + 2, 3);
+    for (let index = 0; index < 5; index += 1) {
+      const x = rect.x + rect.width - 62 + index * 9;
+      graphics.fillStyle(index < 3 ? this.theme.primary : this.theme.secondary, index < 3 ? 0.42 : 0.26);
+      graphics.fillRoundedRect(x, rect.y + rect.height - 14, 5, 3, 1.5);
+    }
+    this.combatReadoutDetailsDrawn += 20;
     this.hudDetailsDrawn += 9;
+  }
+
+  private drawCombatStatusRail(graphics: Phaser.GameObjects.Graphics, rect: FixedSkinRect, tint: number, active: boolean): void {
+    const railX = rect.x + rect.width - 16;
+    const railY = rect.y + 8;
+    const railHeight = Math.max(20, rect.height - 16);
+    graphics.fillStyle(0x020504, 0.82);
+    graphics.fillRoundedRect(railX, railY, 8, railHeight, 4);
+    graphics.lineStyle(1, tint, active ? 0.58 : 0.34);
+    graphics.strokeRoundedRect(railX + 0.5, railY + 0.5, 7, railHeight - 1, 4);
+    for (let index = 0; index < 4; index += 1) {
+      const y = railY + 5 + index * Math.max(4, Math.floor((railHeight - 10) / 4));
+      const lit = active ? index < 3 : index === 0;
+      graphics.fillStyle(lit ? tint : 0x314038, lit ? 0.78 : 0.32);
+      graphics.fillRoundedRect(railX + 2, y, 4, 3, 1.5);
+    }
+    graphics.lineStyle(1, tint, active ? 0.24 : 0.16);
+    graphics.lineBetween(rect.x + 10, rect.y + rect.height - 7, railX - 6, rect.y + rect.height - 7);
+    this.combatReadoutDetailsDrawn += 8;
   }
 
   private drawIndicators(): void {
