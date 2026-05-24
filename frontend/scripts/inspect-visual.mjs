@@ -896,7 +896,11 @@ const skinAssetReportLines = skinAssetFailures.length === 0
   ? []
   : ['FAIL skin asset uniqueness gate', ...skinAssetFailures.map((failure) => `  - ${failure}`)];
 const compactFocusReportLines = compactQualityFocus.failures.length === 0
-  ? []
+  ? compactQualityFocus.enforced
+    ? []
+    : [
+        `INFO compact skin quality focus not enforced for filtered run (${compactQualityFocus.coveredStates.length}/${compactQualityFocus.requiredStates.length} states covered)`
+      ]
   : ['FAIL compact skin quality focus', ...compactQualityFocus.failures.map((failure) => `  - ${failure}`)];
 
 console.log(`Visual inspection output: ${path.relative(process.cwd(), outDir)}`);
@@ -1053,6 +1057,10 @@ function buildHtmlReport(summary) {
       border-color: #7b3342;
       background: linear-gradient(180deg, #1a1012, #080607);
     }
+    .quality-focus.skip {
+      border-color: #6e6234;
+      background: linear-gradient(180deg, #17150d, #080706);
+    }
     .quality-focus h3 {
       margin: 14px 0 8px;
       color: #ffe386;
@@ -1067,6 +1075,9 @@ function buildHtmlReport(summary) {
     }
     .focus-fail {
       color: #ff8ea1;
+    }
+    .focus-skip {
+      color: #ffe386;
     }
     .blueprint-summary {
       display: grid;
@@ -1827,9 +1838,21 @@ function buildCompactFocusReview(summary) {
   const failureList = (focus.failures ?? [])
     .map((failure) => `<li>${escapeHtml(failure)}</li>`)
     .join('');
+  const warningList = (focus.warnings ?? [])
+    .map((warning) => `<li>${escapeHtml(warning)}</li>`)
+    .join('');
+  const enforced = focus.enforced !== false;
+  const gateLabel = enforced ? (focus.ok ? 'passing' : 'failing') : 'not enforced';
+  const gateClass = enforced ? (focus.ok ? 'focus-ok' : 'focus-fail') : 'focus-skip';
+  const sectionClass = enforced ? (focus.ok ? 'pass' : 'fail') : 'skip';
+  const resultMarkup = enforced
+    ? focus.ok
+      ? '<p class="focus-ok">Compact quality focus passed. This remains a visual evidence gate, not a replacement for taste review.</p>'
+      : `<ul class="review-flags">${failureList}</ul>`
+    : `<p class="focus-skip">This filtered run cannot prove the full compact quality focus. Run <code>VISUAL_SCENARIOS=production</code> to enforce it.</p>${warningList ? `<ul class="review-flags">${warningList}</ul>` : ''}`;
 
   return `
-    <section class="quality-focus ${focus.ok ? 'pass' : 'fail'}">
+    <section class="quality-focus ${sectionClass}">
       <div class="section-heading">
         <h2>Compact Skin Quality Focus</h2>
         <p>
@@ -1848,7 +1871,7 @@ function buildCompactFocusReview(summary) {
         </div>
         <div>
           <span>Gate</span>
-          <strong class="${focus.ok ? 'focus-ok' : 'focus-fail'}">${focus.ok ? 'passing' : 'failing'}</strong>
+          <strong class="${gateClass}">${gateLabel}</strong>
         </div>
       </div>
       <h3>Required States</h3>
@@ -1857,7 +1880,7 @@ function buildCompactFocusReview(summary) {
       <div class="blueprint-chips">${metricChips}</div>
       <h3>Skin Asset Metrics</h3>
       <div class="blueprint-chips">${assetChips}</div>
-      ${focus.ok ? '<p class="focus-ok">Compact quality focus passed. This remains a visual evidence gate, not a replacement for taste review.</p>' : `<ul class="review-flags">${failureList}</ul>`}
+      ${resultMarkup}
     </section>
   `;
 }
