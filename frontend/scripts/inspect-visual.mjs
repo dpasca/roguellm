@@ -5,6 +5,8 @@ import net from 'node:net';
 import path from 'node:path';
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
+const artBlueprintPath = path.join(rootDir, 'src/skins/SKIN_ART_BLUEPRINT_V1.json');
+const artBlueprint = JSON.parse(await fs.readFile(artBlueprintPath, 'utf8'));
 const DEFAULT_URL = 'http://127.0.0.1:8127/game2?game_id=159e473b&fixture=1';
 const DEFAULT_VITE_GAME_ID_URL = 'http://127.0.0.1:5273/game2?game_id=159e473b&fixture=1';
 const DEFAULT_WORKBENCH_URL = 'http://127.0.0.1:5273/game2/workbench?workbench=skin';
@@ -801,6 +803,7 @@ const summary = {
   skinAssetSummaries,
   skinAssetSimilarities,
   skinAssetFailures,
+  artBlueprint: visualArtBlueprintSummary(artBlueprint, productionMobileProfiles),
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
@@ -839,6 +842,7 @@ if (!summary.ok) {
 }
 
 function buildHtmlReport(summary) {
+  const blueprintReview = buildBlueprintReview(summary);
   const profileBench = buildProfileBench(summary);
   const skinAssetWatch = buildSkinAssetWatch(summary);
   const similarityWatch = buildSimilarityWatch(summary);
@@ -963,6 +967,69 @@ function buildHtmlReport(summary) {
     }
     .profile-bench {
       margin: 0 0 26px;
+    }
+    .blueprint-review {
+      margin: 0 0 26px;
+      padding: 14px;
+      border: 1px solid #315057;
+      background: linear-gradient(180deg, #101819, #080d0d);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+    }
+    .blueprint-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .blueprint-summary div {
+      padding: 10px;
+      border: 1px solid #243b3e;
+      background: #071011;
+    }
+    .blueprint-summary span {
+      display: block;
+      color: #8aa2a0;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .blueprint-summary strong {
+      display: block;
+      margin-top: 4px;
+      color: #eafff1;
+      font-size: 13px;
+    }
+    .blueprint-review h3 {
+      margin: 16px 0 8px;
+      color: #8de7ff;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .blueprint-review ul {
+      margin: 0;
+      padding: 0 0 0 20px;
+      color: #d7e5e0;
+    }
+    .blueprint-review li {
+      margin: 5px 0;
+    }
+    .blueprint-intent {
+      color: #d3fff1;
+    }
+    .blueprint-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .blueprint-chips span {
+      padding: 4px 7px;
+      border: 1px solid #2b4d4f;
+      color: #d6fff0;
+      font-size: 11px;
+      background: #07100e;
+    }
+    .blueprint-chips.muted span {
+      color: #c0d2ce;
     }
     .section-heading {
       display: flex;
@@ -1169,6 +1236,7 @@ function buildHtmlReport(summary) {
     <span>${summary.skinAssetFailures?.length ? `${summary.skinAssetFailures.length} skin asset failures` : 'skin asset gate OK'}</span>
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
+  ${blueprintReview}
   ${profileBench}
   ${skinAssetWatch}
   ${similarityWatch}
@@ -1374,6 +1442,21 @@ function buildSkinAssetFailures(pairs) {
     );
 }
 
+function visualArtBlueprintSummary(blueprint, profiles) {
+  return {
+    version: blueprint.version,
+    name: blueprint.name,
+    targetProfile: blueprint.targetProfile,
+    targetProfileCount: profiles.filter((profile) => profile.kind === blueprint.targetProfile).length,
+    manualReviewRequired: true,
+    intent: blueprint.intent,
+    visualTarget: blueprint.visualTarget,
+    qualityGates: blueprint.qualityGates ?? [],
+    forbiddenDynamicContent: blueprint.forbiddenDynamicContent ?? [],
+    reviewScenarios: blueprint.reviewScenarios ?? []
+  };
+}
+
 function enforcesProductionSkinAssets() {
   return process.env.VISUAL_ENFORCE_SKIN_ASSETS === '1' ||
     scenarioFilters.includes('production') ||
@@ -1511,6 +1594,53 @@ function buildSimilarityWatch(summary) {
         <p>Closest same-format profile pairs by downsampled screenshot signature. Treat this as a review prompt, not a pass/fail gate.</p>
       </div>
       <div class="similarity-grid">${cards}</div>
+    </section>
+  `;
+}
+
+function buildBlueprintReview(summary) {
+  const blueprint = summary.artBlueprint;
+  if (!blueprint) {
+    return '';
+  }
+
+  const scenarioList = (blueprint.reviewScenarios ?? [])
+    .map((scenario) => `<span>${escapeHtml(scenario)}</span>`)
+    .join('');
+  const gateList = (blueprint.qualityGates ?? [])
+    .map((gate) => `<li>${escapeHtml(gate)}</li>`)
+    .join('');
+  const forbiddenList = (blueprint.forbiddenDynamicContent ?? [])
+    .map((item) => `<span>${escapeHtml(item)}</span>`)
+    .join('');
+
+  return `
+    <section class="blueprint-review">
+      <div class="section-heading">
+        <h2>Premium Blueprint Review</h2>
+        <p>${escapeHtml(blueprint.name)} ${escapeHtml(blueprint.version)}. This visual report is still a human review surface: green screenshots must also look like one coherent premium handheld skin.</p>
+      </div>
+      <div class="blueprint-summary">
+        <div>
+          <span>Target</span>
+          <strong>${escapeHtml(blueprint.targetProfile)}</strong>
+        </div>
+        <div>
+          <span>Matching Profiles</span>
+          <strong>${blueprint.targetProfileCount}/${summary.productionMobileProfiles.length}</strong>
+        </div>
+        <div>
+          <span>Manual Review</span>
+          <strong>${blueprint.manualReviewRequired ? 'required' : 'optional'}</strong>
+        </div>
+      </div>
+      <p class="blueprint-intent">${escapeHtml(blueprint.visualTarget)}</p>
+      <h3>Manual Quality Gates</h3>
+      <ul>${gateList}</ul>
+      <h3>Required Review Scenarios</h3>
+      <div class="blueprint-chips">${scenarioList}</div>
+      <h3>Forbidden Dynamic Content</h3>
+      <div class="blueprint-chips muted">${forbiddenList}</div>
     </section>
   `;
 }
