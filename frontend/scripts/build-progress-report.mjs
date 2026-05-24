@@ -15,6 +15,7 @@ const compactFocus = summary.compactQualityFocus ?? inferCompactFocus(summary);
 const compactProfile = summary.profileSummaries?.find((profile) => profile.id === compactFocus?.id) ?? null;
 const compactAsset = summary.skinAssetSummaries?.find((asset) => asset.id === compactFocus?.id) ?? null;
 const imageCards = await buildImageCards(summary, compactFocus?.id ?? 'ai-cyberdeck-reference-v1');
+const sourceReview = await loadSourceReview(compactFocus?.id);
 const handoff = await loadProgressHandoff();
 
 await fs.writeFile(outPath, buildHtml({
@@ -24,6 +25,7 @@ await fs.writeFile(outPath, buildHtml({
   compactProfile,
   compactAsset,
   imageCards,
+  sourceReview,
   handoff
 }), 'utf8');
 
@@ -105,6 +107,32 @@ async function loadProgressHandoff() {
     promptFiles: plan.files?.splitPrompts ?? [],
     steps: plan.generationSteps ?? []
   };
+}
+
+async function loadSourceReview(profileId) {
+  if (!profileId) {
+    return null;
+  }
+
+  const candidates = [
+    path.join(repoRoot, '_artifacts/skin-reviews', `${profileId}-coherence`, 'review.json'),
+    path.join(repoRoot, '_artifacts/skin-reviews', profileId, 'review.json')
+  ];
+
+  for (const reviewPath of candidates) {
+    try {
+      const review = JSON.parse(await fs.readFile(reviewPath, 'utf8'));
+      return {
+        path: reviewPath,
+        review,
+        sourceCoherence: review.metrics?.sourceCoherence ?? []
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 async function normalizeHandoffPath(candidatePath) {
@@ -190,7 +218,7 @@ function compactMetrics(metrics) {
   );
 }
 
-function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, handoff }) {
+function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactAsset, imageCards, sourceReview, handoff }) {
   const reportRelative = path.relative(outDir, reportPath);
   const reportHtmlRelative = reportRelative.replace(/\.json$/, '.html');
   const contractRelative = path.relative(outDir, path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.md'));
@@ -304,6 +332,27 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
       font-size: 12px;
       background: #07100f;
     }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .legend div {
+      border: 1px solid #203332;
+      padding: 11px;
+      background: #07100f;
+    }
+    .legend strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #9cff7c;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .legend p {
+      font-size: 13px;
+    }
     .shots {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -346,8 +395,8 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
 <body>
   <h1>RogueLLM Progress Evidence</h1>
   <p class="lede">
-    This is a generated local evidence page, not the canonical mockup. It labels each image as runtime output,
-    source art, or a guide so the current state is easier to read.
+    This is a generated local evidence page. It is not the game screen and not a single mockup.
+    It separates real Phaser screenshots, implemented skin source art, and future handoff guides.
   </p>
 
   <section class="panel">
@@ -366,6 +415,10 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
         <strong class="${compactFocus?.ok ? 'ok' : 'warn'}">${escapeHtml(compactFocus?.id ?? 'missing')}</strong>
       </div>
       <div class="metric">
+        <span>Source Review</span>
+        <strong class="${sourceReviewOk(sourceReview) ? 'ok' : 'warn'}">${escapeHtml(sourceReviewLabel(sourceReview))}</strong>
+      </div>
+      <div class="metric">
         <span>Generated</span>
         <strong>${escapeHtml(generatedAt)}</strong>
       </div>
@@ -376,6 +429,20 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
       <a href="${escapeHtml(reportHtmlRelative)}">latest visual report</a> and
       <a href="${escapeHtml(reportRelative)}">report JSON</a>.
     </p>
+    <div class="legend">
+      <div>
+        <strong>Runtime Screenshot</strong>
+        <p>Actual Phaser canvas output from automated browser inspection. This is the current game surface.</p>
+      </div>
+      <div>
+        <strong>Source Art</strong>
+        <p>Implemented skin-owned art used to crop/build Phaser runtime assets. It can still need taste review.</p>
+      </div>
+      <div>
+        <strong>Guide/Template</strong>
+        <p>Future handoff material for image generation or cropping. This is not an implemented skin.</p>
+      </div>
+    </div>
   </section>
 
   <section class="panel">
@@ -407,6 +474,8 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
     </div>
   </section>
 
+  ${sourceReview ? sourceReviewSection(sourceReview) : ''}
+
   <section>
     <h2>Labeled Evidence</h2>
     <div class="shots">
@@ -428,6 +497,54 @@ function buildHtml({ summary, reportPath, compactFocus, compactProfile, compactA
 `;
 }
 
+function sourceReviewOk(sourceReview) {
+  if (!sourceReview) {
+    return false;
+  }
+
+  return (sourceReview.review.issues?.length ?? 0) === 0 &&
+    (sourceReview.review.warnings?.length ?? 0) === 0;
+}
+
+function sourceReviewLabel(sourceReview) {
+  if (!sourceReview) {
+    return 'missing';
+  }
+
+  const issueCount = sourceReview.review.issues?.length ?? 0;
+  const warningCount = sourceReview.review.warnings?.length ?? 0;
+  if (issueCount === 0 && warningCount === 0) {
+    return 'clean';
+  }
+  return `${issueCount} issues / ${warningCount} warnings`;
+}
+
+function sourceReviewSection(sourceReview) {
+  const reviewRelative = path.relative(outDir, sourceReview.path);
+  const reviewHtmlRelative = reviewRelative.replace(/review\.json$/, 'index.html');
+  const issueCount = sourceReview.review.issues?.length ?? 0;
+  const warningCount = sourceReview.review.warnings?.length ?? 0;
+  const coherenceWarnings = sourceReview.sourceCoherence.filter((metric) => metric.warning).length;
+  const coherenceSummary = sourceReview.sourceCoherence.length
+    ? `${sourceReview.sourceCoherence.length} source-pair checks, ${coherenceWarnings} warnings`
+    : 'no source-pair checks available';
+
+  return `
+    <section class="panel">
+      <h2>Source Pack Review</h2>
+      <p>
+        Latest available source-art review:
+        <a href="${escapeHtml(reviewHtmlRelative)}">${escapeHtml(reviewHtmlRelative)}</a>
+        and <a href="${escapeHtml(reviewRelative)}">${escapeHtml(reviewRelative)}</a>.
+        Result: <strong class="${issueCount || warningCount ? 'warn' : 'ok'}">${issueCount} issues, ${warningCount} warnings</strong>.
+      </p>
+      <div class="chips">
+        <span>${escapeHtml(coherenceSummary)}</span>
+      </div>
+    </section>
+  `;
+}
+
 function handoffSection(handoff) {
   const plan = handoff.plan;
   const handoffRelative = path.relative(outDir, handoff.path);
@@ -442,7 +559,7 @@ function handoffSection(handoff) {
         <figcaption>
           <span>GUIDE/TEMPLATE</span>
           <h3>${escapeHtml(guide.file)}</h3>
-          <p>Generated layout guide for the next fixed skin handoff.</p>
+          <p>Future skin handoff guide for image generation/cropping. This is not a runtime screenshot.</p>
         </figcaption>
       </figure>
     `)
