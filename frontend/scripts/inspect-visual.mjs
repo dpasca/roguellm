@@ -970,6 +970,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserLogEntryCount) ? `log entries ${metrics.phaserLogEntryCount}` : null,
       Number.isFinite(metrics.phaserLogRows) ? `log rows ${metrics.phaserLogRows}` : null,
       Number.isFinite(metrics.phaserLogOverflowCues) ? `log overflow cues ${metrics.phaserLogOverflowCues}` : null,
+      Number.isFinite(metrics.phaserLogReadoutDetails) ? `log readout ${metrics.phaserLogReadoutDetails}` : null,
       Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
       Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
       Number.isFinite(metrics.phaserInventoryTextBackplates) ? `inventory text plates ${metrics.phaserInventoryTextBackplates}` : null,
@@ -3768,6 +3769,7 @@ async function collectMetrics(page) {
       phaserLogEntryCount: Number(document.body.dataset.phaserLogEntryCount ?? NaN),
       phaserLogRows: Number(document.body.dataset.phaserLogRows ?? NaN),
       phaserLogOverflowCues: Number(document.body.dataset.phaserLogOverflowCues ?? NaN),
+      phaserLogReadoutDetails: Number(document.body.dataset.phaserLogReadoutDetails ?? NaN),
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
       phaserInventoryTextBackplates: Number(document.body.dataset.phaserInventoryTextBackplates ?? NaN),
@@ -4340,6 +4342,11 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
   }
 
   if ((scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-workbench-click-log') &&
+    (!Number.isFinite(metrics.phaserLogReadoutDetails) || metrics.phaserLogReadoutDetails < 22)) {
+    failures.push(`expected detailed Phaser log readout hardware, got ${metrics.phaserLogReadoutDetails ?? 'none'}`);
+  }
+
+  if ((scenario.mode === 'phaser-fixed-workbench-log' || scenario.mode === 'phaser-fixed-workbench-click-log') &&
     metrics.phaserLogEntryCount > metrics.phaserLogRows &&
     (!Number.isFinite(metrics.phaserLogOverflowCues) || metrics.phaserLogOverflowCues < 1)) {
     failures.push(`expected Phaser log overflow cue, got ${metrics.phaserLogOverflowCues ?? 'none'}`);
@@ -4522,6 +4529,11 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-runtime-log' && metrics.phaserDrawer !== 'log') {
     failures.push(`expected Phaser runtime log drawer to be open, got ${metrics.phaserDrawer ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-runtime-log' &&
+    (!Number.isFinite(metrics.phaserLogReadoutDetails) || metrics.phaserLogReadoutDetails < 22)) {
+    failures.push(`expected detailed Phaser runtime log readout hardware, got ${metrics.phaserLogReadoutDetails ?? 'none'}`);
   }
 
   if (scenario.mode === 'phaser-fixed-runtime-log' &&

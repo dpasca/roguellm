@@ -579,6 +579,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private readonly buttonStatesDrawn = new Map<FixedButtonId, FixedSkinButtonState>();
   private logRowsDrawn = 0;
   private logOverflowCuesDrawn = 0;
+  private logReadoutDetailsDrawn = 0;
   private inventoryRowsDrawn = 0;
   private inventoryActionChipsDrawn = 0;
   private inventoryTextBackplatesDrawn = 0;
@@ -673,6 +674,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.buttonStatesDrawn.clear();
     this.logRowsDrawn = 0;
     this.logOverflowCuesDrawn = 0;
+    this.logReadoutDetailsDrawn = 0;
     this.inventoryRowsDrawn = 0;
     this.inventoryActionChipsDrawn = 0;
     this.inventoryTextBackplatesDrawn = 0;
@@ -731,6 +733,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserLogEntryCount = String(this.viewState.logs.length);
     document.body.dataset.phaserLogRows = String(this.logRowsDrawn);
     document.body.dataset.phaserLogOverflowCues = String(this.logOverflowCuesDrawn);
+    document.body.dataset.phaserLogReadoutDetails = String(this.logReadoutDetailsDrawn);
     document.body.dataset.phaserInventoryRows = String(this.inventoryRowsDrawn);
     document.body.dataset.phaserInventoryActionChips = String(this.inventoryActionChipsDrawn);
     document.body.dataset.phaserInventoryTextBackplates = String(this.inventoryTextBackplatesDrawn);
@@ -2116,12 +2119,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
+    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowText.y) / layout.rowHeight));
+    this.drawLogDrawerHardware(rect, layout, Math.min(maxRows, this.viewState.logs.length));
     this.addTextInRect('LOG', layout.header, {
       fontSize: 13,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    const maxRows = Math.max(1, Math.floor((rect.y + rect.height - layout.rowText.y) / layout.rowHeight));
     this.viewState.logs.slice(0, maxRows).forEach((message, index) => {
       const rowLabel = offsetRect(layout.rowLabel, 0, layout.rowHeight * index);
       const rowText = offsetRect(layout.rowText, 0, layout.rowHeight * index);
@@ -2143,6 +2147,58 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
   }
 
+  private drawLogDrawerHardware(rect: FixedSkinRect, layout: ReturnType<typeof runtimeLayout>['drawers']['log'], rowCount: number): void {
+    const graphics = this.add.graphics();
+    const headerPlate = {
+      x: layout.header.x - 4,
+      y: layout.header.y - 3,
+      width: Math.min(64, rect.x + rect.width - layout.header.x - 12),
+      height: layout.header.height + 6
+    };
+    const feedX = rect.x + 9;
+    const feedTop = layout.rowText.y - 4;
+    const feedBottom = Math.min(rect.y + rect.height - 11, feedTop + Math.max(1, rowCount) * layout.rowHeight - 4);
+    const tickX = rect.x + rect.width - 25;
+    const tickTop = rect.y + 18;
+    const tickBottom = rect.y + rect.height - 18;
+
+    graphics.fillStyle(0x020504, 0.86);
+    graphics.fillRoundedRect(headerPlate.x, headerPlate.y, headerPlate.width, headerPlate.height, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.64);
+    graphics.strokeRoundedRect(headerPlate.x + 0.5, headerPlate.y + 0.5, headerPlate.width - 1, headerPlate.height - 1, 4);
+    graphics.lineStyle(1, this.theme.primary, 0.34);
+    graphics.lineBetween(headerPlate.x + headerPlate.width + 3, headerPlate.y + 7, rect.x + rect.width - 36, headerPlate.y + 7);
+    graphics.lineStyle(1, this.theme.secondary, 0.24);
+    graphics.lineBetween(headerPlate.x + headerPlate.width + 3, headerPlate.y + 13, rect.x + rect.width - 54, headerPlate.y + 13);
+
+    graphics.lineStyle(3, 0x020504, 0.82);
+    graphics.lineBetween(feedX, feedTop, feedX, feedBottom);
+    graphics.lineStyle(1, this.theme.primary, 0.42);
+    graphics.lineBetween(feedX, feedTop, feedX, feedBottom);
+    graphics.fillStyle(this.theme.primary, 0.32);
+    graphics.fillCircle(feedX, feedTop, 2);
+    graphics.fillCircle(feedX, feedBottom, 2);
+
+    graphics.lineStyle(1, this.theme.primary, 0.24);
+    graphics.lineBetween(tickX, tickTop, tickX, tickBottom);
+    for (let offset = tickTop + 6; offset < tickBottom; offset += 9) {
+      const longTick = Math.round(offset - tickTop) % 27 === 6;
+      graphics.lineStyle(1, this.theme.primary, longTick ? 0.38 : 0.18);
+      graphics.lineBetween(tickX - (longTick ? 5 : 3), offset, tickX + (longTick ? 5 : 3), offset);
+    }
+
+    for (let index = 0; index < rowCount; index += 1) {
+      const cy = layout.rowLabel.y + layout.rowHeight * index + Math.floor(layout.rowLabel.height * 0.5);
+      const active = index === 0;
+      graphics.fillStyle(0x020504, 0.86);
+      graphics.fillCircle(feedX, cy, active ? 4 : 3);
+      graphics.fillStyle(active ? this.theme.secondary : this.theme.primary, active ? 0.9 : 0.48);
+      graphics.fillCircle(feedX, cy, active ? 2.3 : 1.5);
+    }
+
+    this.logReadoutDetailsDrawn += 14 + rowCount;
+  }
+
   private drawLogRowHardware(label: FixedSkinRect, text: FixedSkinRect, rowHeight: number, index: number): void {
     const graphics = this.add.graphics();
     const y = text.y - 2;
@@ -2154,6 +2210,14 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     graphics.fillRoundedRect(x, y, width, height, 4);
     graphics.lineStyle(1, active ? this.theme.primary : this.theme.controlFrame, active ? 0.44 : 0.2);
     graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 4);
+    if (active) {
+      graphics.fillStyle(this.theme.secondary, 0.88);
+      graphics.fillRoundedRect(x + 2, y + 3, 3, height - 6, 1.5);
+      graphics.lineStyle(1, this.theme.primary, 0.42);
+      graphics.lineBetween(text.x - 5, y + 6, text.x - 1, y + 6);
+      graphics.lineBetween(text.x - 5, y + height - 6, text.x - 1, y + height - 6);
+      this.logReadoutDetailsDrawn += 4;
+    }
 
     const labelStroke = parseHexColor(active ? this.theme.primaryText : this.theme.primaryDimText, this.theme.primary);
     graphics.fillStyle(active ? this.theme.primary : 0x0b1510, active ? 0.22 : 0.78);
