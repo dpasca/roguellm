@@ -535,7 +535,6 @@ const fixedProfiles: FixedSkinProfile[] = [
 export const neoTokyoConsoleSkin: GameSkin = {
   id: 'neo-tokyo-console',
   name: 'Neo Tokyo Console',
-  className: 'skin-neo-tokyo-console',
   tags: ['cyberpunk', 'city', 'neon', 'technology', 'crime', 'modern'],
   mood: ['dense', 'electric', 'urban', 'tactical'],
   map: {

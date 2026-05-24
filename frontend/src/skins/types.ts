@@ -174,7 +174,6 @@ export interface FixedSkinProfile {
 export interface GameSkin {
   id: string;
   name: string;
-  className: string;
   tags: string[];
   mood: string[];
   map: SkinMapPalette;

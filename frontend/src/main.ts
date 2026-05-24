@@ -19,7 +19,7 @@ const GAME2_SESSION_QUERY_PARAMS = [
 
 function showFatal(message: string): void {
   const element = document.createElement('div');
-  element.className = 'fatal';
+  element.dataset.fatal = '1';
   element.textContent = message;
   document.body.replaceChildren(element);
 }
