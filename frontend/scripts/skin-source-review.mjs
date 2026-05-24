@@ -7,7 +7,9 @@ import { buildStateSheetLayout, stateSheetCropsForProfile, stateSheetSourceFile 
 const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
+const artBlueprintPath = path.join(rootDir, 'src/skins/SKIN_ART_BLUEPRINT_V1.json');
 const contract = JSON.parse(await fs.readFile(contractPath, 'utf8'));
+const artBlueprint = JSON.parse(await fs.readFile(artBlueprintPath, 'utf8'));
 const parsedArgs = parseArgs(process.argv.slice(2));
 const packArg = parsedArgs.positionals[0];
 
@@ -78,9 +80,11 @@ async function buildReview(dir, skinKit, selectedProfile) {
     stat('Profile', `${skinKit.kind} ${expected.width}x${expected.height}`),
     stat('Role', skinKit.meta?.role ?? 'unknown'),
     stat('Palette', (skinKit.meta?.palette ?? []).join(', ') || 'none'),
+    stat('Art Blueprint', `${artBlueprint.name} ${artBlueprint.version}`),
     stat('Source Pack', relativePath(dir)),
     '</section>',
     checklist(issues, warnings),
+    artBlueprintPanel(artBlueprint, skinKit),
     metricsPanel(metrics),
     sourcePanel('source-chassis.png', sources.chassis, selectedProfile.size, [
       rectLayer('live regions', selectedProfile.regions, '#66ff99', 'rgba(102,255,153,0.10)'),
@@ -118,6 +122,7 @@ function buildReport(dir, skinKit, selectedProfile, sources, metrics, issues, wa
     warningCount: warnings.length,
     issues,
     warnings,
+    artBlueprint: artBlueprintSummary(artBlueprint, skinKit.kind),
     expected: {
       artboard: selectedProfile.size,
       stateSheet: stateSheetLayout.size,
@@ -134,6 +139,26 @@ function buildReport(dir, skinKit, selectedProfile, sources, metrics, issues, wa
       materials: sourceSummary(sources.materials, { width: 152, height: 304 }, { minimum: true })
     },
     metrics
+  };
+}
+
+function artBlueprintSummary(blueprint, profileName) {
+  return {
+    version: blueprint.version,
+    name: blueprint.name,
+    targetProfile: blueprint.targetProfile,
+    appliesDirectly: profileName === blueprint.targetProfile,
+    intent: blueprint.intent,
+    visualTarget: blueprint.visualTarget,
+    sourceFiles: Object.keys(blueprint.sourceFiles ?? {}),
+    widgetFamilies: (blueprint.widgetFamilies ?? []).map((family) => ({
+      id: family.id,
+      assets: family.assets ?? [],
+      states: family.states ?? []
+    })),
+    forbiddenDynamicContent: blueprint.forbiddenDynamicContent ?? [],
+    qualityGates: blueprint.qualityGates ?? [],
+    manualReviewRequired: true
   };
 }
 
@@ -163,6 +188,51 @@ function checklist(issues, warnings) {
     : '<li class="good">Geometry and measured source-art preflight look aligned. Manual art-quality review is still required.</li>';
 
   return `<section class="checklist"><h2>Preflight</h2><ul>${content}</ul></section>`;
+}
+
+function artBlueprintPanel(blueprint, skinKit) {
+  const sourceFiles = Object.entries(blueprint.sourceFiles ?? {})
+    .map(([fileName, source]) => `
+      <article>
+        <h3>${escapeHtml(fileName)}</h3>
+        <p>${escapeHtml(source.purpose)}</p>
+      </article>
+    `)
+    .join('\n');
+  const widgetFamilies = (blueprint.widgetFamilies ?? [])
+    .map((family) => `
+      <article>
+        <h3>${escapeHtml(titleFromId(family.id))}</h3>
+        <p>${escapeHtml(family.shape)}; assets: ${escapeHtml((family.assets ?? []).join(', '))}${family.states?.length ? `; states: ${escapeHtml(family.states.join(', '))}` : ''}.</p>
+      </article>
+    `)
+    .join('\n');
+  const qualityGates = (blueprint.qualityGates ?? [])
+    .map((gate) => `<li>${escapeHtml(gate)}</li>`)
+    .join('\n');
+  const forbidden = (blueprint.forbiddenDynamicContent ?? [])
+    .map((item) => `<span>${escapeHtml(item)}</span>`)
+    .join('\n');
+  const applicability = skinKit.kind === blueprint.targetProfile
+    ? `This review directly targets ${blueprint.targetProfile}.`
+    : `This review uses ${skinKit.kind}; adapt the ${blueprint.targetProfile} blueprint without stretching or changing fixed widget names.`;
+
+  return `
+    <section class="panel blueprint">
+      <h2>Premium Art Blueprint</h2>
+      <p class="blueprint-target">${escapeHtml(blueprint.name)} ${escapeHtml(blueprint.version)}. ${escapeHtml(applicability)}</p>
+      <p>${escapeHtml(blueprint.intent)}</p>
+      <p><strong>Visual target:</strong> ${escapeHtml(blueprint.visualTarget)}</p>
+      <h3>Source Responsibilities</h3>
+      <div class="blueprint-grid">${sourceFiles}</div>
+      <h3>Widget Families</h3>
+      <div class="blueprint-grid">${widgetFamilies}</div>
+      <h3>Manual Quality Gates</h3>
+      <ul>${qualityGates}</ul>
+      <h3>Forbidden Dynamic Content</h3>
+      <div class="chips">${forbidden}</div>
+    </section>
+  `;
 }
 
 function sourcePanel(title, source, expectedSize, layers, options = {}) {
@@ -912,6 +982,14 @@ function shouldFailReview(options, report) {
   return false;
 }
 
+function titleFromId(id) {
+  return String(id ?? '')
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ');
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -942,6 +1020,16 @@ function htmlStyles() {
     .bad { color: #ff91a2; }
     .warn { color: #ffd460; }
     .metrics h3 { margin: 18px 0 8px; color: #d7f7ef; font-size: 14px; }
+    .blueprint { border-color: #335057; background: linear-gradient(180deg, #10191a, #090f10); }
+    .blueprint h3 { margin: 18px 0 8px; color: #8de7ff; font-size: 13px; text-transform: uppercase; }
+    .blueprint-target { color: #d7fff2; font-weight: 800; }
+    .blueprint-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .blueprint article { border: 1px solid #203637; background: #071011; border-radius: 7px; padding: 10px; }
+    .blueprint article h3 { margin-top: 0; }
+    .blueprint ul { margin: 0; padding-left: 20px; color: #c8d8d5; }
+    .blueprint li { margin: 5px 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips span { border: 1px solid #2b4d4f; border-radius: 999px; background: #0d1718; padding: 5px 8px; color: #cfe6e2; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 12px; overflow: hidden; border: 1px solid #26393a; border-radius: 6px; }
     th, td { padding: 7px 9px; border-bottom: 1px solid #1b2a2b; text-align: left; font-size: 12px; }
     th { color: #8de7ff; background: #101819; font-size: 11px; text-transform: uppercase; }
