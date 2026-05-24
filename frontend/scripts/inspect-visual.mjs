@@ -956,6 +956,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
       Number.isFinite(metrics.phaserFogTileDetails) ? `fog detail ${metrics.phaserFogTileDetails}` : null,
       Number.isFinite(metrics.phaserMapScannerDetails) ? `scanner detail ${metrics.phaserMapScannerDetails}` : null,
+      Number.isFinite(metrics.phaserPlayerLocatorDetails) ? `locator detail ${metrics.phaserPlayerLocatorDetails}` : null,
       Number.isFinite(metrics.phaserCurrentTileTerrainIcons) ? `current tile icons ${metrics.phaserCurrentTileTerrainIcons}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
@@ -3779,6 +3780,7 @@ async function collectMetrics(page) {
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
       phaserFogTileDetails: Number(document.body.dataset.phaserFogTileDetails ?? NaN),
       phaserMapScannerDetails: Number(document.body.dataset.phaserMapScannerDetails ?? NaN),
+      phaserPlayerLocatorDetails: Number(document.body.dataset.phaserPlayerLocatorDetails ?? NaN),
       phaserCurrentTileTerrainIcons: Number(document.body.dataset.phaserCurrentTileTerrainIcons ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
@@ -4218,6 +4220,10 @@ function validatePhaserMapDetails(scenario, metrics, failures, context) {
 
   if (!Number.isFinite(metrics.phaserMapScannerDetails) || metrics.phaserMapScannerDetails < 12) {
     failures.push(`${context} expected Phaser map scanner overlay details, got ${metrics.phaserMapScannerDetails ?? 'none'}`);
+  }
+
+  if (!Number.isFinite(metrics.phaserPlayerLocatorDetails) || metrics.phaserPlayerLocatorDetails < 16) {
+    failures.push(`${context} expected non-obscuring Phaser player locator hardware, got ${metrics.phaserPlayerLocatorDetails ?? 'none'}`);
   }
 }
 

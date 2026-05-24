@@ -588,6 +588,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private mapTileDetailsDrawn = 0;
   private fogTileDetailsDrawn = 0;
   private mapScannerDetailsDrawn = 0;
+  private playerLocatorDetailsDrawn = 0;
   private currentTileTerrainIconsDrawn = 0;
   private controlDetailsDrawn = 0;
   private hudDetailsDrawn = 0;
@@ -682,6 +683,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.mapTileDetailsDrawn = 0;
     this.fogTileDetailsDrawn = 0;
     this.mapScannerDetailsDrawn = 0;
+    this.playerLocatorDetailsDrawn = 0;
     this.currentTileTerrainIconsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.hudDetailsDrawn = 0;
@@ -738,6 +740,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserFogTileDetails = String(this.fogTileDetailsDrawn);
     document.body.dataset.phaserMapScannerDetails = String(this.mapScannerDetailsDrawn);
+    document.body.dataset.phaserPlayerLocatorDetails = String(this.playerLocatorDetailsDrawn);
     document.body.dataset.phaserCurrentTileTerrainIcons = String(this.currentTileTerrainIconsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
@@ -1377,12 +1380,50 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const graphics = this.add.graphics();
     const inset = Math.max(2, Math.floor(tileMinor * 0.1));
     const length = Math.max(7, Math.floor(tileMinor * 0.34));
+    const left = tileX + inset;
+    const top = tileY + inset;
     const right = tileX + tileWidth - inset;
     const bottom = tileY + tileHeight - inset;
+    const edgeInset = Math.max(4, Math.floor(tileMinor * 0.18));
+    const railLength = Math.max(7, Math.floor(tileMinor * 0.28));
+    const diodeSize = Math.max(2, Math.floor(tileMinor * 0.1));
+
+    graphics.lineStyle(Math.max(3, Math.floor(tileMinor * 0.11)), 0x020504, 0.82);
+    graphics.lineBetween(left + edgeInset, top, left + edgeInset + railLength, top);
+    graphics.lineBetween(right - edgeInset - railLength, top, right - edgeInset, top);
+    graphics.lineBetween(left + edgeInset, bottom, left + edgeInset + railLength, bottom);
+    graphics.lineBetween(right - edgeInset - railLength, bottom, right - edgeInset, bottom);
+    graphics.lineBetween(left, top + edgeInset, left, top + edgeInset + railLength);
+    graphics.lineBetween(left, bottom - edgeInset - railLength, left, bottom - edgeInset);
+    graphics.lineBetween(right, top + edgeInset, right, top + edgeInset + railLength);
+    graphics.lineBetween(right, bottom - edgeInset - railLength, right, bottom - edgeInset);
+
+    graphics.lineStyle(Math.max(1, Math.floor(tileMinor * 0.045)), color, 0.9);
+    graphics.lineBetween(left + edgeInset, top, left + edgeInset + railLength, top);
+    graphics.lineBetween(right - edgeInset - railLength, top, right - edgeInset, top);
+    graphics.lineBetween(left + edgeInset, bottom, left + edgeInset + railLength, bottom);
+    graphics.lineBetween(right - edgeInset - railLength, bottom, right - edgeInset, bottom);
+    graphics.lineBetween(left, top + edgeInset, left, top + edgeInset + railLength);
+    graphics.lineBetween(left, bottom - edgeInset - railLength, left, bottom - edgeInset);
+    graphics.lineBetween(right, top + edgeInset, right, top + edgeInset + railLength);
+    graphics.lineBetween(right, bottom - edgeInset - railLength, right, bottom - edgeInset);
+
+    graphics.fillStyle(0x020504, 0.92);
+    graphics.fillRoundedRect(left - 1, top - 1, diodeSize + 2, diodeSize + 2, 1);
+    graphics.fillRoundedRect(right - diodeSize - 1, top - 1, diodeSize + 2, diodeSize + 2, 1);
+    graphics.fillRoundedRect(left - 1, bottom - diodeSize - 1, diodeSize + 2, diodeSize + 2, 1);
+    graphics.fillRoundedRect(right - diodeSize - 1, bottom - diodeSize - 1, diodeSize + 2, diodeSize + 2, 1);
+    graphics.fillStyle(color, 0.86);
+    graphics.fillRoundedRect(left, top, diodeSize, diodeSize, 1);
+    graphics.fillRoundedRect(right - diodeSize, top, diodeSize, diodeSize, 1);
+    graphics.fillRoundedRect(left, bottom - diodeSize, diodeSize, diodeSize, 1);
+    graphics.fillRoundedRect(right - diodeSize, bottom - diodeSize, diodeSize, diodeSize, 1);
+
     graphics.lineStyle(Math.max(2, Math.floor(tileMinor * 0.08)), 0x020504, 0.9);
-    drawCornerBrackets(graphics, tileX + inset, tileY + inset, right, bottom, length);
+    drawCornerBrackets(graphics, left, top, right, bottom, length);
     graphics.lineStyle(Math.max(1, Math.floor(tileMinor * 0.05)), color, 1);
-    drawCornerBrackets(graphics, tileX + inset, tileY + inset, right, bottom, length);
+    drawCornerBrackets(graphics, left, top, right, bottom, length);
+    this.playerLocatorDetailsDrawn += 21;
   }
 
   private drawLatest(): void {
