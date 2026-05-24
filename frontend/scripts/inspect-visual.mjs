@@ -773,6 +773,8 @@ try {
 }
 
 const profileSummaries = buildProfileSummaries(results);
+const profileSimilarities = buildProfileSimilarities(profileSummaries);
+annotateProfileSimilarityFlags(profileSummaries, profileSimilarities);
 const summary = {
   entryUrl,
   workbenchUrl,
@@ -781,6 +783,7 @@ const summary = {
   productionProfileRenderer,
   productionMobileProfiles,
   profileSummaries,
+  profileSimilarities,
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
@@ -817,6 +820,7 @@ if (!summary.ok) {
 
 function buildHtmlReport(summary) {
   const profileBench = buildProfileBench(summary);
+  const similarityWatch = buildSimilarityWatch(summary);
   const cards = summary.results.map((result) => {
     const passed = result.failures.length === 0;
     const image = path.basename(result.screenshotPath);
@@ -1014,6 +1018,53 @@ function buildHtmlReport(summary) {
       color: #d3ddd9;
       font-size: 12px;
     }
+    .similarity-watch {
+      margin: 0 0 26px;
+    }
+    .similarity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .similarity-card {
+      border: 1px solid #34423a;
+      background: #0a0f0e;
+    }
+    .similarity-card header {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #1f2d2b;
+    }
+    .similarity-card h3 {
+      margin: 0;
+      font-size: 13px;
+    }
+    .similarity-card p {
+      margin-top: 2px;
+    }
+    .similarity-score {
+      padding: 4px 7px;
+      color: #071007;
+      font-size: 11px;
+      font-weight: 900;
+      background: #ffd460;
+    }
+    .similarity-thumbs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px;
+    }
+    .similarity-thumbs img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      object-position: top center;
+      border: 1px solid #1f3431;
+    }
     main {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1092,6 +1143,7 @@ function buildHtmlReport(summary) {
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
   ${profileBench}
+  ${similarityWatch}
   <main>${cards}</main>
 </body>
 </html>
@@ -1123,7 +1175,9 @@ function buildProfileSummaries(results) {
       colors: [],
       shellDetails: [],
       controlDetails: [],
-      textOverflows: []
+      textOverflows: [],
+      signatures: [],
+      diagnosticSignatures: []
     };
 
     group.scenarios += 1;
@@ -1138,6 +1192,10 @@ function buildProfileSummaries(results) {
     addFinite(group.shellDetails, metrics.phaserShellDetails);
     addFinite(group.controlDetails, metrics.phaserControlDetails);
     addFinite(group.textOverflows, metrics.phaserTextOverflows);
+    addSignature(group.signatures, metrics.screenshot?.signature);
+    if (isDiagnosticScenario(result)) {
+      addSignature(group.diagnosticSignatures, metrics.screenshot?.signature);
+    }
     recordProfileThumbnail(group.thumbnails, result);
     groups.set(profileId, group);
   }
@@ -1160,7 +1218,10 @@ function buildProfileSummaries(results) {
           sampledUniqueColors: average(group.colors),
           minShellDetails: minimum(group.shellDetails),
           minControlDetails: minimum(group.controlDetails),
-          maxTextOverflows: maximum(group.textOverflows)
+          maxTextOverflows: maximum(group.textOverflows),
+          visualSignature: averageSignature(
+            group.diagnosticSignatures.length > 0 ? group.diagnosticSignatures : group.signatures
+          )
         }
       };
       return {
@@ -1173,6 +1234,95 @@ function buildProfileSummaries(results) {
       roleSort(left.role) - roleSort(right.role) ||
       left.id.localeCompare(right.id)
     );
+}
+
+function buildProfileSimilarities(profiles) {
+  const pairs = [];
+  for (let leftIndex = 0; leftIndex < profiles.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < profiles.length; rightIndex += 1) {
+      const left = profiles[leftIndex];
+      const right = profiles[rightIndex];
+      if (left.kind !== right.kind) {
+        continue;
+      }
+
+      const distance = signatureDistance(left.metrics?.visualSignature, right.metrics?.visualSignature);
+      if (!Number.isFinite(distance)) {
+        continue;
+      }
+
+      pairs.push({
+        left: left.id,
+        right: right.id,
+        kind: left.kind,
+        distance,
+        severity: distance < 0.055 ? 'near-duplicate' : distance < 0.09 ? 'similar' : 'distinct',
+        leftThumbnail: left.thumbnails?.diagnostics ?? Object.values(left.thumbnails ?? {})[0] ?? null,
+        rightThumbnail: right.thumbnails?.diagnostics ?? Object.values(right.thumbnails ?? {})[0] ?? null
+      });
+    }
+  }
+
+  return pairs.sort((left, right) => left.distance - right.distance);
+}
+
+function annotateProfileSimilarityFlags(profiles, pairs) {
+  const watchPairs = pairs.filter((pair) => pair.severity !== 'distinct');
+  for (const pair of watchPairs) {
+    for (const [profileId, otherId] of [[pair.left, pair.right], [pair.right, pair.left]]) {
+      const profile = profiles.find((entry) => entry.id === profileId);
+      if (!profile) {
+        continue;
+      }
+      const label = pair.severity === 'near-duplicate' ? 'Near-duplicate' : 'Similar';
+      addProfileReviewFlag(
+        profile,
+        `${label} visual signature versus ${otherId}; inspect whether this is more than a recolor.`
+      );
+    }
+  }
+}
+
+function buildSimilarityWatch(summary) {
+  const watchPairs = (summary.profileSimilarities ?? [])
+    .filter((pair) => pair.severity !== 'distinct')
+    .slice(0, 12);
+  if (watchPairs.length === 0) {
+    return `
+      <section class="similarity-watch">
+        <div class="section-heading">
+          <h2>Similarity Watch</h2>
+          <p>No near-duplicate profile pairs were detected by the screenshot signature check.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  const cards = watchPairs.map((pair) => `
+    <article class="similarity-card">
+      <header>
+        <div>
+          <h3>${escapeHtml(pair.left)} / ${escapeHtml(pair.right)}</h3>
+          <p>${escapeHtml(pair.kind)} / ${escapeHtml(pair.severity)}</p>
+        </div>
+        <span class="similarity-score">${pair.distance.toFixed(3)}</span>
+      </header>
+      <div class="similarity-thumbs">
+        ${pair.leftThumbnail ? `<a href="${escapeHtml(pair.leftThumbnail)}"><img src="${escapeHtml(pair.leftThumbnail)}" alt="${escapeHtml(pair.left)} diagnostic screenshot"></a>` : ''}
+        ${pair.rightThumbnail ? `<a href="${escapeHtml(pair.rightThumbnail)}"><img src="${escapeHtml(pair.rightThumbnail)}" alt="${escapeHtml(pair.right)} diagnostic screenshot"></a>` : ''}
+      </div>
+    </article>
+  `).join('\n');
+
+  return `
+    <section class="similarity-watch">
+      <div class="section-heading">
+        <h2>Similarity Watch</h2>
+        <p>Closest same-format profile pairs by downsampled screenshot signature. Treat this as a review prompt, not a pass/fail gate.</p>
+      </div>
+      <div class="similarity-grid">${cards}</div>
+    </section>
+  `;
 }
 
 function buildProfileBench(summary) {
@@ -1250,6 +1400,12 @@ function recordProfileThumbnail(thumbnails, result) {
   }
 }
 
+function isDiagnosticScenario(result) {
+  return result.name.endsWith('-production-diagnostics') ||
+    result.mode === 'fixed-workbench-diagnostics' ||
+    (result.mode === 'phaser-fixed-workbench' && result.name.includes('-production-diagnostics'));
+}
+
 function profileReviewFlags(profile) {
   const metrics = profile.metrics ?? {};
   const flags = [];
@@ -1277,10 +1433,48 @@ function profileReviewFlags(profile) {
   return flags.length > 0 ? flags : ['Ready for human visual review.'];
 }
 
+function addProfileReviewFlag(profile, flag) {
+  const current = profile.reviewFlags ?? [];
+  profile.reviewFlags = current.filter((entry) => entry !== 'Ready for human visual review.');
+  if (!profile.reviewFlags.includes(flag)) {
+    profile.reviewFlags.push(flag);
+  }
+}
+
 function addFinite(values, value) {
   if (Number.isFinite(value)) {
     values.push(value);
   }
+}
+
+function addSignature(values, value) {
+  if (Array.isArray(value) && value.length > 0 && value.every(Number.isFinite)) {
+    values.push(value);
+  }
+}
+
+function averageSignature(signatures) {
+  if (signatures.length === 0) {
+    return null;
+  }
+
+  const length = Math.min(...signatures.map((signature) => signature.length));
+  return Array.from({ length }, (_, index) =>
+    signatures.reduce((total, signature) => total + signature[index], 0) / signatures.length
+  );
+}
+
+function signatureDistance(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length === 0 || right.length === 0) {
+    return null;
+  }
+
+  const length = Math.min(left.length, right.length);
+  const meanSquare = Array.from({ length }, (_, index) => {
+    const delta = left[index] - right[index];
+    return delta * delta;
+  }).reduce((total, value) => total + value, 0) / length;
+  return Math.sqrt(meanSquare);
 }
 
 function average(values) {
@@ -1899,8 +2093,39 @@ function collectScreenshotMetrics(screenshotPath) {
     standardDeviation,
     saturationMean,
     saturationStandardDeviation,
-    sampledUniqueColors
+    sampledUniqueColors,
+    signature: collectImageSignature(screenshotPath)
   };
+}
+
+function collectImageSignature(screenshotPath) {
+  const output = execFileSync(
+    'magick',
+    [
+      screenshotPath,
+      '-resize',
+      '8x8!',
+      '-colorspace',
+      'sRGB',
+      '-depth',
+      '8',
+      'txt:-'
+    ],
+    { encoding: 'utf8' }
+  );
+  return output
+    .split('\n')
+    .flatMap((line) => {
+      const match = line.match(/\((\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)\)/);
+      if (!match) {
+        return [];
+      }
+      return [
+        Number(match[1]) / 255,
+        Number(match[2]) / 255,
+        Number(match[3]) / 255
+      ];
+    });
 }
 
 async function waitForGameReady(page) {

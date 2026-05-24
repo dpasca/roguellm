@@ -321,6 +321,10 @@ The generated `report.html` starts with a Skin Bench section that groups
 profile-level thumbnails, aggregate screenshot metrics, hardware detail counts,
 and review flags before the raw scenario grid. Use that bench to compare
 whether variants feel visually distinct enough to promote.
+The report also includes a Similarity Watch that compares downsampled
+screenshots across profiles of the same fixed-skin kind. It flags
+near-duplicate visual signatures as review prompts, not hard gates, so palette
+swaps do not quietly masquerade as new skins.
 
 ## Playable Runtime
 
