@@ -1713,7 +1713,7 @@ function productionProfileScenarios(profile) {
 }
 
 async function ensureViteServer(selected) {
-  if (process.env.VISUAL_NO_DEV_SERVER === '1' || !selected.some((scenario) => usesDefaultViteServer(scenario.url ?? entryUrl))) {
+  if (process.env.VISUAL_NO_DEV_SERVER === '1' || !selected.some((scenario) => needsDefaultViteServer(scenario.url ?? entryUrl))) {
     return null;
   }
 
@@ -1742,6 +1742,21 @@ function usesDefaultViteServer(url) {
     const parsed = new URL(url);
     return parsed.port === '5273' &&
       (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost');
+  } catch {
+    return false;
+  }
+}
+
+function needsDefaultViteServer(url) {
+  if (usesDefaultViteServer(url)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.port === '8127' &&
+      (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
+      parsed.pathname.startsWith('/game2');
   } catch {
     return false;
   }
