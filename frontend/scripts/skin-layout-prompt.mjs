@@ -12,17 +12,19 @@ const profileName = parsedArgs.positionals[0] ?? 'mobilePortrait';
 const profile = contract.profiles?.[profileName];
 const theme = parsedArgs.options.theme ?? 'premium neo-tokyo cyberdeck, dark graphite, green and amber luminous hardware';
 const outputKind = parsedArgs.options.output ?? 'source pack';
+const stateSheetMode = normalizeStateSheetMode(parsedArgs.options['state-sheet'] ?? parsedArgs.options['state-sheet-mode'] ?? 'optional');
 
 if (!profile) {
   console.error(`Unknown profile "${profileName}". Expected one of: ${Object.keys(contract.profiles ?? {}).join(', ')}`);
   process.exit(1);
 }
 
-console.log(buildPrompt(profileName, profile, theme, outputKind));
+console.log(buildPrompt(profileName, profile, theme, outputKind, stateSheetMode));
 
-function buildPrompt(profileName, profile, theme, outputKind) {
+function buildPrompt(profileName, profile, theme, outputKind, stateSheetMode) {
   const canvas = `${profile.size.width}x${profile.size.height}`;
   const sourcePack = outputKind === 'source pack' || outputKind === 'source-pack';
+  const stateSheetRequired = stateSheetMode === 'required';
   const stateSheet = buildStateSheetLayout(profile);
   return [
     `Create a polished mobile roguelike cyberdeck skin ${outputKind}.`,
@@ -38,8 +40,8 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     'Button and toggle crop targets:',
     formatRectList(profile.layout.buttons, buttonNotes(profile.requiredStates)),
     '',
-    'Optional source-owned widget state sheet:',
-    `- source-state-sheet.png: exact ${stateSheet.size.width}x${stateSheet.size.height}. Use it when you want every button/toggle/indicator state hand-authored instead of generated from the idle crop.`,
+    `${stateSheetRequired ? 'Required' : 'Optional'} source-owned widget state sheet:`,
+    `- source-state-sheet.png: exact ${stateSheet.size.width}x${stateSheet.size.height}. ${stateSheetRequired ? 'Required for this handoff: every button/toggle/indicator state must be hand-authored in the fixed slots below.' : 'Use it when you want every button/toggle/indicator state hand-authored instead of generated from the idle crop.'}`,
     formatStateSheet(stateSheet),
     '',
     'Indicator crop targets:',
@@ -53,7 +55,7 @@ function buildPrompt(profileName, profile, theme, outputKind) {
       'Required source-pack files:',
       `- source-chassis.png: exact ${canvas} clean chassis art. Include shell, bezels, wells, screws, rails, glass frames, and decorative permanent labels only. Leave live regions clean.`,
       `- source-widgets.png: exact ${canvas} widget crop art. Align every button/toggle/indicator to the crop rectangles above. Keep button interiors clean enough for Phaser-rendered icons/text unless a label is intentionally permanent.`,
-      '- source-state-sheet.png: optional but preferred for premium skins. Follow the exact state-sheet slots above when states should have unique drawn lighting, depth, or on/off hardware.',
+      `- source-state-sheet.png: ${stateSheetRequired ? 'required' : 'optional but preferred'} for premium skins. Follow the exact state-sheet slots above so hover, pressed, disabled, active, ready, error, and on/off states have unique drawn lighting, depth, or hardware.`,
       '- source-materials.png: at least 160x304. Use row y=0 for panel material, y=104 for LCD material, y=208 for button material. In each row, put a repeat-safe 96x96 fill tile at x=0 and a transparent 48x48 nine-slice frame at x=104.',
       '- Optional contact sheet: useful for review, but it must not be used as runtime source art.',
       ''
@@ -80,7 +82,8 @@ function buildPrompt(profileName, profile, theme, outputKind) {
     'Delivery expectation:',
     ...(sourcePack
       ? [
-        '- Deliver the three required PNG files with the exact filenames above.',
+        `- Deliver the ${stateSheetRequired ? 'four required' : 'required'} PNG files with the exact filenames above.`,
+        ...(stateSheetRequired ? ['- Do not omit source-state-sheet.png or collapse the states into a single idle button image.'] : []),
         '- The scaffold will crop fixed-size runtime assets from those files; do not change the rectangle coordinates.'
       ]
       : [
@@ -226,4 +229,13 @@ function parseArgs(values) {
   }
 
   return { options, positionals };
+}
+
+function normalizeStateSheetMode(value) {
+  if (value === 'required' || value === 'optional') {
+    return value;
+  }
+
+  console.error(`Unknown --state-sheet value "${value}". Expected required or optional.`);
+  process.exit(1);
 }

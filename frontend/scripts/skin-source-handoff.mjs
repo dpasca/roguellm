@@ -14,6 +14,8 @@ const profileName = parsedArgs.options.profile ?? parsedArgs.positionals[1] ?? '
 const profile = contract.profiles?.[profileName];
 const theme = parsedArgs.options.theme ?? 'premium rain-slick neo-tokyo cyberdeck, black glass, brushed titanium, cyan signal LEDs';
 const guideFormat = parsedArgs.options['guide-format'] ?? 'png';
+const role = normalizeRole(parsedArgs.options.role ?? 'variant');
+const stateSheetMode = parsedArgs.options['state-sheet'] ?? (isPromotedRole(role) ? 'required' : 'optional');
 
 if (parsedArgs.options.help || !skinId) {
   printUsage();
@@ -30,6 +32,16 @@ if (!['png', 'svg'].includes(guideFormat)) {
   process.exit(1);
 }
 
+if (!['required', 'optional'].includes(stateSheetMode)) {
+  console.error('State sheet mode must be required or optional');
+  process.exit(1);
+}
+
+if (isPromotedRole(role) && stateSheetMode !== 'required') {
+  console.error(`Role "${role}" handoffs must use --state-sheet required`);
+  process.exit(1);
+}
+
 const outDir = path.resolve(rootDir, parsedArgs.options.out ?? `../_artifacts/skin-handoffs/${skinId}`);
 await fs.mkdir(outDir, { recursive: true });
 
@@ -38,7 +50,9 @@ const prompt = await captureScript('skin-layout-prompt.mjs', [
   '--theme',
   theme,
   '--output',
-  'source-pack'
+  'source-pack',
+  '--state-sheet',
+  stateSheetMode
 ]);
 await fs.writeFile(path.join(outDir, 'prompt.txt'), prompt, 'utf8');
 
@@ -65,9 +79,10 @@ await runScript('skin-state-sheet-guide.mjs', [
 ]);
 guides.push(stateGuideName);
 
-const plan = buildPlan(skinId, profileName, theme, guides);
+const plan = buildPlan(skinId, profileName, theme, guides, role, stateSheetMode);
 await fs.writeFile(path.join(outDir, 'handoff.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 await fs.writeFile(path.join(outDir, 'README.md'), readme(plan), 'utf8');
+await fs.writeFile(path.join(outDir, 'QUALITY_BAR.md'), qualityBar(plan), 'utf8');
 
 console.error(`Wrote skin handoff bundle to ${path.relative(process.cwd(), outDir)}`);
 
@@ -86,17 +101,20 @@ async function runScript(scriptName, args) {
   });
 }
 
-function buildPlan(id, selectedProfile, selectedTheme, guideNames) {
+function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole, selectedStateSheetMode) {
   const sourceDir = `../_artifacts/skin-handoffs/${id}`;
   const kitDir = sourceDir;
   return {
     skinId: id,
     contract: contract.version,
     profile: selectedProfile,
+    role: selectedRole,
+    stateSheet: selectedStateSheetMode,
     size: contract.profiles[selectedProfile].size,
     theme: selectedTheme,
     files: {
       prompt: 'prompt.txt',
+      qualityBar: 'QUALITY_BAR.md',
       guides: guideNames,
       expectedSourcePack: [
         'source-chassis.png',
@@ -107,7 +125,7 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames) {
     },
     commands: [
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
-      `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
+      `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --role ${selectedRole} --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
       `pnpm -C frontend validate:skin-source-packs ${kitDir}`,
       `pnpm -C frontend skin:review-source ${kitDir} --json --fail-on-issue`,
       `pnpm -C frontend build:skin-kit ${kitDir}`,
@@ -125,12 +143,15 @@ function readme(plan) {
 
 Contract: ${plan.contract}
 Profile: ${plan.profile}
+Role: ${plan.role}
+State sheet: ${plan.stateSheet}
 Canvas: ${plan.size.width}x${plan.size.height}
 Theme: ${plan.theme}
 
 ## Files
 
 - \`prompt.txt\`: paste this into the image generator.
+- \`QUALITY_BAR.md\`: human review standard before promotion.
 - \`${plan.files.guides.join('`, `')}\`: exact live-region, crop-target, runtime-slot, state-sheet, and combined guides.
 - Expected generated files: \`${plan.files.expectedSourcePack.join('`, `')}\`.
 
@@ -138,6 +159,8 @@ Theme: ${plan.theme}
 
 The generated art becomes fixed PNG assets for the Phaser renderer. Do not use
 CSS, DOM stylesheets, or responsive stretching to place or skin runtime widgets.
+This handoff is not a gameplay screenshot or a final mockup; it is source art
+that will be cropped into fixed runtime assets.
 
 ## After Generation
 
@@ -162,12 +185,61 @@ tile or nine-slice cleanly.
 `;
 }
 
+function qualityBar(plan) {
+  return `# ${plan.skinId} Quality Bar
+
+This handoff should be reviewed as a fixed skin source pack, not as a pretty
+screenshot. The generated files are acceptable only if they can become cropped
+runtime assets without stretching or repainting around dynamic content.
+
+## Required Source Files
+
+- \`source-chassis.png\`: exact ${plan.size.width}x${plan.size.height}; polished shell, frame, glass, screws, rails, decorative permanent labels, and empty live regions.
+- \`source-widgets.png\`: exact ${plan.size.width}x${plan.size.height}; every crop target aligned to the guide, no shifted controls.
+- \`source-state-sheet.png\`: ${plan.stateSheet}; every button, toggle, status, and LED state has a visibly distinct fixed-size sprite.
+- \`source-materials.png\`: repeat-safe panel, LCD, and button fills plus transparent nine-slice frames.
+
+## Visual Acceptance
+
+- The art should read like a premium handheld console skin at first glance, not a flat dashboard.
+- Buttons need tactile depth: idle, hover, pressed, disabled, active, and on/off states should differ by lighting, inset depth, glow, or hardware latch.
+- Live regions must remain clean: no baked map tiles, player/enemy/item icons, HP numbers, stat values, log copy, inventory names, or model status text.
+- Material tiles must be safe to repeat, and frames must be safe to nine-slice; avoid unique center ornaments that would visibly duplicate.
+- The compact profile is the mobile quality target. Desktop should get a separate profile later instead of stretching this art.
+
+## Promotion Commands
+
+\`\`\`bash
+${plan.commands.join('\n')}
+\`\`\`
+
+## Runtime Verification After Promotion
+
+\`\`\`bash
+${plan.afterPromotion.join('\n')}
+\`\`\`
+`;
+}
+
 function labelFromId(id) {
   return id
     .split(/[-_]+/)
     .filter(Boolean)
     .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
     .join(' ');
+}
+
+function normalizeRole(value) {
+  if (['default', 'variant', 'prototype', 'legacy'].includes(value)) {
+    return value;
+  }
+
+  console.error(`Unknown role "${value}". Expected default, variant, prototype, or legacy.`);
+  process.exit(1);
+}
+
+function isPromotedRole(value) {
+  return value === 'default' || value === 'variant';
 }
 
 function parseArgs(values) {
@@ -196,7 +268,7 @@ function parseArgs(values) {
 
 function printUsage() {
   console.log(`Usage:
-  pnpm skin:handoff <skin-id> [profile] [--theme "..."] [--out <dir>] [--guide-format png|svg]
+  pnpm skin:handoff <skin-id> [profile] [--theme "..."] [--role default|variant|prototype|legacy] [--state-sheet required|optional] [--out <dir>] [--guide-format png|svg]
 
 Examples:
   pnpm skin:handoff rain-city-deck mobileCompact --theme "premium rain-city cyberdeck, black glass, brass switches"
