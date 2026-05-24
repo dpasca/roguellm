@@ -947,7 +947,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       for (let x = 0; x < state.map_width; x += 1) {
         const explored = state.explored[y]?.[x] ?? false;
         const cell = state.cell_types[y]?.[x];
-        const base = parseHexColor(cell?.map_color);
+        const base = boostMapColor(parseHexColor(cell?.map_color));
         const tileX = originX + x * tileWidth;
         const tileY = originY + y * tileHeight;
         this.drawMapTile(graphics, tileX, tileY, tileWidth, tileHeight, base, explored);
@@ -1051,6 +1051,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       3
     );
 
+    this.drawPlayerPathTrace(graphics, originX, originY, tileWidth, tileHeight);
+
     for (let index = 0; index < 4; index += 1) {
       const alpha = 0.62 - index * 0.085;
       const radius = Math.max(5, Math.min(tileWidth, tileHeight) * (0.36 + index * 0.16));
@@ -1076,6 +1078,82 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
 
     this.mapScannerDetailsDrawn += 9;
+  }
+
+  private drawPlayerPathTrace(
+    graphics: Phaser.GameObjects.Graphics,
+    originX: number,
+    originY: number,
+    tileWidth: number,
+    tileHeight: number
+  ): void {
+    const state = this.viewState.state;
+    const [fromX, fromY] = state.player_pos_prev;
+    const [toX, toY] = state.player_pos;
+    if (fromX === toX && fromY === toY) {
+      return;
+    }
+    if (!state.explored[fromY]?.[fromX] || !state.explored[toY]?.[toX]) {
+      return;
+    }
+
+    const fromCenterX = originX + fromX * tileWidth + tileWidth * 0.5;
+    const fromCenterY = originY + fromY * tileHeight + tileHeight * 0.5;
+    const toCenterX = originX + toX * tileWidth + tileWidth * 0.5;
+    const toCenterY = originY + toY * tileHeight + tileHeight * 0.5;
+    const dx = toCenterX - fromCenterX;
+    const dy = toCenterY - fromCenterY;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= 0) {
+      return;
+    }
+
+    const unitX = dx / distance;
+    const unitY = dy / distance;
+    const normalX = -unitY;
+    const normalY = unitX;
+    const laneOffset = Math.min(7, Math.max(3, Math.floor(Math.min(tileWidth, tileHeight) * 0.22)));
+    const fromLaneX = fromCenterX + normalX * laneOffset;
+    const fromLaneY = fromCenterY + normalY * laneOffset;
+    const toLaneX = toCenterX + normalX * laneOffset;
+    const toLaneY = toCenterY + normalY * laneOffset;
+    const startX = fromLaneX + unitX * Math.min(9, distance * 0.22);
+    const startY = fromLaneY + unitY * Math.min(9, distance * 0.22);
+    const endX = toLaneX - unitX * Math.min(7, distance * 0.18);
+    const endY = toLaneY - unitY * Math.min(7, distance * 0.18);
+    const arrowSize = Math.max(4, Math.floor(Math.min(tileWidth, tileHeight) * 0.18));
+    const tileMinor = Math.min(tileWidth, tileHeight);
+    const previousInset = Math.max(3, Math.floor(tileMinor * 0.16));
+    const previousLength = Math.max(5, Math.floor(tileMinor * 0.22));
+    const previousLeft = originX + fromX * tileWidth + previousInset;
+    const previousTop = originY + fromY * tileHeight + previousInset;
+    const previousRight = originX + (fromX + 1) * tileWidth - previousInset;
+    const previousBottom = originY + (fromY + 1) * tileHeight - previousInset;
+
+    graphics.lineStyle(3, 0x020504, 0.82);
+    drawCornerBrackets(graphics, previousLeft, previousTop, previousRight, previousBottom, previousLength);
+    graphics.lineStyle(1, this.theme.secondary, 0.82);
+    drawCornerBrackets(graphics, previousLeft, previousTop, previousRight, previousBottom, previousLength);
+
+    graphics.lineStyle(5, 0x020504, 0.8);
+    graphics.lineBetween(startX, startY, endX, endY);
+    graphics.lineStyle(2, this.theme.secondary, 0.94);
+    graphics.lineBetween(startX, startY, endX, endY);
+    graphics.lineStyle(1, this.theme.primary, 0.88);
+    graphics.lineBetween(startX - normalX * 2, startY - normalY * 2, endX - normalX * 2, endY - normalY * 2);
+    graphics.fillStyle(0x020504, 0.86);
+    graphics.fillCircle(fromLaneX, fromLaneY, 4);
+    graphics.fillStyle(this.theme.secondary, 0.94);
+    graphics.fillCircle(fromLaneX, fromLaneY, 2);
+    graphics.fillTriangle(
+      endX,
+      endY,
+      endX - unitX * arrowSize + normalX * arrowSize * 0.58,
+      endY - unitY * arrowSize + normalY * arrowSize * 0.58,
+      endX - unitX * arrowSize - normalX * arrowSize * 0.58,
+      endY - unitY * arrowSize - normalY * arrowSize * 0.58
+    );
+    this.mapScannerDetailsDrawn += 11;
   }
 
   private shouldDrawTerrainIcon(state: GameState, x: number, y: number, icon: string | undefined): boolean {
@@ -1147,13 +1225,13 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const displayColor = explored ? color : this.theme.controlFrame;
     const scaled = scaleRgb(displayColor, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
     const base = explored
-      ? mixRgb(scaleRgb(scaled, 1.58), this.theme.panelFill, 0.18)
+      ? mixRgb(scaleRgb(scaled, 1.72), this.theme.panelFill, 0.14)
       : scaleRgb(scaled, 1.18);
     const top = explored
-      ? mixRgb(scaleRgb(scaled, 2.24), this.theme.primary, 0.2)
+      ? mixRgb(scaleRgb(scaled, 2.34), this.theme.primary, 0.18)
       : scaleRgb(scaled, 1.74);
     const shadow = scaleRgb(scaled, explored ? 0.46 : 0.34);
-    const signal = explored ? mixRgb(color, this.theme.secondary, 0.42) : this.theme.controlFrame;
+    const signal = explored ? mixRgb(color, this.theme.secondary, 0.34) : this.theme.controlFrame;
     const plate = explored ? mixRgb(base, 0xffffff, 0.1) : base;
 
     graphics.fillStyle(base, 1);
@@ -1167,6 +1245,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       graphics.fillRect(tileX + 3, tileY + height - 5, Math.max(4, Math.floor(width * 0.46)), 2);
       graphics.fillStyle(top, 0.48);
       graphics.fillRoundedRect(tileX + width - 6, tileY + 4, 2, Math.max(3, Math.floor(height * 0.28)), 1);
+      graphics.fillStyle(signal, 0.22);
+      graphics.fillRoundedRect(tileX + width - Math.max(11, Math.floor(width * 0.34)), tileY + 5, Math.max(4, Math.floor(width * 0.18)), 2, 1);
+      graphics.fillStyle(top, 0.2);
+      graphics.fillRect(tileX + 5, tileY + Math.floor(height * 0.54), Math.max(5, Math.floor(width * 0.32)), 1);
     }
 
     if (tileMinor >= 18) {
@@ -1190,8 +1272,10 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       }
 
       if (explored) {
-        graphics.lineStyle(1, signal, 0.22);
+        graphics.lineStyle(1, signal, 0.3);
         graphics.lineBetween(tileX + 5, tileY + height - 9, tileX + width - 7, tileY + 6);
+        graphics.lineStyle(1, top, 0.16);
+        graphics.lineBetween(tileX + width - 7, tileY + height - 8, tileX + 7, tileY + 7);
       }
     }
 
@@ -1210,7 +1294,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       this.drawFogTileHardware(graphics, tileX, tileY, width, height, tileMinor);
     }
 
-    this.mapTileDetailsDrawn += tileMinor >= 18 ? (explored ? 9 : 5) : (explored ? 3 : 1);
+    this.mapTileDetailsDrawn += tileMinor >= 18 ? (explored ? 13 : 5) : (explored ? 5 : 1);
   }
 
   private drawFogTileHardware(
@@ -3392,6 +3476,18 @@ function mixRgb(base: number, overlay: number, amount: number): number {
   const green = Math.round(((base >> 8) & 0xff) * inverse + ((overlay >> 8) & 0xff) * ratio);
   const blue = Math.round((base & 0xff) * inverse + (overlay & 0xff) * ratio);
   return (red << 16) | (green << 8) | blue;
+}
+
+function boostMapColor(color: number): number {
+  const red = (color >> 16) & 0xff;
+  const green = (color >> 8) & 0xff;
+  const blue = color & 0xff;
+  const strongest = Math.max(red, green, blue);
+  const scale = strongest > 0 && strongest < 118 ? 118 / strongest : 1;
+  const boostedRed = Math.min(255, Math.round(red * scale));
+  const boostedGreen = Math.min(255, Math.round(green * scale));
+  const boostedBlue = Math.min(255, Math.round(blue * scale));
+  return mixRgb((boostedRed << 16) | (boostedGreen << 8) | boostedBlue, 0xffffff, strongest < 92 ? 0.06 : 0.02);
 }
 
 function colorToHex(color: number): string {
