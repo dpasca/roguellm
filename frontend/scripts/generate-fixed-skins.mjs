@@ -403,19 +403,19 @@ const compactVariants = [
     version: 'v0.1',
     generation: 'deterministic-svg-owned-compact',
     premium: true,
-    accent: '#9cff67',
-    accentSoft: '#d8ffa3',
-    accentDim: '#265f26',
-    accentLine: '#5dff66',
-    secondary: '#ff4f5e',
+    accent: '#5dff58',
+    accentSoft: '#b8ffae',
+    accentDim: '#123f18',
+    accentLine: '#2cff46',
+    secondary: '#ff3154',
     textMuted: '#b7cab9',
     textDim: '#6f806f',
-    shellTop: '#353f39',
-    shellMid: '#050908',
-    shellStroke: '#7a8f7f',
-    panelStroke: '#6f8b70',
-    panelInset: '#07160c',
-    noise: '#26332a',
+    shellTop: '#0b1710',
+    shellMid: '#010302',
+    shellStroke: '#2c6f3d',
+    panelStroke: '#246f37',
+    panelInset: '#020905',
+    noise: '#08170c',
     action: {
       attack: { main: '#e33128', dark: '#330705', light: '#ff8d74', text: '#fff0df' },
       run: { main: '#59e842', dark: '#082d0d', light: '#d8ff9b', text: '#ecffe1' },
@@ -1151,18 +1151,22 @@ function premiumThemeAccents(variant, height) {
     case 'terminal':
       return `
         <g opacity="0.82">
-          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="${compact ? 0.085 : 0.050}"/>
-          ${Array.from({ length: compact ? 9 : 11 }, (_, index) => `<path d="M24 ${mapY + 18 + index * 22}H366" stroke="${variant.accent}" stroke-width="1.7" opacity="${index % 2 === 0 ? 0.28 : 0.18}"/>`).join('')}
-          ${Array.from({ length: 8 }, (_, index) => `<path d="M${48 + index * 40} ${mapY + 6}V${mapBottom - 8}" stroke="${variant.accent}" stroke-width="1.5" opacity="${index % 2 === 0 ? 0.20 : 0.12}"/>`).join('')}
-          <path d="M40 ${mapBottom - 32}H132V${mapBottom - 42}H188V${mapBottom - 18}H284V${mapBottom - 28}H350" fill="none" stroke="${variant.secondary}" stroke-width="2.2" opacity="0.34"/>
+          <rect x="14" y="42" width="362" height="${compact ? 457 : 586}" rx="10" fill="#000502" stroke="${variant.accent}" stroke-width="1.3" opacity="${compact ? 0.34 : 0.24}"/>
+          <rect x="22" y="${mapY}" width="346" height="${mapHeight}" rx="3" fill="${variant.accent}" opacity="${compact ? 0.115 : 0.060}"/>
+          <rect x="34" y="${mapY + 18}" width="322" height="${mapHeight - 40}" rx="22" fill="#000000" stroke="${variant.accentSoft}" stroke-width="2.2" opacity="${compact ? 0.32 : 0.22}"/>
+          ${Array.from({ length: compact ? 9 : 11 }, (_, index) => `<path d="M24 ${mapY + 18 + index * 22}H366" stroke="${variant.accent}" stroke-width="1.9" opacity="${index % 2 === 0 ? 0.34 : 0.22}"/>`).join('')}
+          ${Array.from({ length: 8 }, (_, index) => `<path d="M${48 + index * 40} ${mapY + 6}V${mapBottom - 8}" stroke="${variant.accent}" stroke-width="1.7" opacity="${index % 2 === 0 ? 0.25 : 0.15}"/>`).join('')}
+          <path d="M40 ${mapBottom - 32}H132V${mapBottom - 42}H188V${mapBottom - 18}H284V${mapBottom - 28}H350" fill="none" stroke="${variant.secondary}" stroke-width="3.2" opacity="0.62"/>
           ${Array.from({ length: compact ? 14 : 20 }, (_, index) => {
             const y = 58 + index * 20;
-            return `<rect x="30" y="${y}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 3 === 0 ? 0.45 : 0.20}"/><rect x="356" y="${y + 6}" width="4" height="10" rx="1" fill="${variant.accent}" opacity="${index % 2 === 0 ? 0.34 : 0.18}"/>`;
+            return `<rect x="30" y="${y}" width="5" height="12" rx="1.5" fill="${index % 4 === 0 ? variant.secondary : variant.accent}" opacity="${index % 3 === 0 ? 0.70 : 0.32}"/><rect x="355" y="${y + 6}" width="5" height="12" rx="1.5" fill="${index % 3 === 0 ? variant.secondary : variant.accent}" opacity="${index % 2 === 0 ? 0.58 : 0.30}"/>`;
           }).join('')}
-          <path d="M52 ${controlY + 8}H136V${controlY + controlHeight - 8}H52Z" fill="none" stroke="${variant.accent}" stroke-width="1.1" stroke-dasharray="2 5" opacity="0.25"/>
-          <path d="M205 ${controlY + 14}H356M205 ${controlY + 84}H356" stroke="${variant.secondary}" stroke-width="2" opacity="0.30"/>
-          <path d="M24 ${bottomY - 6}H367" stroke="${variant.accent}" stroke-width="1" stroke-dasharray="3 8" opacity="0.36"/>
-          <text x="194" y="36" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="0.62">CRT TERMINAL CORE</text>
+          <rect x="36" y="${controlY + 12}" width="116" height="${controlHeight - 26}" rx="10" fill="#000301" stroke="${variant.accent}" stroke-width="1.8" stroke-dasharray="2 5" opacity="0.48"/>
+          <path d="M205 ${controlY + 14}H356M205 ${controlY + 84}H356" stroke="${variant.secondary}" stroke-width="2.8" opacity="0.52"/>
+          <path d="M204 ${controlY + 18}H356V${controlY + 58}H204ZM204 ${controlY + 88}H356V${controlY + 128}H204Z" fill="${variant.secondary}" opacity="0.055" stroke="${variant.secondary}" stroke-width="1.2"/>
+          <path d="M24 ${bottomY - 6}H367" stroke="${variant.accent}" stroke-width="1.3" stroke-dasharray="3 8" opacity="0.54"/>
+          <rect x="139" y="22" width="110" height="14" rx="7" fill="#000301" stroke="${variant.secondary}" stroke-width="1.1" opacity="0.72"/>
+          <text x="194" y="32" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${variant.accentSoft}" opacity="0.78">CRT TERMINAL CORE</text>
         </g>
       `;
     default:
