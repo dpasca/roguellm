@@ -309,10 +309,12 @@ Visual inspection should capture diagnostics screenshots and fail if widgets are
 missing, clipped, or overflowing the viewport.
 
 `pnpm -C frontend inspect:visual` discovers every production `mobilePortrait`
-and `mobileCompact` profile (`role: default` or `variant`) and adds movement,
-log, inventory, defeat, victory, restart, and diagnostics scenarios
+and `mobileCompact` profile (`role: default` or `variant`) and adds Phaser
+movement, log, inventory, defeat, victory, restart, and diagnostics scenarios
 automatically. Use `VISUAL_SCENARIOS=production` when you want only this
-scalable production-skin sweep.
+scalable production-skin sweep. The legacy DOM comparison sweep is still
+available with `VISUAL_PRODUCTION_RENDERER=dom`, but Phaser is the default
+production renderer.
 
 ## Playable Runtime
 

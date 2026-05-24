@@ -56,6 +56,7 @@ const scenarioFilters = (process.env.VISUAL_SCENARIOS ?? process.env.VISUAL_SCEN
   .split(',')
   .map((filter) => filter.trim())
   .filter(Boolean);
+const productionProfileRenderer = process.env.VISUAL_PRODUCTION_RENDERER === 'dom' ? 'dom' : 'phaser';
 const fixedSkinDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const fixedProfileKitCache = new Map();
 const productionMobileProfiles = await loadProductionMobileProfiles(fixedSkinDir);
@@ -776,6 +777,7 @@ const summary = {
   workbenchUrl,
   fixedWorkbenchUrl,
   scenarioFilters,
+  productionProfileRenderer,
   productionMobileProfiles,
   managedViteServer: Boolean(managedViteServer),
   outDir,
@@ -1061,18 +1063,8 @@ async function loadProductionMobileProfiles(dir) {
 
 function withProductionProfileCoverage(base, profiles) {
   const scenarios = [...base];
-  const existingCoverage = new Set(
-    base.map((scenario) => scenarioKey(scenario))
-  );
-
   for (const profile of profiles) {
     for (const scenario of productionProfileScenarios(profile)) {
-      const key = scenarioKey(scenario);
-      if (existingCoverage.has(key)) {
-        continue;
-      }
-
-      existingCoverage.add(key);
       scenarios.push(scenario);
     }
   }
@@ -1081,11 +1073,81 @@ function withProductionProfileCoverage(base, profiles) {
 }
 
 function productionProfileScenarios(profile) {
-  const url = fixedWorkbenchProfileUrl(profile.id);
+  const url = productionProfileRenderer === 'dom'
+    ? fixedWorkbenchProfileUrl(profile.id)
+    : phaserFixedWorkbenchProfileUrl(profile.id);
   const viewport = profile.kind === 'mobileCompact'
     ? { width: profile.size?.width ?? 390, height: profile.size?.height ?? 667 }
     : { width: 390, height: 844 };
   const shortViewport = { width: 390, height: 667 };
+  if (productionProfileRenderer === 'phaser') {
+    return [
+      {
+        name: `mobile-${profile.id}-production-movement`,
+        viewport,
+        mode: 'phaser-fixed-workbench-click-move',
+        url: `${url}&scenario=movement`,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-log`,
+        viewport,
+        mode: 'phaser-fixed-workbench-log',
+        url,
+        expectedFixedProfile: profile.id
+      },
+      ...(profile.kind === 'mobileCompact' ? [{
+        name: `mobile-${profile.id}-production-short-log`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-log',
+        url,
+        expectedFixedProfile: profile.id
+      }] : []),
+      {
+        name: `mobile-${profile.id}-production-inventory`,
+        viewport,
+        mode: 'phaser-fixed-workbench-inventory',
+        url,
+        expectedFixedProfile: profile.id
+      },
+      ...(profile.kind === 'mobileCompact' ? [{
+        name: `mobile-${profile.id}-production-short-inventory`,
+        viewport: shortViewport,
+        mode: 'phaser-fixed-workbench-inventory',
+        url,
+        expectedFixedProfile: profile.id
+      }] : []),
+      {
+        name: `mobile-${profile.id}-production-defeat`,
+        viewport,
+        mode: 'phaser-fixed-workbench-defeat',
+        url: `${url}&scenario=defeat`,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-victory`,
+        viewport,
+        mode: 'phaser-fixed-workbench-victory',
+        url: `${url}&scenario=victory`,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-restart`,
+        viewport,
+        mode: 'phaser-fixed-workbench-restart',
+        url: `${url}&scenario=defeat`,
+        expectedFixedProfile: profile.id
+      },
+      {
+        name: `mobile-${profile.id}-production-diagnostics`,
+        viewport,
+        mode: 'phaser-fixed-workbench',
+        url: `${url}&scenario=diagnostics`,
+        expectedFixedProfile: profile.id
+      }
+    ];
+  }
+
   return [
     {
       name: `mobile-${profile.id}-production-movement`,
@@ -1151,16 +1213,6 @@ function productionProfileScenarios(profile) {
       expectedFixedProfile: profile.id
     }
   ];
-}
-
-function scenarioKey(scenario) {
-  return [
-    scenario.mode,
-    scenario.url ?? entryUrl,
-    scenario.expectedFixedProfile ?? '',
-    scenario.viewport.width,
-    scenario.viewport.height
-  ].join('\n');
 }
 
 async function ensureViteServer(selected) {
@@ -2869,7 +2921,7 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
       .split(',')
       .filter(Boolean)
   );
-  const requiredKinds = scenario.mode === 'phaser-fixed-workbench-click-move'
+  const requiredKinds = phaserScenarioSkipsButtonMaterial(scenario)
     ? ['lcd', 'panel']
     : ['button', 'lcd', 'panel'];
   const minimumPanelCount = requiredKinds.includes('button') ? 5 : 3;
@@ -2889,6 +2941,12 @@ function validatePhaserSourceMaterials(scenario, metrics, failures, context) {
       );
     }
   }
+}
+
+function phaserScenarioSkipsButtonMaterial(scenario) {
+  return scenario.mode === 'phaser-fixed-workbench-click-move' ||
+    scenario.mode === 'phaser-fixed-workbench-victory' ||
+    scenario.name.endsWith('-production-diagnostics');
 }
 
 function validatePhaserActionLabels(scenario, metrics, failures, context) {
