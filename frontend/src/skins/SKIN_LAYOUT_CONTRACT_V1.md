@@ -8,6 +8,11 @@ The machine-readable source for automated validation is
 `SKIN_LAYOUT_CONTRACT_V1.json`. Keep this document and the JSON contract in sync
 when creating a future contract version.
 
+The current visual-quality direction is machine-readable in
+`SKIN_ART_BLUEPRINT_V1.json`. The layout contract defines exact geometry; the
+art blueprint defines what a generated mobile compact source pack must feel like
+before it is good enough to promote.
+
 The v1 contract is mobile-first and has two artboard variants:
 
 - `mobilePortrait`: `390x844`
@@ -499,10 +504,11 @@ only after:
 
 1. `pnpm -C frontend build:skin-kit src/skins/neo-tokyo-console/fixed/<skin-id>`
 2. `pnpm -C frontend validate:skin-source-packs src/skins/neo-tokyo-console/fixed/<skin-id>`
-3. `pnpm -C frontend skin:review-source src/skins/neo-tokyo-console/fixed/<skin-id> --json --fail-on-issue`
-4. `pnpm -C frontend validate:skins`
-5. `VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual`
-6. Manual review of at least movement, log, inventory, defeat, victory, restart,
+3. `pnpm -C frontend validate:skin-art-blueprint`
+4. `pnpm -C frontend skin:review-source src/skins/neo-tokyo-console/fixed/<skin-id> --json --fail-on-issue`
+5. `pnpm -C frontend validate:skins`
+6. `VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual`
+7. Manual review of at least movement, log, inventory, defeat, victory, restart,
    and diagnostics screenshots.
 
 The visual review should compare against the current gold profile, but it should

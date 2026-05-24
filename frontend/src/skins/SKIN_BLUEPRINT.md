@@ -6,12 +6,15 @@ different coordinates and assets.
 
 For exact v1 artboard coordinates, crop targets, required state assets, and the
 AI-generation handoff checklist, see `SKIN_LAYOUT_CONTRACT_V1.md`. Automated
-validation loads `SKIN_LAYOUT_CONTRACT_V1.json`. This blueprint explains
-intent; the layout contract is the source of truth for skin geometry.
+validation loads `SKIN_LAYOUT_CONTRACT_V1.json`. For the current premium art
+direction, see `SKIN_ART_BLUEPRINT_V1.json`; `skin:handoff` copies that into an
+`ART_DIRECTION.md` file beside generated-skin prompts and guides. This document
+explains broad intent; the layout contract is the source of truth for geometry,
+and the art blueprint is the source of truth for current mobile visual quality.
 
 ## Goals
 
-- Build one polished `mobilePortrait` profile before expanding to desktop.
+- Build one polished `mobileCompact` profile before expanding to desktop.
 - Treat generated art as a skin kit, not a screenshot.
 - Keep all dynamic game content out of the source art.
 - Use fixed widget coordinates and explicit state sprites.
@@ -20,33 +23,33 @@ intent; the layout contract is the source of truth for skin geometry.
 
 ## Mobile Profiles
 
-The first production target is a `390x844` portrait artboard. The renderer may
-scale the whole artboard uniformly to fit the viewport, but it must not stretch
-individual bitmap widgets.
+The first production quality target is the `390x667` compact artboard, because
+the mobile log and controls need to fit short phones before we spend more time
+on desktop or taller-phone variants. The renderer may scale the whole artboard
+uniformly to fit the viewport, but it must not stretch individual bitmap
+widgets.
 
-The current gold layout target uses this hierarchy:
+The compact layout target uses this hierarchy:
 
 - Header/status chrome: `0-44`.
-- Map aperture: about `346x281`, large enough to inspect the board but no
-  longer dominant.
-- Latest message: about `284x86`, readable as a primary story surface while
+- Map aperture: `346x232`, large enough to inspect the board but no longer
+  dominant.
+- Latest message: `284x74`, readable as a primary story surface while
   reserving a fixed log-toggle well.
-- Expanded log: about `342x284`, allowed to overlay the title, player, and
+- Expanded log: `342x238`, allowed to overlay the title, player, and
   combat panels while open so story text has real reading space.
-- Expanded inventory: about `342x284`, sharing the drawer space with the log
+- Expanded inventory: `342x238`, sharing the drawer space with the log
   and showing item rows plus fixed action affordances.
 - Title/status band plus player panel: title and model status sit above a
-  compact `342x54` HP/stat block.
-- Combat panel: about `342x64`, compact but readable.
-- Controls: bottom `190px`, D-pad left and action buttons right.
-- End-state overlay: about `314x292`, large enough for defeat/victory copy,
-  HP/XP, and a fixed restart sprite without hiding the whole map.
+  compact `342x48` HP/stat block.
+- Combat panel: `342x50`, compact but readable.
+- Controls: bottom `149px`, D-pad left and action buttons right.
+- End-state overlay: `314x238`, large enough for defeat/victory copy, HP/XP,
+  and a fixed restart sprite without hiding the whole map.
 
-Short phones use a separate `mobileCompact` profile instead of shrinking the
-portrait artboard below comfortable reading size. The current compact target is
-`390x667`, keeps the same widget names and state-sprite contract, and may reuse
-button/indicator sprites from a larger profile when their fixed dimensions still
-fit the compact geometry. It should have its own chassis and coordinates.
+The taller `mobilePortrait` target remains valid, but it should follow compact
+quality rather than drive it. Desktop should become a separate fixed geometry
+later.
 
 Every mobile skin profile must define:
 

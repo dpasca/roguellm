@@ -7,7 +7,9 @@ const execFileAsync = promisify(execFile);
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname);
 const scriptDir = path.join(rootDir, 'scripts');
 const contractPath = path.join(rootDir, 'src/skins/SKIN_LAYOUT_CONTRACT_V1.json');
+const artBlueprintPath = path.join(rootDir, 'src/skins/SKIN_ART_BLUEPRINT_V1.json');
 const contract = JSON.parse(await fs.readFile(contractPath, 'utf8'));
+const artBlueprint = JSON.parse(await fs.readFile(artBlueprintPath, 'utf8'));
 const parsedArgs = parseArgs(process.argv.slice(2));
 const skinId = parsedArgs.positionals[0];
 const profileName = parsedArgs.options.profile ?? parsedArgs.positionals[1] ?? 'mobileCompact';
@@ -45,7 +47,7 @@ if (isPromotedRole(role) && stateSheetMode !== 'required') {
 const outDir = path.resolve(rootDir, parsedArgs.options.out ?? `../_artifacts/skin-handoffs/${skinId}`);
 await fs.mkdir(outDir, { recursive: true });
 
-const prompt = await captureScript('skin-layout-prompt.mjs', [
+const contractPrompt = await captureScript('skin-layout-prompt.mjs', [
   profileName,
   '--theme',
   theme,
@@ -54,6 +56,7 @@ const prompt = await captureScript('skin-layout-prompt.mjs', [
   '--state-sheet',
   stateSheetMode
 ]);
+const prompt = `${contractPrompt.trim()}\n\n${promptArtDirection(artBlueprint, profileName)}\n`;
 await fs.writeFile(path.join(outDir, 'prompt.txt'), prompt, 'utf8');
 
 const guides = [];
@@ -81,6 +84,7 @@ guides.push(stateGuideName);
 
 const plan = buildPlan(skinId, profileName, theme, guides, role, stateSheetMode);
 await fs.writeFile(path.join(outDir, 'handoff.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
+await fs.writeFile(path.join(outDir, 'ART_DIRECTION.md'), artDirection(plan, artBlueprint), 'utf8');
 await fs.writeFile(path.join(outDir, 'README.md'), readme(plan), 'utf8');
 await fs.writeFile(path.join(outDir, 'QUALITY_BAR.md'), qualityBar(plan), 'utf8');
 
@@ -113,8 +117,15 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
     stateSheet: selectedStateSheetMode,
     size: contract.profiles[selectedProfile].size,
     theme: selectedTheme,
+    artBlueprint: {
+      version: artBlueprint.version,
+      name: artBlueprint.name,
+      targetProfile: artBlueprint.targetProfile,
+      file: 'ART_DIRECTION.md'
+    },
     files: {
       prompt: 'prompt.txt',
+      artDirection: 'ART_DIRECTION.md',
       qualityBar: 'QUALITY_BAR.md',
       guides: guideNames,
       expectedSourcePack: [
@@ -139,6 +150,92 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
   };
 }
 
+function promptArtDirection(blueprint, selectedProfile) {
+  return [
+    'Premium art direction:',
+    `- Blueprint: ${blueprint.name} ${blueprint.version}; primary target ${blueprint.targetProfile}.`,
+    `- This handoff profile is ${selectedProfile}; ${selectedProfile === blueprint.targetProfile ? 'use the blueprint exactly.' : 'keep the same fixed-widget discipline while adapting to this profile geometry.'}`,
+    `- Intent: ${blueprint.intent}`,
+    `- Visual target: ${blueprint.visualTarget}`,
+    '- Source-file responsibilities:',
+    ...Object.entries(blueprint.sourceFiles ?? {}).flatMap(([fileName, source]) => [
+      `  - ${fileName}: ${source.purpose}`,
+      ...((source.must ?? []).map((rule) => `    Must: ${rule}`)),
+      ...((source.mustNot ?? []).map((rule) => `    Must not: ${rule}`))
+    ]),
+    '- Widget families:',
+    ...((blueprint.widgetFamilies ?? []).map((family) => {
+      const states = family.states?.length ? ` States: ${family.states.join(', ')}.` : '';
+      return `  - ${family.id}: ${family.shape}; assets ${family.assets.join(', ')}.${states}`;
+    })),
+    '- Hard art-quality gates:',
+    ...((blueprint.qualityGates ?? []).map((rule) => `  - ${rule}`)),
+    '- Forbidden dynamic content:',
+    `  - ${blueprint.forbiddenDynamicContent.join(', ')}.`
+  ].join('\n');
+}
+
+function artDirection(plan, blueprint) {
+  return `# ${plan.skinId} Art Direction
+
+Blueprint: ${blueprint.name} ${blueprint.version}
+Contract profile: ${plan.profile}
+Primary blueprint target: ${blueprint.targetProfile}
+
+${blueprint.intent}
+
+${blueprint.visualTarget}
+
+## Layout Intent
+
+${(blueprint.layoutStack ?? []).map((entry) => {
+  const heading = `### ${titleFromId(entry.id)}${entry.region ? ` (${entry.region})` : ''}`;
+  const must = entry.must?.length ? `\nMust:\n${markdownList(entry.must)}` : '';
+  const mustNot = entry.mustNot?.length ? `\nMust not:\n${markdownList(entry.mustNot)}` : '';
+  return `${heading}\n\n${entry.purpose}${must}${mustNot}`;
+}).join('\n\n')}
+
+## Source Files
+
+${Object.entries(blueprint.sourceFiles ?? {}).map(([fileName, source]) => {
+  const must = source.must?.length ? `\nMust:\n${markdownList(source.must)}` : '';
+  const mustNot = source.mustNot?.length ? `\nMust not:\n${markdownList(source.mustNot)}` : '';
+  return `### ${fileName}\n\n${source.purpose}${must}${mustNot}`;
+}).join('\n\n')}
+
+## Widget Families
+
+${(blueprint.widgetFamilies ?? []).map((family) => [
+  `### ${titleFromId(family.id)}`,
+  '',
+  `Assets: \`${family.assets.join('`, `')}\``,
+  `Shape: ${family.shape}`,
+  family.states?.length ? `States: \`${family.states.join('`, `')}\`` : null,
+  family.must?.length ? `Must:\n${markdownList(family.must)}` : null
+].filter(Boolean).join('\n')).join('\n\n')}
+
+## State Language
+
+${Object.entries(blueprint.stateLanguage ?? {}).map(([state, note]) => `- \`${state}\`: ${note}`).join('\n')}
+
+## Material Rules
+
+${markdownList(blueprint.materialRules ?? [])}
+
+## Forbidden Dynamic Content
+
+${markdownList(blueprint.forbiddenDynamicContent ?? [])}
+
+## Quality Gates
+
+${markdownList(blueprint.qualityGates ?? [])}
+
+## Required Review Scenarios
+
+${markdownList(blueprint.reviewScenarios ?? [])}
+`;
+}
+
 function readme(plan) {
   return `# ${plan.skinId} Skin Handoff
 
@@ -146,12 +243,14 @@ Contract: ${plan.contract}
 Profile: ${plan.profile}
 Role: ${plan.role}
 State sheet: ${plan.stateSheet}
+Art blueprint: ${plan.artBlueprint.name} ${plan.artBlueprint.version}
 Canvas: ${plan.size.width}x${plan.size.height}
 Theme: ${plan.theme}
 
 ## Files
 
 - \`prompt.txt\`: paste this into the image generator.
+- \`ART_DIRECTION.md\`: premium mobile skin blueprint for the generated source pack.
 - \`QUALITY_BAR.md\`: human review standard before promotion.
 - \`${plan.files.guides.join('`, `')}\`: exact live-region, crop-target, runtime-slot, state-sheet, and combined guides.
 - Expected generated files: \`${plan.files.expectedSourcePack.join('`, `')}\`.
@@ -184,7 +283,8 @@ Reject the source pack if the overlay shows baked gameplay/text inside live
 regions, if button crops miss the fixed rectangles, or if material detail cannot
 tile or nine-slice cleanly. Production-role handoffs treat measured review
 warnings as blockers so collapsed state sprites and weak materials cannot slip
-into promotion.
+into promotion. Also reject it if \`ART_DIRECTION.md\` makes the result feel
+like a collage rather than one coherent fixed handheld console.
 `;
 }
 
@@ -194,6 +294,10 @@ function qualityBar(plan) {
 This handoff should be reviewed as a fixed skin source pack, not as a pretty
 screenshot. The generated files are acceptable only if they can become cropped
 runtime assets without stretching or repainting around dynamic content.
+
+Use \`ART_DIRECTION.md\` as the first human-review pass. If the result does not
+look like one coherent premium handheld device, reject it even when geometry and
+measured gates pass.
 
 ## Required Source Files
 
@@ -223,6 +327,18 @@ ${plan.commands.join('\n')}
 ${plan.afterPromotion.join('\n')}
 \`\`\`
 `;
+}
+
+function markdownList(values) {
+  return values.map((value) => `- ${value}`).join('\n');
+}
+
+function titleFromId(id) {
+  return String(id ?? '')
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ');
 }
 
 function labelFromId(id) {
