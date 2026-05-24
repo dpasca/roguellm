@@ -1429,7 +1429,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     });
 
     if (!state.in_combat || !enemy) {
-      this.addTextInRect('Movement online', layout.exploreText, {
+      this.addTextInRect('Path clear', layout.exploreText, {
         fontSize: 14,
         color: this.theme.bodyText,
         fontStyle: 'bold'
@@ -2136,12 +2136,12 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       frameTint: this.theme.primary,
       scanlines: true
     });
-    this.addText(`${this.profile.label} Phaser renderer`, rect.x + 10, rect.y + 10, rect.width - 20, {
+    this.addText('Neon Shrine Blues', rect.x + 10, rect.y + 10, rect.width - 20, {
       fontSize: 15,
       color: this.theme.primaryText,
       fontStyle: 'bold'
     });
-    this.addText('Canvas-only skin pass: chassis, map, meters, messages, drawers, controls, and terminal states are rendered inside Phaser.', rect.x + 10, rect.y + 36, rect.width - 20, {
+    this.addText('The rain-slick deck steadies under your hands. Shrine beacons, market ghosts, and alley relays pulse across the glass.', rect.x + 10, rect.y + 36, rect.width - 20, {
       fontSize: 12,
       color: this.theme.bodyText
     }, 76);
@@ -2953,12 +2953,12 @@ function createScenarioState(scenario: PhaserFixedScenario): GameState {
 
 function createScenarioLogs(scenario: PhaserFixedScenario): string[] {
   const intro: Record<PhaserFixedScenario, string> = {
-    combat: 'Phaser fixed-skin pass: combat controls, HP meters, latest message, and map are canvas-rendered.',
-    movement: 'Phaser fixed-skin pass: movement is unlocked; arrows and D-pad update the canvas state.',
-    diagnostics: 'Diagnostics: this renderer is the canvas skin target for fixed skins.',
-    status: 'Status test: controls are disabled while the model is thinking.',
-    defeat: 'Defeat test: terminal overlay and restart control are visible.',
-    victory: 'Victory test: terminal overlay and restart control are visible.'
+    combat: 'The Chrome Oni Enforcer blocks the arcade gate, mask lit red under the vending signs.',
+    movement: 'You slip east through the rain alley; the deck chirps as the new tile resolves.',
+    diagnostics: 'The shrine deck comes online, quiet glass over brass rails and neon-black circuitry.',
+    status: 'The oracle channel crackles. You hold your breath while the next instruction forms.',
+    defeat: 'The signal thins to a red line. The city keeps moving without looking back.',
+    victory: 'The last lock opens. Dawn spills over the wet rooftops in a pale green wash.'
   };
   return [intro[scenario], ...WORKBENCH_LOGS];
 }
@@ -3190,18 +3190,24 @@ function directionFromKey(key: string): Direction | null {
 
 function describeAction(action: GameAction): string {
   if (action.action === 'move') {
-    return `Moved ${action.direction.toUpperCase()} inside the Phaser-rendered skin.`;
+    const directionNames: Record<Direction, string> = {
+      n: 'north',
+      s: 'south',
+      e: 'east',
+      w: 'west'
+    };
+    return `You move ${directionNames[action.direction]} through the rain-lit grid.`;
   }
   if (action.action === 'attack') {
-    return 'Attack resolved on the Phaser-rendered control deck.';
+    return 'Your strike cracks against chrome plating and throws pink sparks across the glass.';
   }
   if (action.action === 'run') {
-    return 'Run resolved and movement controls came back online.';
+    return 'You break away through a service door as the shrine deck clears a route.';
   }
   if (action.action === 'restart') {
-    return 'Restarted the workbench scenario.';
+    return 'The deck reboots with a soft green pulse.';
   }
-  return 'Workbench action resolved.';
+  return 'The deck answers with a low electric chime.';
 }
 
 function currentTileName(state: GameState): string {

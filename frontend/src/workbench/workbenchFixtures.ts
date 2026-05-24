@@ -1,10 +1,10 @@
 import type { Direction, GameAction, GameState } from '../protocol/types';
 
 export const WORKBENCH_LOGS = [
-  'The bench boots in combat: bright LCD text, danger meter, chrome buttons, map icons, and panel edges all visible at once.',
-  'Inventory contains a weapon, armor, and consumable so equipped rows and action buttons can be inspected on desktop.',
-  'The mobile log drawer should feel like a physical slide-out terminal, not a clipped afterthought.',
-  'Skin rule: generated art must be tiles, fixed pieces, or repeat-safe frames. Nothing important should be stretched.'
+  'Rain beads across the deck glass as the alley grid wakes, each shrine marker blinking through the static.',
+  'Your tonfa hums under the counterlight; the raincoat weave answers with a dull armored shimmer.',
+  'A vendor relay coughs up a pocket stim, still warm from the vending slot and buzzing with borrowed voltage.',
+  'Somewhere past the shrine gate, the Chrome Oni Enforcer drags one metal claw along the wet concrete.'
 ];
 
 export function applyWorkbenchAction(state: GameState, action: GameAction): GameState {
@@ -109,7 +109,7 @@ export function createWorkbenchState(): GameState {
         type: 'weapon',
         effect: { attack: 4 },
         is_equipped: true,
-        description: '+4 attack, glossy highlight check'
+        description: '+4 attack, charged baton'
       },
       {
         id: 'bench-coat',
@@ -117,7 +117,7 @@ export function createWorkbenchState(): GameState {
         type: 'armor',
         effect: { defense: 3 },
         is_equipped: true,
-        description: '+3 defense, equipped row check'
+        description: '+3 defense, rainproof weave'
       },
       {
         id: 'bench-noodle',
@@ -125,7 +125,7 @@ export function createWorkbenchState(): GameState {
         type: 'consumable',
         effect: { hp: 18 },
         is_equipped: false,
-        description: 'Heals 18 HP, button state check'
+        description: 'Heals 18 HP, vending-slot heat'
       }
     ],
     equipment: {
@@ -208,7 +208,7 @@ export function createWorkbenchState(): GameState {
     game_over: false,
     game_won: false,
     temporary_effects: {},
-    game_title: 'Skin Bench: Neo Tokyo',
+    game_title: 'Neon Shrine Blues',
     model_name: 'workbench'
   };
 }
