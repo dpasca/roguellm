@@ -24,7 +24,7 @@ const withQueryEntries = (url, entries) => {
   }
   return nextUrl.toString();
 };
-const fixedWorkbenchUrl = withQueryParams(fixedWorkbenchBaseUrl, { renderer: 'dom' });
+const fixedWorkbenchUrl = fixedWorkbenchBaseUrl;
 const defaultFixedWorkbenchProfileUrl = (profile) =>
   `${fixedWorkbenchBaseUrl}${fixedWorkbenchBaseUrl.includes('?') ? '&' : '?'}profile=${encodeURIComponent(profile)}`;
 const fixedWorkbenchProfileUrl = (profile) =>
@@ -44,10 +44,10 @@ const actionLabelPhaserProfiles = new Set([
 const phaserMapDetailFloors = new Map([
   ['obsidian-rain-proto', 480]
 ]);
-const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom', profile: defaultFixedProfile });
+const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
-const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom' });
-const classicRuntimeUrl = withQueryParams(entryUrl, { ui: 'classic' });
+const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin' });
+const classicRuntimeUrl = entryUrl;
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = process.env.VISUAL_OUT_DIR
   ? path.resolve(process.env.VISUAL_OUT_DIR)
@@ -56,7 +56,6 @@ const scenarioFilters = (process.env.VISUAL_SCENARIOS ?? process.env.VISUAL_SCEN
   .split(',')
   .map((filter) => filter.trim())
   .filter(Boolean);
-const productionProfileRenderer = process.env.VISUAL_PRODUCTION_RENDERER === 'dom' ? 'dom' : 'phaser';
 const fixedSkinDir = path.join(rootDir, 'src/skins/neo-tokyo-console/fixed');
 const fixedProfileKitCache = new Map();
 const productionMobileProfiles = await loadProductionMobileProfiles(fixedSkinDir);
@@ -415,7 +414,6 @@ const baseScenarios = [
     mode: 'fixed-runtime-ready',
     url: withQueryParams(entryUrl, {
       ui: 'fixed-skin',
-      renderer: 'dom',
       skin_tags: 'industrial,relay',
       skin_mood: 'nocturnal',
       skin_palette: 'amber'
@@ -738,7 +736,8 @@ const baseScenarios = [
     expectedFixedProfile: desktopFixedProfile
   }
 ];
-const scenarios = withProductionProfileCoverage(baseScenarios, productionMobileProfiles);
+const scenarios = withProductionProfileCoverage(baseScenarios, productionMobileProfiles)
+  .filter(isSupportedScenario);
 const selectedScenarios = scenarioFilters.length > 0
   ? scenarios.filter((scenario) =>
     scenarioFilters.some((filter) =>
@@ -788,7 +787,7 @@ const summary = {
   workbenchUrl,
   fixedWorkbenchUrl,
   scenarioFilters,
-  productionProfileRenderer,
+  productionProfileRenderer: 'phaser',
   productionMobileProfiles,
   profileSummaries,
   profileSimilarities,
@@ -1577,143 +1576,78 @@ function withProductionProfileCoverage(base, profiles) {
   return scenarios;
 }
 
+function isSupportedScenario(scenario) {
+  return scenario.mode.startsWith('phaser-fixed');
+}
+
 function productionProfileScenarios(profile) {
-  const url = productionProfileRenderer === 'dom'
-    ? fixedWorkbenchProfileUrl(profile.id)
-    : phaserFixedWorkbenchProfileUrl(profile.id);
+  const url = phaserFixedWorkbenchProfileUrl(profile.id);
   const viewport = profile.kind === 'mobileCompact'
     ? { width: profile.size?.width ?? 390, height: profile.size?.height ?? 667 }
     : { width: 390, height: 844 };
   const shortViewport = { width: 390, height: 667 };
-  if (productionProfileRenderer === 'phaser') {
-    return [
-      {
-        name: `mobile-${profile.id}-production-movement`,
-        viewport,
-        mode: 'phaser-fixed-workbench-click-move',
-        url: `${url}&scenario=movement`,
-        expectedFixedProfile: profile.id
-      },
-      {
-        name: `mobile-${profile.id}-production-log`,
-        viewport,
-        mode: 'phaser-fixed-workbench-log',
-        url,
-        expectedFixedProfile: profile.id
-      },
-      ...(profile.kind === 'mobileCompact' ? [{
-        name: `mobile-${profile.id}-production-short-log`,
-        viewport: shortViewport,
-        mode: 'phaser-fixed-workbench-log',
-        url,
-        expectedFixedProfile: profile.id
-      }] : []),
-      {
-        name: `mobile-${profile.id}-production-inventory`,
-        viewport,
-        mode: 'phaser-fixed-workbench-inventory',
-        url,
-        expectedFixedProfile: profile.id
-      },
-      ...(profile.kind === 'mobileCompact' ? [{
-        name: `mobile-${profile.id}-production-short-inventory`,
-        viewport: shortViewport,
-        mode: 'phaser-fixed-workbench-inventory',
-        url,
-        expectedFixedProfile: profile.id
-      }] : []),
-      {
-        name: `mobile-${profile.id}-production-defeat`,
-        viewport,
-        mode: 'phaser-fixed-workbench-defeat',
-        url: `${url}&scenario=defeat`,
-        expectedFixedProfile: profile.id
-      },
-      {
-        name: `mobile-${profile.id}-production-victory`,
-        viewport,
-        mode: 'phaser-fixed-workbench-victory',
-        url: `${url}&scenario=victory`,
-        expectedFixedProfile: profile.id
-      },
-      {
-        name: `mobile-${profile.id}-production-restart`,
-        viewport,
-        mode: 'phaser-fixed-workbench-restart',
-        url: `${url}&scenario=defeat`,
-        expectedFixedProfile: profile.id
-      },
-      {
-        name: `mobile-${profile.id}-production-diagnostics`,
-        viewport,
-        mode: 'phaser-fixed-workbench',
-        url: `${url}&scenario=diagnostics`,
-        expectedFixedProfile: profile.id
-      }
-    ];
-  }
 
   return [
     {
       name: `mobile-${profile.id}-production-movement`,
       viewport,
-      mode: 'fixed-workbench-movement',
+      mode: 'phaser-fixed-workbench-click-move',
       url: `${url}&scenario=movement`,
       expectedFixedProfile: profile.id
     },
     {
       name: `mobile-${profile.id}-production-log`,
       viewport,
-      mode: 'fixed-workbench-log',
+      mode: 'phaser-fixed-workbench-log',
       url,
       expectedFixedProfile: profile.id
     },
-    {
+    ...(profile.kind === 'mobileCompact' ? [{
       name: `mobile-${profile.id}-production-short-log`,
       viewport: shortViewport,
-      mode: 'fixed-workbench-log',
+      mode: 'phaser-fixed-workbench-log',
       url,
       expectedFixedProfile: profile.id
-    },
+    }] : []),
     {
       name: `mobile-${profile.id}-production-inventory`,
       viewport,
-      mode: 'fixed-workbench-inventory',
+      mode: 'phaser-fixed-workbench-inventory',
       url,
       expectedFixedProfile: profile.id
     },
-    {
+    ...(profile.kind === 'mobileCompact' ? [{
       name: `mobile-${profile.id}-production-short-inventory`,
       viewport: shortViewport,
-      mode: 'fixed-workbench-inventory',
+      mode: 'phaser-fixed-workbench-inventory',
       url,
       expectedFixedProfile: profile.id
-    },
+    }] : []),
     {
       name: `mobile-${profile.id}-production-defeat`,
       viewport,
-      mode: 'fixed-workbench-defeat',
+      mode: 'phaser-fixed-workbench-defeat',
       url: `${url}&scenario=defeat`,
       expectedFixedProfile: profile.id
     },
     {
       name: `mobile-${profile.id}-production-victory`,
       viewport,
-      mode: 'fixed-workbench-victory',
+      mode: 'phaser-fixed-workbench-victory',
       url: `${url}&scenario=victory`,
       expectedFixedProfile: profile.id
     },
     {
       name: `mobile-${profile.id}-production-restart`,
       viewport,
-      mode: 'fixed-workbench-restart',
+      mode: 'phaser-fixed-workbench-restart',
       url: `${url}&scenario=defeat`,
       expectedFixedProfile: profile.id
     },
     {
       name: `mobile-${profile.id}-production-diagnostics`,
       viewport,
-      mode: 'fixed-workbench-diagnostics',
+      mode: 'phaser-fixed-workbench',
       url: `${url}&scenario=diagnostics`,
       expectedFixedProfile: profile.id
     }

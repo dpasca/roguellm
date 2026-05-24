@@ -10,7 +10,6 @@ const outputDir = path.resolve(frontendDir, '..', 'static', 'game2');
 const manifestPath = path.join(outputDir, '.vite', 'manifest.json');
 
 const sourceExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
-const legacyCssSources = new Set(['src/styles.css']);
 const failures = [];
 
 await validateMainCssBoundary();
@@ -37,12 +36,9 @@ async function validateMainCssBoundary() {
     }
 
     if (entry.kind === 'static') {
-      failures.push(`${formatSource(mainPath)} statically imports ${entry.specifier}; CSS must stay behind loadLegacyDomStyles()`);
-    } else if (entry.functionName !== 'loadLegacyDomStyles') {
-      failures.push(
-        `${formatSource(mainPath)} dynamically imports ${entry.specifier} from ${entry.functionName ?? 'top level'}; ` +
-        'CSS imports are only allowed inside loadLegacyDomStyles()'
-      );
+      failures.push(`${formatSource(mainPath)} statically imports ${entry.specifier}; Game2 runtime CSS is retired`);
+    } else {
+      failures.push(`${formatSource(mainPath)} dynamically imports ${entry.specifier}; Game2 runtime CSS is retired`);
     }
   }
 }
@@ -109,12 +105,7 @@ async function validateBuiltCssBoundary() {
       continue;
     }
 
-    const source = String(manifestEntry?.src ?? '');
-    if (legacyCssSources.has(source) || isFontAwesomeLegacyCssSource(source)) {
-      continue;
-    }
-
-    failures.push(`unexpected CSS asset in Vite manifest: ${source || file}`);
+    failures.push(`unexpected CSS asset in Vite manifest: ${String(manifestEntry?.src ?? '') || file}`);
   }
 }
 
@@ -239,12 +230,6 @@ async function readJson(filePath) {
 
 function isCssSpecifier(specifier) {
   return stripImportQuery(specifier).endsWith('.css');
-}
-
-function isFontAwesomeLegacyCssSource(source) {
-  return source.includes('@fortawesome') &&
-    source.includes('fontawesome-free') &&
-    source.endsWith('/css/all.min.css');
 }
 
 function stripImportQuery(specifier) {

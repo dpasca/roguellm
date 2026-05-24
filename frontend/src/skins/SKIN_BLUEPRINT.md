@@ -312,11 +312,10 @@ missing, clipped, or overflowing the viewport.
 and `mobileCompact` profile (`role: default` or `variant`) and adds Phaser
 movement, log, inventory, defeat, victory, restart, and diagnostics scenarios
 automatically. Use `VISUAL_SCENARIOS=production` when you want only this
-scalable production-skin sweep. The legacy DOM comparison sweep is still
-available with `VISUAL_PRODUCTION_RENDERER=dom`, but Phaser is the default
-production renderer.
-Shortcut scripts are available as `pnpm -C frontend check:visual:production`
-and `pnpm -C frontend check:visual:production:dom`.
+scalable production-skin sweep. The visual runner now filters retired DOM/HUD
+scenarios out of the supported scenario set; Phaser is the only production
+renderer.
+The shortcut script is `pnpm -C frontend check:visual:production`.
 The generated `report.html` starts with a Skin Bench section that groups
 profile-level thumbnails, aggregate screenshot metrics, hardware detail counts,
 and review flags before the raw scenario grid. Use that bench to compare
@@ -329,9 +328,8 @@ swaps do not quietly masquerade as new skins.
 ## Playable Runtime
 
 The fixed-skin renderer is the default Game2 UI on all viewports, and that
-default renderer is Phaser/canvas. DOM skinning is no longer the target; it is
-kept only as an explicit legacy comparison path while the Phaser runtime catches
-up.
+default renderer is Phaser/canvas. DOM skinning has been retired from the
+runtime entrypoint.
 
 The normal runtime URL should enter the Phaser fixed-skin renderer without
 stylesheet skinning:
@@ -352,24 +350,16 @@ For local Phaser fixed-skin workbench review, use:
 http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&profile=reference-mobile-compact
 ```
 
-The old DOM fixed-skin paths are explicit legacy/debug tools:
-
-```text
-http://127.0.0.1:8127/game2?game_id=<id>&fixture=1&ui=fixed-skin&renderer=dom&profile=reference-mobile-compact
-http://127.0.0.1:5273/game2/workbench?workbench=fixed-skin&renderer=dom&profile=reference-mobile-compact
-```
-
-Use the Phaser renderer for new skin-quality work. It consumes the same fixed
-profile manifests and PNG state assets, so improvements made there can be
-migrated into the live runtime without inventing a second skin format.
+Use the Phaser renderer for all skin-quality work. It consumes the fixed profile
+manifests and PNG state assets directly, so improvements move into the live
+runtime without inventing a second skin format.
 
 Browser styling is outside the fixed-skin UI contract. The Phaser path renders
 the game UI on canvas from profile geometry and PNG assets; no stylesheet may
 place, skin, size, or compose fixed-skin game widgets. The only tolerated style
 mutation in the Phaser path is shell-level viewport/canvas host sizing. Phaser
 records the active skin and runtime state through `data-*` diagnostics only and
-must not apply CSS skin/state classes. The old DOM renderer remains a legacy
-comparison/debug path only.
+must not apply CSS skin/state classes.
 
 Fixed skin profiles own their visual material assets through `skin-kit.json`.
 Reusable panel, LCD, and button materials are declared as profile data (`fill`,
@@ -380,12 +370,11 @@ Production profiles must declare their runtime colors in `renderTheme`.
 Production-local material PNGs must also declare `renderMode`, so source-color
 art and tintable neutral art are never ambiguous.
 
-The Phaser fixed-skin bootstrap does not import the legacy DOM stylesheet bundle.
+The Phaser fixed-skin bootstrap does not import any runtime stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser
 fixed-skin scenarios as a failure.
 `pnpm run validate:phaser-style-boundary` follows the Phaser renderer source
-graph and checks the built Vite manifest so stylesheets can only remain in the
-explicit legacy DOM style loader.
+graph and checks the built Vite manifest so runtime CSS cannot quietly return.
 
 In workbench mode, the `[` and `]` keys cycle production profiles of the same
 fixed-skin kind (`default` and `variant` roles), which makes compact mobile
@@ -397,8 +386,8 @@ comparison.
 The backend preserves `skin`, `ui`, `renderer`, `fixed_skin`, `profile`,
 `skin_tags`, `skin_mood`, and `skin_palette` query params when it creates or
 redirects to a Game2 session, so these links remain on the selected fixed
-renderer after session creation. Use `ui=classic` or `ui=responsive` to force
-the older responsive HUD while comparing behavior.
+renderer after session creation. Requests for the retired DOM/CSS UI modes now
+fail plainly instead of loading a stylesheet-backed fallback.
 
 ## Current Profiles
 

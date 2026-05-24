@@ -1,14 +1,8 @@
-import Phaser from 'phaser';
-import { RogueScene } from './game/RogueScene';
 import { GameSocketClient } from './protocol/socketClient';
 import { getBackendOrigin, getGeneratorIdFromLocation, getSessionIdFromLocation } from './protocol/session';
-import { applySkin } from './skins/applySkin';
 import { getSkinFromLocation } from './skins/registry';
 import type { GameSkin } from './skins/types';
-import { HudController } from './ui/hud';
-import { createFixedSkinRuntime, isFixedSkinRuntime, isFixedSkinWorkbench, startFixedSkinWorkbench } from './workbench/fixedSkinWorkbench';
 import { createPhaserFixedSkinRuntime, isPhaserFixedSkinRuntime, isPhaserFixedSkinWorkbench, startPhaserFixedSkinWorkbench } from './workbench/phaserFixedSkinWorkbench';
-import { isSkinWorkbench, startSkinWorkbench } from './workbench/skinWorkbench';
 import type { Direction, GameAction, GameServerMessage, GameState } from './protocol/types';
 
 const GAME2_SESSION_QUERY_PARAMS = [
@@ -47,34 +41,20 @@ void bootstrap().catch((error: unknown) => {
 async function bootstrap(): Promise<void> {
   const activeSkin = getSkinFromLocation();
   const phaserFixedWorkbench = isPhaserFixedSkinWorkbench();
-  const legacyFixedWorkbench = isFixedSkinWorkbench();
-  const skinWorkbench = isSkinWorkbench();
+  if (!phaserFixedWorkbench && isLegacyDomRequest()) {
+    showFatal('Legacy DOM/CSS Game2 UI has been retired. Use the Phaser fixed-skin renderer.');
+    throw new Error('Legacy DOM/CSS Game2 UI requested');
+  }
+
   const phaserFixedRuntime = !phaserFixedWorkbench &&
-    !legacyFixedWorkbench &&
-    !skinWorkbench &&
     !!activeSkin.fixedProfiles &&
     isPhaserFixedSkinRuntime();
 
-  if (!phaserFixedWorkbench && !phaserFixedRuntime) {
-    await loadLegacyDomStyles();
-    applySkin(activeSkin);
-  } else {
-    document.body.dataset.renderSurface = 'phaser-canvas';
-    markCanvasSkin(activeSkin);
-  }
+  document.body.dataset.renderSurface = 'phaser-canvas';
+  markCanvasSkin(activeSkin);
 
   if (phaserFixedWorkbench) {
     startPhaserFixedSkinWorkbench(activeSkin);
-    return;
-  }
-
-  if (legacyFixedWorkbench) {
-    startFixedSkinWorkbench(activeSkin);
-    return;
-  }
-
-  if (skinWorkbench) {
-    startSkinWorkbench(activeSkin);
     return;
   }
 
@@ -108,9 +88,7 @@ async function bootstrap(): Promise<void> {
   let pendingActionId: number | null = null;
   const ui = phaserFixedRuntime
     ? createPhaserFixedSkinRuntime(activeSkin, handleUserAction)
-    : isFixedSkinRuntime() && activeSkin.fixedProfiles
-      ? createFixedSkinRuntime(activeSkin, handleUserAction)
-      : createResponsiveRuntimeUi(activeSkin, handleUserAction);
+    : createUnsupportedRuntime(activeSkin);
 
   const socket = new GameSocketClient(sessionId, {
     onOpen() {
@@ -273,71 +251,23 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-async function loadLegacyDomStyles(): Promise<void> {
-  document.body.dataset.renderSurface = 'legacy-dom';
-  await Promise.all([
-    import('@fortawesome/fontawesome-free/css/all.min.css'),
-    import('./styles.css')
-  ]);
-}
-
 function markCanvasSkin(skin: GameSkin): void {
   document.body.dataset.skin = skin.id;
 }
 
-function createResponsiveRuntimeUi(skin: GameSkin, onAction: (action: GameAction) => void): RuntimeUi {
-  const scene = new RogueScene(skin.map);
-  const canvasParent = document.getElementById('game-canvas');
-  const initialWidth = Math.max(320, canvasParent?.clientWidth ?? 960);
-  const initialHeight = Math.max(240, canvasParent?.clientHeight ?? 640);
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: 'game-canvas',
-    backgroundColor: skin.map.canvasBackground,
-    scale: {
-      mode: Phaser.Scale.NONE,
-      parent: 'game-canvas',
-      width: initialWidth,
-      height: initialHeight
-    },
-    render: {
-      antialias: false,
-      pixelArt: true
-    },
-    scene
-  });
-  const hud = new HudController(onAction);
-  let resizeObserver: ResizeObserver | null = null;
+function isLegacyDomRequest(location: Location = window.location): boolean {
+  const params = new URL(location.href).searchParams;
+  const requestedUi = params.get('ui')?.toLowerCase();
+  const renderer = (params.get('fixed_renderer') ?? params.get('renderer') ?? '').toLowerCase();
+  const workbench = (params.get('workbench') ?? params.get('bench') ?? '').toLowerCase();
+  return requestedUi === 'classic' ||
+    requestedUi === 'responsive' ||
+    renderer === 'dom' ||
+    renderer === 'html' ||
+    renderer === 'legacy' ||
+    workbench === 'skin';
+}
 
-  if (canvasParent) {
-    resizeObserver = new ResizeObserver(([entry]) => {
-      const width = Math.floor(entry.contentRect.width);
-      const height = Math.floor(entry.contentRect.height);
-      if (width > 0 && height > 0) {
-        game.scale.resize(width, height);
-      }
-    });
-    resizeObserver.observe(canvasParent);
-  }
-
-  return {
-    scene,
-    render(state: GameState): void {
-      scene.renderGameState(state);
-      hud.render(state);
-    },
-    setActionPending(pending: boolean): void {
-      hud.setActionPending(pending);
-    },
-    setConnectionStatus(status: string): void {
-      hud.setConnectionStatus(status);
-    },
-    addLog(message: string): void {
-      hud.addLog(message);
-    },
-    destroy(): void {
-      resizeObserver?.disconnect();
-      game.destroy(false);
-    }
-  };
+function createUnsupportedRuntime(skin: GameSkin): RuntimeUi {
+  throw new Error(`Skin ${skin.id} does not define a Phaser fixed-skin runtime profile`);
 }
