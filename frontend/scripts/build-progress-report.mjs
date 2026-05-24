@@ -115,6 +115,7 @@ async function loadSourceReview(profileId) {
   }
 
   const candidates = [
+    path.join(repoRoot, '_artifacts/skin-reviews', 'validation', profileId, 'review.json'),
     path.join(repoRoot, '_artifacts/skin-reviews', `${profileId}-coherence`, 'review.json'),
     path.join(repoRoot, '_artifacts/skin-reviews', profileId, 'review.json')
   ];
