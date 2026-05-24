@@ -34,6 +34,8 @@ than a scaled mobile layout.
 - Browser styling is outside the skin and runtime UI contract. Phaser owns all
   live UI placement, composition, and skin rendering on canvas. Do not use DOM
   stylesheets to place, skin, size, or compose game widgets.
+- The only runtime style escape hatch is the `createPhaserHost` browser-shell
+  shim that sizes the canvas host; it must not grow into widget or skin styling.
 
 ## Coordinate System
 

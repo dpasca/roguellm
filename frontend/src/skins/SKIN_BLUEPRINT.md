@@ -357,9 +357,9 @@ runtime without inventing a second skin format.
 Browser styling is outside the fixed-skin UI contract. The Phaser path renders
 the game UI on canvas from profile geometry and PNG assets; no stylesheet may
 place, skin, size, or compose fixed-skin game widgets. The only tolerated style
-mutation in the Phaser path is shell-level viewport/canvas host sizing. Phaser
-records the active skin and runtime state through `data-*` diagnostics only and
-must not apply CSS skin/state classes.
+mutation in the Phaser path is the `createPhaserHost` shell-level viewport and
+canvas host sizing shim. Phaser records the active skin and runtime state through
+`data-*` diagnostics only and must not apply CSS skin/state classes.
 
 Fixed skin profiles own their visual material assets through `skin-kit.json`.
 Reusable panel, LCD, and button materials are declared as profile data (`fill`,
@@ -374,7 +374,8 @@ The Phaser fixed-skin bootstrap does not import any runtime stylesheet bundle.
 Visual inspection treats stylesheet links or injected style elements on Phaser
 fixed-skin scenarios as a failure.
 `pnpm run validate:phaser-style-boundary` follows the Phaser renderer source
-graph and checks the built Vite manifest so runtime CSS cannot quietly return.
+graph, rejects DOM style mutation outside `createPhaserHost`, and checks the
+built Vite manifest so runtime CSS cannot quietly return.
 
 In workbench mode, the `[` and `]` keys cycle production profiles of the same
 fixed-skin kind (`default` and `variant` roles), which makes compact mobile

@@ -10,6 +10,24 @@ const outputDir = path.resolve(frontendDir, '..', 'static', 'game2');
 const manifestPath = path.join(outputDir, '.vite', 'manifest.json');
 
 const sourceExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
+const assignmentOperators = new Set([
+  ts.SyntaxKind.EqualsToken,
+  ts.SyntaxKind.PlusEqualsToken,
+  ts.SyntaxKind.MinusEqualsToken,
+  ts.SyntaxKind.AsteriskEqualsToken,
+  ts.SyntaxKind.AsteriskAsteriskEqualsToken,
+  ts.SyntaxKind.SlashEqualsToken,
+  ts.SyntaxKind.PercentEqualsToken,
+  ts.SyntaxKind.LessThanLessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
+  ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
+  ts.SyntaxKind.AmpersandEqualsToken,
+  ts.SyntaxKind.BarEqualsToken,
+  ts.SyntaxKind.CaretEqualsToken,
+  ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+  ts.SyntaxKind.BarBarEqualsToken,
+  ts.SyntaxKind.QuestionQuestionEqualsToken
+]);
 const failures = [];
 
 await validateMainCssBoundary();
@@ -57,6 +75,7 @@ async function validatePhaserRendererSourceGraph() {
 
     const source = await fs.readFile(filePath, 'utf8');
     validateNoPhaserBodyClasses(filePath, source);
+    validateNoUnexpectedPhaserStyleMutation(filePath, source);
 
     const imports = await collectImports(filePath);
     for (const entry of imports) {
@@ -83,6 +102,86 @@ function validateNoPhaserBodyClasses(filePath, source) {
   failures.push(
     `${formatSource(filePath)} mutates body classes; Phaser fixed-skin state must stay in data-* diagnostics, not CSS hooks`
   );
+}
+
+function validateNoUnexpectedPhaserStyleMutation(filePath, source) {
+  if (!source.includes('.style') && !source.includes('setAttribute')) {
+    return;
+  }
+
+  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKindFor(filePath));
+  const disallowedMutations = [];
+
+  function walk(node, functionName = null) {
+    const scopedFunctionName = functionNameForNode(node) ?? functionName;
+
+    if (isStyleMutation(node) && !isAllowedShellStyleMutation(filePath, scopedFunctionName)) {
+      const location = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+      disallowedMutations.push(`${formatSource(filePath)}:${location.line + 1}`);
+    }
+
+    ts.forEachChild(node, (child) => walk(child, scopedFunctionName));
+  }
+
+  walk(sourceFile);
+
+  if (disallowedMutations.length === 0) {
+    return;
+  }
+
+  failures.push(
+    `${disallowedMutations.join(', ')} mutates DOM styles; Phaser fixed-skin widgets and skins must be rendered on canvas. ` +
+      'Only createPhaserHost may apply shell-level viewport/canvas host sizing.'
+  );
+}
+
+function isStyleMutation(node) {
+  if (
+    ts.isBinaryExpression(node) &&
+    assignmentOperators.has(node.operatorToken.kind) &&
+    containsStyleAccess(node.left)
+  ) {
+    return true;
+  }
+
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.name.text === 'setAttribute' &&
+    node.arguments.length >= 1 &&
+    ts.isStringLiteralLike(node.arguments[0]) &&
+    node.arguments[0].text === 'style'
+  ) {
+    return true;
+  }
+
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.expression.getText() === 'Object' &&
+    node.expression.name.text === 'assign' &&
+    node.arguments.some((argument) => containsStyleAccess(argument))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function containsStyleAccess(node) {
+  if (ts.isPropertyAccessExpression(node) && node.name.text === 'style') {
+    return true;
+  }
+
+  let found = false;
+  ts.forEachChild(node, (child) => {
+    found = found || containsStyleAccess(child);
+  });
+  return found;
+}
+
+function isAllowedShellStyleMutation(filePath, functionName) {
+  return path.basename(filePath) === 'phaserFixedSkinWorkbench.ts' && functionName === 'createPhaserHost';
 }
 
 async function validateBuiltCssBoundary() {
