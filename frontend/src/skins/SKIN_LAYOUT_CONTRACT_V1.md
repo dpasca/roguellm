@@ -371,6 +371,17 @@ pnpm -C frontend skin:scaffold rain-city-deck mobilePortrait \
   --out ../_artifacts/skin-kits/rain-city-deck
 ```
 
+Before cropping, validate the source pack and scaffold handoff together:
+
+```bash
+pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
+```
+
+This preflight checks the three required PNG filenames, exact chassis/widget
+artboard dimensions, material-sheet bounds, and the scaffold handoff paths. It
+is deliberately about fixed source geometry; passing it does not mean the art is
+beautiful enough to promote.
+
 The scaffold is contract-driven. It copies the exact v1 regions and layout
 rectangles, declares all required fixed-size assets, and adds a `build.crops`
 plan for `build:skin-kit`. The default `meta.role` is `prototype`; do not move a
