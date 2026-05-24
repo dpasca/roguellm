@@ -549,6 +549,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private chromeDetailsDrawn = 0;
   private shellDetailsDrawn = 0;
   private mapTileDetailsDrawn = 0;
+  private fogTileDetailsDrawn = 0;
   private controlDetailsDrawn = 0;
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
@@ -633,6 +634,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.chromeDetailsDrawn = 0;
     this.shellDetailsDrawn = 0;
     this.mapTileDetailsDrawn = 0;
+    this.fogTileDetailsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
@@ -677,6 +679,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserChromeDetails = String(this.chromeDetailsDrawn);
     document.body.dataset.phaserShellDetails = String(this.shellDetailsDrawn);
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
+    document.body.dataset.phaserFogTileDetails = String(this.fogTileDetailsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
@@ -971,10 +974,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     const width = tileWidth - 1;
     const height = tileHeight - 1;
     const tileMinor = Math.min(tileWidth, tileHeight);
-    const scaled = scaleRgb(color, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
-    const base = scaleRgb(scaled, explored ? 1.46 : 1.04);
-    const top = scaleRgb(scaled, explored ? 2.08 : 1.16);
-    const shadow = scaleRgb(scaled, explored ? 0.46 : 0.22);
+    const displayColor = explored ? color : this.theme.controlFrame;
+    const scaled = scaleRgb(displayColor, explored ? this.skin.map.exploredTileScale : this.skin.map.unexploredTileScale);
+    const base = scaleRgb(scaled, explored ? 1.46 : 1.18);
+    const top = scaleRgb(scaled, explored ? 2.08 : 1.74);
+    const shadow = scaleRgb(scaled, explored ? 0.46 : 0.34);
 
     graphics.fillStyle(base, 1);
     graphics.fillRect(tileX, tileY, width, height);
@@ -1014,11 +1018,51 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (!explored) {
       graphics.fillStyle(this.skin.map.unexploredTileOverlay, this.skin.map.unexploredTileOverlayAlpha);
       graphics.fillRect(tileX, tileY, width, height);
-      graphics.lineStyle(1, 0x000000, 0.24);
-      graphics.lineBetween(tileX + 3, tileY + 3, tileX + width - 3, tileY + height - 3);
+      this.drawFogTileHardware(graphics, tileX, tileY, width, height, tileMinor);
     }
 
     this.mapTileDetailsDrawn += tileMinor >= 18 ? 5 : 1;
+  }
+
+  private drawFogTileHardware(
+    graphics: Phaser.GameObjects.Graphics,
+    tileX: number,
+    tileY: number,
+    width: number,
+    height: number,
+    tileMinor: number
+  ): void {
+    const primary = this.theme.primary;
+    const control = this.theme.controlFrame;
+    graphics.fillStyle(primary, 0.12);
+    graphics.fillRoundedRect(
+      tileX + Math.max(3, Math.floor(width * 0.12)),
+      tileY + Math.max(3, Math.floor(height * 0.16)),
+      Math.max(3, Math.floor(width * 0.14)),
+      Math.max(2, Math.floor(height * 0.08)),
+      1
+    );
+    graphics.fillRoundedRect(
+      tileX + width - Math.max(7, Math.floor(width * 0.22)),
+      tileY + height - Math.max(6, Math.floor(height * 0.18)),
+      Math.max(3, Math.floor(width * 0.13)),
+      Math.max(2, Math.floor(height * 0.08)),
+      1
+    );
+    graphics.lineStyle(1, control, 0.18);
+    graphics.lineBetween(tileX + 4, tileY + height - 5, tileX + Math.floor(width * 0.4), tileY + height - 5);
+    graphics.lineBetween(tileX + width - 5, tileY + 4, tileX + width - 5, tileY + Math.floor(height * 0.44));
+
+    if (tileMinor >= 18) {
+      graphics.lineStyle(1, primary, 0.11);
+      graphics.lineBetween(tileX + 5, tileY + 4, tileX + width - 5, tileY + height - 6);
+      graphics.lineStyle(1, 0x000000, 0.22);
+      graphics.lineBetween(tileX + 5, tileY + 6, tileX + width - 7, tileY + height - 4);
+      this.fogTileDetailsDrawn += 6;
+      return;
+    }
+
+    this.fogTileDetailsDrawn += 4;
   }
 
   private drawMapBadge(originX: number, originY: number, tileWidth: number, tileHeight: number, x: number, y: number, icon: string | undefined, fallback: string, color: number): void {

@@ -840,6 +840,7 @@ function buildHtmlReport(summary) {
       metrics.inventoryOpen && metrics.inventory?.items ? `inv badges ${metrics.inventory.visibleTypeBadges}/${metrics.inventory.items}` : null,
       metrics.inventoryOpen && metrics.inventory?.equippedItems ? `inv on ${metrics.inventory.styledEquippedActions}/${metrics.inventory.equippedItems}` : null,
       Number.isFinite(metrics.phaserMapTileDetails) ? `tile detail ${metrics.phaserMapTileDetails}` : null,
+      Number.isFinite(metrics.phaserFogTileDetails) ? `fog detail ${metrics.phaserFogTileDetails}` : null,
       Number.isFinite(metrics.phaserControlDetails) ? `control detail ${metrics.phaserControlDetails}` : null,
       Number.isFinite(metrics.phaserHudDetails) ? `hud detail ${metrics.phaserHudDetails}` : null,
       Number.isFinite(metrics.phaserShellDetails) ? `shell detail ${metrics.phaserShellDetails}` : null,
@@ -2475,6 +2476,7 @@ async function collectMetrics(page) {
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
+      phaserFogTileDetails: Number(document.body.dataset.phaserFogTileDetails ?? NaN),
       phaserControlDetails: Number(document.body.dataset.phaserControlDetails ?? NaN),
       phaserHudDetails: Number(document.body.dataset.phaserHudDetails ?? NaN),
       phaserCanvas: {
@@ -2892,6 +2894,10 @@ function validatePhaserMapDetails(scenario, metrics, failures, context) {
       `${context} expected detailed Phaser map tiles for ${scenario.expectedFixedProfile ?? 'default profile'}, ` +
       `got ${metrics.phaserMapTileDetails ?? 'none'} below ${detailFloor}`
     );
+  }
+
+  if (!Number.isFinite(metrics.phaserFogTileDetails) || metrics.phaserFogTileDetails < 24) {
+    failures.push(`${context} expected visible Phaser fog tile hardware, got ${metrics.phaserFogTileDetails ?? 'none'}`);
   }
 }
 
