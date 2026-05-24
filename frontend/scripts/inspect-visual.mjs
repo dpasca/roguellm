@@ -781,7 +781,10 @@ try {
 
 const profileSummaries = buildProfileSummaries(results);
 const profileSimilarities = buildProfileSimilarities(profileSummaries);
+const skinAssetSummaries = await buildSkinAssetSummaries(productionMobileProfiles, outDir);
+const skinAssetSimilarities = buildSkinAssetSimilarities(skinAssetSummaries);
 annotateProfileSimilarityFlags(profileSummaries, profileSimilarities);
+annotateProfileAssetSimilarityFlags(profileSummaries, skinAssetSimilarities);
 const summary = {
   entryUrl,
   workbenchUrl,
@@ -791,6 +794,8 @@ const summary = {
   productionMobileProfiles,
   profileSummaries,
   profileSimilarities,
+  skinAssetSummaries,
+  skinAssetSimilarities,
   managedViteServer: Boolean(managedViteServer),
   outDir,
   generatedAt: new Date().toISOString(),
@@ -827,6 +832,7 @@ if (!summary.ok) {
 
 function buildHtmlReport(summary) {
   const profileBench = buildProfileBench(summary);
+  const skinAssetWatch = buildSkinAssetWatch(summary);
   const similarityWatch = buildSimilarityWatch(summary);
   const cards = summary.results.map((result) => {
     const passed = result.failures.length === 0;
@@ -1072,6 +1078,10 @@ function buildHtmlReport(summary) {
       object-position: top center;
       border: 1px solid #1f3431;
     }
+    .asset-thumbs img {
+      height: 260px;
+      object-fit: contain;
+    }
     main {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1150,6 +1160,7 @@ function buildHtmlReport(summary) {
     <span>${escapeHtml(summary.generatedAt)}</span>
   </div>
   ${profileBench}
+  ${skinAssetWatch}
   ${similarityWatch}
   <main>${cards}</main>
 </body>
@@ -1273,6 +1284,73 @@ function buildProfileSimilarities(profiles) {
   return pairs.sort((left, right) => left.distance - right.distance);
 }
 
+async function buildSkinAssetSummaries(profiles, reportOutDir) {
+  const summaries = [];
+  for (const profile of profiles) {
+    const kit = await loadFixedProfileKit(profile.id);
+    const chassisAssetPath = kit.assets?.chassis?.path ?? 'chassis.png';
+    const chassisPath = path.resolve(fixedSkinDir, profile.id, chassisAssetPath);
+    const rgbSignature = collectImageSignature(chassisPath, { size: 32, alphaOff: true });
+    const materialSignature = collectImageSignature(chassisPath, {
+      size: 32,
+      alphaOff: true,
+      transforms: ['-colorspace', 'HSL', '-channel', 'G', '-separate', '-auto-level']
+    });
+    const metrics = collectSkinAssetMetrics(chassisPath);
+
+    summaries.push({
+      id: profile.id,
+      kind: profile.kind,
+      role: profile.role,
+      defaultPriority: profile.defaultPriority,
+      chassis: path.relative(reportOutDir, chassisPath),
+      metrics: {
+        ...metrics,
+        rgbSignature,
+        materialSignature
+      }
+    });
+  }
+
+  return summaries.sort((left, right) =>
+    kindSort(left.kind) - kindSort(right.kind) ||
+    roleSort(left.role) - roleSort(right.role) ||
+    left.id.localeCompare(right.id)
+  );
+}
+
+function buildSkinAssetSimilarities(summaries) {
+  const pairs = [];
+  for (let leftIndex = 0; leftIndex < summaries.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < summaries.length; rightIndex += 1) {
+      const left = summaries[leftIndex];
+      const right = summaries[rightIndex];
+      if (left.kind !== right.kind) {
+        continue;
+      }
+
+      const materialDistance = signatureDistance(left.metrics?.materialSignature, right.metrics?.materialSignature);
+      const rgbDistance = signatureDistance(left.metrics?.rgbSignature, right.metrics?.rgbSignature);
+      if (!Number.isFinite(materialDistance)) {
+        continue;
+      }
+
+      pairs.push({
+        left: left.id,
+        right: right.id,
+        kind: left.kind,
+        distance: materialDistance,
+        rgbDistance,
+        severity: materialDistance < 0.045 ? 'near-duplicate' : materialDistance < 0.09 ? 'similar' : 'distinct',
+        leftAsset: left.chassis,
+        rightAsset: right.chassis
+      });
+    }
+  }
+
+  return pairs.sort((left, right) => left.distance - right.distance);
+}
+
 function annotateProfileSimilarityFlags(profiles, pairs) {
   const watchPairs = pairs.filter((pair) => pair.severity !== 'distinct');
   for (const pair of watchPairs) {
@@ -1288,6 +1366,69 @@ function annotateProfileSimilarityFlags(profiles, pairs) {
       );
     }
   }
+}
+
+function annotateProfileAssetSimilarityFlags(profiles, pairs) {
+  const watchPairs = pairs.filter((pair) => pair.severity !== 'distinct');
+  for (const pair of watchPairs) {
+    for (const [profileId, otherId] of [[pair.left, pair.right], [pair.right, pair.left]]) {
+      const profile = profiles.find((entry) => entry.id === profileId);
+      if (!profile) {
+        continue;
+      }
+      const label = pair.severity === 'near-duplicate' ? 'Near-duplicate' : 'Similar';
+      addProfileReviewFlag(
+        profile,
+        `${label} chassis material signature versus ${otherId}; source art likely needs stronger theme-specific hardware.`
+      );
+    }
+  }
+}
+
+function buildSkinAssetWatch(summary) {
+  const watchPairs = (summary.skinAssetSimilarities ?? [])
+    .filter((pair) => pair.severity !== 'distinct')
+    .slice(0, 12);
+  if (watchPairs.length === 0) {
+    return `
+      <section class="similarity-watch">
+        <div class="section-heading">
+          <h2>Skin Asset Watch</h2>
+          <p>No near-duplicate skin-owned chassis assets were detected by the material signature check.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  const cards = watchPairs.map((pair) => `
+    <article class="similarity-card">
+      <header>
+        <div>
+          <h3>${escapeHtml(pair.left)} / ${escapeHtml(pair.right)}</h3>
+          <p>${escapeHtml(pair.kind)} / ${escapeHtml(pair.severity)} / chassis art</p>
+        </div>
+        <span class="similarity-score">${pair.distance.toFixed(3)}</span>
+      </header>
+      <div class="chips">
+        <span>${escapeHtml(`material distance ${pair.distance.toFixed(3)}`)}</span>
+        ${Number.isFinite(pair.rgbDistance) ? `<span>${escapeHtml(`rgb distance ${pair.rgbDistance.toFixed(3)}`)}</span>` : ''}
+      </div>
+      <div class="similarity-thumbs asset-thumbs">
+        ${pair.leftAsset ? `<a href="${escapeHtml(pair.leftAsset)}"><img src="${escapeHtml(pair.leftAsset)}" alt="${escapeHtml(pair.left)} chassis art"></a>` : ''}
+        ${pair.rightAsset ? `<a href="${escapeHtml(pair.rightAsset)}"><img src="${escapeHtml(pair.rightAsset)}" alt="${escapeHtml(pair.right)} chassis art"></a>` : ''}
+      </div>
+    </article>
+  `).join('\n');
+
+  return `
+    <section class="similarity-watch">
+      <div class="section-heading">
+        <h2>Skin Asset Watch</h2>
+        <p>Closest same-format pairs by skin-owned chassis material signature. This separates actual skin art from shared runtime gameplay content.</p>
+      </div>
+      <div class="similarity-grid">${cards}</div>
+    </section>
+  `;
 }
 
 function buildSimilarityWatch(summary) {
@@ -2055,13 +2196,58 @@ function collectScreenshotMetrics(screenshotPath) {
   };
 }
 
-function collectImageSignature(screenshotPath) {
+function collectSkinAssetMetrics(imagePath) {
+  const saturationOutput = execFileSync(
+    'magick',
+    [
+      imagePath,
+      '-alpha',
+      'off',
+      '-colorspace',
+      'HSL',
+      '-channel',
+      'G',
+      '-separate',
+      '-format',
+      '%[fx:mean]\n%[fx:standard_deviation]',
+      'info:'
+    ],
+    { encoding: 'utf8' }
+  );
+  const [saturationMean, saturationStandardDeviation] = saturationOutput.trim().split(/\s+/).map(Number);
+  const sampledUniqueColors = Number(execFileSync(
+    'magick',
+    [
+      imagePath,
+      '-alpha',
+      'off',
+      '-resize',
+      '96x96!',
+      '-format',
+      '%k',
+      'info:'
+    ],
+    { encoding: 'utf8' }
+  ).trim());
+
+  return {
+    saturationMean,
+    saturationStandardDeviation,
+    sampledUniqueColors
+  };
+}
+
+function collectImageSignature(imagePath, options = {}) {
+  const size = options.size ?? 8;
+  const transforms = options.transforms ?? [];
   const output = execFileSync(
     'magick',
     [
-      screenshotPath,
+      imagePath,
+      ...(options.alphaOff ? ['-alpha', 'off'] : []),
+      ...transforms,
       '-resize',
-      '8x8!',
+      `${size}x${size}!`,
       '-colorspace',
       'sRGB',
       '-depth',
@@ -2073,7 +2259,7 @@ function collectImageSignature(screenshotPath) {
   return output
     .split('\n')
     .flatMap((line) => {
-      const match = line.match(/\((\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)\)/);
+      const match = line.match(/\((\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)(?:,\d+(?:\.\d+)?)?\)/);
       if (!match) {
         return [];
       }
