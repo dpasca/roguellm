@@ -307,10 +307,12 @@ async function loadProgressHandoff() {
 
   const handoffDir = path.dirname(handoffPath);
   const plan = JSON.parse(await fs.readFile(handoffPath, 'utf8'));
+  const readiness = await loadHandoffReadiness(handoffDir);
   return {
     dir: handoffDir,
     path: handoffPath,
     plan,
+    readiness,
     guideImages: (plan.files?.guides ?? [])
       .filter((file) => /\.(png|jpg|jpeg|webp)$/i.test(file))
       .map((file) => ({
@@ -320,6 +322,39 @@ async function loadProgressHandoff() {
     promptFiles: plan.files?.splitPrompts ?? [],
     steps: plan.generationSteps ?? []
   };
+}
+
+async function loadHandoffReadiness(handoffDir) {
+  try {
+    const result = await execFileAsync(process.execPath, [
+      path.join(rootDir, 'scripts/validate-skin-handoff.mjs'),
+      handoffDir,
+      '--json'
+    ], {
+      cwd: rootDir,
+      maxBuffer: 4 * 1024 * 1024
+    });
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    const stdout = String(error.stdout ?? '').trim();
+    if (stdout) {
+      try {
+        return JSON.parse(stdout);
+      } catch {
+        return null;
+      }
+    }
+    return {
+      ok: false,
+      phase: 'needs-fixes',
+      issues: [String(error.stderr ?? error.message).trim()].filter(Boolean),
+      warnings: [],
+      prompts: { present: 0, total: 0, presentFiles: [], missingFiles: [] },
+      guides: { present: 0, total: 0, presentFiles: [], missingFiles: [] },
+      sources: { present: 0, total: 0, presentFiles: [], missingFiles: [], files: [] },
+      nextAction: 'Run pnpm -C frontend skin:validate-handoff on this handoff.'
+    };
+  }
 }
 
 async function loadSourceReview(profileId) {
@@ -871,8 +906,10 @@ function formatPercent(value) {
 
 function handoffSection(handoff) {
   const plan = handoff.plan;
+  const readiness = handoff.readiness;
   const handoffRelative = path.relative(outDir, handoff.path);
   const dirRelative = path.relative(outDir, handoff.dir);
+  const cliDirRelative = path.relative(rootDir, handoff.dir);
   const promptLinks = handoff.promptFiles
     .map((file) => `<span><a href="${escapeHtml(path.relative(outDir, path.join(handoff.dir, file)))}">${escapeHtml(file)}</a></span>`)
     .join('');
@@ -888,6 +925,22 @@ function handoffSection(handoff) {
       </figure>
     `)
     .join('');
+  const sourceChips = readiness?.sources?.files?.length
+    ? readiness.sources.files.map((source) => {
+      const status = source.present
+        ? source.width && source.height
+          ? `${source.file} ${source.width}x${source.height}`
+          : `${source.file} present`
+        : `${source.file} missing`;
+      return `<span>${escapeHtml(status)}</span>`;
+    }).join('')
+    : '';
+  const readinessIssues = readiness?.issues?.length
+    ? `<ul>${readiness.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join('')}</ul>`
+    : '';
+  const readinessWarnings = readiness?.warnings?.length
+    ? `<ul>${readiness.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>`
+    : '';
 
   return `
     <section class="panel">
@@ -898,6 +951,19 @@ function handoffSection(handoff) {
         Directory: <a href="${escapeHtml(dirRelative)}">${escapeHtml(dirRelative)}</a>.
         Plan JSON: <a href="${escapeHtml(handoffRelative)}">${escapeHtml(handoffRelative)}</a>.
       </p>
+      ${readiness ? `
+        <div class="chips">
+          <span>phase: ${escapeHtml(readiness.phase)}</span>
+          <span>prompts ${readiness.prompts?.present ?? 0}/${readiness.prompts?.total ?? 0}</span>
+          <span>guides ${readiness.guides?.present ?? 0}/${readiness.guides?.total ?? 0}</span>
+          <span>sources ${readiness.sources?.present ?? 0}/${readiness.sources?.total ?? 0}</span>
+          <span>validator: pnpm -C frontend skin:validate-handoff ${escapeHtml(cliDirRelative)}</span>
+        </div>
+        ${sourceChips ? `<div class="chips">${sourceChips}</div>` : ''}
+        ${readinessIssues}
+        ${readinessWarnings}
+        <p class="lede ${readiness.ok ? 'ok' : 'warn'}">${escapeHtml(readiness.nextAction ?? 'Review handoff readiness.')}</p>
+      ` : ''}
       <div class="chips">${promptLinks}</div>
       <ul>${handoff.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ul>
       <div class="shots">${guideFigures}</div>
