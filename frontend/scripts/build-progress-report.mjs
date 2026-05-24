@@ -910,6 +910,7 @@ function handoffSection(handoff) {
   const handoffRelative = path.relative(outDir, handoff.path);
   const dirRelative = path.relative(outDir, handoff.dir);
   const cliDirRelative = path.relative(rootDir, handoff.dir);
+  const buildCommand = plan.buildCommand ?? `pnpm -C frontend skin:build-handoff ${cliDirRelative}`;
   const promptLinks = handoff.promptFiles
     .map((file) => `<span><a href="${escapeHtml(path.relative(outDir, path.join(handoff.dir, file)))}">${escapeHtml(file)}</a></span>`)
     .join('');
@@ -958,6 +959,7 @@ function handoffSection(handoff) {
           <span>guides ${readiness.guides?.present ?? 0}/${readiness.guides?.total ?? 0}</span>
           <span>sources ${readiness.sources?.present ?? 0}/${readiness.sources?.total ?? 0}</span>
           <span>validator: pnpm -C frontend skin:validate-handoff ${escapeHtml(cliDirRelative)}</span>
+          <span>builder: ${escapeHtml(buildCommand)}</span>
         </div>
         ${sourceChips ? `<div class="chips">${sourceChips}</div>` : ''}
         ${readinessIssues}

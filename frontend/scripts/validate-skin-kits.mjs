@@ -34,17 +34,34 @@ const hexColorPattern = /^#[0-9a-fA-F]{6}$/;
 const mobileKitSummaries = [];
 
 const failures = [];
-const kitPaths = await findSkinKits(fixedDir);
+const args = process.argv.slice(2);
+
+if (args.includes('--help')) {
+  printUsage();
+  process.exit(0);
+}
+
+const positionalArgs = args.filter((arg) => !arg.startsWith('--'));
+const targetedRun = positionalArgs.length > 0;
+const kitPaths = targetedRun
+  ? await Promise.all(positionalArgs.map(resolveKitPath))
+  : await findSkinKits(fixedDir);
 
 if (kitPaths.length === 0) {
-  failures.push(`No skin-kit.json files found under ${path.relative(rootDir, fixedDir)}`);
+  failures.push(
+    targetedRun
+      ? 'No skin-kit.json files resolved from requested path(s)'
+      : `No skin-kit.json files found under ${path.relative(rootDir, fixedDir)}`
+  );
 }
 
 for (const kitPath of kitPaths) {
   await validateKit(kitPath);
 }
 
-validateMobileDefaultSelection();
+if (!targetedRun) {
+  validateMobileDefaultSelection();
+}
 
 if (failures.length > 0) {
   console.error('Skin kit validation failed:');
@@ -70,6 +87,12 @@ async function findSkinKits(dir) {
   }
 
   return kits;
+}
+
+async function resolveKitPath(input) {
+  const resolved = path.resolve(rootDir, input);
+  const stat = await fs.stat(resolved);
+  return stat.isDirectory() ? path.join(resolved, 'skin-kit.json') : resolved;
 }
 
 async function validateKit(kitPath) {
@@ -549,8 +572,8 @@ async function validateAsset(kitDir, prefix, label, asset) {
   const assetPath = path.resolve(asset.sourceProfile
     ? path.join(fixedDir, asset.sourceProfile, asset.path)
     : path.join(kitDir, asset.path));
-  if (!containsPath(rootDir, assetPath)) {
-    failures.push(`${prefix} ${label}.path must stay inside ${path.relative(process.cwd(), rootDir)}`);
+  if (!containsPath(rootDir, assetPath) && !containsPath(kitDir, assetPath)) {
+    failures.push(`${prefix} ${label}.path must stay inside the repo or ${path.relative(process.cwd(), kitDir) || '.'}`);
     return;
   }
 
@@ -673,8 +696,8 @@ async function validateBuildSource(kitDir, prefix, label, sourcePath) {
   }
 
   const resolved = path.resolve(kitDir, sourcePath);
-  if (!containsPath(rootDir, resolved)) {
-    failures.push(`${prefix} ${label} must stay inside ${path.relative(process.cwd(), rootDir)}`);
+  if (!containsPath(rootDir, resolved) && !containsPath(kitDir, resolved)) {
+    failures.push(`${prefix} ${label} must stay inside the repo or ${path.relative(process.cwd(), kitDir) || '.'}`);
     return;
   }
 
@@ -886,4 +909,13 @@ function isRelativePngPath(value) {
 function containsPath(parent, child) {
   const relative = path.relative(parent, child);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function printUsage() {
+  console.error([
+    'Usage: pnpm -C frontend validate:skins [skin-pack-dir|skin-kit.json ...]',
+    '',
+    'Without arguments, scans committed fixed skins and enforces the global mobile default profile rule.',
+    'With one or more paths, validates only those skin kit(s) and skips global default selection.'
+  ].join('\n'));
 }

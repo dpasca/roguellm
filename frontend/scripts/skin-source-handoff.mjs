@@ -151,6 +151,7 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
       `pnpm -C frontend skin:validate-handoff ${sourceDir}`,
       `pnpm -C frontend skin:validate-handoff ${sourceDir} --require-sources`
     ],
+    buildCommand: `pnpm -C frontend skin:build-handoff ${sourceDir}`,
     commands: [
       `pnpm -C frontend skin:validate-handoff ${sourceDir} --require-sources`,
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
@@ -433,8 +434,12 @@ Put the generated \`source-chassis.png\`, \`source-widgets.png\`,
 directory, then run:
 
 \`\`\`bash
-${plan.commands.join('\n')}
+${plan.buildCommand}
 \`\`\`
+
+The build command runs source readiness validation, scaffold, strict source
+review, crop generation, and built-kit validation. Use the expanded command list
+in \`handoff.json\` when a single stage needs manual inspection.
 
 After the built kit is copied into \`frontend/src/skins/neo-tokyo-console/fixed\`
 and registered as a production profile, run:
@@ -485,8 +490,11 @@ measured gates pass.
 ## Promotion Commands
 
 \`\`\`bash
-${plan.commands.join('\n')}
+${plan.buildCommand}
 \`\`\`
+
+For debugging, \`handoff.json\` also keeps the expanded stage-by-stage command
+list that \`skin:build-handoff\` wraps.
 
 ## Runtime Verification After Promotion
 

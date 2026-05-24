@@ -16,6 +16,8 @@ Preferred handoff commands:
 
 ```bash
 pnpm -C frontend skin:handoff rain-city-deck mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --out ../_artifacts/skin-handoffs/rain-city-deck
+pnpm -C frontend skin:validate-handoff ../_artifacts/skin-handoffs/rain-city-deck
+pnpm -C frontend skin:build-handoff ../_artifacts/skin-handoffs/rain-city-deck
 pnpm -C frontend skin:source-prototype rain-city-deck mobileCompact --theme obsidian-rain --out ../_artifacts/skin-kits/rain-city-deck
 pnpm --silent -C frontend skin:prompt mobileCompact --theme "premium rain-city cyberdeck, dark glass, brass switches" --output source-pack > ../_artifacts/skin-prompts/rain-city-deck.txt
 pnpm -C frontend skin:guide mobileCompact --view live --out ../_artifacts/skin-guides/mobile-compact-live.png
@@ -27,7 +29,9 @@ pnpm -C frontend skin:state-guide mobileCompact --out ../_artifacts/skin-guides/
 `skin:handoff` is the preferred starting point for real generation. It creates a
 single ignored bundle containing the prompt, exact live/crop/runtime/state-sheet
 guide images, a machine-readable handoff plan, and the scaffold/review/build
-commands to run after the generated source files arrive.
+commands to run after the generated source files arrive. Once the four source
+PNGs are present, `skin:build-handoff` wraps the strict readiness, source-pack,
+source-review, crop-build, and targeted kit-validation steps.
 
 For AI generation, prefer a source pack over one clever flexible UI
 image:
@@ -123,9 +127,9 @@ optional chassis crop `source` paths and run:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-issue
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-warning
 pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend validate:skins
+pnpm -C frontend validate:skins ../_artifacts/skin-kits/rain-city-deck
 ```
 
 The scaffold crop plan creates the fixed runtime assets from the source
@@ -147,7 +151,8 @@ if material detail crosses into the Phaser text/icon slots.
 `skin:review-source` also computes measured preflight tables for live-region
 cleanliness, widget/state-sheet crop occupancy/contrast, and material seam
 deltas. The `--json` report records issue and warning counts for automation.
-Use `--fail-on-issue` in promotion scripts, and treat yellow warnings as review
-prompts before building or promoting a generated skin. A generated source pack
-with role `default` or `variant` must use `source-state-sheet.png`; prototype
-skins may still derive states while exploring.
+Use `--fail-on-warning` for promotion candidates so weak widget crops, busy live
+regions, collapsed state variants, and unsafe material seams block the build. A
+generated source pack with role `default` or `variant` must use
+`source-state-sheet.png`; prototype skins may still derive states while
+exploring.

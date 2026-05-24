@@ -311,7 +311,7 @@ function nextActionForPhase(phase, missingSources) {
   if (phase === 'waiting-source-art' || phase === 'missing-source-art') {
     return `Generate ${missingSources[0] ?? 'the missing source PNGs'} with the split prompts, then rerun with --require-sources.`;
   }
-  return 'Run skin:scaffold, validate:skin-source-packs, skin:review-source --json --fail-on-warning, and build:skin-kit.';
+  return 'Run skin:build-handoff on this directory to scaffold, review, crop, and validate the fixed skin kit.';
 }
 
 function printReport(report) {

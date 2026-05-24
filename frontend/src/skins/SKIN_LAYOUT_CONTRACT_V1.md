@@ -379,6 +379,16 @@ overs for image generation; they are not a substitute for final art review.
 Premium generated skins may also provide `source-state-sheet.png`, following
 the state-sheet guide, so each fixed widget state is source-owned.
 
+For a generated `skin:handoff` bundle, prefer the wrapper command once all four
+source PNGs exist:
+
+```bash
+pnpm -C frontend skin:build-handoff ../_artifacts/skin-handoffs/rain-city-deck
+```
+
+It runs readiness validation, scaffold, strict source review, crop generation,
+and targeted built-kit validation in one contract-owned path.
+
 After generating a source artboard, use the scaffold generator to create the
 matching `skin-kit.json` from the same contract profile:
 
@@ -400,7 +410,7 @@ Before cropping, validate the source pack and scaffold handoff together:
 
 ```bash
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/rain-city-deck
-pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-issue
+pnpm -C frontend skin:review-source ../_artifacts/skin-kits/rain-city-deck --json --fail-on-warning
 ```
 
 This preflight checks the three required PNG filenames, exact chassis/widget
@@ -411,9 +421,8 @@ The review command writes a self-contained HTML contact sheet with source
 artboards, material-sheet crops, live regions, fixed widget crops, and Phaser
 runtime text/icon slots overlaid for manual rejection before build. Pass
 `--json` to also write a machine-readable `review.json` beside the HTML. Use
-`--fail-on-issue` for promotion scripts that should stop on geometry/source
-handoff problems, and reserve `--fail-on-warning` for stricter passes where
-measured quality signals should block promotion until manually resolved.
+`--fail-on-warning` for promotion candidates so measured quality signals block
+promotion until manually resolved.
 The generated `skin:handoff` promotion commands use `--fail-on-warning` for
 `default` and `variant` roles, so weak widget crops, busy live regions,
 unsafe material seams, and collapsed state-sheet variants stop the handoff
@@ -507,10 +516,10 @@ Hard rules:
 A generated skin may be promoted to a production `default` or `variant` profile
 only after:
 
-1. `pnpm -C frontend build:skin-kit src/skins/neo-tokyo-console/fixed/<skin-id>`
-2. `pnpm -C frontend validate:skin-source-packs src/skins/neo-tokyo-console/fixed/<skin-id>`
+1. `pnpm -C frontend validate:skin-source-packs src/skins/neo-tokyo-console/fixed/<skin-id>`
+2. `pnpm -C frontend skin:review-source src/skins/neo-tokyo-console/fixed/<skin-id> --json --fail-on-warning`
 3. `pnpm -C frontend validate:skin-art-blueprint`
-4. `pnpm -C frontend skin:review-source src/skins/neo-tokyo-console/fixed/<skin-id> --json --fail-on-issue`
+4. `pnpm -C frontend build:skin-kit src/skins/neo-tokyo-console/fixed/<skin-id>`
 5. `pnpm -C frontend validate:skins`
 6. `VISUAL_SCENARIOS=production pnpm -C frontend inspect:visual`
 7. Manual review of at least movement, log, inventory, defeat, victory, restart,

@@ -322,16 +322,17 @@ direction is being explored, but any generated source pack promoted to
 Once the source pack exists, create its prototype manifest with
 `pnpm -C frontend skin:scaffold <skin-id> <profile>`, place the source files at
 the manifest's build paths, run `validate:skin-source-packs`, run
-`skin:review-source --json --fail-on-issue`, run `build:skin-kit` for that skin
+`skin:review-source --json --fail-on-warning`, run `build:skin-kit` for that skin
 directory, then run `validate:skins`. The current deterministic mobile baselines
 can be rebuilt with `build:fixed-skins`; use them as the fallback quality floor
 when generated art is not clean enough to slice.
 
 For default or variant source-pack handoffs, the generated promotion command
-uses `skin:review-source --json --fail-on-warning`. Measured warnings are
-treated as blockers because they catch quality failures that geometry alone
-cannot: collapsed idle/pressed/active state sprites, flat widget crops, busy
-live regions, and unsafe material seams.
+is `skin:build-handoff <handoff-dir>`, which wraps readiness validation,
+scaffold, strict source review, crop generation, and targeted kit validation.
+Measured warnings are treated as blockers because they catch quality failures
+that geometry alone cannot: collapsed idle/pressed/active state sprites, flat
+widget crops, busy live regions, and unsafe material seams.
 
 ## Diagnostics
 
@@ -403,9 +404,10 @@ contract-aligned enough to promote directly, use the reference import path:
 pnpm -C frontend skin:import-reference <generated-image.png> <skin-id> mobileCompact \
   --out ../_artifacts/skin-kits/<skin-id>
 pnpm -C frontend validate:skin-source-packs ../_artifacts/skin-kits/<skin-id>
-pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/<skin-id>
 pnpm -C frontend skin:review-source ../_artifacts/skin-kits/<skin-id> \
-  --out ../_artifacts/skin-reviews/<skin-id>/index.html --json --fail-on-issue
+  --out ../_artifacts/skin-reviews/<skin-id>/index.html --json --fail-on-warning
+pnpm -C frontend build:skin-kit ../_artifacts/skin-kits/<skin-id>
+pnpm -C frontend validate:skins ../_artifacts/skin-kits/<skin-id>
 ```
 
 This creates a reference-import candidate: the generated bitmap is normalized
