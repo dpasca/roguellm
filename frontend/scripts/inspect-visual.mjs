@@ -971,6 +971,7 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserInventoryTextBackplates) ? `inventory text plates ${metrics.phaserInventoryTextBackplates}` : null,
       Number.isFinite(metrics.phaserDrawerToggleIcons) ? `drawer icons ${metrics.phaserDrawerToggleIcons}` : null,
       Number.isFinite(metrics.phaserMovementLockBadges) ? `movement lock ${metrics.phaserMovementLockBadges}` : null,
+      Number.isFinite(metrics.phaserTerminalDetails) ? `terminal detail ${metrics.phaserTerminalDetails}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -3734,6 +3735,7 @@ async function collectMetrics(page) {
       phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
       phaserDrawerToggleIcons: Number(document.body.dataset.phaserDrawerToggleIcons ?? NaN),
       phaserMovementLockBadges: Number(document.body.dataset.phaserMovementLockBadges ?? NaN),
+      phaserTerminalDetails: Number(document.body.dataset.phaserTerminalDetails ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -4374,6 +4376,15 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   if (scenario.mode === 'phaser-fixed-workbench-victory' && metrics.phaserTerminalState !== 'victory') {
     failures.push(`expected Phaser victory terminal state, got ${metrics.phaserTerminalState ?? 'none'}`);
+  }
+
+  if (scenario.mode === 'phaser-fixed-workbench-defeat' || scenario.mode === 'phaser-fixed-workbench-victory') {
+    if (!Number.isFinite(metrics.phaserTerminalDetails) || metrics.phaserTerminalDetails < 20) {
+      failures.push(`expected detailed Phaser terminal hardware, got ${metrics.phaserTerminalDetails ?? 'none'}`);
+    }
+    if (phaserButtonState(metrics, 'restart') !== 'idle') {
+      failures.push(`expected visible restart hardware in terminal state, got ${phaserButtonState(metrics, 'restart') ?? 'none'}`);
+    }
   }
 
   if (scenario.mode === 'phaser-fixed-workbench-restart') {

@@ -593,6 +593,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private hudDetailsDrawn = 0;
   private drawerToggleIconsDrawn = 0;
   private movementLockBadgesDrawn = 0;
+  private terminalDetailsDrawn = 0;
   private textSlotsDrawn = 0;
   private textSlotsShrunk = 0;
   private textSlotsEllipsized = 0;
@@ -686,6 +687,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.hudDetailsDrawn = 0;
     this.drawerToggleIconsDrawn = 0;
     this.movementLockBadgesDrawn = 0;
+    this.terminalDetailsDrawn = 0;
     this.textSlotsDrawn = 0;
     this.textSlotsShrunk = 0;
     this.textSlotsEllipsized = 0;
@@ -710,6 +712,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
     if (isTerminalState(this.viewState.state)) {
       this.drawEndState();
+      this.drawRestartButton();
     }
     if (this.scenario === 'diagnostics') {
       this.drawDiagnostics();
@@ -740,6 +743,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
     document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
     document.body.dataset.phaserMovementLockBadges = String(this.movementLockBadgesDrawn);
+    document.body.dataset.phaserTerminalDetails = String(this.terminalDetailsDrawn);
     document.body.dataset.phaserTextSlots = String(this.textSlotsDrawn);
     document.body.dataset.phaserTextShrinks = String(this.textSlotsShrunk);
     document.body.dataset.phaserTextEllipses = String(this.textSlotsEllipsized);
@@ -1649,7 +1653,17 @@ class PhaserFixedSkinScene extends Phaser.Scene {
 
   private drawButtons(): void {
     for (const [buttonId, button] of buttonEntries(this.profile)) {
+      if (buttonId === 'restart') {
+        continue;
+      }
       this.drawButton(buttonId, button);
+    }
+  }
+
+  private drawRestartButton(): void {
+    const button = this.profile.buttons.restart;
+    if (button) {
+      this.drawButton('restart', button);
     }
   }
 
@@ -2279,30 +2293,109 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private drawEndState(): void {
     const state = this.viewState.state;
     const rect = this.profile.regions.endState ?? centeredRect(this.profile, 314, 238);
+    const won = state.game_won;
+    const accent = won ? this.theme.primary : this.theme.combat;
+    const accentText = won ? this.theme.primaryText : this.theme.combatText;
+    const restart = this.profile.buttons.restart?.rect;
     this.drawMaterialPanel(rect, state.game_won ? 'lcd' : 'button', {
       alpha: 0.97,
       fillTint: state.game_won ? 0x17301b : 0x321119,
       frameTint: state.game_won ? this.theme.primary : this.theme.combat,
       scanlines: true
     });
-    this.addText(state.game_won ? 'VICTORY' : 'DEFEAT', rect.x + 18, rect.y + 18, rect.width - 36, {
+
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x020504, 0.58);
+    graphics.fillRoundedRect(rect.x + 9, rect.y + 9, rect.width - 18, rect.height - 18, 7);
+    graphics.lineStyle(1, accent, 0.36);
+    graphics.strokeRoundedRect(rect.x + 9.5, rect.y + 9.5, rect.width - 19, rect.height - 19, 7);
+    graphics.lineStyle(1, 0xffffff, 0.12);
+    graphics.lineBetween(rect.x + 26, rect.y + 14, rect.x + rect.width - 26, rect.y + 14);
+    graphics.lineStyle(1, accent, 0.24);
+    graphics.lineBetween(rect.x + 18, rect.y + 58, rect.x + rect.width - 18, rect.y + 58);
+    graphics.lineBetween(rect.x + 20, rect.y + 156, rect.x + rect.width - 20, rect.y + 156);
+    this.drawTerminalCornerHardware(graphics, rect, accent);
+    this.drawTinyLedCluster(graphics, rect.x + rect.width - 31, rect.y + 23, accent);
+
+    const badge = { x: rect.x + 18, y: rect.y + 22, width: 38, height: 38 };
+    graphics.fillStyle(0x020504, 0.86);
+    graphics.fillRoundedRect(badge.x, badge.y, badge.width, badge.height, 7);
+    graphics.lineStyle(1, accent, 0.78);
+    graphics.strokeRoundedRect(badge.x + 0.5, badge.y + 0.5, badge.width - 1, badge.height - 1, 7);
+    this.drawSemanticIcon(
+      won ? 'fa-solid fa-trophy' : 'fa-solid fa-skull',
+      won ? '*' : '!',
+      badge.x + badge.width * 0.5,
+      badge.y + badge.height * 0.52,
+      19,
+      accentText,
+      0.96
+    );
+
+    this.addText(won ? 'VICTORY' : 'DEFEAT', rect.x + 66, rect.y + 24, rect.width - 106, {
       fontSize: 22,
-      color: state.game_won ? this.theme.primaryText : this.theme.combatText,
+      color: accentText,
       fontStyle: 'bold',
-      align: 'center'
+      align: 'left'
     });
-    this.addText(state.game_won ? 'The city opens its locked doors.' : 'The signal fades under neon rain.', rect.x + 24, rect.y + 62, rect.width - 48, {
+
+    this.addText(won ? 'The city opens its locked doors.' : 'The signal fades under neon rain.', rect.x + 24, rect.y + 72, rect.width - 48, {
       fontSize: 15,
       color: this.theme.titleText,
       fontStyle: 'bold',
       align: 'center'
-    }, 64);
-    this.addText(`HP ${Math.max(0, state.player_hp)}     XP ${state.player_xp}`, rect.x + 24, rect.y + 134, rect.width - 48, {
+    }, 48);
+
+    const statsY = restart ? Math.min(rect.y + 120, restart.y - 52) : rect.y + 124;
+    const statWidth = Math.floor((rect.width - 62) / 2);
+    this.drawTerminalStatChip(rect.x + 24, statsY, statWidth, 'HP', String(Math.max(0, state.player_hp)), accent);
+    this.drawTerminalStatChip(rect.x + 38 + statWidth, statsY, statWidth, 'XP', String(state.player_xp), accent);
+    this.addText('RESET CIRCUIT ARMED', rect.x + 28, statsY + 36, rect.width - 56, {
+      fontSize: 10,
+      color: this.theme.mutedText,
+      fontStyle: 'bold',
+      align: 'center'
+    }, 16);
+
+    this.terminalDetailsDrawn += 22;
+  }
+
+  private drawTerminalCornerHardware(graphics: Phaser.GameObjects.Graphics, rect: FixedSkinRect, tint: number): void {
+    const length = 18;
+    graphics.lineStyle(2, 0x020504, 0.78);
+    drawCornerBrackets(graphics, rect.x + 7, rect.y + 7, rect.x + rect.width - 7, rect.y + rect.height - 7, length);
+    graphics.lineStyle(1, tint, 0.78);
+    drawCornerBrackets(graphics, rect.x + 7, rect.y + 7, rect.x + rect.width - 7, rect.y + rect.height - 7, length);
+    for (const [x, y] of [
+      [rect.x + 16, rect.y + 16],
+      [rect.x + rect.width - 16, rect.y + 16],
+      [rect.x + 16, rect.y + rect.height - 16],
+      [rect.x + rect.width - 16, rect.y + rect.height - 16]
+    ]) {
+      this.drawHardwareScrew(graphics, x, y, tint);
+    }
+  }
+
+  private drawTerminalStatChip(x: number, y: number, width: number, label: string, value: string, tint: number): void {
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x020504, 0.76);
+    graphics.fillRoundedRect(x, y, width, 28, 6);
+    graphics.lineStyle(1, tint, 0.36);
+    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, 27, 6);
+    graphics.fillStyle(tint, 0.15);
+    graphics.fillRoundedRect(x + 5, y + 6, 30, 16, 4);
+    this.addText(label, x + 8, y + 9, 24, {
+      fontSize: 9,
+      color: this.theme.mutedText,
+      fontStyle: 'bold',
+      align: 'center'
+    }, 12);
+    this.addText(value, x + 42, y + 6, width - 48, {
       fontSize: 14,
       color: this.theme.bodyText,
       fontStyle: 'bold',
-      align: 'center'
-    });
+      align: 'left'
+    }, 18);
   }
 
   private drawDiagnostics(): void {
@@ -2707,6 +2800,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return true;
     }
 
+    if (iconName === 'trophy') {
+      this.drawTrophyIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
     return false;
   }
 
@@ -2871,6 +2969,23 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     } else {
       graphics.strokeRect(x - 4 * s, y - 2 * s, 8 * s, 5 * s);
     }
+  }
+
+  private drawTrophyIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    graphics.fillRoundedRect(x - 6 * s, y - 7 * s, 12 * s, 9 * s, 2 * s);
+    graphics.fillRect(x - 3 * s, y + 1 * s, 6 * s, 6 * s);
+    graphics.fillRoundedRect(x - 8 * s, y + 7 * s, 16 * s, 3 * s, 1.5 * s);
+    graphics.lineStyle(Math.max(1, 1.5 * s), tint, alpha);
+    graphics.beginPath();
+    graphics.arc(x - 7 * s, y - 4 * s, 4 * s, 1.72, 4.8);
+    graphics.strokePath();
+    graphics.beginPath();
+    graphics.arc(x + 7 * s, y - 4 * s, 4 * s, -1.66, 1.42);
+    graphics.strokePath();
+    graphics.fillStyle(0x020504, alpha * 0.34);
+    graphics.fillRoundedRect(x - 3 * s, y - 5 * s, 6 * s, 3 * s, 1 * s);
   }
 
   private drawPersonIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number, iconName: string): void {
