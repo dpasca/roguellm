@@ -41,6 +41,9 @@ const sourceMaterialPhaserProfiles = new Set([
 const actionLabelPhaserProfiles = new Set([
   'obsidian-rain-proto'
 ]);
+const phaserMapDetailFloors = new Map([
+  ['obsidian-rain-proto', 480]
+]);
 const fixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom', profile: defaultFixedProfile });
 const phaserFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', profile: compactFixedProfile });
 const desktopFixedRuntimeUrl = withQueryParams(entryUrl, { ui: 'fixed-skin', renderer: 'dom' });
@@ -2878,6 +2881,16 @@ function validatePhaserActionLabels(scenario, metrics, failures, context) {
   }
 }
 
+function validatePhaserMapDetails(scenario, metrics, failures, context) {
+  const detailFloor = phaserMapDetailFloors.get(scenario.expectedFixedProfile) ?? 120;
+  if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < detailFloor) {
+    failures.push(
+      `${context} expected detailed Phaser map tiles for ${scenario.expectedFixedProfile ?? 'default profile'}, ` +
+      `got ${metrics.phaserMapTileDetails ?? 'none'} below ${detailFloor}`
+    );
+  }
+}
+
 function phaserButtonState(metrics, buttonId) {
   return Object.fromEntries(
     String(metrics.phaserButtonStates ?? '')
@@ -2930,9 +2943,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser shell hardware details, got ${metrics.phaserShellDetails ?? 'none'}`);
   }
 
-  if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
-    failures.push(`expected detailed Phaser map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
-  }
+  validatePhaserMapDetails(scenario, metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
     failures.push(`expected detailed Phaser control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);
@@ -3095,9 +3106,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
     failures.push(`expected Phaser runtime shell hardware details, got ${metrics.phaserShellDetails ?? 'none'}`);
   }
 
-  if (!Number.isFinite(metrics.phaserMapTileDetails) || metrics.phaserMapTileDetails < 120) {
-    failures.push(`expected detailed Phaser runtime map tiles, got ${metrics.phaserMapTileDetails ?? 'none'}`);
-  }
+  validatePhaserMapDetails(scenario, metrics, failures, 'Phaser runtime');
 
   if (!Number.isFinite(metrics.phaserControlDetails) || metrics.phaserControlDetails < 48) {
     failures.push(`expected detailed Phaser runtime control hardware, got ${metrics.phaserControlDetails ?? 'none'}`);

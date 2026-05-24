@@ -85,7 +85,7 @@ function nextPosition(x: number, y: number, direction: Direction): [number, numb
 
 export function createWorkbenchState(): GameState {
   const cells = createWorkbenchCells();
-  const explored = cells.map((row, y) => row.map((_, x) => y < 7 || x < 3 || (x + y) % 5 === 0));
+  const explored = cells.map((row, y) => row.map((_, x) => y < 9 || x < 4 || (x + y) % 4 === 0));
 
   return {
     cell_types: cells,
