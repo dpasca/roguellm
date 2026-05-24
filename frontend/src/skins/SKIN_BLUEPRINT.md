@@ -315,6 +315,8 @@ automatically. Use `VISUAL_SCENARIOS=production` when you want only this
 scalable production-skin sweep. The legacy DOM comparison sweep is still
 available with `VISUAL_PRODUCTION_RENDERER=dom`, but Phaser is the default
 production renderer.
+Shortcut scripts are available as `pnpm -C frontend check:visual:production`
+and `pnpm -C frontend check:visual:production:dom`.
 
 ## Playable Runtime
 
