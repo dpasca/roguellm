@@ -551,6 +551,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
   private mapTileDetailsDrawn = 0;
   private controlDetailsDrawn = 0;
   private hudDetailsDrawn = 0;
+  private drawerToggleIconsDrawn = 0;
+  private movementLockBadgesDrawn = 0;
 
   constructor(config: SceneConfig) {
     super('PhaserFixedSkinScene');
@@ -633,6 +635,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.mapTileDetailsDrawn = 0;
     this.controlDetailsDrawn = 0;
     this.hudDetailsDrawn = 0;
+    this.drawerToggleIconsDrawn = 0;
+    this.movementLockBadgesDrawn = 0;
     this.children.removeAll(true);
     this.add.image(0, 0, assetKey(this.profile, 'chassis')).setOrigin(0, 0);
     this.drawShellHardware();
@@ -644,6 +648,7 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     this.drawIndicators();
     this.drawControlsBay();
     this.drawButtons();
+    this.drawMovementLockBadge();
     if (this.viewState.logOpen) {
       this.drawLogDrawer();
     }
@@ -674,6 +679,8 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     document.body.dataset.phaserMapTileDetails = String(this.mapTileDetailsDrawn);
     document.body.dataset.phaserControlDetails = String(this.controlDetailsDrawn);
     document.body.dataset.phaserHudDetails = String(this.hudDetailsDrawn);
+    document.body.dataset.phaserDrawerToggleIcons = String(this.drawerToggleIconsDrawn);
+    document.body.dataset.phaserMovementLockBadges = String(this.movementLockBadgesDrawn);
   }
 
   private drawShellHardware(): void {
@@ -1528,8 +1535,78 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     if (buttonId === 'log' || buttonId === 'inventory') {
       graphics.lineStyle(1, accent, alpha * 0.72);
       graphics.lineBetween(rect.x + 8, rect.y + rect.height - 7, rect.x + rect.width - 8, rect.y + rect.height - 7);
-      this.controlDetailsDrawn += 2;
+      graphics.fillStyle(accent, alpha * (state === 'pressed' ? 0.18 : 0.1));
+      graphics.fillRoundedRect(rect.x + 8, rect.y + 7, rect.width - 16, rect.height - 15, 4);
+      this.drawDrawerToggleMark(buttonId, rect, disabled ? 0x758184 : this.theme.primary, disabled ? 0.36 : 0.92);
+      this.controlDetailsDrawn += 4;
     }
+  }
+
+  private drawDrawerToggleMark(buttonId: FixedButtonId, rect: FixedSkinRect, tint: number, alpha: number): void {
+    const graphics = this.add.graphics();
+    const cx = rect.x + rect.width * 0.5;
+    const cy = rect.y + rect.height * 0.47;
+    const s = Math.min(rect.width, rect.height) / 22;
+
+    graphics.fillStyle(tint, alpha);
+    if (buttonId === 'log') {
+      for (const yOffset of [-5, 0, 5]) {
+        graphics.fillRoundedRect(cx - 9 * s, cy + yOffset * s - 1.4 * s, 3 * s, 2.8 * s, 1.4 * s);
+        graphics.fillRoundedRect(cx - 4 * s, cy + yOffset * s - 1.1 * s, 13 * s, 2.2 * s, 1.1 * s);
+      }
+    } else {
+      graphics.fillRoundedRect(cx - 8 * s, cy - 4 * s, 16 * s, 11 * s, 2.5 * s);
+      graphics.lineStyle(Math.max(1, 1.2 * s), tint, alpha);
+      graphics.strokeRoundedRect(cx - 5 * s, cy - 8 * s, 10 * s, 5 * s, 2.5 * s);
+      graphics.fillStyle(0x020504, alpha * 0.5);
+      graphics.fillRoundedRect(cx - 5 * s, cy - 1 * s, 10 * s, 2 * s, 1 * s);
+    }
+
+    this.canvasIconMarksDrawn += 1;
+    this.drawerToggleIconsDrawn += 1;
+  }
+
+  private drawMovementLockBadge(): void {
+    const state = this.viewState.state;
+    if (!state.in_combat || isTerminalState(state)) {
+      return;
+    }
+
+    const moveButtonIds = ['moveN', 'moveS', 'moveE', 'moveW'] as const;
+    const moveRects = moveButtonIds
+      .map((buttonId) => this.profile.buttons[buttonId]?.rect)
+      .filter(Boolean) as FixedSkinRect[];
+    const dpadBounds = unionRects(moveRects);
+    if (!dpadBounds || !moveButtonIds.every((buttonId) => this.isButtonDisabled(buttonId))) {
+      return;
+    }
+
+    const graphics = this.add.graphics();
+    const x = Math.round(dpadBounds.x + dpadBounds.width * 0.5 - 31);
+    const y = Math.round(dpadBounds.y + dpadBounds.height * 0.5 - 10);
+    const width = 62;
+    const height = 20;
+
+    graphics.fillStyle(0x050203, 0.9);
+    graphics.fillRoundedRect(x, y, width, height, 5);
+    graphics.lineStyle(1, this.theme.combat, 0.72);
+    graphics.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, height - 1, 5);
+    graphics.lineStyle(1, 0xffffff, 0.12);
+    graphics.lineBetween(x + 7, y + 4, x + width - 7, y + 4);
+    for (let stripe = 0; stripe < 5; stripe += 1) {
+      const stripeX = x + 6 + stripe * 11;
+      graphics.lineStyle(1, this.theme.combat, 0.24);
+      graphics.lineBetween(stripeX, y + height - 4, stripeX + 7, y + 6);
+    }
+
+    this.addText('LOCK', x + 4, y + 4, width - 8, {
+      fontSize: 10,
+      color: this.theme.combatText,
+      fontStyle: 'bold',
+      align: 'center'
+    }, height - 6);
+    this.movementLockBadgesDrawn += 1;
+    this.controlDetailsDrawn += 6;
   }
 
   private drawButtonIconMark(icon: string, x: number, y: number, size: number, tint: number, disabled: boolean): void {
@@ -2077,6 +2154,11 @@ class PhaserFixedSkinScene extends Phaser.Scene {
       return true;
     }
 
+    if (iconName === 'list') {
+      this.drawListIcon(graphics, x, y, size, tint, alpha);
+      return true;
+    }
+
     if (iconName === 'satellite-dish' || iconName === 'tower-broadcast') {
       this.drawSignalIcon(graphics, x, y, size, tint, alpha);
       return true;
@@ -2200,6 +2282,15 @@ class PhaserFixedSkinScene extends Phaser.Scene {
     }
     graphics.lineBetween(x - 3 * s, y + 7 * s, x + 3 * s, y + 7 * s);
     graphics.lineBetween(x, y + 5 * s, x, y + 7 * s);
+  }
+
+  private drawListIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {
+    const s = size / 20;
+    graphics.fillStyle(tint, alpha);
+    for (const yOffset of [-6, 0, 6]) {
+      graphics.fillRoundedRect(x - 8 * s, y + yOffset * s - 1.5 * s, 3 * s, 3 * s, 1.5 * s);
+      graphics.fillRoundedRect(x - 3 * s, y + yOffset * s - 1.2 * s, 12 * s, 2.4 * s, 1.2 * s);
+    }
   }
 
   private drawSignalIcon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number, tint: number, alpha: number): void {

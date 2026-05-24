@@ -850,6 +850,8 @@ function buildHtmlReport(summary) {
       Number.isFinite(metrics.phaserLogRows) ? `log rows ${metrics.phaserLogRows}` : null,
       Number.isFinite(metrics.phaserInventoryRows) ? `inventory rows ${metrics.phaserInventoryRows}` : null,
       Number.isFinite(metrics.phaserInventoryActionChips) ? `inventory chips ${metrics.phaserInventoryActionChips}` : null,
+      Number.isFinite(metrics.phaserDrawerToggleIcons) ? `drawer icons ${metrics.phaserDrawerToggleIcons}` : null,
+      Number.isFinite(metrics.phaserMovementLockBadges) ? `movement lock ${metrics.phaserMovementLockBadges}` : null,
       metrics.skinClasses?.length ? `skin classes ${metrics.skinClasses.join(',')}` : null,
       metrics.mapIcons?.item || metrics.mapIcons?.enemy
         ? `map badges ${metrics.mapIcons.itemBadges + metrics.mapIcons.enemyBadges}/${metrics.mapIcons.item + metrics.mapIcons.enemy}`
@@ -2468,6 +2470,8 @@ async function collectMetrics(page) {
       phaserInventoryRows: Number(document.body.dataset.phaserInventoryRows ?? NaN),
       phaserInventoryActionChips: Number(document.body.dataset.phaserInventoryActionChips ?? NaN),
       phaserActionButtonLabels: Number(document.body.dataset.phaserActionButtonLabels ?? NaN),
+      phaserDrawerToggleIcons: Number(document.body.dataset.phaserDrawerToggleIcons ?? NaN),
+      phaserMovementLockBadges: Number(document.body.dataset.phaserMovementLockBadges ?? NaN),
       phaserChromeDetails: Number(document.body.dataset.phaserChromeDetails ?? NaN),
       phaserShellDetails: Number(document.body.dataset.phaserShellDetails ?? NaN),
       phaserMapTileDetails: Number(document.body.dataset.phaserMapTileDetails ?? NaN),
@@ -2891,6 +2895,20 @@ function validatePhaserMapDetails(scenario, metrics, failures, context) {
   }
 }
 
+function validatePhaserControlAffordances(metrics, failures, context) {
+  if (!Number.isFinite(metrics.phaserDrawerToggleIcons) || metrics.phaserDrawerToggleIcons < 2) {
+    failures.push(`${context} expected canvas-rendered drawer toggle icons, got ${metrics.phaserDrawerToggleIcons ?? 'none'}`);
+  }
+
+  if (
+    metrics.phaserInCombat === '1' &&
+    metrics.phaserTerminalState === 'active' &&
+    (!Number.isFinite(metrics.phaserMovementLockBadges) || metrics.phaserMovementLockBadges < 1)
+  ) {
+    failures.push(`${context} expected movement lock badge during combat, got ${metrics.phaserMovementLockBadges ?? 'none'}`);
+  }
+}
+
 function phaserButtonState(metrics, buttonId) {
   return Object.fromEntries(
     String(metrics.phaserButtonStates ?? '')
@@ -2934,6 +2952,7 @@ function validatePhaserFixedWorkbenchScenario(scenario, metrics, failures) {
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser workbench');
   validatePhaserActionLabels(scenario, metrics, failures, 'Phaser workbench');
+  validatePhaserControlAffordances(metrics, failures, 'Phaser workbench');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
@@ -3097,6 +3116,7 @@ function validatePhaserFixedRuntimeScenario(scenario, metrics, failures) {
   }
 
   validatePhaserSourceMaterials(scenario, metrics, failures, 'Phaser runtime');
+  validatePhaserControlAffordances(metrics, failures, 'Phaser runtime');
 
   if (!Number.isFinite(metrics.phaserChromeDetails) || metrics.phaserChromeDetails < 5) {
     failures.push(`expected Phaser runtime chrome details, got ${metrics.phaserChromeDetails ?? 'none'}`);
