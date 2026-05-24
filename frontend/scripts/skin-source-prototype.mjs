@@ -168,11 +168,42 @@ function motifLayer(selectedProfile, theme) {
   const latest = selectedProfile.regions.latest;
   const controls = selectedProfile.regions.controls;
   const bottomY = height - 45;
+  const shrinePlates = Array.from({ length: 6 }, (_, index) => {
+    const y = map.y + 28 + index * Math.max(28, Math.floor((map.height - 58) / 5));
+    const fill = index % 2 === 0 ? theme.warning : theme.accent;
+    return `
+      <g opacity="${0.54 + (index % 3) * 0.06}">
+        <path d="M16 ${y}h7l3 7-3 7h-7z" fill="${fill}" filter="url(#softGlow)"/>
+        <path d="M${width - 16} ${y}h-7l-3 7 3 7h7z" fill="${index % 2 === 0 ? theme.accent : theme.combat}" opacity="0.72"/>
+        <path d="M20 ${y + 18}l5 5-5 5 5 5" fill="none" stroke="${theme.warning}" stroke-width="1.2" stroke-opacity="0.62"/>
+        <path d="M${width - 20} ${y + 14}l-5 5 5 5-5 5" fill="none" stroke="${theme.combat}" stroke-width="1.2" stroke-opacity="0.46"/>
+      </g>
+    `;
+  }).join('\n');
   const beadRows = Array.from({ length: 7 }, (_, index) => {
     const y = latest.y + 8 + index * 10;
     return `
       <circle cx="17" cy="${y}" r="${index % 2 === 0 ? 2.2 : 1.4}" fill="${index % 3 === 0 ? theme.warning : theme.accent}" opacity="${0.42 + index * 0.035}" filter="url(#softGlow)"/>
       <circle cx="${width - 18}" cy="${y + 4}" r="${index % 2 === 0 ? 1.4 : 2.2}" fill="${index % 3 === 1 ? theme.combat : theme.warning}" opacity="${0.34 + index * 0.035}"/>
+    `;
+  }).join('\n');
+  const shide = Array.from({ length: 5 }, (_, index) => {
+    const x = map.x + 44 + index * Math.max(44, Math.floor((map.width - 110) / 4));
+    const topY = map.y - 14;
+    const lowerY = map.y + map.height + 12;
+    return `
+      <path d="M${x} ${topY}l8 8-8 8 8 8" fill="none" stroke="${index % 2 === 0 ? theme.warning : theme.accent}" stroke-width="1.3" stroke-opacity="0.5"/>
+      <path d="M${x + 12} ${lowerY}l-8 8 8 8-8 8" fill="none" stroke="${index % 2 === 0 ? theme.combat : theme.warning}" stroke-width="1.2" stroke-opacity="0.38"/>
+    `;
+  }).join('\n');
+  const controlLanterns = Array.from({ length: 5 }, (_, index) => {
+    const x = controls.x + 34 + index * Math.floor((controls.width - 68) / 4);
+    const color = index % 2 === 0 ? theme.warning : theme.accent;
+    return `
+      <g opacity="${0.46 + index * 0.055}">
+        <rect x="${x - 5}" y="${controls.y + 14}" width="10" height="14" rx="4" fill="${color}" filter="url(#softGlow)"/>
+        <path d="M${x - 8} ${controls.y + 12}h16M${x - 8} ${controls.y + 30}h16" stroke="${theme.panelStroke}" stroke-width="1"/>
+      </g>
     `;
   }).join('\n');
 
@@ -181,9 +212,15 @@ function motifLayer(selectedProfile, theme) {
       <path d="M${map.x - 9} ${map.y + 20}Q${width / 2} ${map.y - 22} ${map.x + map.width + 9} ${map.y + 20}" fill="none" stroke="${theme.warning}" stroke-width="1.4" stroke-opacity="0.42"/>
       <path d="M${map.x - 5} ${map.y + map.height + 14}Q${width / 2} ${map.y + map.height + 42} ${map.x + map.width + 5} ${map.y + map.height + 14}" fill="none" stroke="${theme.combat}" stroke-width="1.2" stroke-opacity="0.36"/>
       <path d="M${map.x - 12} ${map.y + 28}V${map.y + map.height - 22}M${map.x + map.width + 12} ${map.y + 28}V${map.y + map.height - 22}" stroke="${theme.warning}" stroke-width="1" stroke-dasharray="5 8" stroke-opacity="0.44"/>
+      <path d="M${map.x + 28} ${map.y - 18}H${map.x + map.width - 28}M${map.x + 54} ${map.y - 27}H${map.x + map.width - 54}" stroke="${theme.warning}" stroke-width="2" stroke-opacity="0.42"/>
+      <path d="M${map.x + 68} ${map.y - 27}v17M${map.x + map.width - 68} ${map.y - 27}v17" stroke="${theme.warning}" stroke-width="1.6" stroke-opacity="0.48"/>
+      <path d="M${map.x + 24} ${map.y + map.height + 22}H${map.x + map.width - 24}" stroke="${theme.accent}" stroke-width="1.4" stroke-opacity="0.32"/>
+      ${shide}
+      ${shrinePlates}
       <rect x="28" y="42" width="44" height="6" rx="3" fill="${theme.warning}" opacity="0.24"/>
       <rect x="${width - 72}" y="42" width="44" height="6" rx="3" fill="${theme.combat}" opacity="0.22"/>
       <path d="M34 39L44 30H76M${width - 34} 39L${width - 44} 30H${width - 76}" fill="none" stroke="${theme.accent}" stroke-opacity="0.34" stroke-width="1.2"/>
+      <path d="M${width / 2 - 42} 41h84M${width / 2 - 27} 45h54" stroke="${theme.warning}" stroke-width="1.2" stroke-opacity="0.45"/>
       <text x="${width / 2}" y="37" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="7" fill="${theme.warning}" opacity="0.78">NEON SHRINE BUS</text>
       ${beadRows}
       <g opacity="0.76">
@@ -191,6 +228,7 @@ function motifLayer(selectedProfile, theme) {
         <rect x="${controls.x + controls.width - 48}" y="${controls.y + 8}" width="30" height="5" rx="2.5" fill="${theme.warning}" opacity="0.32"/>
         <path d="M${controls.x + 22} ${controls.y + controls.height - 12}H${controls.x + 78}M${controls.x + controls.width - 78} ${controls.y + controls.height - 12}H${controls.x + controls.width - 22}" stroke="${theme.combat}" stroke-width="1.5" stroke-opacity="0.55"/>
       </g>
+      ${controlLanterns}
       <g opacity="0.72">
         ${Array.from({ length: 5 }, (_, index) => {
           const x = width / 2 - 38 + index * 19;
