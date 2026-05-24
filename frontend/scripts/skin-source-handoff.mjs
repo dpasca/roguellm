@@ -83,7 +83,7 @@ await runScript('skin-state-sheet-guide.mjs', [
 ]);
 guides.push(stateGuideName);
 
-const plan = buildPlan(skinId, profileName, theme, guides, role, stateSheetMode);
+const plan = buildPlan(skinId, profileName, theme, guides, role, stateSheetMode, outDir);
 const splitPrompts = sourceFilePrompts(plan, profile, artBlueprint);
 await fs.writeFile(path.join(outDir, 'handoff.json'), `${JSON.stringify(plan, null, 2)}\n`, 'utf8');
 await fs.writeFile(path.join(outDir, 'ART_DIRECTION.md'), artDirection(plan, artBlueprint), 'utf8');
@@ -111,8 +111,8 @@ async function runScript(scriptName, args) {
   });
 }
 
-function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole, selectedStateSheetMode) {
-  const sourceDir = `../_artifacts/skin-handoffs/${id}`;
+function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole, selectedStateSheetMode, outputDir) {
+  const sourceDir = path.relative(rootDir, outputDir) || '.';
   const kitDir = sourceDir;
   const reviewFailureMode = isPromotedRole(selectedRole) ? '--fail-on-warning' : '--fail-on-issue';
   return {
@@ -147,7 +147,12 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
         'source-materials.png'
       ]
     },
+    readinessCommands: [
+      `pnpm -C frontend skin:validate-handoff ${sourceDir}`,
+      `pnpm -C frontend skin:validate-handoff ${sourceDir} --require-sources`
+    ],
     commands: [
+      `pnpm -C frontend skin:validate-handoff ${sourceDir} --require-sources`,
       `pnpm -C frontend skin:guide ${selectedProfile} --view all --source ${sourceDir}/source-chassis.png --out ${sourceDir}/source-overlay.${guideFormat}`,
       `pnpm -C frontend skin:scaffold ${id} ${selectedProfile} --label "${labelFromId(id)}" --role ${selectedRole} --tags cyberpunk,handheld --mood premium,nocturnal --palette graphite,cyan --source source-widgets.png --chassis-source source-chassis.png --state-source source-state-sheet.png --materials-source source-materials.png --material-render-mode source --out ${kitDir}`,
       `pnpm -C frontend validate:skin-source-packs ${kitDir}`,
@@ -156,10 +161,12 @@ function buildPlan(id, selectedProfile, selectedTheme, guideNames, selectedRole,
       'pnpm -C frontend validate:skins'
     ],
     generationSteps: [
+      'Run skin:validate-handoff on this directory first; prompts, guides, and documentation must be complete before generation.',
       'Generate source-chassis.png first from prompts/source-chassis.prompt.txt and reject it unless the live-region overlay is clean.',
       'Generate source-widgets.png second from prompts/source-widgets.prompt.txt using the accepted chassis as style reference, not as baked runtime content.',
       'Generate source-state-sheet.png third from prompts/source-state-sheet.prompt.txt using the accepted widget/chassis style as reference.',
       'Generate source-materials.png last from prompts/source-materials.prompt.txt, then inspect tile seams and nine-slice frame safety.',
+      'Rerun skin:validate-handoff with --require-sources after all four source files exist.',
       'Only scaffold/build after all four source files pass human review against QUALITY_BAR.md.'
     ],
     afterPromotion: [
@@ -413,6 +420,12 @@ that will be cropped into fixed runtime assets.
 
 ${markdownList(plan.generationSteps)}
 
+Before generating art, verify the handoff packet itself:
+
+\`\`\`bash
+${plan.readinessCommands[0]}
+\`\`\`
+
 ## After Generation
 
 Put the generated \`source-chassis.png\`, \`source-widgets.png\`,
@@ -467,6 +480,7 @@ measured gates pass.
 - The compact profile is the mobile quality target. Desktop should get a separate profile later instead of stretching this art.
 - Prefer the split prompts in \`${plan.files.splitPrompts.join('`, `')}\` over one giant multi-file prompt. One accepted source file becomes the style reference for the next, which is the main defense against collage output.
 - Reject any generated source file that looks like a final gameplay screen instead of a clean source asset.
+- Run \`${plan.readinessCommands[1]}\` before scaffolding; missing or wrong-sized source PNGs are blockers.
 
 ## Promotion Commands
 
