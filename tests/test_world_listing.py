@@ -44,6 +44,26 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(worlds[0]["enemy_count"], 1)
         self.assertEqual(worlds[0]["terrain_count"], 2)
 
+    def test_list_worlds_counts_list_based_terrain_definitions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            manager.save_generator(
+                theme_desc="A neon city",
+                theme_desc_better="Neon City\nA quieter second line",
+                language="en",
+                player_defs=[{"name": "Runner"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs=[
+                    {"id": "street", "name": "Street"},
+                    {"id": "alley", "name": "Alley"},
+                ],
+            )
+
+            worlds = manager.list_worlds()
+
+        self.assertEqual(worlds[0]["terrain_count"], 2)
+
     def test_list_worlds_handles_older_generator_table_without_created_at(self):
         with tempfile.TemporaryDirectory() as directory:
             manager = self.make_db(directory)

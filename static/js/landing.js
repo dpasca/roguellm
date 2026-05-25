@@ -16,6 +16,9 @@ const CONFIG = {
             text: 'NEWTYPE'
         }
     },
+    devWorlds: {
+        piedoneTheme: 'dev:piedone-a-tokyo'
+    },
     defaultLanguage: 'en',
     fallbackLanguage: 'en'
 };
@@ -202,6 +205,8 @@ const app = Vue.createApp({
             }
 
             const piedoneWorld = this.worlds.find(world => {
+                return world.theme === CONFIG.devWorlds.piedoneTheme;
+            }) || this.worlds.find(world => {
                 const haystack = `${world.title || ''} ${world.theme || ''}`.toLowerCase();
                 return haystack.includes('piedone');
             });

@@ -152,6 +152,19 @@ Notice that *DuckDuckGo* does not require an API key, but it may rate-limit and 
 
 See `game_config.json` and `game_items.json` for more details.
 
+### Seed Dev Worlds
+
+For repeatable local testing without generating new world definitions, seed stable
+dev worlds:
+
+```bash
+venv/bin/python tools/ensure_dev_worlds.py
+```
+
+This creates or refreshes a Piedone world and a small English fantasy world, then
+prints their World IDs. The local Quick Start button prefers the seeded Piedone
+world when it is present.
+
 ## Icons generation
 
 ```bash

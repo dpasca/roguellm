@@ -504,7 +504,7 @@ class DatabaseManager:
     def _json_mapping_size(self, raw_value: str) -> int:
         try:
             value = json.loads(raw_value or "{}")
-            return len(value) if isinstance(value, dict) else 0
+            return len(value) if isinstance(value, (dict, list)) else 0
         except json.JSONDecodeError:
             return 0
 

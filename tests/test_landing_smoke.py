@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 import main
 from db import DatabaseManager
+from tools.ensure_dev_worlds import DEV_PIEDONE_THEME, ensure_dev_worlds
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -33,15 +34,8 @@ class LandingSmokeTests(unittest.TestCase):
     def test_world_picker_landing_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             manager = self.make_db(directory)
-            piedone_id = manager.save_generator(
-                theme_desc="piedone a tokyo",
-                theme_desc_better="Piedone a Tokyo\nA testing world.",
-                language="it",
-                player_defs=[{"name": "Piedone"}],
-                item_defs=[{"id": "espresso"}],
-                enemy_defs=[{"enemy_id": "thug"}],
-                celltype_defs={},
-            )
+            seeded_worlds = ensure_dev_worlds(manager)
+            piedone = next(world for world in seeded_worlds if world["key"] == "piedone")
 
             with patch.dict(os.environ, {"ENABLE_WORLD_LIBRARY": "1"}), \
                     patch("main.db", manager), \
@@ -55,6 +49,7 @@ class LandingSmokeTests(unittest.TestCase):
                     landing_js = (REPO_ROOT / "static/js/landing.js").read_text(encoding="utf-8")
                     self.assertIn('@click="quickStartPiedone()"', html)
                     self.assertIn('class="world-preview"', html)
+                    self.assertIn(DEV_PIEDONE_THEME, landing_js)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))
                     self.assertNotIn("selectedWorld()", landing_js)
 
@@ -66,10 +61,10 @@ class LandingSmokeTests(unittest.TestCase):
                     worlds_response = client.get("/api/worlds/recent?limit=12")
                     self.assertEqual(worlds_response.status_code, 200)
                     worlds = worlds_response.json()["worlds"]
-                    self.assertTrue(any(world["id"] == piedone_id for world in worlds))
+                    self.assertTrue(any(world["id"] == piedone["id"] for world in worlds))
 
                     session_response = client.post("/api/create_game_session", json={
-                        "generator_id": piedone_id,
+                        "generator_id": piedone["id"],
                         "language": "en",
                         "do_web_search": False,
                     })
