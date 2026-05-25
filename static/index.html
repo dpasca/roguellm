@@ -195,10 +195,18 @@
                                    name="world"
                                    :value="world.id"
                                    v-model="selectedWorldId">
-                            <span class="world-title">{{ world.title }}</span>
-                            <span class="world-meta">
-                                {{ world.language }} · {{ world.enemy_count }} enemies · {{ world.item_count }} items
+                            <span class="world-copy">
+                                <span class="world-title">{{ world.title }}</span>
+                                <span class="world-meta">
+                                    {{ world.language }} · {{ world.enemy_count }} enemies · {{ world.item_count }} items
+                                </span>
                             </span>
+                            <button v-if="selectedWorldId === world.id"
+                                    type="button"
+                                    class="world-start-btn"
+                                    @click.stop.prevent="launchGame">
+                                {{ t('startRun') }}
+                            </button>
                         </label>
                     </div>
                     <input v-model="generatorId"

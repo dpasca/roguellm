@@ -272,7 +272,7 @@ class GameStateManager:
         await self.initialize_game_placements()
 
         # Process the entity placements to populate enemies and items
-        self.entity_manager.process_placements(self.state)
+        self.entity_placements = self.entity_manager.process_placements(self.state)
 
         # Set initial position as explored
         x, y = self.state.player_pos

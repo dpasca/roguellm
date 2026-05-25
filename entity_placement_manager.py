@@ -93,6 +93,8 @@ class EntityPlacementManager:
                     }
                     game_state.item_placements.append(item)
 
+        return self.entity_placements
+
     def _sanitize_placements(self, game_state) -> List[Dict]:
         """Keep generated placements playable and valid for the current level."""
         sanitized = []
