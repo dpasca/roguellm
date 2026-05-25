@@ -11,7 +11,7 @@ class EntityPlacementManager:
         self.gen_ai = gen_ai
         self.enemy_sequence_cnt = 0
         self.item_sequence_cnt = 0
-        
+
         # Default icons
         self.default_enemy_icon = "fa-solid fa-skull"
         self.default_item_icon = "fa-solid fa-box"
@@ -40,6 +40,7 @@ class EntityPlacementManager:
 
     def process_placements(self, game_state):
         """Process the generated entity placements and update the game state."""
+        self.entity_placements = self._sanitize_placements(game_state)
         game_state.enemies = []
         game_state.defeated_enemies = []
         game_state.item_placements = []
@@ -91,3 +92,86 @@ class EntityPlacementManager:
                         'is_collected': False
                     }
                     game_state.item_placements.append(item)
+
+    def _sanitize_placements(self, game_state) -> List[Dict]:
+        """Keep generated placements playable and valid for the current level."""
+        sanitized = []
+        occupied = set()
+
+        for placement in getattr(self, 'entity_placements', []):
+            placement_type = placement.get('type')
+            entity_id = placement.get('entity_id')
+            x = placement.get('x')
+            y = placement.get('y')
+
+            if placement_type not in {'enemy', 'item'} or entity_id is None:
+                logger.warning(f"Skipping invalid placement: {placement}")
+                continue
+
+            if not isinstance(x, int) or not isinstance(y, int):
+                logger.warning(f"Skipping placement with invalid coordinates: {placement}")
+                continue
+
+            avoid_start_zone = placement_type == 'enemy'
+            needs_relocation = (
+                not self._is_inside_map(x, y, game_state)
+                or (x, y) in occupied
+                or (avoid_start_zone and self._is_in_start_zone(x, y, game_state))
+            )
+
+            if needs_relocation:
+                replacement = self._find_nearest_open_tile(
+                    preferred_x=x,
+                    preferred_y=y,
+                    game_state=game_state,
+                    occupied=occupied,
+                    avoid_start_zone=avoid_start_zone
+                )
+                if replacement is None:
+                    logger.warning(f"Skipping placement because no valid tile was found: {placement}")
+                    continue
+                x, y = replacement
+
+            occupied.add((x, y))
+            sanitized.append({
+                'type': placement_type,
+                'entity_id': entity_id,
+                'x': x,
+                'y': y
+            })
+
+        return sanitized
+
+    def _find_nearest_open_tile(
+            self,
+            preferred_x: int,
+            preferred_y: int,
+            game_state,
+            occupied: set,
+            avoid_start_zone: bool
+    ):
+        candidates = []
+
+        for y in range(game_state.map_height):
+            for x in range(game_state.map_width):
+                if (x, y) in occupied:
+                    continue
+                if avoid_start_zone and self._is_in_start_zone(x, y, game_state):
+                    continue
+
+                distance = abs(x - preferred_x) + abs(y - preferred_y)
+                start_distance = abs(x - game_state.player_pos[0]) + abs(y - game_state.player_pos[1])
+                candidates.append((distance, -start_distance, y, x))
+
+        if not candidates:
+            return None
+
+        _, _, y, x = min(candidates)
+        return x, y
+
+    def _is_inside_map(self, x: int, y: int, game_state) -> bool:
+        return 0 <= x < game_state.map_width and 0 <= y < game_state.map_height
+
+    def _is_in_start_zone(self, x: int, y: int, game_state) -> bool:
+        start_x, start_y = game_state.player_pos
+        return abs(x - start_x) <= 1 and abs(y - start_y) <= 1

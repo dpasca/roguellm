@@ -33,6 +33,7 @@ class Direction(str, Enum):
 class BaseMessage(BaseModel):
     """Base WebSocket message with common fields"""
     action: ActionType = Field(..., description="The action to perform")
+    client_action_id: Optional[int] = Field(None, ge=1, description="Client sequence id for response ordering")
 
     class Config:
         # Allow extra fields for future extensibility, but validate known ones

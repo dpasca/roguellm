@@ -27,6 +27,7 @@ class WebSocketHandler:
             # Validate the incoming message
             validated_message = validate_websocket_message(message)
             action = validated_message.action.value
+            client_action_id = validated_message.client_action_id
 
             logger.debug(f"Processing validated message: action={action}")
 
@@ -48,7 +49,12 @@ class WebSocketHandler:
             )
 
         # Route the validated message to appropriate handler
-        return await self._route_message(action, validated_message)
+        response = await self._route_message(action, validated_message)
+        if isinstance(response, dict):
+            response['response_action'] = action
+            if client_action_id is not None:
+                response['client_action_id'] = client_action_id
+        return response
 
     async def _route_message(self, action: str, validated_message) -> dict:
         """Route validated messages to appropriate handlers."""

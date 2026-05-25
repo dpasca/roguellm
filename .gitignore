@@ -31,9 +31,15 @@ ENV/
 
 # Data
 _data
+_artifacts/
 
 # Tools venv (legacy)
 tools/venv
+
+# Frontend
+frontend/node_modules/
+frontend/visual-inspections/
+static/game2/
 
 # IDE
 .vscode/
