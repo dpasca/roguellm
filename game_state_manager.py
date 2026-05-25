@@ -74,15 +74,15 @@ class GameStateManager:
                 logger.info(f"Loaded generator with ID: {generator_id}")
                 manager.theme_desc = generator_data['theme_desc']
                 manager.theme_desc_better = generator_data['theme_desc_better']
-                manager.language = generator_data['language']
+                manager.language = language
                 manager.generator_id = generator_id
             else:
                 raise ValueError(f"Generator with ID {generator_id} not found")
 
         # Set the theme description and language
-        logger.info(f"Setting theme description: {theme_desc} with language: {language}")
+        logger.info(f"Setting theme description: {manager.theme_desc} with language: {language}")
         manager.theme_desc_better = await manager.gen_ai.set_theme_description(
-            theme_desc=theme_desc,
+            theme_desc=manager.theme_desc,
             theme_desc_better=manager.theme_desc_better,
             do_web_search=do_web_search,
             language=language

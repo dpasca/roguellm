@@ -243,7 +243,9 @@ async def read_landing(request: Request):
             if generator_data:
                 # Store in session and redirect to game page
                 request.session["generator_id"] = generator_id
-                return RedirectResponse(url=f"/game?game_id={generator_id}")
+                lang = request.query_params.get("lang")
+                lang_query = f"&lang={lang}" if lang else ""
+                return RedirectResponse(url=f"/game?game_id={generator_id}{lang_query}")
             else:
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
@@ -287,8 +289,11 @@ async def read_game(request: Request):
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
 
+            language = request.query_params.get("lang") or generator_data['language']
+
             # Check if user already has a session for this generator
-            existing_session_id = request.session.get(f"game_session_{generator_id}")
+            session_key = f"game_session_{generator_id}_{language}"
+            existing_session_id = request.session.get(session_key)
             if existing_session_id and game_session_manager.get_session(existing_session_id):
                 # Redirect to existing session
                 return RedirectResponse(url=f"/game/{existing_session_id}")
@@ -298,16 +303,16 @@ async def read_game(request: Request):
                 game_instance = await Game.create(
                     seed=int(time.time()),
                     theme_desc=generator_data['theme_desc'],
-                    language=generator_data['language'],
+                    language=language,
                     do_web_search=False,  # Don't re-do web search for shared generators
                     generator_id=generator_id
                 )
 
                 session_id = game_session_manager.create_session(game_instance)
-                request.session[f"game_session_{generator_id}"] = session_id
+                request.session[session_key] = session_id
 
                 # Redirect to the new session
-                return RedirectResponse(url=f"/game/{session_id}")
+                return RedirectResponse(url=f"/game/{session_id}?lang={language}")
 
             except Exception as e:
                 logging.error(f"Error creating game session for generator {generator_id}: {e}")
@@ -354,7 +359,8 @@ async def create_game_session(request: GameCreationRequest):
         'game_instance': None,  # Will be set when game is created
         'creation_request': request,
         'status': 'creating',  # creating, ready, error
-        'generator_id': request.generator_id
+        'generator_id': request.generator_id,
+        'language': request.language
     }
 
     logging.info(f"Created new game session: {session_id}")
@@ -473,7 +479,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
                     # Use generator data
                     theme_desc = generator_data['theme_desc']
-                    language = generator_data['language']
+                    language = request.language or generator_data['language']
                     do_web_search = False  # Don't re-do web search for existing generators
                 else:
                     # Use provided parameters
