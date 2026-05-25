@@ -42,19 +42,26 @@ class DummyEntityManager:
 
 
 class FakeDefinitionsManager:
-    player_defs = [{"name": "Player", "font_awesome_icon": "fa-solid fa-user"}]
-    item_defs = []
-    enemy_defs = []
-    celltype_defs = {}
-
     def __init__(self, gen_ai, language):
         self.gen_ai = gen_ai
         self.language = language
         self.generator_id = None
+        self.player_defs = [{"name": "Player", "font_awesome_icon": "fa-solid fa-user"}]
+        self.item_defs = []
+        self.enemy_defs = []
+        self.celltype_defs = {}
 
     def load_from_generator(self, generator_id):
         self.generator_id = generator_id
         return True
+
+    def load_from_generator_data(self, generator_id, generator_data):
+        self.generator_id = generator_id
+        self.language = generator_data["language"]
+        self.player_defs = generator_data["player_defs"]
+        self.item_defs = generator_data["item_defs"]
+        self.enemy_defs = generator_data["enemy_defs"]
+        self.celltype_defs = generator_data["celltype_defs"]
 
 
 class FakeGenAI:
@@ -63,6 +70,7 @@ class FakeGenAI:
         self.hi_model = hi_model
         self.game_title = None
         self.set_theme_calls = []
+        self.translate_calls = []
 
     async def set_theme_description(self, theme_desc, theme_desc_better, do_web_search, language):
         self.set_theme_calls.append({
@@ -73,6 +81,20 @@ class FakeGenAI:
         })
         self.game_title = f"{language} title"
         return theme_desc_better
+
+    async def translate_world_definition(self, world_definition, source_language, target_language):
+        self.translate_calls.append({
+            "world_definition": world_definition,
+            "source_language": source_language,
+            "target_language": target_language,
+        })
+        return {
+            "theme_desc_better": "日本語の世界\n保存済みの説明。",
+            "player_defs": [{"name": "冒険者", "font_awesome_icon": "fa-solid fa-user"}],
+            "item_defs": [{"id": "key", "name": "鍵", "description": "古い鍵"}],
+            "enemy_defs": [{"enemy_id": "eel", "name": "電気ウナギ", "weapons": ["電撃"]}],
+            "celltype_defs": {"reef": {"name": "サンゴ礁", "description": "静かな海底"}},
+        }
 
 
 class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
@@ -106,13 +128,19 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
             "theme_desc": "Un mondo costruito in italiano",
             "theme_desc_better": "Mondo Italiano\nUna descrizione salvata.",
             "language": "it",
+            "player_defs": [{"name": "Esploratore", "font_awesome_icon": "fa-solid fa-user"}],
+            "item_defs": [{"id": "key", "name": "Chiave", "description": "Una vecchia chiave"}],
+            "enemy_defs": [{"enemy_id": "eel", "name": "Anguilla", "weapons": ["Scossa"]}],
+            "celltype_defs": {"reef": {"name": "Scogliera", "description": "Un fondale calmo"}},
         }
 
         with patch("game_state_manager.GenAIModel", return_value=object()), \
                 patch("game_state_manager.GenAI", FakeGenAI), \
                 patch("game_state_manager.GameDefinitionsManager", FakeDefinitionsManager), \
                 patch("game_state_manager.EntityPlacementManager"), \
-                patch("game_state_manager.db.get_generator", return_value=generator_data):
+                patch("game_state_manager.db.get_generator", return_value=generator_data), \
+                patch("game_state_manager.db.get_generator_translation", return_value=None), \
+                patch("game_state_manager.db.save_generator_translation") as save_translation:
             manager = await GameStateManager.create(
                 seed=1,
                 theme_desc="ignored for existing worlds",
@@ -124,11 +152,59 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.language, "ja")
         self.assertEqual(manager.definitions.language, "ja")
         self.assertEqual(manager.theme_desc, generator_data["theme_desc"])
+        self.assertEqual(manager.theme_desc_better, "日本語の世界\n保存済みの説明。")
+        self.assertEqual(manager.definitions.player_defs[0]["name"], "冒険者")
+        self.assertEqual(manager.gen_ai.translate_calls[0]["source_language"], "it")
+        self.assertEqual(manager.gen_ai.translate_calls[0]["target_language"], "ja")
+        save_translation.assert_called_once()
         self.assertEqual(manager.gen_ai.set_theme_calls[0]["language"], "ja")
         self.assertEqual(
             manager.gen_ai.set_theme_calls[0]["theme_desc"],
             generator_data["theme_desc"],
         )
+        self.assertEqual(
+            manager.gen_ai.set_theme_calls[0]["theme_desc_better"],
+            "日本語の世界\n保存済みの説明。",
+        )
+
+    async def test_existing_world_uses_cached_translation(self):
+        generator_data = {
+            "theme_desc": "Un mondo costruito in italiano",
+            "theme_desc_better": "Mondo Italiano\nUna descrizione salvata.",
+            "language": "it",
+            "player_defs": [{"name": "Esploratore"}],
+            "item_defs": [{"id": "key", "name": "Chiave"}],
+            "enemy_defs": [{"enemy_id": "eel", "name": "Anguilla"}],
+            "celltype_defs": {"reef": {"name": "Scogliera"}},
+        }
+        cached_translation = {
+            "language": "ja",
+            "theme_desc_better": "キャッシュ済みの世界\n説明。",
+            "player_defs": [{"name": "キャッシュ済み冒険者"}],
+            "item_defs": [{"id": "key", "name": "キャッシュ済みの鍵"}],
+            "enemy_defs": [{"enemy_id": "eel", "name": "キャッシュ済みウナギ"}],
+            "celltype_defs": {"reef": {"name": "キャッシュ済みサンゴ礁"}},
+        }
+
+        with patch("game_state_manager.GenAIModel", return_value=object()), \
+                patch("game_state_manager.GenAI", FakeGenAI), \
+                patch("game_state_manager.GameDefinitionsManager", FakeDefinitionsManager), \
+                patch("game_state_manager.EntityPlacementManager"), \
+                patch("game_state_manager.db.get_generator", return_value=generator_data), \
+                patch("game_state_manager.db.get_generator_translation", return_value=cached_translation), \
+                patch("game_state_manager.db.save_generator_translation") as save_translation:
+            manager = await GameStateManager.create(
+                seed=1,
+                theme_desc="ignored for existing worlds",
+                do_web_search=False,
+                language="ja",
+                generator_id="italian-world",
+            )
+
+        self.assertEqual(manager.theme_desc_better, cached_translation["theme_desc_better"])
+        self.assertEqual(manager.definitions.player_defs[0]["name"], "キャッシュ済み冒険者")
+        self.assertEqual(manager.gen_ai.translate_calls, [])
+        save_translation.assert_not_called()
 
 
 if __name__ == "__main__":

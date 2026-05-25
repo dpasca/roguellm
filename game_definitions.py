@@ -12,13 +12,13 @@ class GameDefinitionsManager:
         self.gen_ai = gen_ai
         self.language = language
         self.generator_id = None
-        
+
         # Initialize attributes with defaults
         self.player_defs = []
         self.item_defs = []
         self.enemy_defs = []
         self.celltype_defs = []
-        
+
     async def make_defs_from_json(self, filename: str, transform_fn=None):
         try:
             with open(filename, 'r') as f:
@@ -59,13 +59,17 @@ class GameDefinitionsManager:
         generator_data = db.get_generator(generator_id)
         if generator_data:
             logger.info(f"Loaded generator with ID: {generator_id}")
-            self.player_defs = generator_data['player_defs']
-            self.item_defs = generator_data['item_defs']
-            self.enemy_defs = generator_data['enemy_defs']
-            self.celltype_defs = generator_data['celltype_defs']
-            self.generator_id = generator_id
+            self.load_from_generator_data(generator_id, generator_data)
             return True
         return False
+
+    def load_from_generator_data(self, generator_id: str, generator_data: Dict) -> None:
+        self.player_defs = generator_data['player_defs']
+        self.item_defs = generator_data['item_defs']
+        self.enemy_defs = generator_data['enemy_defs']
+        self.celltype_defs = generator_data['celltype_defs']
+        self.language = generator_data.get('language', self.language)
+        self.generator_id = generator_id
 
     def save_generator(self, theme_desc: str, theme_desc_better: str) -> Optional[str]:
         try:

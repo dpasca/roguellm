@@ -83,6 +83,40 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(worlds[0]["id"], "oldworld")
         self.assertEqual(worlds[0]["created_at"], None)
 
+    def test_generator_translation_cache_round_trips_by_language(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="A clockwork library under the sea",
+                theme_desc_better="Clockwork Library\nA quieter second line",
+                language="en",
+                player_defs=[{"name": "Diver"}],
+                item_defs=[{"id": "key", "name": "Key"}],
+                enemy_defs=[{"enemy_id": "eel", "name": "Eel"}],
+                celltype_defs={"reef": {"name": "Reef"}},
+            )
+
+            manager.save_generator_translation(
+                generator_id=world_id,
+                language="ja",
+                theme_desc_better="時計仕掛けの図書館\n静かな二行目",
+                player_defs=[{"name": "潜水士"}],
+                item_defs=[{"id": "key", "name": "鍵"}],
+                enemy_defs=[{"enemy_id": "eel", "name": "ウナギ"}],
+                celltype_defs={"reef": {"name": "サンゴ礁"}},
+            )
+
+            translation = manager.get_generator_translation(world_id, "ja")
+            missing_translation = manager.get_generator_translation(world_id, "it")
+
+        self.assertEqual(translation["language"], "ja")
+        self.assertEqual(translation["theme_desc_better"], "時計仕掛けの図書館\n静かな二行目")
+        self.assertEqual(translation["player_defs"][0]["name"], "潜水士")
+        self.assertEqual(translation["item_defs"][0]["id"], "key")
+        self.assertEqual(translation["enemy_defs"][0]["enemy_id"], "eel")
+        self.assertEqual(translation["celltype_defs"]["reef"]["name"], "サンゴ礁")
+        self.assertIsNone(missing_translation)
+
 
 if __name__ == "__main__":
     unittest.main()

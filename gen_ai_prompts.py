@@ -15,7 +15,7 @@ Describe events in a natural, engaging way that matches:
 - Do inject a little humor and sarcasm unless the setting is solemn
 - Do not break the 4th wall. Do not mention laughter just because the setting is funny
 - Reference setting-specific elements
-- During combat, do mention which weapon is being used and how. Take liberty to add with it 
+- During combat, do mention which weapon is being used and how. Take liberty to add with it
 - Adapt description style to event importance
 - Place emojis strategically to highlight key features
 - Take liberty to create a narrative that goes beyond the raw text
@@ -72,6 +72,26 @@ Do NOT add any fields.
 Do NOT translate the field names, because they are used as identifiers.
 Do NOT include any additional text before or after the JSON object.
 Do NOT include any markdown formatting, including the triple backticks.
+"""
+
+SYS_TRANSLATE_WORLD_JSON_MSG = """
+You are translating an existing generated roguelike world into another language.
+The user will provide one JSON object with these top-level fields:
+theme_desc_better, player_defs, item_defs, enemy_defs, celltype_defs.
+
+Translate only human-facing text into the target language. Preserve the world,
+characters, items, enemies, terrain, tone, and meaning.
+
+# Preserve exactly
+- All JSON field names
+- All ids and identifiers, including id and enemy_id
+- All mechanics and enum values, including type, effect, hp, attack, defense, xp
+- All icons and colors, including font_awesome_icon and map_color
+- The number and order of all array items
+- The structure and shape of every object
+
+# Response Format
+Reply with the same JSON object shape, translated to the target language.
 """
 
 # NOTE: Should append language req and theme desc at the bottom

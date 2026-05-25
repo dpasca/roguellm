@@ -17,6 +17,8 @@ LANGUAGE_MAP = {
     "fr": "French",
     "de": "German",
     "zh": "Chinese",
+    "zh-Hans": "Simplified Chinese",
+    "zh-Hant": "Traditional Chinese",
     "ko": "Korean",
     "ru": "Russian",
     "pt": "Portuguese"
@@ -49,12 +51,12 @@ def extract_clean_data(data_str: str) -> str:
 
 async def with_exponential_backoff(func, max_retries=5, base_delay=2):
     """Execute a function with exponential backoff retry logic for rate limits and timeouts.
-    
+
     Args:
         func: Async function to execute
         max_retries: Maximum number of retry attempts
         base_delay: Base delay in seconds (will be multiplied exponentially)
-    
+
     The actual delay will be: base_delay * (2 ^ attempt) + random jitter
     For base_delay=2, the delays will be approximately:
     - First retry: 2-3 seconds

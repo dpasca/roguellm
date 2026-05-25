@@ -1,6 +1,6 @@
 from openai import AsyncOpenAI
 import random
-from typing import List
+from typing import Any, Dict, List
 from models import GameState
 import json
 import pprint
@@ -15,6 +15,7 @@ from gen_ai_prompts import (
     SYS_GEN_GAME_ITEMS_JSON_MSG,
     SYS_GEN_GAME_ENEMIES_JSON_MSG,
     SYS_GEN_GAME_CELLTYPES_JSON_MSG,
+    SYS_TRANSLATE_WORLD_JSON_MSG,
     SYS_GEN_MAP_CSV_MSG,
     SYS_GEN_ENTITY_PLACEMENT_MSG,
     ADAPT_SENTENCE_SYSTEM_MSG,
@@ -40,6 +41,27 @@ MODEL_QUALITY_HIGH = "high"
 MODEL_QUALITY_FOR_JSON = MODEL_QUALITY_LOW
 MODEL_QUALITY_FOR_THEME_DESC = MODEL_QUALITY_LOW
 MODEL_QUALITY_FOR_MAP = MODEL_QUALITY_LOW
+
+WORLD_TRANSLATION_FIELDS = (
+    "theme_desc_better",
+    "player_defs",
+    "item_defs",
+    "enemy_defs",
+    "celltype_defs",
+)
+PRESERVED_WORLD_FIELD_NAMES = {
+    "id",
+    "enemy_id",
+    "type",
+    "effect",
+    "hp",
+    "attack",
+    "defense",
+    "xp",
+    "font_awesome_icon",
+    "map_color",
+}
+TRANSLATABLE_STRING_LIST_FIELD_NAMES = {"weapons"}
 
 #==================================================================
 # GenAI
@@ -155,6 +177,117 @@ class GenAI:
         logger.info(f"Game title: {self.game_title}")
 
         return self.theme_desc_better
+
+    async def translate_world_definition(
+            self,
+            world_definition: Dict[str, Any],
+            source_language: str,
+            target_language: str,
+    ) -> Dict[str, Any]:
+        """Translate saved world definitions while preserving gameplay fields."""
+        logger.info(
+            "Translating world definition from %s to %s",
+            source_language,
+            target_language,
+        )
+        response = await self._quick_completion(
+            system_msg=(
+                SYS_TRANSLATE_WORLD_JSON_MSG +
+                f"\nSource language: {get_language_name(source_language)}" +
+                f"\nTarget language: {get_language_name(target_language)}"
+            ),
+            user_msg=json.dumps(world_definition, ensure_ascii=False),
+            quality=MODEL_QUALITY_FOR_JSON,
+            temp=0.2,
+        )
+
+        try:
+            translated = json.loads(extract_clean_data(response))
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid translated world JSON: {response}")
+            raise ValueError("World translation response was not valid JSON") from e
+
+        return self._normalize_translated_world_definition(world_definition, translated)
+
+    def _normalize_translated_world_definition(
+            self,
+            source: Dict[str, Any],
+            translated: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if not isinstance(translated, dict):
+            raise ValueError("World translation must be a JSON object")
+
+        missing_fields = [field for field in WORLD_TRANSLATION_FIELDS if field not in translated]
+        if missing_fields:
+            raise ValueError(f"World translation is missing fields: {missing_fields}")
+
+        if not isinstance(translated["theme_desc_better"], str):
+            raise ValueError("Translated theme_desc_better must be a string")
+
+        normalized = {"theme_desc_better": translated["theme_desc_better"]}
+        for field in WORLD_TRANSLATION_FIELDS[1:]:
+            normalized[field] = self._merge_translated_world_value(
+                source[field],
+                translated[field],
+                field,
+                field,
+            )
+        return normalized
+
+    def _merge_translated_world_value(
+            self,
+            source_value: Any,
+            translated_value: Any,
+            path: str,
+            field_name: str,
+    ) -> Any:
+        if field_name in PRESERVED_WORLD_FIELD_NAMES:
+            return source_value
+
+        if isinstance(source_value, dict):
+            if not isinstance(translated_value, dict):
+                raise ValueError(f"Translated world field {path} must be an object")
+
+            return {
+                key: self._merge_translated_world_value(
+                    value,
+                    translated_value.get(key, value),
+                    f"{path}.{key}",
+                    key,
+                )
+                for key, value in source_value.items()
+            }
+
+        if isinstance(source_value, list):
+            if not isinstance(translated_value, list):
+                raise ValueError(f"Translated world field {path} must be a list")
+            if len(source_value) != len(translated_value):
+                raise ValueError(f"Translated world field {path} changed list length")
+
+            if all(isinstance(item, str) for item in source_value):
+                if field_name in TRANSLATABLE_STRING_LIST_FIELD_NAMES:
+                    return [
+                        item if isinstance(item, str) else source_value[index]
+                        for index, item in enumerate(translated_value)
+                    ]
+                return list(source_value)
+
+            return [
+                self._merge_translated_world_value(
+                    source_item,
+                    translated_item,
+                    f"{path}[{index}]",
+                    field_name,
+                )
+                for index, (source_item, translated_item) in enumerate(zip(source_value, translated_value))
+            ]
+
+        if isinstance(source_value, str):
+            if not isinstance(translated_value, str):
+                raise ValueError(f"Translated world field {path} must be a string")
+            return translated_value
+
+        return source_value
 
     # Generate a better/extended theme description
     async def gen_theme_desc_better(self):

@@ -66,18 +66,10 @@ class GameStateManager:
         manager = cls(seed, theme_desc, do_web_search, language, generator_id)
 
         if generator_id:
-            # Load from existing generator
-            if not manager.definitions.load_from_generator(generator_id):
-                raise ValueError(f"Generator with ID {generator_id} not found")
             generator_data = db.get_generator(generator_id)
-            if generator_data:
-                logger.info(f"Loaded generator with ID: {generator_id}")
-                manager.theme_desc = generator_data['theme_desc']
-                manager.theme_desc_better = generator_data['theme_desc_better']
-                manager.language = language
-                manager.generator_id = generator_id
-            else:
+            if not generator_data:
                 raise ValueError(f"Generator with ID {generator_id} not found")
+            await manager.load_generator_world(generator_id, generator_data, language)
 
         # Set the theme description and language
         logger.info(f"Setting theme description: {manager.theme_desc} with language: {language}")
@@ -120,6 +112,51 @@ class GameStateManager:
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
         return manager
+
+    async def load_generator_world(self, generator_id: str, generator_data: Dict, language: str):
+        logger.info(f"Loaded generator with ID: {generator_id}")
+        source_language = generator_data.get('language') or language
+        active_data = generator_data
+
+        if source_language != language:
+            translated_data = db.get_generator_translation(generator_id, language)
+            if translated_data:
+                logger.info(f"Loaded cached generator translation: {generator_id} ({language})")
+            else:
+                logger.info(f"Translating generator {generator_id} to language: {language}")
+                world_definition = {
+                    "theme_desc_better": generator_data['theme_desc_better'],
+                    "player_defs": generator_data['player_defs'],
+                    "item_defs": generator_data['item_defs'],
+                    "enemy_defs": generator_data['enemy_defs'],
+                    "celltype_defs": generator_data['celltype_defs'],
+                }
+                translated_data = await self.gen_ai.translate_world_definition(
+                    world_definition=world_definition,
+                    source_language=source_language,
+                    target_language=language,
+                )
+                db.save_generator_translation(
+                    generator_id=generator_id,
+                    language=language,
+                    theme_desc_better=translated_data['theme_desc_better'],
+                    player_defs=translated_data['player_defs'],
+                    item_defs=translated_data['item_defs'],
+                    enemy_defs=translated_data['enemy_defs'],
+                    celltype_defs=translated_data['celltype_defs'],
+                )
+
+            active_data = {
+                **generator_data,
+                **translated_data,
+                "language": language,
+            }
+
+        self.definitions.load_from_generator_data(generator_id, active_data)
+        self.theme_desc = generator_data['theme_desc']
+        self.theme_desc_better = active_data['theme_desc_better']
+        self.language = language
+        self.generator_id = generator_id
 
     def get_game_title(self):
         """Get the game title from the AI generator."""
