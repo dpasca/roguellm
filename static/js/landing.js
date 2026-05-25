@@ -190,6 +190,10 @@ const app = Vue.createApp({
                 return;
             }
 
+            if (typeof languageCode !== 'string') {
+                languageCode = null;
+            }
+
             if (languageCode) {
                 if (!this.rawTranslations[languageCode]) {
                     await this.loadTranslations(languageCode);
