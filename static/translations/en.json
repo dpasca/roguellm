@@ -20,14 +20,18 @@
     "enterGameDescription": "Describe the setting for your game. e.g. 'Programmers in the wild'",
     "generatorTheme": "Generator Theme",
     "improveGameDescription": "Improve game description with web search",
+    "chooseWorld": "Choose World",
+    "loadingWorlds": "Loading Worlds...",
 
     "// Game Setup": "Game setup and configuration translations",
     "useGameId": "Use Game ID",
     "customThemeDescription": "Enter a description for your custom theme:",
     "generatorIdLabel": "Enter Game ID:",
     "startGame": "Start Game",
+    "startRun": "Start Run",
     "createGame": "Create Game",
     "errorGameId": "Please enter a Game ID",
+    "errorWorld": "Please choose a World or enter a Game ID",
 
     "// Game Interface": "In-game interface translations",
     "menu": {

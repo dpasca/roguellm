@@ -26,6 +26,9 @@ const app = Vue.createApp({
             selectedTheme: 'custom',
             customDescription: '',
             generatorId: '',
+            selectedWorldId: '',
+            worlds: [],
+            isLoadingWorlds: false,
             errorMessage: null,
             doWebSearch: true,
             selectedLanguage: 'en',
@@ -41,6 +44,12 @@ const app = Vue.createApp({
         },
         fallbackTranslations() {
             return this.rawTranslations[CONFIG.fallbackLanguage] || {};
+        },
+        selectedGeneratorId() {
+            if (this.selectedTheme !== 'world') {
+                return null;
+            }
+            return this.selectedWorldId || this.generatorId.trim() || null;
         }
     },
     watch: {
@@ -135,11 +144,36 @@ const app = Vue.createApp({
         clearError() {
             this.errorMessage = null;
         },
+        async loadWorlds() {
+            this.isLoadingWorlds = true;
+
+            try {
+                const response = await fetch('/api/worlds/recent?limit=12');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                this.worlds = Array.isArray(data.worlds) ? data.worlds : [];
+
+                if (this.worlds.length > 0 && !this.selectedWorldId) {
+                    this.selectedWorldId = this.worlds[0].id;
+                    if (this.selectedTheme === 'custom' && !this.customDescription.trim()) {
+                        this.selectedTheme = 'world';
+                    }
+                }
+            } catch (error) {
+                console.warn('World list unavailable:', error);
+                this.worlds = [];
+            } finally {
+                this.isLoadingWorlds = false;
+            }
+        },
         async launchGame() {
             this.clearError();
 
-            if (this.selectedTheme === 'generator' && !this.generatorId.trim()) {
-                this.errorMessage = this.t('errorGameId');
+            if (this.selectedTheme === 'world' && !this.selectedGeneratorId) {
+                this.errorMessage = this.t('errorWorld');
                 return;
             }
 
@@ -169,7 +203,7 @@ const app = Vue.createApp({
                     },
                     body: JSON.stringify({
                         theme: this.selectedTheme === 'custom' ? this.customDescription : null,
-                        generator_id: this.selectedTheme === 'generator' ? this.generatorId.trim() : null,
+                        generator_id: this.selectedGeneratorId,
                         language: this.selectedLanguage,
                         do_web_search: this.doWebSearch
                     })
@@ -223,6 +257,7 @@ const app = Vue.createApp({
                 }
 
                 this.selectedLanguage = initialLang;
+                await this.loadWorlds();
                 console.log('Setting isLoading to false');
                 this.isLoading = false;
                 console.log('Initialization complete');
@@ -260,8 +295,9 @@ const app = Vue.createApp({
         const urlParams = new URLSearchParams(window.location.search);
         const generatorId = urlParams.get('generator');
         if (generatorId) {
-            this.selectedTheme = 'generator';
+            this.selectedTheme = 'world';
             this.generatorId = generatorId;
+            this.selectedWorldId = '';
         }
 
         // Track page view

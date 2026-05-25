@@ -345,6 +345,69 @@ class DatabaseManager:
 
         return self._execute_with_retry(_get, generator_id)
 
+    def list_worlds(self, limit: int = 20) -> List[Dict]:
+        """
+        Return recent reusable generated worlds.
+
+        The database table is still named "generators" for compatibility, but
+        each row is a reusable World that can start many play sessions.
+        """
+        limit = max(1, min(limit, 50))
+
+        def _list(conn, limit):
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(generators)")
+            columns = {row[1] for row in cur.fetchall()}
+            has_created_at = "created_at" in columns
+
+            created_at_select = "created_at" if has_created_at else "NULL AS created_at"
+            order_by = "created_at DESC" if has_created_at else "rowid DESC"
+            cur.execute(f"""
+                SELECT id, theme_desc, theme_desc_better, language,
+                       player_defs, item_defs, enemy_defs, celltype_defs,
+                       {created_at_select}
+                FROM generators
+                ORDER BY {order_by}
+                LIMIT ?
+            """, (limit,))
+
+            worlds = []
+            for row in cur.fetchall():
+                theme_desc = row[1] or ""
+                theme_desc_better = row[2] or theme_desc
+                title_source = theme_desc_better.strip() or theme_desc.strip()
+                title = title_source.splitlines()[0][:120] if title_source else row[0]
+
+                worlds.append({
+                    "id": row[0],
+                    "title": title,
+                    "theme": theme_desc,
+                    "language": row[3],
+                    "player_count": self._json_list_size(row[4]),
+                    "item_count": self._json_list_size(row[5]),
+                    "enemy_count": self._json_list_size(row[6]),
+                    "terrain_count": self._json_mapping_size(row[7]),
+                    "created_at": row[8],
+                })
+
+            return worlds
+
+        return self._execute_with_retry(_list, limit)
+
+    def _json_list_size(self, raw_value: str) -> int:
+        try:
+            value = json.loads(raw_value or "[]")
+            return len(value) if isinstance(value, list) else 0
+        except json.JSONDecodeError:
+            return 0
+
+    def _json_mapping_size(self, raw_value: str) -> int:
+        try:
+            value = json.loads(raw_value or "{}")
+            return len(value) if isinstance(value, dict) else 0
+        except json.JSONDecodeError:
+            return 0
+
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable
 upload_freq = int(os.getenv('UPLOAD_FREQUENCY_MINUTES', '5'))

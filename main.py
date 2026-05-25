@@ -117,6 +117,13 @@ class GameCreationRequest(BaseModel):
     do_web_search: bool = False
     generator_id: Optional[str] = None
 
+def is_world_library_allowed(request: Request) -> bool:
+    client_host = request.client.host if request.client else ""
+    return (
+        client_host in {"127.0.0.1", "::1", "localhost"}
+        or os.getenv("ENABLE_WORLD_LIBRARY") == "1"
+    )
+
 #==================================================================
 # Security Configuration
 #==================================================================
@@ -356,6 +363,22 @@ async def create_game_session(request: GameCreationRequest):
         "session_id": session_id,
         "status": "creating"
     }
+
+@app.get("/api/worlds/recent")
+async def get_recent_worlds(request: Request, limit: int = 12):
+    """List reusable generated Worlds for local testing and opt-in deployments."""
+    if not is_world_library_allowed(request):
+        return JSONResponse({"worlds": []})
+
+    try:
+        return JSONResponse({
+            "worlds": db.list_worlds(limit)
+        })
+    except Exception as e:
+        logging.error(f"Error listing worlds: {e}")
+        return JSONResponse({
+            "error": "Failed to load worlds"
+        }, status_code=500)
 
 # Legacy API endpoint for backward compatibility
 @app.post("/api/create_game")
