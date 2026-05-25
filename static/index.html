@@ -198,7 +198,7 @@
                             <span class="world-copy">
                                 <span class="world-title">{{ world.title }}</span>
                                 <span class="world-meta">
-                                    {{ world.language }} · {{ world.enemy_count }} enemies · {{ world.item_count }} items
+                                    {{ world.language }} · {{ formatWorldCounts(world) }}
                                 </span>
                             </span>
                             <button v-if="selectedWorldId === world.id"
@@ -208,6 +208,36 @@
                                 {{ t('startRun') }}
                             </button>
                         </label>
+                    </div>
+                    <div v-if="selectedWorld" class="world-preview">
+                        <div class="world-preview-header">
+                            <h3>{{ selectedWorld.title }}</h3>
+                            <button type="button"
+                                    class="world-start-btn"
+                                    @click="launchGame">
+                                {{ t('startRun') }}
+                            </button>
+                        </div>
+                        <dl class="world-preview-facts">
+                            <div>
+                                <dt>{{ t('worldId') }}</dt>
+                                <dd>{{ selectedWorld.id }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('worldOriginalLanguage') }}</dt>
+                                <dd>{{ selectedWorld.language }}</dd>
+                            </div>
+                            <div>
+                                <dt>{{ t('worldContents') }}</dt>
+                                <dd>{{ formatWorldCounts(selectedWorld) }}</dd>
+                            </div>
+                        </dl>
+                        <p class="world-preview-theme">{{ selectedWorld.theme }}</p>
+                    </div>
+                    <div v-if="isLocalDev && worlds.length" class="dev-shortcuts">
+                        <button type="button" @click="quickStartJapanesePiedone">
+                            {{ t('quickStartJapanesePiedone') }}
+                        </button>
                     </div>
                     <input v-model="generatorId"
                            :placeholder="t('generatorIdLabel')"

@@ -16,16 +16,21 @@
   "generatorTheme": "生成器主题",
   "improveGameDescription": "通过网络搜索改进游戏描述",
   "// Game Setup": "游戏设置和配置翻译",
-  "useGameId": "使用游戏 ID",
+  "useGameId": "使用世界 ID",
   "chooseWorld": "选择世界",
   "loadingWorlds": "正在加载世界...",
   "customThemeDescription": "输入自定义主题的描述：",
-  "generatorIdLabel": "输入游戏 ID：",
+  "generatorIdLabel": "输入世界 ID：",
   "startRun": "开始游玩",
   "startGame": "开始游戏",
   "createGame": "创建游戏",
-  "errorGameId": "请输入游戏 ID",
-  "errorWorld": "请选择世界或输入游戏 ID",
+  "errorGameId": "请输入世界 ID",
+  "errorWorld": "请选择世界或输入世界 ID",
+  "worldId": "世界 ID",
+  "worldOriginalLanguage": "原始语言",
+  "worldContents": "内容",
+  "worldCounts": "{enemies} 个敌人 · {items} 个物品 · {terrain} 种地形",
+  "quickStartJapanesePiedone": "快速开始：日语 Piedone",
   "// Game Interface": "游戏内界面翻译",
   "menu": {
     "share": "分享游戏",
@@ -35,7 +40,7 @@
     "modelInfo": "模型：{model}"
   },
   "notifications": {
-    "gameCopied": "游戏 ID 已复制到剪贴板！",
+    "gameCopied": "世界 ID 已复制到剪贴板！",
     "loading": "加载中..."
   },
   "gameOver": {

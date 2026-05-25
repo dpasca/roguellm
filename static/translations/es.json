@@ -16,16 +16,21 @@
   "generatorTheme": "Tema generador",
   "improveGameDescription": "Mejorar la descripción del juego con búsqueda en la web",
   "// Game Setup": "Traducciones de configuración y preparación del juego",
-  "useGameId": "Usar ID del juego",
+  "useGameId": "Usar ID del mundo",
   "chooseWorld": "Elegir mundo",
   "loadingWorlds": "Cargando mundos...",
   "customThemeDescription": "Introduce una descripción para tu tema personalizado:",
-  "generatorIdLabel": "Introduce el ID del juego:",
+  "generatorIdLabel": "Introduce el ID del mundo:",
   "startRun": "Iniciar partida",
   "startGame": "Iniciar juego",
   "createGame": "Crear juego",
-  "errorGameId": "Por favor, introduce un ID del juego",
-  "errorWorld": "Elige un mundo o introduce un ID del juego",
+  "errorGameId": "Por favor, introduce un ID del mundo",
+  "errorWorld": "Elige un mundo o introduce un ID del mundo",
+  "worldId": "ID del mundo",
+  "worldOriginalLanguage": "Idioma original",
+  "worldContents": "Contenido",
+  "worldCounts": "{enemies} enemigos · {items} objetos · {terrain} terrenos",
+  "quickStartJapanesePiedone": "Inicio rápido: Piedone en japonés",
   "// Game Interface": "Traducciones de la interfaz del juego",
   "menu": {
     "share": "Compartir juego",
@@ -35,7 +40,7 @@
     "modelInfo": "Modelo: {model}"
   },
   "notifications": {
-    "gameCopied": "¡ID del juego copiado al portapapeles!",
+    "gameCopied": "¡ID del mundo copiado al portapapeles!",
     "loading": "Cargando..."
   },
   "gameOver": {

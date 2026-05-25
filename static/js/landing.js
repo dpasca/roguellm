@@ -50,6 +50,15 @@ const app = Vue.createApp({
                 return null;
             }
             return this.selectedWorldId || this.generatorId.trim() || null;
+        },
+        selectedWorld() {
+            if (!this.selectedWorldId) {
+                return null;
+            }
+            return this.worlds.find(world => world.id === this.selectedWorldId) || null;
+        },
+        isLocalDev() {
+            return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
         }
     },
     watch: {
@@ -144,6 +153,13 @@ const app = Vue.createApp({
         clearError() {
             this.errorMessage = null;
         },
+        formatWorldCounts(world) {
+            return this.t('worldCounts', {
+                enemies: world.enemy_count,
+                items: world.item_count,
+                terrain: world.terrain_count
+            });
+        },
         async loadWorlds() {
             this.isLoadingWorlds = true;
 
@@ -167,6 +183,50 @@ const app = Vue.createApp({
                 this.worlds = [];
             } finally {
                 this.isLoadingWorlds = false;
+            }
+        },
+        async startWorld(worldId) {
+            this.selectedTheme = 'world';
+            this.selectedWorldId = worldId;
+            this.generatorId = '';
+            await this.launchGame();
+        },
+        async quickStartJapanesePiedone() {
+            if (!this.isLocalDev) {
+                return;
+            }
+
+            if (!this.rawTranslations.ja) {
+                await this.loadTranslations('ja');
+            }
+            this.selectedLanguage = 'ja';
+
+            const piedoneWorld = this.worlds.find(world => {
+                const haystack = `${world.title || ''} ${world.theme || ''}`.toLowerCase();
+                return haystack.includes('piedone');
+            });
+
+            if (!piedoneWorld) {
+                this.errorMessage = this.t('errorWorld');
+                return;
+            }
+
+            await this.startWorld(piedoneWorld.id);
+        },
+        async applyDevQuickStartFromUrl() {
+            if (!this.isLocalDev) {
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const quickWorldId = urlParams.get('quick_world');
+            if (quickWorldId) {
+                await this.startWorld(quickWorldId);
+                return;
+            }
+
+            if (urlParams.get('dev_quick') === 'ja-piedone') {
+                await this.quickStartJapanesePiedone();
             }
         },
         async launchGame() {
@@ -258,6 +318,7 @@ const app = Vue.createApp({
 
                 this.selectedLanguage = initialLang;
                 await this.loadWorlds();
+                await this.applyDevQuickStartFromUrl();
                 console.log('Setting isLoading to false');
                 this.isLoading = false;
                 console.log('Initialization complete');

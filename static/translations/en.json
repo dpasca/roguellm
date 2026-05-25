@@ -24,14 +24,19 @@
     "loadingWorlds": "Loading Worlds...",
 
     "// Game Setup": "Game setup and configuration translations",
-    "useGameId": "Use Game ID",
+    "useGameId": "Use World ID",
     "customThemeDescription": "Enter a description for your custom theme:",
-    "generatorIdLabel": "Enter Game ID:",
+    "generatorIdLabel": "Enter World ID:",
     "startGame": "Start Game",
     "startRun": "Start Run",
     "createGame": "Create Game",
-    "errorGameId": "Please enter a Game ID",
-    "errorWorld": "Please choose a World or enter a Game ID",
+    "errorGameId": "Please enter a World ID",
+    "errorWorld": "Please choose a World or enter a World ID",
+    "worldId": "World ID",
+    "worldOriginalLanguage": "Original Language",
+    "worldContents": "Contents",
+    "worldCounts": "{enemies} enemies · {items} items · {terrain} terrain",
+    "quickStartJapanesePiedone": "Quick Start: Japanese Piedone",
 
     "// Game Interface": "In-game interface translations",
     "menu": {
@@ -42,7 +47,7 @@
         "modelInfo": "AI Model: {model}"
     },
     "notifications": {
-        "gameCopied": "Game ID copied to clipboard!",
+        "gameCopied": "World ID copied to clipboard!",
         "loading": "Loading..."
     },
     "gameOver": {

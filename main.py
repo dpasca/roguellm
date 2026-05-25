@@ -396,7 +396,7 @@ async def create_game(request: CreateGameRequest, req: Request):
             generator_data = db.get_generator(request.generator_id)
             if not generator_data:
                 return JSONResponse({
-                    "error": f"Game ID not found: {request.generator_id}"
+                    "error": f"World ID not found: {request.generator_id}"
                 }, status_code=404)
 
         # Store configuration in session for the new flow
@@ -473,7 +473,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     if not generator_data:
                         await websocket.send_json({
                             "type": "error",
-                            "message": f"Game ID not found: {request.generator_id}"
+                            "message": f"World ID not found: {request.generator_id}"
                         })
                         return
 
