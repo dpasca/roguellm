@@ -26,11 +26,8 @@
     <meta http-equiv="Expires" content="0">
     <!-- Force versioning of CSS files to prevent caching -->
     <script src="/static/js/versioning.js"></script>
-    <!-- Navigation Prevention -->
+    <!-- Back Navigation Guard -->
     <script>
-        // Set up navigation prevention immediately
-        let leaveWarningMessage = 'Are you sure you want to leave the game?'; // Default message
-
         // Push initial states
         history.pushState(null, '', window.location.href);
         history.pushState(null, '', window.location.href);
@@ -44,23 +41,6 @@
                 return false;
             }
         });
-
-        // Handle page unload
-        window.addEventListener('beforeunload', function (e) {
-            e.preventDefault();
-            e.returnValue = leaveWarningMessage;
-            return e.returnValue;
-        });
-
-        // Load translations asynchronously and update the message
-        fetch('/static/translations/en.json')
-            .then(response => response.json())
-            .then(messages => {
-                leaveWarningMessage = messages.navigation.leaveWarning;
-            })
-            .catch(error => {
-                console.error('Error loading translations:', error);
-            });
     </script>
     <style>
         [v-cloak] {
