@@ -191,15 +191,17 @@ const app = Vue.createApp({
             this.generatorId = '';
             await this.launchGame();
         },
-        async quickStartJapanesePiedone() {
+        async quickStartPiedone(languageCode = null) {
             if (!this.isLocalDev) {
                 return;
             }
 
-            if (!this.rawTranslations.ja) {
-                await this.loadTranslations('ja');
+            if (languageCode) {
+                if (!this.rawTranslations[languageCode]) {
+                    await this.loadTranslations(languageCode);
+                }
+                this.selectedLanguage = languageCode;
             }
-            this.selectedLanguage = 'ja';
 
             const piedoneWorld = this.worlds.find(world => {
                 const haystack = `${world.title || ''} ${world.theme || ''}`.toLowerCase();
@@ -225,8 +227,19 @@ const app = Vue.createApp({
                 return;
             }
 
-            if (urlParams.get('dev_quick') === 'ja-piedone') {
-                await this.quickStartJapanesePiedone();
+            const devQuick = urlParams.get('dev_quick');
+            if (devQuick === 'piedone') {
+                await this.quickStartPiedone();
+                return;
+            }
+
+            const languageQuickStarts = {
+                'en-piedone': 'en',
+                'it-piedone': 'it',
+                'ja-piedone': 'ja'
+            };
+            if (languageQuickStarts[devQuick]) {
+                await this.quickStartPiedone(languageQuickStarts[devQuick]);
             }
         },
         async launchGame() {

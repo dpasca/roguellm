@@ -30,7 +30,7 @@
   "worldOriginalLanguage": "原始語言",
   "worldContents": "內容",
   "worldCounts": "{enemies} 個敵人 · {items} 個物品 · {terrain} 種地形",
-  "quickStartJapanesePiedone": "快速開始：日語 Piedone",
+  "quickStartPiedone": "快速開始：Piedone",
   "// Game Interface": "遊戲內介面翻譯",
   "menu": {
     "share": "分享遊戲",

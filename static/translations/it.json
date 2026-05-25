@@ -30,7 +30,7 @@
   "worldOriginalLanguage": "Lingua Originale",
   "worldContents": "Contenuti",
   "worldCounts": "{enemies} nemici · {items} oggetti · {terrain} terreni",
-  "quickStartJapanesePiedone": "Avvio Rapido: Piedone in Giapponese",
+  "quickStartPiedone": "Avvio Rapido: Piedone",
   "// Game Interface": "Traduzioni dell'interfaccia di gioco",
   "menu": {
     "share": "Condividi Gioco",
