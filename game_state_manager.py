@@ -18,6 +18,7 @@ logger = logging.getLogger()
 
 # Use random map (for testing)
 USE_RANDOM_MAP = False
+WORLD_TRANSLATION_CACHE_VERSION = 4
 
 
 class GameStateManager:
@@ -119,7 +120,11 @@ class GameStateManager:
         active_data = generator_data
 
         if source_language != language:
-            translated_data = db.get_generator_translation(generator_id, language)
+            translated_data = db.get_generator_translation(
+                generator_id,
+                language,
+                WORLD_TRANSLATION_CACHE_VERSION
+            )
             if translated_data:
                 logger.info(f"Loaded cached generator translation: {generator_id} ({language})")
             else:
@@ -144,6 +149,7 @@ class GameStateManager:
                     item_defs=translated_data['item_defs'],
                     enemy_defs=translated_data['enemy_defs'],
                     celltype_defs=translated_data['celltype_defs'],
+                    translation_version=WORLD_TRANSLATION_CACHE_VERSION,
                 )
 
             active_data = {

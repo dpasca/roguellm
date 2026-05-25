@@ -89,6 +89,14 @@ characters, items, enemies, terrain, tone, and meaning.
 - All icons and colors, including font_awesome_icon and map_color
 - The number and order of all array items
 - The structure and shape of every object
+- Proper names, character names, franchise references, and iconic nicknames.
+  Keep their exact source spelling. Do not translate or transliterate them.
+  For example, preserve "Piedone" exactly as "Piedone"; do not render it as
+  "Bigfoot", "ビッグフット", or "ピエドーネ".
+
+# Translate
+- Descriptions, narration-oriented prose, classes/roles, generic item names,
+  enemy archetype names, terrain names, and weapon names.
 
 # Response Format
 Reply with the same JSON object shape, translated to the target language.

@@ -31,7 +31,8 @@
     "share": "分享遊戲",
     "restart": "重新開始遊戲",
     "newGame": "創建新遊戲",
-    "debug": "除錯資訊"
+    "debug": "除錯資訊",
+    "modelInfo": "模型：{model}"
   },
   "notifications": {
     "gameCopied": "遊戲 ID 已複製到剪貼簿！",

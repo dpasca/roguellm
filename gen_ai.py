@@ -224,15 +224,56 @@ class GenAI:
         if not isinstance(translated["theme_desc_better"], str):
             raise ValueError("Translated theme_desc_better must be a string")
 
-        normalized = {"theme_desc_better": translated["theme_desc_better"]}
+        protected_terms = self._collect_protected_world_terms(source)
+        normalized = {
+            "theme_desc_better": self._restore_theme_title_protected_terms(
+                source["theme_desc_better"],
+                translated["theme_desc_better"],
+                protected_terms,
+            )
+        }
         for field in WORLD_TRANSLATION_FIELDS[1:]:
             normalized[field] = self._merge_translated_world_value(
                 source[field],
                 translated[field],
                 field,
                 field,
+                protected_terms,
             )
         return normalized
+
+    def _collect_protected_world_terms(self, source: Dict[str, Any]) -> tuple[str, ...]:
+        terms = []
+        for player_def in source.get("player_defs", []):
+            if not isinstance(player_def, dict):
+                continue
+            name = player_def.get("name")
+            if isinstance(name, str) and name.strip() and name not in terms:
+                terms.append(name)
+        return tuple(terms)
+
+    def _restore_theme_title_protected_terms(
+            self,
+            source_value: str,
+            translated_value: str,
+            protected_terms: tuple[str, ...],
+    ) -> str:
+        source_lines = source_value.splitlines()
+        translated_lines = translated_value.splitlines()
+        if not source_lines or not translated_lines:
+            return translated_value
+
+        if self._is_missing_protected_term(source_lines[0], translated_lines[0], protected_terms):
+            translated_lines[0] = source_lines[0]
+        return "\n".join(translated_lines)
+
+    def _is_missing_protected_term(
+            self,
+            source_value: str,
+            translated_value: str,
+            protected_terms: tuple[str, ...],
+    ) -> bool:
+        return any(term in source_value and term not in translated_value for term in protected_terms)
 
     def _merge_translated_world_value(
             self,
@@ -240,6 +281,7 @@ class GenAI:
             translated_value: Any,
             path: str,
             field_name: str,
+            protected_terms: tuple[str, ...],
     ) -> Any:
         if field_name in PRESERVED_WORLD_FIELD_NAMES:
             return source_value
@@ -254,6 +296,7 @@ class GenAI:
                     translated_value.get(key, value),
                     f"{path}.{key}",
                     key,
+                    protected_terms,
                 )
                 for key, value in source_value.items()
             }
@@ -278,6 +321,7 @@ class GenAI:
                     translated_item,
                     f"{path}[{index}]",
                     field_name,
+                    protected_terms,
                 )
                 for index, (source_item, translated_item) in enumerate(zip(source_value, translated_value))
             ]
@@ -285,6 +329,12 @@ class GenAI:
         if isinstance(source_value, str):
             if not isinstance(translated_value, str):
                 raise ValueError(f"Translated world field {path} must be a string")
+            if field_name == "name" and self._is_missing_protected_term(
+                source_value,
+                translated_value,
+                protected_terms,
+            ):
+                return source_value
             return translated_value
 
         return source_value

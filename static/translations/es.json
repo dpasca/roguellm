@@ -31,7 +31,8 @@
     "share": "Compartir juego",
     "restart": "Reiniciar juego",
     "newGame": "Crear nuevo juego",
-    "debug": "Información de depuración"
+    "debug": "Información de depuración",
+    "modelInfo": "Modelo: {model}"
   },
   "notifications": {
     "gameCopied": "¡ID del juego copiado al portapapeles!",

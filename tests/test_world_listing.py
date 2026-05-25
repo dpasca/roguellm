@@ -104,9 +104,11 @@ class WorldListingTests(unittest.TestCase):
                 item_defs=[{"id": "key", "name": "鍵"}],
                 enemy_defs=[{"enemy_id": "eel", "name": "ウナギ"}],
                 celltype_defs={"reef": {"name": "サンゴ礁"}},
+                translation_version=2,
             )
 
-            translation = manager.get_generator_translation(world_id, "ja")
+            translation = manager.get_generator_translation(world_id, "ja", translation_version=2)
+            stale_version = manager.get_generator_translation(world_id, "ja", translation_version=1)
             missing_translation = manager.get_generator_translation(world_id, "it")
 
         self.assertEqual(translation["language"], "ja")
@@ -115,7 +117,45 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(translation["item_defs"][0]["id"], "key")
         self.assertEqual(translation["enemy_defs"][0]["enemy_id"], "eel")
         self.assertEqual(translation["celltype_defs"]["reef"]["name"], "サンゴ礁")
+        self.assertIsNone(stale_version)
         self.assertIsNone(missing_translation)
+
+    def test_init_db_adds_translation_version_to_existing_cache_table(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {
+                "DO_STORAGE_SERVER": "",
+                "DO_SPACES_ACCESS_KEY": "",
+                "DO_SPACES_SECRET_KEY": "",
+                "DO_STORAGE_CONTAINER": "",
+            }):
+                manager = DatabaseManager()
+            manager.db_path = os.path.join(directory, "old_translations.db")
+            with manager.get_connection() as conn:
+                conn.execute("""
+                    CREATE TABLE generator_translations (
+                        generator_id TEXT NOT NULL,
+                        language TEXT NOT NULL,
+                        theme_desc_better TEXT,
+                        player_defs TEXT,
+                        item_defs TEXT,
+                        enemy_defs TEXT,
+                        celltype_defs TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (generator_id, language)
+                    )
+                """)
+                conn.commit()
+
+            manager.init_db()
+
+            with manager.get_connection() as conn:
+                columns = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(generator_translations)").fetchall()
+                }
+
+        self.assertIn("translation_version", columns)
 
 
 if __name__ == "__main__":

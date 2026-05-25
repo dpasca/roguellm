@@ -2,7 +2,7 @@ import random
 import unittest
 from unittest.mock import patch
 
-from game_state_manager import GameStateManager
+from game_state_manager import GameStateManager, WORLD_TRANSLATION_CACHE_VERSION
 
 
 class DummyDefinitions:
@@ -139,7 +139,7 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
                 patch("game_state_manager.GameDefinitionsManager", FakeDefinitionsManager), \
                 patch("game_state_manager.EntityPlacementManager"), \
                 patch("game_state_manager.db.get_generator", return_value=generator_data), \
-                patch("game_state_manager.db.get_generator_translation", return_value=None), \
+                patch("game_state_manager.db.get_generator_translation", return_value=None) as get_translation, \
                 patch("game_state_manager.db.save_generator_translation") as save_translation:
             manager = await GameStateManager.create(
                 seed=1,
@@ -154,9 +154,18 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.theme_desc, generator_data["theme_desc"])
         self.assertEqual(manager.theme_desc_better, "日本語の世界\n保存済みの説明。")
         self.assertEqual(manager.definitions.player_defs[0]["name"], "冒険者")
+        get_translation.assert_called_once_with(
+            "italian-world",
+            "ja",
+            WORLD_TRANSLATION_CACHE_VERSION,
+        )
         self.assertEqual(manager.gen_ai.translate_calls[0]["source_language"], "it")
         self.assertEqual(manager.gen_ai.translate_calls[0]["target_language"], "ja")
         save_translation.assert_called_once()
+        self.assertEqual(
+            save_translation.call_args.kwargs["translation_version"],
+            WORLD_TRANSLATION_CACHE_VERSION,
+        )
         self.assertEqual(manager.gen_ai.set_theme_calls[0]["language"], "ja")
         self.assertEqual(
             manager.gen_ai.set_theme_calls[0]["theme_desc"],
@@ -191,7 +200,7 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
                 patch("game_state_manager.GameDefinitionsManager", FakeDefinitionsManager), \
                 patch("game_state_manager.EntityPlacementManager"), \
                 patch("game_state_manager.db.get_generator", return_value=generator_data), \
-                patch("game_state_manager.db.get_generator_translation", return_value=cached_translation), \
+                patch("game_state_manager.db.get_generator_translation", return_value=cached_translation) as get_translation, \
                 patch("game_state_manager.db.save_generator_translation") as save_translation:
             manager = await GameStateManager.create(
                 seed=1,
@@ -203,6 +212,11 @@ class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(manager.theme_desc_better, cached_translation["theme_desc_better"])
         self.assertEqual(manager.definitions.player_defs[0]["name"], "キャッシュ済み冒険者")
+        get_translation.assert_called_once_with(
+            "italian-world",
+            "ja",
+            WORLD_TRANSLATION_CACHE_VERSION,
+        )
         self.assertEqual(manager.gen_ai.translate_calls, [])
         save_translation.assert_not_called()
 

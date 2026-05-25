@@ -204,13 +204,27 @@ class DatabaseManager:
                     item_defs TEXT,
                     enemy_defs TEXT,
                     celltype_defs TEXT,
+                    translation_version INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (generator_id, language),
                     FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
                 )
             """)
+            self._ensure_column(
+                conn,
+                "generator_translations",
+                "translation_version",
+                "INTEGER DEFAULT 1"
+            )
             conn.commit()
+
+    def _ensure_column(self, conn, table_name: str, column_name: str, column_definition: str):
+        cur = conn.cursor()
+        cur.execute(f"PRAGMA table_info({table_name})")
+        columns = {row[1] for row in cur.fetchall()}
+        if column_name not in columns:
+            conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
     def backup_db(self):
         """Upload current DB to remote storage"""
@@ -360,15 +374,20 @@ class DatabaseManager:
 
         return self._execute_with_retry(_get, generator_id)
 
-    def get_generator_translation(self, generator_id: str, language: str) -> Optional[Dict]:
+    def get_generator_translation(
+            self,
+            generator_id: str,
+            language: str,
+            translation_version: int = 1
+    ) -> Optional[Dict]:
         """Retrieve a cached per-language translation for a generated world."""
-        def _get(conn, generator_id, language):
+        def _get(conn, generator_id, language, translation_version):
             cur = conn.cursor()
             cur.execute("""
                 SELECT theme_desc_better, player_defs, item_defs, enemy_defs, celltype_defs
                 FROM generator_translations
-                WHERE generator_id = ? AND language = ?
-            """, (generator_id, language))
+                WHERE generator_id = ? AND language = ? AND translation_version = ?
+            """, (generator_id, language, translation_version))
 
             result = cur.fetchone()
             if result is None:
@@ -383,7 +402,7 @@ class DatabaseManager:
                 'celltype_defs': json.loads(result[4])
             }
 
-        return self._execute_with_retry(_get, generator_id, language)
+        return self._execute_with_retry(_get, generator_id, language, translation_version)
 
     def save_generator_translation(
             self,
@@ -393,21 +412,24 @@ class DatabaseManager:
             player_defs: List[Dict],
             item_defs: List[Dict],
             enemy_defs: List[Dict],
-            celltype_defs: Union[List[Dict], Dict]
+            celltype_defs: Union[List[Dict], Dict],
+            translation_version: int = 1
     ) -> None:
         """Cache a translated view of a generated world for one language."""
         def _save(conn, *args):
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO generator_translations
-                (generator_id, language, theme_desc_better, player_defs, item_defs, enemy_defs, celltype_defs)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (generator_id, language, theme_desc_better, player_defs, item_defs, enemy_defs, celltype_defs,
+                 translation_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(generator_id, language) DO UPDATE SET
                     theme_desc_better = excluded.theme_desc_better,
                     player_defs = excluded.player_defs,
                     item_defs = excluded.item_defs,
                     enemy_defs = excluded.enemy_defs,
                     celltype_defs = excluded.celltype_defs,
+                    translation_version = excluded.translation_version,
                     updated_at = CURRENT_TIMESTAMP
             """, (
                 generator_id,
@@ -416,7 +438,8 @@ class DatabaseManager:
                 json.dumps(player_defs),
                 json.dumps(item_defs),
                 json.dumps(enemy_defs),
-                json.dumps(celltype_defs)
+                json.dumps(celltype_defs),
+                translation_version
             ))
             conn.commit()
 
