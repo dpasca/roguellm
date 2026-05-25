@@ -51,12 +51,6 @@ const app = Vue.createApp({
             }
             return this.selectedWorldId || this.generatorId.trim() || null;
         },
-        selectedWorld() {
-            if (!this.selectedWorldId) {
-                return null;
-            }
-            return this.worlds.find(world => world.id === this.selectedWorldId) || null;
-        },
         isLocalDev() {
             return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
         }

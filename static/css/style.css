@@ -315,30 +315,14 @@
 }
 
 .world-preview {
-    background: #202020;
-    border: 1px solid #3a3a3a;
-    border-radius: 8px;
+    border-top: 1px solid #3a3a3a;
     display: grid;
     gap: 10px;
-    margin: 4px 0 12px;
-    padding: 12px;
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding-top: 10px;
     text-align: left;
     width: 100%;
-}
-
-.world-preview-header {
-    align-items: center;
-    display: grid;
-    gap: 10px;
-    grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.world-preview-header h3 {
-    color: #fff;
-    font-size: 1rem;
-    line-height: 1.25;
-    margin: 0;
-    overflow-wrap: anywhere;
 }
 
 .world-preview-facts {
@@ -398,8 +382,7 @@
 }
 
 @media (max-width: 560px) {
-    .world-option,
-    .world-preview-header {
+    .world-option {
         grid-template-columns: minmax(0, 1fr);
     }
 
