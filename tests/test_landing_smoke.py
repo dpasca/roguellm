@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -62,6 +63,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn('@click="quickStartPiedone()"', html)
                     self.assertIn('class="world-preview"', html)
                     self.assertIn(DEV_PIEDONE_THEME, landing_js)
+                    self.assertIn("getDebugSeedFromUrl", landing_js)
+                    self.assertIn("debug_seed", landing_js)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))
                     self.assertNotIn("selectedWorld()", landing_js)
 
@@ -86,6 +89,80 @@ class LandingSmokeTests(unittest.TestCase):
                         main.game_session_manager.sessions[session_id]["language"],
                         "en",
                     )
+                    self.assertIsNone(
+                        main.game_session_manager.sessions[session_id]["debug_seed"],
+                    )
+
+    def test_debug_seed_is_dev_only(self):
+        with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": ""}), \
+                patch("main.get_prerendered_content", passthrough_prerender):
+            main.game_session_manager.sessions.clear()
+            with TestClient(main.app) as client:
+                blocked_response = client.post("/api/create_game_session", json={
+                    "theme": "fantasy",
+                    "language": "en",
+                    "debug_seed": 123,
+                })
+
+            self.assertEqual(blocked_response.status_code, 403)
+            self.assertEqual(main.game_session_manager.sessions, {})
+
+    def test_debug_seed_can_be_enabled_for_test_runs(self):
+        with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": "1"}), \
+                patch("main.get_prerendered_content", passthrough_prerender):
+            main.game_session_manager.sessions.clear()
+            with TestClient(main.app) as client:
+                response = client.post("/api/create_game_session", json={
+                    "theme": "fantasy",
+                    "language": "en",
+                    "debug_seed": 123,
+                })
+
+            self.assertEqual(response.status_code, 200)
+            session_id = response.json()["session_id"]
+            self.assertEqual(
+                main.game_session_manager.sessions[session_id]["debug_seed"],
+                123,
+            )
+
+    def test_websocket_creation_uses_debug_seed_when_present(self):
+        created_with = {}
+
+        class FakeGame:
+            state_manager = SimpleNamespace(generator_id=None, error_message=None)
+
+            def add_client(self, websocket):
+                pass
+
+            def remove_client(self, websocket):
+                pass
+
+            async def handle_message(self, message):
+                return {"type": "update"}
+
+        async def fake_create(**kwargs):
+            created_with.update(kwargs)
+            return FakeGame()
+
+        with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": "1"}), \
+                patch("main.Game.create", side_effect=fake_create), \
+                patch("main.get_prerendered_content", passthrough_prerender):
+            main.game_session_manager.sessions.clear()
+            with TestClient(main.app) as client:
+                response = client.post("/api/create_game_session", json={
+                    "theme": "fantasy",
+                    "language": "en",
+                    "debug_seed": 123,
+                })
+                session_id = response.json()["session_id"]
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "ready")
+                    self.assertEqual(websocket.receive_json()["type"], "connection_established")
+
+        self.assertEqual(created_with["seed"], 123)
 
 
 if __name__ == "__main__":

@@ -188,6 +188,19 @@ const app = Vue.createApp({
             this.generatorId = '';
             await this.launchGame();
         },
+        getDebugSeedFromUrl() {
+            if (!this.isLocalDev) {
+                return null;
+            }
+
+            const rawSeed = new URLSearchParams(window.location.search).get('debug_seed');
+            if (!rawSeed) {
+                return null;
+            }
+
+            const parsedSeed = Number(rawSeed);
+            return Number.isSafeInteger(parsedSeed) ? parsedSeed : null;
+        },
         async quickStartPiedone(languageCode = null) {
             if (!this.isLocalDev) {
                 return;
@@ -272,17 +285,23 @@ const app = Vue.createApp({
 
             try {
                 // Use the new session-based API
+                const requestBody = {
+                    theme: this.selectedTheme === 'custom' ? this.customDescription : null,
+                    generator_id: this.selectedGeneratorId,
+                    language: this.selectedLanguage,
+                    do_web_search: this.doWebSearch
+                };
+                const debugSeed = this.getDebugSeedFromUrl();
+                if (debugSeed !== null) {
+                    requestBody.debug_seed = debugSeed;
+                }
+
                 const response = await fetch('/api/create_game_session', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        theme: this.selectedTheme === 'custom' ? this.customDescription : null,
-                        generator_id: this.selectedGeneratorId,
-                        language: this.selectedLanguage,
-                        do_web_search: this.doWebSearch
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) {

@@ -165,6 +165,15 @@ This creates or refreshes a Piedone world and a small English fantasy world, see
 cached language views for dev testing, then prints their World IDs. The local
 Quick Start button prefers the seeded Piedone world when it is present.
 
+For reproducible local smoke tests, add a debug seed to a dev quick-start URL:
+
+```bash
+http://127.0.0.1:8000/?dev_quick=en-piedone&debug_seed=123
+```
+
+`debug_seed` is accepted only from localhost or when `ENABLE_DEBUG_SEED=1` is set.
+Normal launches continue to use a fresh seed.
+
 ## Icons generation
 
 ```bash

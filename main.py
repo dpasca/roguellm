@@ -116,12 +116,22 @@ class GameCreationRequest(BaseModel):
     language: str = "en"
     do_web_search: bool = False
     generator_id: Optional[str] = None
+    debug_seed: Optional[int] = None
+
+def is_local_dev_request(request: Request) -> bool:
+    client_host = request.client.host if request.client else ""
+    return client_host in {"127.0.0.1", "::1", "localhost"}
 
 def is_world_library_allowed(request: Request) -> bool:
-    client_host = request.client.host if request.client else ""
     return (
-        client_host in {"127.0.0.1", "::1", "localhost"}
+        is_local_dev_request(request)
         or os.getenv("ENABLE_WORLD_LIBRARY") == "1"
+    )
+
+def is_debug_seed_allowed(request: Request) -> bool:
+    return (
+        is_local_dev_request(request)
+        or os.getenv("ENABLE_DEBUG_SEED") == "1"
     )
 
 #==================================================================
@@ -348,8 +358,13 @@ async def read_game_session(session_id: str, request: Request):
 
 # API endpoint for creating a new game session (replaces the old create_game)
 @app.post("/api/create_game_session")
-async def create_game_session(request: GameCreationRequest):
+async def create_game_session(creation_request: GameCreationRequest, req: Request):
     """Create a new game session and return session ID immediately"""
+    if creation_request.debug_seed is not None and not is_debug_seed_allowed(req):
+        return JSONResponse({
+            "error": "debug_seed is only available in local development"
+        }, status_code=403)
+
     session_id = str(uuid.uuid4())
 
     # Store the session with initial state in the new format
@@ -357,10 +372,11 @@ async def create_game_session(request: GameCreationRequest):
         'created_at': time.time(),
         'last_accessed': time.time(),
         'game_instance': None,  # Will be set when game is created
-        'creation_request': request,
+        'creation_request': creation_request,
         'status': 'creating',  # creating, ready, error
-        'generator_id': request.generator_id,
-        'language': request.language
+        'generator_id': creation_request.generator_id,
+        'language': creation_request.language,
+        'debug_seed': creation_request.debug_seed
     }
 
     logging.info(f"Created new game session: {session_id}")
@@ -466,6 +482,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             try:
                 request = session['creation_request']
+                seed = request.debug_seed if request.debug_seed is not None else int(time.time())
 
                 if request.generator_id:
                     # Check if generator exists
@@ -497,7 +514,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 try:
                     game_instance = await asyncio.wait_for(
                         Game.create(
-                            seed=int(time.time()),
+                            seed=seed,
                             theme_desc=theme_desc,
                             language=language,
                             do_web_search=do_web_search,
