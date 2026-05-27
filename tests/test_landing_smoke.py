@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 import main
 from db import DatabaseManager
+from game_state_manager import WORLD_TRANSLATION_CACHE_VERSION
 from tools.ensure_dev_worlds import DEV_PIEDONE_THEME, ensure_dev_worlds
 
 
@@ -36,6 +37,17 @@ class LandingSmokeTests(unittest.TestCase):
             manager = self.make_db(directory)
             seeded_worlds = ensure_dev_worlds(manager)
             piedone = next(world for world in seeded_worlds if world["key"] == "piedone")
+            piedone_translation = manager.get_generator_translation(
+                piedone["id"],
+                "en",
+                WORLD_TRANSLATION_CACHE_VERSION,
+            )
+
+            self.assertIn("en", piedone["cached_translations"])
+            self.assertIsNotNone(piedone_translation)
+            self.assertEqual(piedone_translation["player_defs"][0]["name"], "Piedone")
+            self.assertEqual(piedone_translation["item_defs"][0]["id"], "espresso")
+            self.assertEqual(piedone_translation["enemy_defs"][0]["enemy_id"], "street_punk")
 
             with patch.dict(os.environ, {"ENABLE_WORLD_LIBRARY": "1"}), \
                     patch("main.db", manager), \

@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from db import db  # noqa: E402
+from game_state_manager import WORLD_TRANSLATION_CACHE_VERSION  # noqa: E402
 
 
 DEV_PIEDONE_THEME = "dev:piedone-a-tokyo"
@@ -127,6 +128,113 @@ DEV_WORLDS = [
                 "font_awesome_icon": "fa-solid fa-dumpster",
             },
         ],
+        "translations": {
+            "en": {
+                "theme_desc_better": (
+                    "Piedone a Tokyo\n"
+                    "A compact dev world for testing reusable worlds, language switching, "
+                    "items, and visible enemy encounters without generating new definitions."
+                ),
+                "player_defs": [
+                    {
+                        "name": "Piedone",
+                        "age": 45,
+                        "class": "detective",
+                        "height_cm": 190,
+                        "weight_kg": 110,
+                        "font_awesome_icon": "fa-solid fa-user",
+                    }
+                ],
+                "item_defs": [
+                    {
+                        "id": "espresso",
+                        "name": "Espresso",
+                        "type": "consumable",
+                        "effect": {"health": 20},
+                        "description": "A tiny cup of coffee with suspicious restorative force.",
+                        "font_awesome_icon": "fa-solid fa-mug-hot",
+                    },
+                    {
+                        "id": "frying_pan",
+                        "name": "Frying Pan",
+                        "type": "weapon",
+                        "effect": {"attack": 4},
+                        "description": "Heavy, loud, and useful in a disagreement.",
+                        "font_awesome_icon": "fa-solid fa-utensils",
+                    },
+                    {
+                        "id": "police_badge",
+                        "name": "Police Badge",
+                        "type": "armor",
+                        "effect": {"defense": 2},
+                        "description": "A badge that makes small-time crooks reconsider.",
+                        "font_awesome_icon": "fa-solid fa-shield-halved",
+                    },
+                ],
+                "enemy_defs": [
+                    {
+                        "enemy_id": "street_punk",
+                        "name": "Street Punk",
+                        "font_awesome_icon": "fa-solid fa-user-ninja",
+                        "hp": {"min": 24, "max": 36},
+                        "attack": {"min": 6, "max": 10},
+                        "defense": {"min": 1, "max": 3},
+                        "xp": 8,
+                        "weapons": ["Chain", "Cheap Knife"],
+                    },
+                    {
+                        "enemy_id": "dock_thug",
+                        "name": "Dock Thug",
+                        "font_awesome_icon": "fa-solid fa-anchor",
+                        "hp": {"min": 35, "max": 48},
+                        "attack": {"min": 8, "max": 12},
+                        "defense": {"min": 2, "max": 4},
+                        "xp": 12,
+                        "weapons": ["Crowbar", "Broken Oar"],
+                    },
+                    {
+                        "enemy_id": "yakuza_lieutenant",
+                        "name": "Yakuza Lieutenant",
+                        "font_awesome_icon": "fa-solid fa-user-tie",
+                        "hp": {"min": 50, "max": 70},
+                        "attack": {"min": 12, "max": 16},
+                        "defense": {"min": 4, "max": 6},
+                        "xp": 22,
+                        "weapons": ["Cane Sword", "Pistol"],
+                    },
+                ],
+                "celltype_defs": [
+                    {
+                        "id": "street",
+                        "name": "Neon Street",
+                        "description": "A rain-slick street under buzzing signs.",
+                        "map_color": "#2F6F7E",
+                        "font_awesome_icon": "fa-solid fa-road",
+                    },
+                    {
+                        "id": "market",
+                        "name": "Market Stall",
+                        "description": "A cramped row of food stalls and shouted bargains.",
+                        "map_color": "#6F8E3F",
+                        "font_awesome_icon": "fa-solid fa-store",
+                    },
+                    {
+                        "id": "dock",
+                        "name": "Harbor Dock",
+                        "description": "Wooden piers, stacked crates, and dark water.",
+                        "map_color": "#31547A",
+                        "font_awesome_icon": "fa-solid fa-anchor",
+                    },
+                    {
+                        "id": "alley",
+                        "name": "Back Alley",
+                        "description": "A narrow shortcut where trouble likes to wait.",
+                        "map_color": "#4A4A4A",
+                        "font_awesome_icon": "fa-solid fa-dumpster",
+                    },
+                ],
+            }
+        },
     },
     {
         "key": "fantasy",
@@ -227,12 +335,27 @@ def ensure_dev_worlds(db_manager=db):
             enemy_defs=world["enemy_defs"],
             celltype_defs=world["celltype_defs"],
         )
+        translation_languages = []
+        for language, translation in world.get("translations", {}).items():
+            db_manager.save_generator_translation(
+                generator_id=world_id,
+                language=language,
+                theme_desc_better=translation["theme_desc_better"],
+                player_defs=translation["player_defs"],
+                item_defs=translation["item_defs"],
+                enemy_defs=translation["enemy_defs"],
+                celltype_defs=translation["celltype_defs"],
+                translation_version=WORLD_TRANSLATION_CACHE_VERSION,
+            )
+            translation_languages.append(language)
+
         seeded.append({
             "key": world["key"],
             "id": world_id,
             "title": world["theme_desc_better"].splitlines()[0],
             "theme": world["theme_desc"],
             "language": world["language"],
+            "cached_translations": translation_languages,
         })
     return seeded
 

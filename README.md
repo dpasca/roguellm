@@ -161,9 +161,9 @@ dev worlds:
 venv/bin/python tools/ensure_dev_worlds.py
 ```
 
-This creates or refreshes a Piedone world and a small English fantasy world, then
-prints their World IDs. The local Quick Start button prefers the seeded Piedone
-world when it is present.
+This creates or refreshes a Piedone world and a small English fantasy world, seeds
+cached language views for dev testing, then prints their World IDs. The local
+Quick Start button prefers the seeded Piedone world when it is present.
 
 ## Icons generation
 
