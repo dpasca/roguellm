@@ -466,6 +466,60 @@ async def create_game(request: CreateGameRequest, req: Request):
             "error": str(e)
         }, status_code=500)
 
+# Auth endpoints
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/signup")
+async def signup(request: SignupRequest, req: Request):
+    if not request.username or not request.password:
+        return JSONResponse({"error": "Username and password are required"}, status_code=400)
+    if len(request.username) < 3:
+        return JSONResponse({"error": "Username must be at least 3 characters"}, status_code=400)
+    if len(request.password) < 6:
+        return JSONResponse({"error": "Password must be at least 6 characters"}, status_code=400)
+
+    user = db.create_user(request.username, request.password)
+    if not user:
+        return JSONResponse({"error": "Username already exists"}, status_code=409)
+
+    req.session["user_id"] = user["id"]
+    return JSONResponse({"id": user["id"], "username": user["username"]})
+
+@app.post("/api/login")
+async def login(request: LoginRequest, req: Request):
+    user = db.get_user_by_username(request.username)
+    if not user:
+        return JSONResponse({"error": "Invalid username or password"}, status_code=401)
+
+    if not db._verify_password(request.password, user["password_hash"]):
+        return JSONResponse({"error": "Invalid username or password"}, status_code=401)
+
+    req.session["user_id"] = user["id"]
+    return JSONResponse({"id": user["id"], "username": user["username"]})
+
+@app.post("/api/logout")
+async def api_logout(req: Request):
+    req.session.pop("user_id", None)
+    return JSONResponse({"message": "Logged out"})
+
+@app.get("/api/me")
+async def get_me(req: Request):
+    user_id = req.session.get("user_id")
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user = db.get_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"error": "User not found"}, status_code=404)
+
+    return JSONResponse({"id": user["id"], "username": user["username"]})
+
 # Logout
 @app.post("/logout")
 async def logout(request: Request):

@@ -220,6 +220,14 @@ class DatabaseManager:
             self._ensure_column(conn, "generators", "owner_id", "TEXT NULL")
             self._ensure_column(conn, "generators", "visibility", "TEXT NOT NULL DEFAULT 'unlisted'")
             self._ensure_column(conn, "generators", "updated_at", "TIMESTAMP")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             conn.commit()
 
     def _ensure_column(self, conn, table_name: str, column_name: str, column_definition: str):
@@ -555,6 +563,61 @@ class DatabaseManager:
             return len(value) if isinstance(value, (dict, list)) else 0
         except json.JSONDecodeError:
             return 0
+
+    # User management helpers
+    def _hash_password(self, password: str) -> str:
+        salt = os.urandom(32)
+        key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+        return salt.hex() + ':' + key.hex()
+
+    def _verify_password(self, password: str, password_hash: str) -> bool:
+        try:
+            salt_hex, key_hex = password_hash.split(':')
+            salt = bytes.fromhex(salt_hex)
+            key = bytes.fromhex(key_hex)
+            new_key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+            return new_key == key
+        except Exception:
+            return False
+
+    def create_user(self, username: str, password: str) -> Optional[Dict]:
+        user_id = str(uuid.uuid4())
+        password_hash = self._hash_password(password)
+
+        def _create(conn):
+            try:
+                conn.execute(
+                    "INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
+                    (user_id, username, password_hash)
+                )
+                conn.commit()
+                return {"id": user_id, "username": username}
+            except sqlite3.IntegrityError:
+                return None
+
+        return self._execute_with_retry(_create)
+
+    def get_user_by_username(self, username: str) -> Optional[Dict]:
+        def _get(conn):
+            cur = conn.cursor()
+            cur.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            return {"id": row[0], "username": row[1], "password_hash": row[2]}
+
+        return self._execute_with_retry(_get)
+
+    def get_user_by_id(self, user_id: str) -> Optional[Dict]:
+        def _get(conn):
+            cur = conn.cursor()
+            cur.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            return {"id": row[0], "username": row[1]}
+
+        return self._execute_with_retry(_get)
 
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable

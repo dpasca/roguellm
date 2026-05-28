@@ -424,5 +424,95 @@ class WorldApiTests(unittest.TestCase):
             self.assertEqual(response.json()["status"], "creating")
 
 
+class AuthTests(unittest.TestCase):
+    def make_db(self, directory):
+        with patch.dict(os.environ, {
+            "DO_STORAGE_SERVER": "",
+            "DO_SPACES_ACCESS_KEY": "",
+            "DO_SPACES_SECRET_KEY": "",
+            "DO_STORAGE_CONTAINER": "",
+        }):
+            manager = DatabaseManager()
+        manager.db_path = os.path.join(directory, "test_auth.db")
+        manager.init_db()
+        return manager
+
+    def test_signup_creates_user_and_stores_session(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.post("/api/signup", json={"username": "alice", "password": "secret123"})
+
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["username"], "alice")
+            self.assertIn("id", data)
+
+    def test_signup_rejects_duplicate_username(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "bob", "password": "secret123"})
+                response = client.post("/api/signup", json={"username": "bob", "password": "otherpass"})
+
+            self.assertEqual(response.status_code, 409)
+
+    def test_signup_rejects_short_username_or_password(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                r1 = client.post("/api/signup", json={"username": "ab", "password": "secret123"})
+                r2 = client.post("/api/signup", json={"username": "alice", "password": "short"})
+
+            self.assertEqual(r1.status_code, 400)
+            self.assertEqual(r2.status_code, 400)
+
+    def test_login_stores_session_and_me_returns_user(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "carol", "password": "mypass123"})
+                login = client.post("/api/login", json={"username": "carol", "password": "mypass123"})
+                self.assertEqual(login.status_code, 200)
+
+                me = client.get("/api/me")
+                self.assertEqual(me.status_code, 200)
+                self.assertEqual(me.json()["username"], "carol")
+
+    def test_login_rejects_bad_password(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "dave", "password": "rightpass"})
+                response = client.post("/api/login", json={"username": "dave", "password": "wrongpass"})
+
+            self.assertEqual(response.status_code, 401)
+
+    def test_logout_clears_session(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "eve", "password": "secret123"})
+                client.post("/api/logout")
+                me = client.get("/api/me")
+
+            self.assertEqual(me.status_code, 401)
+
+    def test_me_returns_401_when_anonymous(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.get("/api/me")
+
+            self.assertEqual(response.status_code, 401)
+
+
 if __name__ == "__main__":
     unittest.main()
