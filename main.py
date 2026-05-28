@@ -365,6 +365,13 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
             "error": "debug_seed is only available in local development"
         }, status_code=403)
 
+    if creation_request.generator_id:
+        generator_data = db.get_visible_generator(creation_request.generator_id)
+        if not generator_data:
+            return JSONResponse({
+                "error": f"World ID not found: {creation_request.generator_id}"
+            }, status_code=404)
+
     session_id = str(uuid.uuid4())
 
     # Store the session with initial state in the new format
@@ -401,6 +408,31 @@ async def get_recent_worlds(request: Request, limit: int = 12):
         return JSONResponse({
             "error": "Failed to load worlds"
         }, status_code=500)
+
+@app.get("/api/worlds/{world_id}")
+async def get_world(request: Request, world_id: str):
+    """Get world metadata by ID if visible to the requester."""
+    generator_data = db.get_visible_generator(world_id)
+    if not generator_data:
+        return JSONResponse({"error": "World not found"}, status_code=404)
+
+    theme_desc = generator_data.get('theme_desc') or ""
+    theme_desc_better = generator_data.get('theme_desc_better') or theme_desc
+    title_source = theme_desc_better.strip() or theme_desc.strip()
+    title = title_source.splitlines()[0][:120] if title_source else world_id
+
+    return JSONResponse({
+        "id": world_id,
+        "title": title,
+        "theme": theme_desc,
+        "language": generator_data.get('language'),
+        "player_count": len(generator_data.get('player_defs', [])),
+        "item_count": len(generator_data.get('item_defs', [])),
+        "enemy_count": len(generator_data.get('enemy_defs', [])),
+        "terrain_count": len(generator_data.get('celltype_defs', {})),
+        "owner_id": generator_data.get('owner_id'),
+        "visibility": generator_data.get('visibility', 'unlisted'),
+    })
 
 # Legacy API endpoint for backward compatibility
 @app.post("/api/create_game")

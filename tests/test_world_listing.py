@@ -4,6 +4,8 @@ import unittest
 from unittest.mock import patch
 
 from db import DatabaseManager
+from fastapi.testclient import TestClient
+import main
 
 
 class WorldListingTests(unittest.TestCase):
@@ -278,6 +280,148 @@ class WorldListingTests(unittest.TestCase):
                 }
 
         self.assertIn("translation_version", columns)
+
+
+class WorldApiTests(unittest.TestCase):
+    def make_db(self, directory):
+        with patch.dict(os.environ, {
+            "DO_STORAGE_SERVER": "",
+            "DO_SPACES_ACCESS_KEY": "",
+            "DO_SPACES_SECRET_KEY": "",
+            "DO_STORAGE_CONTAINER": "",
+        }):
+            manager = DatabaseManager()
+        manager.db_path = os.path.join(directory, "test_worlds.db")
+        manager.init_db()
+        return manager
+
+    def test_get_world_returns_metadata_for_public(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Cyberpunk Tokyo",
+                theme_desc_better="Neon Tokyo",
+                language="en",
+                player_defs=[{"id": "samurai"}],
+                item_defs=[{"id": "katana"}],
+                enemy_defs=[{"id": "yakuza"}],
+                celltype_defs={"street": {}},
+                owner_id=None,
+                visibility="public"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.get(f"/api/worlds/{world_id}")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["id"], world_id)
+            self.assertEqual(data["title"], "Neon Tokyo")
+            self.assertEqual(data["visibility"], "public")
+            self.assertEqual(data["player_count"], 1)
+            self.assertEqual(data["item_count"], 1)
+            self.assertEqual(data["enemy_count"], 1)
+            self.assertEqual(data["terrain_count"], 1)
+
+    def test_get_world_returns_metadata_for_unlisted(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Fantasy Forest",
+                theme_desc_better="Enchanted Forest",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=None,
+                visibility="unlisted"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.get(f"/api/worlds/{world_id}")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data["id"], world_id)
+            self.assertEqual(data["visibility"], "unlisted")
+
+    def test_get_world_blocks_private_for_anonymous(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Secret Base",
+                theme_desc_better="Hidden Base",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id="owner-123",
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.get(f"/api/worlds/{world_id}")
+
+            self.assertEqual(response.status_code, 404)
+
+    def test_create_game_session_fails_for_private_world(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Secret Base",
+                theme_desc_better="Hidden Base",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id="owner-123",
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.post("/api/create_game_session", json={
+                    "generator_id": world_id,
+                    "theme": "fantasy",
+                    "language": "en",
+                    "do_web_search": False
+                })
+
+            self.assertEqual(response.status_code, 404)
+            self.assertIn("World ID not found", response.json()["error"])
+
+    def test_create_game_session_succeeds_for_public_world(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Public Arena",
+                theme_desc_better="Grand Arena",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=None,
+                visibility="public"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.post("/api/create_game_session", json={
+                    "generator_id": world_id,
+                    "theme": "fantasy",
+                    "language": "en",
+                    "do_web_search": False
+                })
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "creating")
 
 
 if __name__ == "__main__":
