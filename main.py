@@ -249,7 +249,7 @@ async def read_landing(request: Request):
         generator_id = request.query_params.get("generator")
         if generator_id:
             # Validate generator ID
-            generator_data = db.get_generator(generator_id)
+            generator_data = db.get_visible_generator(generator_id)
             if generator_data:
                 # Store in session and redirect to game page
                 request.session["generator_id"] = generator_id
@@ -294,7 +294,7 @@ async def read_game(request: Request):
 
         if generator_id:
             # Validate generator ID
-            generator_data = db.get_generator(generator_id)
+            generator_data = db.get_visible_generator(generator_id)
             if not generator_data:
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
@@ -394,7 +394,7 @@ async def get_recent_worlds(request: Request, limit: int = 12):
 
     try:
         return JSONResponse({
-            "worlds": db.list_worlds(limit)
+            "worlds": db.list_worlds(limit, local_dev=is_world_library_allowed(request))
         })
     except Exception as e:
         logging.error(f"Error listing worlds: {e}")
@@ -409,7 +409,7 @@ async def create_game(request: CreateGameRequest, req: Request):
     try:
         if request.generator_id:
             # Check if generator exists
-            generator_data = db.get_generator(request.generator_id)
+            generator_data = db.get_visible_generator(request.generator_id)
             if not generator_data:
                 return JSONResponse({
                     "error": f"World ID not found: {request.generator_id}"
@@ -486,7 +486,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
                 if request.generator_id:
                     # Check if generator exists
-                    generator_data = db.get_generator(request.generator_id)
+                    generator_data = db.get_visible_generator(request.generator_id)
                     if not generator_data:
                         await websocket.send_json({
                             "type": "error",

@@ -217,6 +217,9 @@ class DatabaseManager:
                 "translation_version",
                 "INTEGER DEFAULT 1"
             )
+            self._ensure_column(conn, "generators", "owner_id", "TEXT NULL")
+            self._ensure_column(conn, "generators", "visibility", "TEXT NOT NULL DEFAULT 'unlisted'")
+            self._ensure_column(conn, "generators", "updated_at", "TIMESTAMP")
             conn.commit()
 
     def _ensure_column(self, conn, table_name: str, column_name: str, column_definition: str):
@@ -305,7 +308,9 @@ class DatabaseManager:
             player_defs: List[Dict],
             item_defs: List[Dict],
             enemy_defs: List[Dict],
-            celltype_defs: List[Dict]
+            celltype_defs: List[Dict],
+            owner_id: Optional[str] = None,
+            visibility: str = "unlisted"
     ) -> str:
         """
         Save a generator and return its unique ID.
@@ -326,8 +331,8 @@ class DatabaseManager:
             # Use INSERT OR REPLACE to handle concurrent inserts
             cur.execute("""
                 INSERT OR REPLACE INTO generators
-                (id, theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (id, theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs, owner_id, visibility, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """, (
                 generator_id,
                 theme_desc,
@@ -336,7 +341,9 @@ class DatabaseManager:
                 json.dumps(player_defs),
                 json.dumps(item_defs),
                 json.dumps(enemy_defs),
-                json.dumps(celltype_defs)
+                json.dumps(celltype_defs),
+                owner_id,
+                visibility
             ))
             conn.commit()
             return generator_id
@@ -353,7 +360,7 @@ class DatabaseManager:
         def _get(conn, generator_id):
             cur = conn.cursor()
             cur.execute("""
-                SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs
+                SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs, owner_id, visibility, updated_at
                 FROM generators
                 WHERE id = ?
             """, (generator_id,))
@@ -369,10 +376,32 @@ class DatabaseManager:
                 'player_defs': json.loads(result[3]),
                 'item_defs': json.loads(result[4]),
                 'enemy_defs': json.loads(result[5]),
-                'celltype_defs': json.loads(result[6])
+                'celltype_defs': json.loads(result[6]),
+                'owner_id': result[7],
+                'visibility': result[8],
+                'updated_at': result[9]
             }
 
         return self._execute_with_retry(_get, generator_id)
+
+    def get_visible_generator(self, generator_id: str, requester_owner_id: Optional[str] = None) -> Optional[Dict]:
+        """
+        Retrieve a generator only if it is visible to the requester.
+        Public and unlisted are always visible.
+        Private is visible only to its owner.
+        Returns None if not found or not visible.
+        """
+        generator = self.get_generator(generator_id)
+        if generator is None:
+            return None
+
+        visibility = generator.get('visibility', 'unlisted')
+        if visibility == 'private':
+            if generator.get('owner_id') is not None and generator.get('owner_id') == requester_owner_id:
+                return generator
+            return None
+
+        return generator
 
     def get_generator_translation(
             self,
@@ -445,31 +474,48 @@ class DatabaseManager:
 
         self._execute_with_retry(_save)
 
-    def list_worlds(self, limit: int = 20) -> List[Dict]:
+    def list_worlds(self, limit: int = 20, local_dev: bool = False, owner_id: Optional[str] = None) -> List[Dict]:
         """
         Return recent reusable generated worlds.
 
         The database table is still named "generators" for compatibility, but
         each row is a reusable World that can start many play sessions.
+
+        In local_dev mode, all worlds are returned. Otherwise, only public worlds
+        are returned (private worlds are never listed; unlisted worlds are only
+        accessible by direct ID lookup).
         """
         limit = max(1, min(limit, 50))
 
-        def _list(conn, limit):
+        def _list(conn, limit, local_dev, owner_id):
             cur = conn.cursor()
             cur.execute("PRAGMA table_info(generators)")
             columns = {row[1] for row in cur.fetchall()}
             has_created_at = "created_at" in columns
+            has_visibility = "visibility" in columns
 
             created_at_select = "created_at" if has_created_at else "NULL AS created_at"
             order_by = "created_at DESC" if has_created_at else "rowid DESC"
+
+            if local_dev or not has_visibility:
+                where_clause = "1=1"
+                params = ()
+            else:
+                where_clause = "visibility = 'public'"
+                params = ()
+
+            owner_id_select = "owner_id" if "owner_id" in columns else "NULL AS owner_id"
+            visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
+
             cur.execute(f"""
                 SELECT id, theme_desc, theme_desc_better, language,
                        player_defs, item_defs, enemy_defs, celltype_defs,
-                       {created_at_select}
+                       {created_at_select}, {owner_id_select}, {visibility_select}
                 FROM generators
+                WHERE {where_clause}
                 ORDER BY {order_by}
                 LIMIT ?
-            """, (limit,))
+            """, params + (limit,))
 
             worlds = []
             for row in cur.fetchall():
@@ -488,11 +534,13 @@ class DatabaseManager:
                     "enemy_count": self._json_list_size(row[6]),
                     "terrain_count": self._json_mapping_size(row[7]),
                     "created_at": row[8],
+                    "owner_id": row[9],
+                    "visibility": row[10],
                 })
 
             return worlds
 
-        return self._execute_with_retry(_list, limit)
+        return self._execute_with_retry(_list, limit, local_dev, owner_id)
 
     def _json_list_size(self, raw_value: str) -> int:
         try:

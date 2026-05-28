@@ -32,7 +32,7 @@ class WorldListingTests(unittest.TestCase):
                 celltype_defs={"reef": {}, "archive": {}},
             )
 
-            worlds = manager.list_worlds()
+            worlds = manager.list_worlds(local_dev=True)
 
         self.assertEqual(len(worlds), 1)
         self.assertEqual(worlds[0]["id"], world_id)
@@ -43,6 +43,8 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(worlds[0]["item_count"], 2)
         self.assertEqual(worlds[0]["enemy_count"], 1)
         self.assertEqual(worlds[0]["terrain_count"], 2)
+        self.assertEqual(worlds[0]["visibility"], "unlisted")
+        self.assertIsNone(worlds[0]["owner_id"])
 
     def test_list_worlds_counts_list_based_terrain_definitions(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -60,7 +62,7 @@ class WorldListingTests(unittest.TestCase):
                 ],
             )
 
-            worlds = manager.list_worlds()
+            worlds = manager.list_worlds(local_dev=True)
 
         self.assertEqual(worlds[0]["terrain_count"], 2)
 
@@ -102,6 +104,106 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(len(worlds), 1)
         self.assertEqual(worlds[0]["id"], "oldworld")
         self.assertEqual(worlds[0]["created_at"], None)
+
+    def test_list_worlds_excludes_private_and_unlisted_outside_local_dev(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            public_id = manager.save_generator(
+                theme_desc="Public world",
+                theme_desc_better="Public World",
+                language="en",
+                player_defs=[{"name": "Hero"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="public",
+            )
+            manager.save_generator(
+                theme_desc="Unlisted world",
+                theme_desc_better="Unlisted World",
+                language="en",
+                player_defs=[{"name": "Rogue"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="unlisted",
+            )
+            manager.save_generator(
+                theme_desc="Private world",
+                theme_desc_better="Private World",
+                language="en",
+                player_defs=[{"name": "Mage"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="private",
+            )
+
+            worlds = manager.list_worlds(local_dev=False)
+            ids = {w["id"] for w in worlds}
+
+        self.assertIn(public_id, ids)
+        self.assertEqual(len(worlds), 1)
+
+    def test_get_visible_generator_allows_unlisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="Unlisted world",
+                theme_desc_better="Unlisted World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="unlisted",
+            )
+
+            result = manager.get_visible_generator(world_id)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["visibility"], "unlisted")
+
+    def test_get_visible_generator_blocks_private_for_non_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="Private world",
+                theme_desc_better="Private World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="private",
+                owner_id="owner-123",
+            )
+
+            result_anon = manager.get_visible_generator(world_id)
+            result_other = manager.get_visible_generator(world_id, requester_owner_id="other-owner")
+
+        self.assertIsNone(result_anon)
+        self.assertIsNone(result_other)
+
+    def test_get_visible_generator_allows_private_for_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="Private world",
+                theme_desc_better="Private World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="private",
+                owner_id="owner-123",
+            )
+
+            result = manager.get_visible_generator(world_id, requester_owner_id="owner-123")
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["visibility"], "private")
 
     def test_generator_translation_cache_round_trips_by_language(self):
         with tempfile.TemporaryDirectory() as directory:
