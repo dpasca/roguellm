@@ -434,6 +434,29 @@ async def get_world(request: Request, world_id: str):
         "visibility": generator_data.get('visibility', 'unlisted'),
     })
 
+class VisibilityUpdateRequest(BaseModel):
+    visibility: str
+
+@app.patch("/api/worlds/{world_id}/visibility")
+async def update_world_visibility(request: VisibilityUpdateRequest, req: Request, world_id: str):
+    user_id = req.session.get("user_id")
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    generator_data = db.get_generator(world_id)
+    if not generator_data:
+        return JSONResponse({"error": "World not found"}, status_code=404)
+
+    if generator_data.get("owner_id") != user_id:
+        return JSONResponse({"error": "Not authorized"}, status_code=403)
+
+    visibility = request.visibility.strip().lower()
+    if visibility not in ("private", "unlisted", "public"):
+        return JSONResponse({"error": "Invalid visibility"}, status_code=400)
+
+    db.update_generator_visibility(world_id, visibility)
+    return JSONResponse({"id": world_id, "visibility": visibility})
+
 # Legacy API endpoint for backward compatibility
 @app.post("/api/create_game")
 async def create_game(request: CreateGameRequest, req: Request):

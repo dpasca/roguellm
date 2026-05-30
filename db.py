@@ -482,6 +482,20 @@ class DatabaseManager:
 
         self._execute_with_retry(_save)
 
+    def update_generator_visibility(self, generator_id: str, visibility: str) -> bool:
+        """Update the visibility of a generator. Returns True if updated."""
+        def _update(conn, generator_id, visibility):
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE generators
+                SET visibility = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (visibility, generator_id))
+            conn.commit()
+            return cur.rowcount > 0
+
+        return self._execute_with_retry(_update, generator_id, visibility)
+
     def list_worlds(self, limit: int = 20, local_dev: bool = False, owner_id: Optional[str] = None) -> List[Dict]:
         """
         Return recent reusable generated worlds.

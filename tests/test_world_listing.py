@@ -514,5 +514,126 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
 
 
+class VisibilityControlTests(unittest.TestCase):
+    def make_db(self, directory):
+        with patch.dict(os.environ, {
+            "DO_STORAGE_SERVER": "",
+            "DO_SPACES_ACCESS_KEY": "",
+            "DO_SPACES_SECRET_KEY": "",
+            "DO_STORAGE_CONTAINER": "",
+        }):
+            manager = DatabaseManager()
+        manager.db_path = os.path.join(directory, "test_worlds.db")
+        manager.init_db()
+        return manager
+
+    def test_owner_can_change_visibility(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            owner_id = user["id"]
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden\nA quiet place",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[{"id": "shears"}],
+                enemy_defs=[{"id": "rabbit"}],
+                celltype_defs={"grass": {"name": "Grass"}},
+                owner_id=owner_id,
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["visibility"], "public")
+            updated = manager.get_generator(world_id)
+            self.assertEqual(updated["visibility"], "public")
+
+    def test_anonymous_cannot_change_visibility(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id="owner-123",
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
+
+            self.assertEqual(response.status_code, 401)
+
+    def test_non_owner_cannot_change_visibility(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            owner = manager.create_user("owner", "secret123")
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=owner["id"],
+                visibility="private"
+            )
+            manager.create_user("other", "secret123")
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "other", "password": "secret123"})
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
+
+            self.assertEqual(response.status_code, 403)
+
+    def test_invalid_visibility_rejected(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=user["id"],
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "super-secret"})
+
+            self.assertEqual(response.status_code, 400)
+
+    def test_missing_world_returns_404(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            manager.create_user("owner", "secret123")
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.patch("/api/worlds/nonexistent/visibility", json={"visibility": "public"})
+
+            self.assertEqual(response.status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()
