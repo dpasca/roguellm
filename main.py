@@ -596,6 +596,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "status": "creating"
                 })
 
+                # Determine ownership and visibility for newly generated worlds
+                user_id = websocket.session.get("user_id")
+                world_visibility = "private" if user_id else "unlisted"
+
                 # Create new game instance with timeout
                 try:
                     game_instance = await asyncio.wait_for(
@@ -604,7 +608,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             theme_desc=theme_desc,
                             language=language,
                             do_web_search=do_web_search,
-                            generator_id=request.generator_id
+                            generator_id=request.generator_id,
+                            owner_id=user_id,
+                            visibility=world_visibility
                         ),
                         timeout=60.0  # 1 minute timeout
                     )

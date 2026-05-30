@@ -25,7 +25,8 @@ class GameStateManager:
     """Manages game state initialization, persistence, and message creation."""
 
     def __init__(self, seed: int, theme_desc: str, do_web_search: bool = False,
-                 language: str = "en", generator_id: Optional[str] = None):
+                 language: str = "en", generator_id: Optional[str] = None,
+                 owner_id: Optional[str] = None, visibility: Optional[str] = None):
         self.random = random.Random(seed)
         self.error_message = None
         self.item_sequence_cnt = 0
@@ -59,12 +60,15 @@ class GameStateManager:
         self.theme_desc = theme_desc
         self.theme_desc_better = None
         self.do_web_search = do_web_search
+        self.owner_id = owner_id
+        self.visibility = visibility
 
     @classmethod
     async def create(cls, seed: int, theme_desc: str, do_web_search: bool = False,
-                    language: str = "en", generator_id: Optional[str] = None):
+                    language: str = "en", generator_id: Optional[str] = None,
+                    owner_id: Optional[str] = None, visibility: Optional[str] = None):
         """Factory method to create and initialize a GameStateManager."""
-        manager = cls(seed, theme_desc, do_web_search, language, generator_id)
+        manager = cls(seed, theme_desc, do_web_search, language, generator_id, owner_id, visibility)
 
         if generator_id:
             generator_data = db.get_generator(generator_id)
@@ -100,7 +104,11 @@ class GameStateManager:
             logger.info(f"## Generated CELLTYPE defs:\n{manager.definitions.celltype_defs}\n")
 
             # Save the generator if it was newly created
-            manager.definitions.save_generator(theme_desc, manager.theme_desc_better)
+            manager.definitions.save_generator(
+                theme_desc, manager.theme_desc_better,
+                owner_id=manager.owner_id,
+                visibility=manager.visibility or "unlisted"
+            )
             manager.generator_id = db.save_generator(
                 theme_desc=theme_desc,
                 theme_desc_better=manager.theme_desc_better,
@@ -108,7 +116,9 @@ class GameStateManager:
                 player_defs=manager.definitions.player_defs,
                 item_defs=manager.definitions.item_defs,
                 enemy_defs=manager.definitions.enemy_defs,
-                celltype_defs=manager.definitions.celltype_defs
+                celltype_defs=manager.definitions.celltype_defs,
+                owner_id=manager.owner_id,
+                visibility=manager.visibility or "unlisted"
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
