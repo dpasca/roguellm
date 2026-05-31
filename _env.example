@@ -1,10 +1,23 @@
 # Environment Variables Template
 # Copy this content to a .env file and fill in your actual API keys
 
+# Runtime Environment
+# Use development locally. Set APP_ENV=production on the public server.
+APP_ENV=development
+
 # Session Security
 # Generate a secure random string for session encryption
 # You can generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 SESSION_SECRET_KEY=your_secure_random_session_key_here
+# Production requires a real 32+ character SESSION_SECRET_KEY and will not
+# start with the placeholder above.
+SESSION_COOKIE_SAMESITE=lax
+SESSION_COOKIE_MAX_AGE_SECONDS=1209600
+
+# World Publishing
+# Newly generated Worlds are private by default. Production ignores non-private
+# overrides until the public review flow is implemented.
+DEFAULT_NEW_WORLD_VISIBILITY=private
 
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys

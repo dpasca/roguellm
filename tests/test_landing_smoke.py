@@ -156,7 +156,10 @@ class LandingSmokeTests(unittest.TestCase):
             created_with.update(kwargs)
             return FakeGame()
 
-        with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": "1"}), \
+        with patch.dict(os.environ, {
+            "ENABLE_DEBUG_SEED": "1",
+            "DEFAULT_NEW_WORLD_VISIBILITY": "private",
+        }), \
                 patch("main.Game.create", side_effect=fake_create), \
                 patch("main.get_prerendered_content", passthrough_prerender):
             main.game_session_manager.sessions.clear()
@@ -175,6 +178,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertEqual(websocket.receive_json()["type"], "connection_established")
 
         self.assertEqual(created_with["seed"], 123)
+        self.assertEqual(created_with["visibility"], "private")
+        self.assertIsNone(created_with["owner_id"])
 
 
 if __name__ == "__main__":

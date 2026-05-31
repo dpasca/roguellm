@@ -32,6 +32,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from game import Game
 from db import db
 
+load_dotenv()
+
 #==================================================================
 # Game Session Management
 #==================================================================
@@ -141,6 +143,37 @@ def get_request_user_id(request: Request) -> Optional[str]:
 # Security Configuration
 #==================================================================
 
+PRODUCTION_ENV_NAMES = {"production", "prod"}
+SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
+PLACEHOLDER_SESSION_SECRETS = {
+    "changeme",
+    "change_me",
+    "replace_me",
+    "replace-with-a-secure-secret",
+    "your_secure_random_session_key_here",
+    "your_secure_random_string_here",
+}
+
+VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
+
+
+def get_app_env() -> str:
+    return (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or "development").strip().lower()
+
+
+def is_production_env() -> bool:
+    return get_app_env() in PRODUCTION_ENV_NAMES
+
+
+def is_placeholder_session_secret(session_secret: str) -> bool:
+    normalized_secret = session_secret.strip().lower()
+    return (
+        normalized_secret in PLACEHOLDER_SESSION_SECRETS
+        or normalized_secret.startswith("your_")
+        or "placeholder" in normalized_secret
+    )
+
+
 def get_session_secret_key() -> str:
     """
     Get or generate a secure session secret key.
@@ -151,15 +184,31 @@ def get_session_secret_key() -> str:
     Raises:
         ValueError: If no session secret is configured and fallback is disabled
     """
-    session_secret = os.getenv("SESSION_SECRET_KEY")
+    raw_session_secret = os.getenv("SESSION_SECRET_KEY")
+    session_secret = raw_session_secret.strip() if raw_session_secret else ""
 
     if session_secret:
+        if is_production_env() and (
+            len(session_secret) < 32
+            or is_placeholder_session_secret(session_secret)
+        ):
+            raise ValueError(
+                "SESSION_SECRET_KEY must be a real random secret of at least "
+                "32 characters when APP_ENV=production."
+            )
+
         if len(session_secret) < 32:
             logging.warning(
                 "SESSION_SECRET_KEY is shorter than recommended (32+ characters). "
                 "Consider using a longer, more secure key."
             )
         return session_secret
+
+    if is_production_env():
+        raise ValueError(
+            "SESSION_SECRET_KEY must be set when APP_ENV=production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
 
     # Generate a secure fallback key
     fallback_key = secrets.token_urlsafe(32)
@@ -179,6 +228,61 @@ def get_session_secret_key() -> str:
 
     return fallback_key
 
+
+def get_session_cookie_same_site() -> str:
+    same_site = os.getenv("SESSION_COOKIE_SAMESITE", "lax").strip().lower()
+    if same_site not in {"lax", "strict", "none"}:
+        logging.warning(
+            "Invalid SESSION_COOKIE_SAMESITE=%r; using 'lax'.",
+            same_site,
+        )
+        return "lax"
+    return same_site
+
+
+def get_session_cookie_max_age_seconds() -> int:
+    raw_max_age = os.getenv(
+        "SESSION_COOKIE_MAX_AGE_SECONDS",
+        str(SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS),
+    )
+    try:
+        max_age = int(raw_max_age)
+    except ValueError:
+        logging.warning(
+            "Invalid SESSION_COOKIE_MAX_AGE_SECONDS=%r; using %s.",
+            raw_max_age,
+            SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS,
+        )
+        return SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS
+
+    if max_age <= 0:
+        logging.warning(
+            "SESSION_COOKIE_MAX_AGE_SECONDS must be positive; using %s.",
+            SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS,
+        )
+        return SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS
+
+    return max_age
+
+
+def get_default_new_world_visibility() -> str:
+    visibility = os.getenv("DEFAULT_NEW_WORLD_VISIBILITY", "private").strip().lower()
+    if visibility not in VALID_WORLD_VISIBILITIES:
+        logging.warning(
+            "Invalid DEFAULT_NEW_WORLD_VISIBILITY=%r; using 'private'.",
+            visibility,
+        )
+        return "private"
+
+    if is_production_env() and visibility != "private":
+        logging.warning(
+            "Ignoring DEFAULT_NEW_WORLD_VISIBILITY=%r in production; new Worlds stay private.",
+            visibility,
+        )
+        return "private"
+
+    return visibility
+
 #==================================================================
 # FastAPI
 #==================================================================
@@ -186,8 +290,7 @@ def get_session_secret_key() -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logging.info("Loading environment variables from .env")
-    load_dotenv()
+    app.state.start_time = time.time()
     # Initialize database
     db.init_db()
 
@@ -211,7 +314,10 @@ app = FastAPI(lifespan=lifespan)
 # Session middleware with secure secret key
 app.add_middleware(
     SessionMiddleware,
-    secret_key=get_session_secret_key()
+    secret_key=get_session_secret_key(),
+    https_only=is_production_env(),
+    same_site=get_session_cookie_same_site(),
+    max_age=get_session_cookie_max_age_seconds(),
 )
 
 # Mount static files directory
@@ -229,6 +335,42 @@ class AddHeadersMiddleware(BaseHTTPMiddleware):
 
 # Add the middleware to your FastAPI app
 app.add_middleware(AddHeadersMiddleware)
+
+@app.get("/health")
+async def get_health():
+    """Lightweight process health check for load balancers and deploy scripts."""
+    start_time = getattr(app.state, "start_time", None)
+    uptime_seconds = time.time() - start_time if start_time else 0
+    return JSONResponse({
+        "status": "ok",
+        "service": "roguellm",
+        "env": get_app_env(),
+        "version": os.getenv("APP_VERSION", "dev"),
+        "uptime_seconds": round(uptime_seconds, 3),
+    })
+
+
+@app.get("/health/db")
+async def get_database_health():
+    """Check that the configured database can accept a simple query."""
+    started_at = time.perf_counter()
+    try:
+        with db.get_connection() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception:
+        logging.exception("Database health check failed")
+        return JSONResponse({
+            "status": "error",
+            "database": "sqlite",
+            "error": "database health check failed",
+        }, status_code=503)
+
+    return JSONResponse({
+        "status": "ok",
+        "database": "sqlite",
+        "storage_enabled": bool(getattr(db, "storage_enabled", False)),
+        "latency_ms": round((time.perf_counter() - started_at) * 1000, 3),
+    })
 
 # Landing page
 @app.get("/")
@@ -659,9 +801,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "status": "creating"
                 })
 
-                # Determine ownership and visibility for newly generated worlds
+                # Determine ownership and visibility for newly generated worlds.
                 user_id = websocket.session.get("user_id")
-                world_visibility = "private" if user_id else "unlisted"
+                world_visibility = get_default_new_world_visibility()
 
                 # Create new game instance with timeout
                 try:

@@ -16,6 +16,31 @@
 - Cross-app shared auth with AskMei.
 - Copying ChatNext3 TypeScript auth directly into this Python app.
 
+## Publish-Soon Track
+
+Keep the work in small publishable slices so the app remains usable:
+
+1. Current guardrail slice:
+   - Production loads env before session middleware is constructed.
+   - `APP_ENV=production` refuses missing, placeholder, or short
+     `SESSION_SECRET_KEY` values.
+   - Production sessions use HTTPS-only cookies with explicit SameSite and max
+     age settings.
+   - Newly generated Worlds default to `private`; production ignores
+     non-private default overrides.
+2. Staging slice:
+   - Dockerize the current app on the VPS behind HTTPS.
+   - Add `/health` and `/health/db` checks.
+   - Run a source-open/secret scan before pushing or deploying.
+   - Keep signups limited or clearly temporary until Postgres migrations land.
+3. Public-login slice:
+   - Move users and Worlds to Postgres with migrations.
+   - Add login/signup rate limits and stronger password hashing.
+   - Keep all Worlds private unless reviewed.
+4. Public-worlds slice:
+   - Add the five-minute pending public request flow.
+   - Run structured LLM moderation before any World becomes browseable.
+
 ## Source-Open Safety Rules
 
 - Do not commit `.env`, production hostnames tied to private operations, VPS IPs,
@@ -55,6 +80,53 @@ ChatNext3 provides useful patterns to mirror:
 - Migration and backup runbooks.
 
 Do not copy ChatNext3 production access details or real env values into this repo.
+
+## Staging Docker Runbook
+
+The current staging compose file is intentionally SQLite-backed and should be
+treated as a smoke-test bridge, not the final public-account architecture.
+
+1. Create an ignored staging env file from the template:
+
+   ```bash
+   cp _env.example .env.staging
+   ```
+
+2. In `.env.staging`, set at least:
+
+   ```bash
+   APP_ENV=production
+   SESSION_SECRET_KEY=<32+ character random secret>
+   LOW_SPEC_MODEL_API_KEY=<api key>
+   HIGH_SPEC_MODEL_API_KEY=<api key>
+   DEFAULT_NEW_WORLD_VISIBILITY=private
+   ```
+
+3. Build and start the app on a loopback-only host port:
+
+   ```bash
+   docker compose -f docker-compose.staging.yml up --build -d
+   ```
+
+   The default host port is `127.0.0.1:18080`. Override it from the shell if the
+   VPS already uses that port:
+
+   ```bash
+   ROGUELLM_HOST_PORT=18081 docker compose -f docker-compose.staging.yml up --build -d
+   ```
+
+4. Verify locally on the VPS before adding ingress:
+
+   ```bash
+   curl -fsS http://127.0.0.1:18080/health
+   curl -fsS http://127.0.0.1:18080/health/db
+   ```
+
+5. Point the reverse proxy upstream at `http://127.0.0.1:18080`, including
+   WebSocket upgrade headers for `/ws/*`.
+
+Do not commit `.env.staging`, generated databases, logs, backups, or reverse
+proxy files containing real hostnames or private paths.
 
 ## DNS And Reverse Proxy Plan
 
