@@ -116,6 +116,48 @@
         <div v-else class="landing-container">
             <h1>{{ t('title') }}</h1>
             <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
+            <div class="auth-strip">
+                <div v-if="currentUser" class="auth-session">
+                    <span>{{ t('authSignedIn', { username: currentUser.username }) }}</span>
+                    <button type="button"
+                            class="auth-secondary-btn"
+                            :disabled="isAuthenticating"
+                            @click="logout">
+                        {{ t('logout') }}
+                    </button>
+                </div>
+                <form v-else class="auth-form" @submit.prevent="submitAuth">
+                    <div class="auth-mode" role="tablist">
+                        <button type="button"
+                                class="auth-mode-btn"
+                                :class="{ active: authMode === 'login' }"
+                                @click="setAuthMode('login')">
+                            {{ t('login') }}
+                        </button>
+                        <button type="button"
+                                class="auth-mode-btn"
+                                :class="{ active: authMode === 'signup' }"
+                                @click="setAuthMode('signup')">
+                            {{ t('signup') }}
+                        </button>
+                    </div>
+                    <input v-model="authForm.username"
+                           class="auth-input"
+                           type="text"
+                           autocomplete="username"
+                           :placeholder="t('username')">
+                    <input v-model="authForm.password"
+                           class="auth-input"
+                           type="password"
+                           :autocomplete="authMode === 'signup' ? 'new-password' : 'current-password'"
+                           :placeholder="t('password')">
+                    <button type="submit"
+                            class="auth-primary-btn"
+                            :disabled="isAuthenticating">
+                        {{ authMode === 'signup' ? t('signup') : t('login') }}
+                    </button>
+                </form>
+            </div>
             <div class="theme-selector">
                 <h2 v-text="t('selectTheme')"></h2>
                 <div class="theme-options">
@@ -185,6 +227,18 @@
                 </div>
 
                 <div class="theme-description" v-show="selectedTheme === 'world'">
+                    <div v-if="availableWorldTabs.length > 1"
+                         class="world-tabs"
+                         role="tablist">
+                        <button v-for="tab in availableWorldTabs"
+                                :key="tab.id"
+                                type="button"
+                                class="world-tab"
+                                :class="{ active: worldTab === tab.id }"
+                                @click="worldTab = tab.id">
+                            {{ tab.label }}
+                        </button>
+                    </div>
                     <div v-if="isLoadingWorlds" class="world-list-state">{{ t('loadingWorlds') }}</div>
                     <div v-else-if="worlds.length" class="world-picker">
                         <label v-for="world in worlds"
@@ -198,7 +252,7 @@
                             <span class="world-copy">
                                 <span class="world-title">{{ world.title }}</span>
                                 <span class="world-meta">
-                                    {{ world.language }} · {{ formatWorldCounts(world) }}
+                                    {{ world.language }} · {{ worldVisibilityLabel(world.visibility) }} · {{ formatWorldCounts(world) }}
                                 </span>
                             </span>
                             <button v-if="selectedWorldId === world.id"
@@ -223,9 +277,28 @@
                                     </div>
                                 </dl>
                                 <p class="world-preview-theme">{{ world.theme }}</p>
+                                <div class="world-actions">
+                                    <button type="button"
+                                            class="world-secondary-btn"
+                                            @click.stop.prevent="copyWorldLink(world)">
+                                        {{ t('copyShareLink') }}
+                                    </button>
+                                    <label v-if="isOwnedWorld(world)"
+                                           class="world-visibility-control"
+                                           @click.stop>
+                                        <span>{{ t('visibility') }}</span>
+                                        <select :value="world.visibility"
+                                                @change.stop="updateWorldVisibility(world, $event)">
+                                            <option value="private">{{ t('visibilityPrivate') }}</option>
+                                            <option value="unlisted">{{ t('visibilityUnlisted') }}</option>
+                                            <option value="public">{{ t('visibilityPublic') }}</option>
+                                        </select>
+                                    </label>
+                                </div>
                             </div>
                         </label>
                     </div>
+                    <div v-else class="world-list-state">{{ t('noWorlds') }}</div>
                     <div v-if="isLocalDev && worlds.length" class="dev-shortcuts">
                         <button type="button" @click="quickStartPiedone()">
                             {{ t('quickStartPiedone') }}
@@ -240,6 +313,9 @@
 
                 <div v-if="errorMessage" class="error-message">
                     {{ errorMessage }}
+                </div>
+                <div v-if="infoMessage" class="info-message">
+                    {{ infoMessage }}
                 </div>
                 <button v-if="selectedTheme !== 'custom'"
                         @click="launchGame"

@@ -134,6 +134,9 @@ def is_debug_seed_allowed(request: Request) -> bool:
         or os.getenv("ENABLE_DEBUG_SEED") == "1"
     )
 
+def get_request_user_id(request: Request) -> Optional[str]:
+    return request.session.get("user_id")
+
 #==================================================================
 # Security Configuration
 #==================================================================
@@ -249,7 +252,10 @@ async def read_landing(request: Request):
         generator_id = request.query_params.get("generator")
         if generator_id:
             # Validate generator ID
-            generator_data = db.get_visible_generator(generator_id)
+            generator_data = db.get_visible_generator(
+                generator_id,
+                requester_owner_id=get_request_user_id(request)
+            )
             if generator_data:
                 # Store in session and redirect to game page
                 request.session["generator_id"] = generator_id
@@ -294,7 +300,10 @@ async def read_game(request: Request):
 
         if generator_id:
             # Validate generator ID
-            generator_data = db.get_visible_generator(generator_id)
+            generator_data = db.get_visible_generator(
+                generator_id,
+                requester_owner_id=get_request_user_id(request)
+            )
             if not generator_data:
                 # If invalid generator ID, redirect to landing with error
                 return RedirectResponse(url=f"/?error=invalid_generator")
@@ -366,7 +375,10 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         }, status_code=403)
 
     if creation_request.generator_id:
-        generator_data = db.get_visible_generator(creation_request.generator_id)
+        generator_data = db.get_visible_generator(
+            creation_request.generator_id,
+            requester_owner_id=get_request_user_id(req)
+        )
         if not generator_data:
             return JSONResponse({
                 "error": f"World ID not found: {creation_request.generator_id}"
@@ -395,10 +407,11 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
 
 @app.get("/api/worlds/recent")
 async def get_recent_worlds(request: Request, limit: int = 12):
-    """List reusable generated Worlds for local testing and opt-in deployments."""
-    if not is_world_library_allowed(request):
-        return JSONResponse({"worlds": []})
+    """List reusable generated Worlds.
 
+    Local/dev and opt-in library deployments see recent Worlds for convenience.
+    Other deployments see public Worlds only.
+    """
     try:
         return JSONResponse({
             "worlds": db.list_worlds(limit, local_dev=is_world_library_allowed(request))
@@ -409,10 +422,30 @@ async def get_recent_worlds(request: Request, limit: int = 12):
             "error": "Failed to load worlds"
         }, status_code=500)
 
+@app.get("/api/my/worlds")
+async def get_my_worlds(request: Request, limit: int = 20):
+    """List Worlds owned by the logged-in user."""
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    try:
+        return JSONResponse({
+            "worlds": db.list_worlds(limit, owner_id=user_id)
+        })
+    except Exception as e:
+        logging.error(f"Error listing owned worlds: {e}")
+        return JSONResponse({
+            "error": "Failed to load worlds"
+        }, status_code=500)
+
 @app.get("/api/worlds/{world_id}")
 async def get_world(request: Request, world_id: str):
     """Get world metadata by ID if visible to the requester."""
-    generator_data = db.get_visible_generator(world_id)
+    generator_data = db.get_visible_generator(
+        world_id,
+        requester_owner_id=get_request_user_id(request)
+    )
     if not generator_data:
         return JSONResponse({"error": "World not found"}, status_code=404)
 
@@ -464,7 +497,10 @@ async def create_game(request: CreateGameRequest, req: Request):
     try:
         if request.generator_id:
             # Check if generator exists
-            generator_data = db.get_visible_generator(request.generator_id)
+            generator_data = db.get_visible_generator(
+                request.generator_id,
+                requester_owner_id=get_request_user_id(req)
+            )
             if not generator_data:
                 return JSONResponse({
                     "error": f"World ID not found: {request.generator_id}"
@@ -595,7 +631,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
                 if request.generator_id:
                     # Check if generator exists
-                    generator_data = db.get_visible_generator(request.generator_id)
+                    user_id = websocket.session.get("user_id")
+                    generator_data = db.get_visible_generator(
+                        request.generator_id,
+                        requester_owner_id=user_id
+                    )
                     if not generator_data:
                         await websocket.send_json({
                             "type": "error",

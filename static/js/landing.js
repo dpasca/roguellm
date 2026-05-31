@@ -30,9 +30,22 @@ const app = Vue.createApp({
             customDescription: '',
             generatorId: '',
             selectedWorldId: '',
-            worlds: [],
+            currentUser: null,
+            authMode: 'login',
+            authForm: {
+                username: '',
+                password: ''
+            },
+            isAuthenticating: false,
+            worldTab: 'public',
+            worldLists: {
+                public: [],
+                my: [],
+                recentDev: []
+            },
             isLoadingWorlds: false,
             errorMessage: null,
+            infoMessage: null,
             doWebSearch: true,
             selectedLanguage: 'en',
             supportedLanguages: SUPPORTED_LANGUAGES,
@@ -53,6 +66,27 @@ const app = Vue.createApp({
                 return null;
             }
             return this.selectedWorldId || this.generatorId.trim() || null;
+        },
+        worlds() {
+            return this.worldLists[this.worldTab] || [];
+        },
+        allWorlds() {
+            const worldsById = new Map();
+            Object.values(this.worldLists).forEach((worlds) => {
+                worlds.forEach((world) => worldsById.set(world.id, world));
+            });
+            return Array.from(worldsById.values());
+        },
+        availableWorldTabs() {
+            const tabs = [];
+            if (this.currentUser) {
+                tabs.push({ id: 'my', label: this.t('myWorlds') });
+            }
+            tabs.push({ id: 'public', label: this.t('publicWorlds') });
+            if (this.isLocalDev) {
+                tabs.push({ id: 'recentDev', label: this.t('recentDevWorlds') });
+            }
+            return tabs;
         },
         isLocalDev() {
             return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -93,6 +127,9 @@ const app = Vue.createApp({
             } catch (e) {
                 // Not a URL, treat as raw ID (no change needed)
             }
+        },
+        worldTab() {
+            this.selectFirstWorldForTab();
         }
     },
     methods: {
@@ -150,12 +187,139 @@ const app = Vue.createApp({
         clearError() {
             this.errorMessage = null;
         },
+        clearInfo() {
+            this.infoMessage = null;
+        },
         formatWorldCounts(world) {
             return this.t('worldCounts', {
                 enemies: world.enemy_count,
                 items: world.item_count,
                 terrain: world.terrain_count
             });
+        },
+        worldVisibilityLabel(visibility) {
+            const labels = {
+                private: this.t('visibilityPrivate'),
+                unlisted: this.t('visibilityUnlisted'),
+                public: this.t('visibilityPublic')
+            };
+            return labels[visibility] || labels.unlisted;
+        },
+        isOwnedWorld(world) {
+            return this.currentUser && world.owner_id === this.currentUser.id;
+        },
+        setAuthMode(mode) {
+            this.authMode = mode === 'signup' ? 'signup' : 'login';
+            this.clearError();
+            this.clearInfo();
+            this.authForm.password = '';
+        },
+        resetAuthForm() {
+            this.authForm = {
+                username: '',
+                password: ''
+            };
+        },
+        async refreshAuthWorldState(preferredTab = null) {
+            await this.loadCurrentUser();
+            await this.loadWorlds();
+
+            if (preferredTab && this.availableWorldTabs.some(tab => tab.id === preferredTab)) {
+                this.worldTab = preferredTab;
+            }
+        },
+        async submitAuth() {
+            this.clearError();
+            this.clearInfo();
+
+            const username = this.authForm.username.trim();
+            const password = this.authForm.password;
+            if (!username || !password) {
+                this.errorMessage = this.t('authMissingFields');
+                return;
+            }
+
+            this.isAuthenticating = true;
+            try {
+                const endpoint = this.authMode === 'signup' ? '/api/signup' : '/api/login';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || this.t('authFailed'));
+                }
+
+                this.resetAuthForm();
+                await this.refreshAuthWorldState('my');
+                this.infoMessage = this.t('authSignedIn', {
+                    username: this.currentUser?.username || username
+                });
+            } catch (error) {
+                this.errorMessage = error.message || this.t('authFailed');
+            } finally {
+                this.isAuthenticating = false;
+            }
+        },
+        async logout() {
+            this.clearError();
+            this.clearInfo();
+            this.isAuthenticating = true;
+
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || this.t('logoutFailed'));
+                }
+
+                this.currentUser = null;
+                this.worldLists.my = [];
+                await this.loadWorlds();
+                this.infoMessage = this.t('authSignedOut');
+            } catch (error) {
+                this.errorMessage = error.message || this.t('logoutFailed');
+            } finally {
+                this.isAuthenticating = false;
+            }
+        },
+        selectFirstWorldForTab() {
+            if (!this.availableWorldTabs.some(tab => tab.id === this.worldTab)) {
+                this.worldTab = this.isLocalDev ? 'recentDev' : 'public';
+                return;
+            }
+
+            if (!this.worlds.some(world => world.id === this.selectedWorldId)) {
+                this.selectedWorldId = this.worlds[0]?.id || '';
+            }
+
+            if (this.worlds.length > 0 && this.selectedTheme === 'custom' && !this.customDescription.trim()) {
+                this.selectedTheme = 'world';
+            }
+        },
+        chooseInitialWorldTab() {
+            if (this.currentUser && this.worldLists.my.length > 0) {
+                this.worldTab = 'my';
+            } else if (this.isLocalDev && this.worldLists.recentDev.length > 0) {
+                this.worldTab = 'recentDev';
+            } else {
+                this.worldTab = 'public';
+            }
+            this.selectFirstWorldForTab();
+        },
+        async loadCurrentUser() {
+            try {
+                const response = await fetch('/api/me');
+                this.currentUser = response.ok ? await response.json() : null;
+            } catch (error) {
+                console.warn('User session unavailable:', error);
+                this.currentUser = null;
+            }
         },
         async loadWorlds() {
             this.isLoadingWorlds = true;
@@ -167,17 +331,32 @@ const app = Vue.createApp({
                 }
 
                 const data = await response.json();
-                this.worlds = Array.isArray(data.worlds) ? data.worlds : [];
+                const recentWorlds = Array.isArray(data.worlds) ? data.worlds : [];
+                this.worldLists.public = this.isLocalDev
+                    ? recentWorlds.filter(world => world.visibility === 'public')
+                    : recentWorlds;
+                this.worldLists.recentDev = this.isLocalDev ? recentWorlds : [];
 
-                if (this.worlds.length > 0 && !this.selectedWorldId) {
-                    this.selectedWorldId = this.worlds[0].id;
-                    if (this.selectedTheme === 'custom' && !this.customDescription.trim()) {
-                        this.selectedTheme = 'world';
+                if (this.currentUser) {
+                    const myResponse = await fetch('/api/my/worlds?limit=50');
+                    if (myResponse.ok) {
+                        const myData = await myResponse.json();
+                        this.worldLists.my = Array.isArray(myData.worlds) ? myData.worlds : [];
+                    } else {
+                        this.worldLists.my = [];
                     }
+                } else {
+                    this.worldLists.my = [];
                 }
+
+                this.chooseInitialWorldTab();
             } catch (error) {
                 console.warn('World list unavailable:', error);
-                this.worlds = [];
+                this.worldLists = {
+                    public: [],
+                    my: [],
+                    recentDev: []
+                };
             } finally {
                 this.isLoadingWorlds = false;
             }
@@ -217,9 +396,9 @@ const app = Vue.createApp({
                 this.selectedLanguage = languageCode;
             }
 
-            const piedoneWorld = this.worlds.find(world => {
+            const piedoneWorld = this.allWorlds.find(world => {
                 return world.theme === CONFIG.devWorlds.piedoneTheme;
-            }) || this.worlds.find(world => {
+            }) || this.allWorlds.find(world => {
                 const haystack = `${world.title || ''} ${world.theme || ''}`.toLowerCase();
                 return haystack.includes('piedone');
             });
@@ -230,6 +409,74 @@ const app = Vue.createApp({
             }
 
             await this.startWorld(piedoneWorld.id);
+        },
+        async copyWorldLink(world) {
+            this.clearError();
+            this.clearInfo();
+
+            const shareUrl = new URL('/game', window.location.origin);
+            shareUrl.searchParams.set('generator_id', world.id);
+            shareUrl.searchParams.set('lang', this.selectedLanguage);
+
+            try {
+                await navigator.clipboard.writeText(shareUrl.toString());
+                this.infoMessage = this.t('shareLinkCopied');
+            } catch (error) {
+                console.warn('Clipboard unavailable:', error);
+                this.infoMessage = shareUrl.toString();
+            }
+        },
+        replaceWorldInLists(updatedWorld) {
+            const nextLists = {};
+            Object.entries(this.worldLists).forEach(([listName, worlds]) => {
+                let nextWorlds = worlds.map((world) => {
+                    return world.id === updatedWorld.id ? { ...world, ...updatedWorld } : world;
+                });
+
+                if (listName === 'public') {
+                    nextWorlds = nextWorlds.filter(world => world.visibility === 'public');
+                    if (
+                        updatedWorld.visibility === 'public' &&
+                        !nextWorlds.some(world => world.id === updatedWorld.id)
+                    ) {
+                        nextWorlds = [{ ...updatedWorld }, ...nextWorlds];
+                    }
+                }
+
+                nextLists[listName] = nextWorlds;
+            });
+            this.worldLists = nextLists;
+            this.selectFirstWorldForTab();
+        },
+        async updateWorldVisibility(world, event) {
+            this.clearError();
+            this.clearInfo();
+
+            const previousVisibility = world.visibility;
+            const visibility = event.target.value;
+            world.visibility = visibility;
+
+            try {
+                const response = await fetch(`/api/worlds/${world.id}/visibility`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ visibility })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || this.t('visibilityUpdateFailed'));
+                }
+
+                const data = await response.json();
+                this.replaceWorldInLists({ ...world, visibility: data.visibility });
+            } catch (error) {
+                world.visibility = previousVisibility;
+                event.target.value = previousVisibility;
+                this.errorMessage = error.message || this.t('visibilityUpdateFailed');
+            }
         },
         async applyDevQuickStartFromUrl() {
             if (!this.isLocalDev) {
@@ -352,6 +599,7 @@ const app = Vue.createApp({
                 }
 
                 this.selectedLanguage = initialLang;
+                await this.loadCurrentUser();
                 await this.loadWorlds();
                 await this.applyDevQuickStartFromUrl();
                 console.log('Setting isLoading to false');

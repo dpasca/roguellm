@@ -12,6 +12,9 @@ import boto3
 from threading import Lock, Thread
 from datetime import datetime, timedelta
 
+VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
+
+
 class DatabaseManager:
     class ConnectionWrapper:
         def __init__(self, connection, on_commit):
@@ -192,7 +195,11 @@ class DatabaseManager:
                     item_defs TEXT,
                     enemy_defs TEXT,
                     celltype_defs TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    owner_id TEXT NULL,
+                    visibility TEXT NOT NULL DEFAULT 'unlisted'
+                        CHECK (visibility IN ('private', 'unlisted', 'public')),
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
@@ -220,6 +227,7 @@ class DatabaseManager:
             self._ensure_column(conn, "generators", "owner_id", "TEXT NULL")
             self._ensure_column(conn, "generators", "visibility", "TEXT NOT NULL DEFAULT 'unlisted'")
             self._ensure_column(conn, "generators", "updated_at", "TIMESTAMP")
+            self._backfill_generator_ownership_shape(conn)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
@@ -236,6 +244,34 @@ class DatabaseManager:
         columns = {row[1] for row in cur.fetchall()}
         if column_name not in columns:
             conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
+
+    def _backfill_generator_ownership_shape(self, conn):
+        """Normalize newly added world ownership columns on existing databases."""
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(generators)")
+        columns = {row[1] for row in cur.fetchall()}
+
+        if "visibility" in columns:
+            conn.execute("""
+                UPDATE generators
+                SET visibility = 'unlisted'
+                WHERE visibility IS NULL
+                   OR visibility NOT IN ('private', 'unlisted', 'public')
+            """)
+
+        if "updated_at" in columns:
+            if "created_at" in columns:
+                conn.execute("""
+                    UPDATE generators
+                    SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+                    WHERE updated_at IS NULL
+                """)
+            else:
+                conn.execute("""
+                    UPDATE generators
+                    SET updated_at = CURRENT_TIMESTAMP
+                    WHERE updated_at IS NULL
+                """)
 
     def backup_db(self):
         """Upload current DB to remote storage"""
@@ -324,6 +360,8 @@ class DatabaseManager:
         Save a generator and return its unique ID.
         Uses UPSERT pattern to handle concurrent inserts safely.
         """
+        visibility = self._normalize_visibility(visibility)
+
         def _save(conn, *args):
             generator_id = self.generate_generator_id(
                 theme_desc,
@@ -359,6 +397,14 @@ class DatabaseManager:
         generator_id = self._execute_with_retry(_save)
         # Upload is now scheduled automatically by the connection wrapper
         return generator_id
+
+    def _normalize_visibility(self, visibility: Optional[str]) -> str:
+        normalized = (visibility or "unlisted").strip().lower()
+        if normalized not in VALID_WORLD_VISIBILITIES:
+            raise ValueError(
+                f"visibility must be one of: {', '.join(sorted(VALID_WORLD_VISIBILITIES))}"
+            )
+        return normalized
 
     def get_generator(self, generator_id: str) -> Optional[Dict]:
         """
@@ -484,6 +530,8 @@ class DatabaseManager:
 
     def update_generator_visibility(self, generator_id: str, visibility: str) -> bool:
         """Update the visibility of a generator. Returns True if updated."""
+        visibility = self._normalize_visibility(visibility)
+
         def _update(conn, generator_id, visibility):
             cur = conn.cursor()
             cur.execute("""
@@ -503,9 +551,9 @@ class DatabaseManager:
         The database table is still named "generators" for compatibility, but
         each row is a reusable World that can start many play sessions.
 
-        In local_dev mode, all worlds are returned. Otherwise, only public worlds
-        are returned (private worlds are never listed; unlisted worlds are only
-        accessible by direct ID lookup).
+        When owner_id is provided, all worlds owned by that user are returned.
+        In local_dev mode, public and unlisted worlds are returned for dev
+        convenience. Otherwise, only public worlds are returned.
         """
         limit = max(1, min(limit, 50))
 
@@ -514,25 +562,41 @@ class DatabaseManager:
             cur.execute("PRAGMA table_info(generators)")
             columns = {row[1] for row in cur.fetchall()}
             has_created_at = "created_at" in columns
+            has_updated_at = "updated_at" in columns
+            has_owner_id = "owner_id" in columns
             has_visibility = "visibility" in columns
 
             created_at_select = "created_at" if has_created_at else "NULL AS created_at"
-            order_by = "created_at DESC" if has_created_at else "rowid DESC"
+            updated_at_select = "updated_at" if has_updated_at else "NULL AS updated_at"
+            if has_updated_at and has_created_at:
+                order_by = "COALESCE(updated_at, created_at) DESC"
+            elif has_updated_at:
+                order_by = "updated_at DESC"
+            elif has_created_at:
+                order_by = "created_at DESC"
+            else:
+                order_by = "rowid DESC"
 
-            if local_dev or not has_visibility:
-                where_clause = "1=1"
+            if owner_id is not None:
+                if not has_owner_id:
+                    return []
+                where_clause = "owner_id = ?"
+                params = (owner_id,)
+            elif local_dev or not has_visibility:
+                where_clause = "visibility != 'private'" if has_visibility else "1=1"
                 params = ()
             else:
                 where_clause = "visibility = 'public'"
                 params = ()
 
-            owner_id_select = "owner_id" if "owner_id" in columns else "NULL AS owner_id"
+            owner_id_select = "owner_id" if has_owner_id else "NULL AS owner_id"
             visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
 
             cur.execute(f"""
                 SELECT id, theme_desc, theme_desc_better, language,
                        player_defs, item_defs, enemy_defs, celltype_defs,
-                       {created_at_select}, {owner_id_select}, {visibility_select}
+                       {created_at_select}, {updated_at_select},
+                       {owner_id_select}, {visibility_select}
                 FROM generators
                 WHERE {where_clause}
                 ORDER BY {order_by}
@@ -556,8 +620,9 @@ class DatabaseManager:
                     "enemy_count": self._json_list_size(row[6]),
                     "terrain_count": self._json_mapping_size(row[7]),
                     "created_at": row[8],
-                    "owner_id": row[9],
-                    "visibility": row[10],
+                    "updated_at": row[9],
+                    "owner_id": row[10],
+                    "visibility": row[11],
                 })
 
             return worlds

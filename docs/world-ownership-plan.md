@@ -20,7 +20,7 @@ model needed for users later.
   - `unlisted`: not shown in public lists, but startable by direct World ID/link.
   - `public`: shown in public World lists.
 
-## Current State
+## Original State
 
 - Worlds are stored in `generators`.
 - There is no user model.
@@ -28,6 +28,28 @@ model needed for users later.
   `ENABLE_WORLD_LIBRARY=1`.
 - Starting a World by ID works.
 - Quick Start prefers the seeded dev Piedone World when present.
+
+## Implementation Status
+
+See [production-publish-plan.md](production-publish-plan.md) for the broader
+publish-readiness plan covering open-source safety, VPS hosting, Postgres,
+auth hardening, and public World moderation.
+
+- Phase 1 is implemented: `generators` has ownership, visibility, and update
+  timestamp fields; existing rows are backfilled to `unlisted`; writes validate
+  visibility.
+- Phase 2 is implemented for anonymous and session-based access: public Worlds
+  are browsable, unlisted Worlds resolve by direct ID, and private Worlds are
+  blocked unless the logged-in requester owns them.
+- Phase 3 is implemented as minimal username/password session auth.
+- Phase 4 is implemented for the WebSocket creation flow: logged-in generated
+  Worlds default to `private`, while anonymous generated Worlds default to
+  `unlisted`.
+- Phase 5 is implemented with `PATCH /api/worlds/{world_id}/visibility` and an
+  owner-only control in the World picker.
+- Phase 6 has an initial UI: compact signup/login/logout controls, `My Worlds`,
+  `Public`, and local-only `Recent Dev` tabs, direct share-link copying, and
+  visibility display.
 
 ## Desired Experience
 
@@ -210,10 +232,11 @@ Phase 4 tests:
 
 ## Recommended Next Implementation Step
 
-Implement Phase 1:
+Tighten the logged-in creation flow:
 
-1. Add `owner_id`, `visibility`, and `updated_at` to `generators`.
-2. Default existing Worlds to `unlisted`.
-3. Add DB helpers for visibility-aware listing and lookup.
-4. Keep current local/dev behavior working.
-5. Add tests before changing UI.
+1. Make sure a newly generated logged-in World appears in `My Worlds` after the
+   first run is created.
+2. Add UI copy or status around the default `private` visibility for new logged
+   in Worlds.
+3. Add a smoke test for creating a logged-in custom World with a mocked game
+   generator and then listing it through `GET /api/my/worlds`.
