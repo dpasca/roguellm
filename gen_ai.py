@@ -3,7 +3,6 @@ import random
 from typing import Any, Dict, List
 from models import GameState
 import json
-import pprint
 from openai._types import NOT_GIVEN, NotGiven
 from openai._client import Timeout, Transport
 from openai._base_client import DEFAULT_MAX_RETRIES
@@ -25,6 +24,11 @@ from gen_ai_prompts import (
     append_desc_to_prompt
 )
 from gen_ai_utils import extract_clean_data, make_query_and_web_search, get_language_name, with_exponential_backoff
+from privacy_logging import (
+    describe_collection,
+    describe_text,
+    is_sensitive_content_logging_enabled,
+)
 
 import logging
 logger = logging.getLogger()
@@ -127,9 +131,15 @@ class GenAI:
             temp: float = DEF_TEMP
     ):
         use_model = self.hi_model if quality == MODEL_QUALITY_HIGH else self.lo_model
-        logger.info(f"Requesting completion with model {use_model.model_name}")
-        logger.info(f"System message: {system_msg}")
-        logger.info(f"User message: {user_msg}")
+        logger.info(
+            "Requesting completion with model %s (system=%s, user=%s)",
+            use_model.model_name,
+            describe_text(system_msg),
+            describe_text(user_msg),
+        )
+        if is_sensitive_content_logging_enabled():
+            logger.info("System message: %s", system_msg)
+            logger.info("User message: %s", user_msg)
 
         try:
             async def get_completion():
@@ -144,7 +154,9 @@ class GenAI:
 
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
-            logger.info(f"Obtained completion: {result}")
+            logger.info("Obtained completion (%s)", describe_text(result))
+            if is_sensitive_content_logging_enabled():
+                logger.info("Obtained completion content: %s", result)
             return result
         except Exception as e:
             logger.error(f"Error in _quick_completion: {e}")
@@ -174,7 +186,7 @@ class GenAI:
 
         # Extract the game title from the theme description
         self.game_title = self.theme_desc_better.split("\n")[0]
-        logger.info(f"Game title: {self.game_title}")
+        logger.info("Game title generated (%s)", describe_text(self.game_title))
 
         return self.theme_desc_better
 
@@ -204,7 +216,7 @@ class GenAI:
         try:
             translated = json.loads(extract_clean_data(response))
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid translated world JSON: {response}")
+            logger.error("Invalid translated world JSON (%s)", describe_text(response))
             raise ValueError("World translation response was not valid JSON") from e
 
         return self._normalize_translated_world_definition(world_definition, translated)
@@ -369,7 +381,7 @@ A universe where you can become the master of the universe by defeating other ma
                 user_msg=self.theme_desc,
                 quality=MODEL_QUALITY_FOR_THEME_DESC
             )
-        logger.info(f"Theme description 'better': {self.theme_desc_better}")
+        logger.info("Theme description 'better' generated (%s)", describe_text(self.theme_desc_better))
 
     @staticmethod
     def _make_formatted_events(event_history: List[dict]) -> List[str]:
@@ -475,7 +487,7 @@ A universe where you can become the master of the universe by defeating other ma
         try:
             template_list = json.loads(json_template)
         except json.JSONDecodeError:
-            logger.error(f"Invalid JSON input: {json_template}")
+            logger.error("Invalid JSON input template (%s)", describe_text(json_template))
             raise ValueError("Invalid JSON input")
 
         # Generate a new list of items
@@ -492,7 +504,7 @@ A universe where you can become the master of the universe by defeating other ma
             return data
         except json.JSONDecodeError:
             # Fallback to the original list if the response is broken
-            logger.error(f"Invalid JSON output: {response}")
+            logger.error("Invalid JSON output (%s)", describe_text(response))
             return template_list
 
     async def gen_players_from_json_sample(self, player_defs: str) -> dict:
@@ -522,7 +534,14 @@ A universe where you can become the master of the universe by defeating other ma
             use_msg += f'- id:{id}, name:"{name}", desc:"{desc}"\n'
         use_msg += f"\nGenerate map with dimensions width:{map_width} and height:{map_height} using the above cell types."
 
-        logger.info(f"gen_game_map_from_celltypes: User message: {use_msg}")
+        logger.info(
+            "Generating game map from cell types (%s, %sx%s)",
+            describe_collection(celltype_defs),
+            map_width,
+            map_height,
+        )
+        if is_sensitive_content_logging_enabled():
+            logger.info("gen_game_map_from_celltypes user message: %s", use_msg)
 
         # Get CSV response
         result_csv = await self._quick_completion(
@@ -533,7 +552,9 @@ A universe where you can become the master of the universe by defeating other ma
             user_msg=use_msg,
             quality=MODEL_QUALITY_FOR_MAP
         )
-        logger.info(f"Result CSV: {result_csv}")
+        logger.info("Generated map CSV (%s)", describe_text(result_csv))
+        if is_sensitive_content_logging_enabled():
+            logger.info("Result CSV: %s", result_csv)
         # Clean the response to remove any markdown formatting (just in case)
         result_csv = extract_clean_data(result_csv)
 
@@ -631,18 +652,20 @@ Each placement should indicate whether it's an enemy or an item.
                 user_msg=user_msg,
                 quality=MODEL_QUALITY_FOR_JSON)
             placements_json = extract_clean_data(response)
-            logger.info(f"Entity placements:\n{pprint.pformat(json.loads(placements_json), indent=2)}")
 
         # Parse the response
         try:
             placements = json.loads(placements_json)
+            logger.info("Generated entity placements (%s)", describe_collection(placements))
+            if is_sensitive_content_logging_enabled():
+                logger.info("Entity placements: %s", placements_json)
             return placements
         except json.JSONDecodeError as e:
             logger.error(
-                f"Invalid JSON in entity placement:\n" +
+                "Invalid JSON in entity placement:\n" +
                 f"Error: {str(e)}\nPosition: {e.pos}\n" +
                 f"Line: {e.lineno}, Column: {e.colno}\n" +
-                f"JSON content: {placements_json}")
+                f"JSON content: {describe_text(placements_json)}")
             return []
 
     # Generator for generic sentences
@@ -661,7 +684,9 @@ Each placement should indicate whether it's an enemy or an item.
 # Current Game Context
 {context}"""
 
-        logger.info(f"gen_adapt_sentence: User message: {user_msg}")
+        logger.info("Generating adapted sentence (%s)", describe_text(user_msg))
+        if is_sensitive_content_logging_enabled():
+            logger.info("gen_adapt_sentence user message: %s", user_msg)
 
         try:
             async def get_completion():
@@ -682,7 +707,9 @@ Each placement should indicate whether it's an enemy or an item.
 
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
-            logger.info(f"Generated description: {result}")
+            logger.info("Generated adapted description (%s)", describe_text(result))
+            if is_sensitive_content_logging_enabled():
+                logger.info("Generated adapted description content: %s", result)
             return result
 
         except Exception as e:
@@ -697,7 +724,9 @@ Each placement should indicate whether it's an enemy or an item.
 # Current Game Context
 {context}
 """
-        logger.info(f"gen_room_description: User message: {user_msg}")
+        logger.info("Generating room description (%s)", describe_text(user_msg))
+        if is_sensitive_content_logging_enabled():
+            logger.info("gen_room_description user message: %s", user_msg)
 
         try:
             async def get_completion():
@@ -718,7 +747,9 @@ Each placement should indicate whether it's an enemy or an item.
 
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
-            logger.info(f"Generated description: {result}")
+            logger.info("Generated room description (%s)", describe_text(result))
+            if is_sensitive_content_logging_enabled():
+                logger.info("Generated room description content: %s", result)
             return result
 
         except Exception as e:

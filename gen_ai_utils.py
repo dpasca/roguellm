@@ -6,6 +6,7 @@ import random
 import logging
 import httpx
 import os
+from privacy_logging import describe_text, is_sensitive_content_logging_enabled
 logger = logging.getLogger()
 
 # Mapping of locale codes to full language names
@@ -102,7 +103,9 @@ Return ONLY the query, no additional text or explanations.
 Do NOT wrap the query in quotes.
 The language of the response must be: {get_language_name(language)}
 """
-    logger.info(f"Requesting web search query: {user_msg}")
+    logger.info("Requesting web search query (%s)", describe_text(user_msg))
+    if is_sensitive_content_logging_enabled():
+        logger.info("Web search query prompt: %s", user_msg)
 
     async def get_completion():
         return await oai_client.chat.completions.create(
@@ -116,8 +119,12 @@ The language of the response must be: {get_language_name(language)}
 
     response = await with_exponential_backoff(get_completion)
     query = response.choices[0].message.content
-    logger.info(f"Obtained web search query: {query}")
+    logger.info("Obtained web search query (%s)", describe_text(query))
+    if is_sensitive_content_logging_enabled():
+        logger.info("Obtained web search query content: %s", query)
     provider = os.getenv("SEARCH_PROVIDER", "duckduckgo")
     query_result = web_search(query=query, providers=[provider])
-    logger.info(f"Web search results (using {provider}): {query_result}")
+    logger.info("Web search results obtained using %s (%s)", provider, describe_text(query_result))
+    if is_sensitive_content_logging_enabled():
+        logger.info("Web search results content: %s", query_result)
     return query_result

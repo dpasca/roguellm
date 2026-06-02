@@ -35,11 +35,21 @@ Keep the work in small publishable slices so the app remains usable:
    - Keep signups limited or clearly temporary until Postgres migrations land.
 3. Public-login slice:
    - Move users and Worlds to Postgres with migrations.
-   - Add login/signup rate limits and stronger password hashing.
+   - Add signup rate limits and stronger password hashing.
    - Keep all Worlds private unless reviewed.
 4. Public-worlds slice:
    - Add the five-minute pending public request flow.
    - Run structured LLM moderation before any World becomes browseable.
+
+Completed publish-hardening slice:
+
+- Raw LLM prompts, user themes, generated descriptions, generated definitions,
+  map CSV, entity placements, and web-search results are no longer logged by
+  default. Full LLM content logging now requires `ENABLE_LLM_CONTENT_LOGGING=1`.
+- Login has a basic in-process failed-attempt throttle.
+- Public/user-facing auth and World API responses no longer return stable
+  internal user IDs or `owner_id`; clients receive `can_manage` instead.
+- Password hash verification uses constant-time comparison.
 
 ## Source-Open Safety Rules
 
@@ -214,9 +224,10 @@ Before public launch:
 - Replace hand-rolled PBKDF2 with Argon2id or bcrypt via a maintained library.
 - Normalize usernames or switch to email-based login.
 - Increase password requirements.
-- Add login/signup rate limits.
+- Add signup rate limits and replace the in-process login throttle with a
+  shared production limiter once the app has Postgres/Redis or equivalent.
 - Use generic login failure messages.
-- Avoid returning stable `owner_id` to public clients; prefer `is_owner`.
+- Avoid returning stable `owner_id` to public clients; prefer `can_manage`.
 - Add audit logs for visibility and moderation state changes.
 
 Optional before first publish, but important soon:

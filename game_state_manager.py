@@ -13,6 +13,7 @@ from db import db
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from entity_placement_manager import EntityPlacementManager
+from privacy_logging import describe_collection, describe_text
 
 logger = logging.getLogger()
 
@@ -77,7 +78,11 @@ class GameStateManager:
             await manager.load_generator_world(generator_id, generator_data, language)
 
         # Set the theme description and language
-        logger.info(f"Setting theme description: {manager.theme_desc} with language: {language}")
+        logger.info(
+            "Setting theme description (%s) with language: %s",
+            describe_text(manager.theme_desc),
+            language,
+        )
         manager.theme_desc_better = await manager.gen_ai.set_theme_description(
             theme_desc=manager.theme_desc,
             theme_desc_better=manager.theme_desc_better,
@@ -98,10 +103,13 @@ class GameStateManager:
 
             await run_parallel_init()
 
-            logger.info(f"## Generated PLAYER defs:\n{manager.definitions.player_defs}\n")
-            logger.info(f"## Generated ITEM defs:\n{manager.definitions.item_defs}\n")
-            logger.info(f"## Generated ENEMY defs:\n{manager.definitions.enemy_defs}\n")
-            logger.info(f"## Generated CELLTYPE defs:\n{manager.definitions.celltype_defs}\n")
+            logger.info(
+                "Generated world definitions (players=%s, items=%s, enemies=%s, terrain=%s)",
+                describe_collection(manager.definitions.player_defs),
+                describe_collection(manager.definitions.item_defs),
+                describe_collection(manager.definitions.enemy_defs),
+                describe_collection(manager.definitions.celltype_defs),
+            )
 
             # Save the generator if it was newly created
             manager.definitions.save_generator(

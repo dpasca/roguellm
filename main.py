@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.websockets import WebSocketDisconnect
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 import json
 import time
 import os
@@ -139,6 +139,56 @@ def is_debug_seed_allowed(request: Request) -> bool:
 def get_request_user_id(request: Request) -> Optional[str]:
     return request.session.get("user_id")
 
+
+def serialize_user(user: Dict) -> Dict:
+    return {"username": user["username"]}
+
+
+def can_manage_world(world: Dict, requester_user_id: Optional[str]) -> bool:
+    owner_id = world.get("owner_id")
+    return bool(owner_id and requester_user_id and owner_id == requester_user_id)
+
+
+def serialize_world_summary(world: Dict, requester_user_id: Optional[str]) -> Dict:
+    return {
+        "id": world["id"],
+        "title": world["title"],
+        "theme": world["theme"],
+        "language": world.get("language"),
+        "player_count": world.get("player_count", 0),
+        "item_count": world.get("item_count", 0),
+        "enemy_count": world.get("enemy_count", 0),
+        "terrain_count": world.get("terrain_count", 0),
+        "created_at": world.get("created_at"),
+        "updated_at": world.get("updated_at"),
+        "visibility": world.get("visibility", "unlisted"),
+        "can_manage": can_manage_world(world, requester_user_id),
+    }
+
+
+def serialize_generator_metadata(
+        world_id: str,
+        generator_data: Dict,
+        requester_user_id: Optional[str],
+) -> Dict:
+    theme_desc = generator_data.get('theme_desc') or ""
+    theme_desc_better = generator_data.get('theme_desc_better') or theme_desc
+    title_source = theme_desc_better.strip() or theme_desc.strip()
+    title = title_source.splitlines()[0][:120] if title_source else world_id
+
+    return {
+        "id": world_id,
+        "title": title,
+        "theme": theme_desc,
+        "language": generator_data.get('language'),
+        "player_count": len(generator_data.get('player_defs', [])),
+        "item_count": len(generator_data.get('item_defs', [])),
+        "enemy_count": len(generator_data.get('enemy_defs', [])),
+        "terrain_count": len(generator_data.get('celltype_defs', {})),
+        "visibility": generator_data.get('visibility', 'unlisted'),
+        "can_manage": can_manage_world(generator_data, requester_user_id),
+    }
+
 #==================================================================
 # Security Configuration
 #==================================================================
@@ -155,6 +205,51 @@ PLACEHOLDER_SESSION_SECRETS = {
 }
 
 VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
+
+
+class AuthRateLimiter:
+    def __init__(
+            self,
+            max_attempts: int = 5,
+            window_seconds: int = 60,
+            clock=time.time,
+    ):
+        self.max_attempts = max(1, max_attempts)
+        self.window_seconds = max(1, window_seconds)
+        self.clock = clock
+        self.failures: Dict[str, List[float]] = {}
+
+    def make_key(self, request: Request, username: str) -> str:
+        client_host = request.client.host if request.client else "unknown"
+        normalized_username = (username or "").strip().lower()
+        return f"{client_host}:{normalized_username}"
+
+    def _recent_failures(self, key: str) -> List[float]:
+        now = self.clock()
+        recent = [
+            timestamp
+            for timestamp in self.failures.get(key, [])
+            if now - timestamp < self.window_seconds
+        ]
+        if recent:
+            self.failures[key] = recent
+        else:
+            self.failures.pop(key, None)
+        return recent
+
+    def is_limited(self, key: str) -> bool:
+        return len(self._recent_failures(key)) >= self.max_attempts
+
+    def record_failure(self, key: str):
+        recent = self._recent_failures(key)
+        recent.append(self.clock())
+        self.failures[key] = recent
+
+    def clear(self, key: str):
+        self.failures.pop(key, None)
+
+
+auth_rate_limiter = AuthRateLimiter()
 
 
 def get_app_env() -> str:
@@ -475,8 +570,8 @@ async def read_game(request: Request):
                 # Redirect to the new session
                 return RedirectResponse(url=f"/game/{session_id}?lang={language}")
 
-            except Exception as e:
-                logging.error(f"Error creating game session for generator {generator_id}: {e}")
+            except Exception:
+                logging.exception("Error creating game session for generator %s", generator_id)
                 return RedirectResponse(url=f"/?error=failed_to_create_game")
 
         # No generator ID provided - redirect to landing page
@@ -523,7 +618,7 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         )
         if not generator_data:
             return JSONResponse({
-                "error": f"World ID not found: {creation_request.generator_id}"
+                "error": "World not found"
             }, status_code=404)
 
     session_id = str(uuid.uuid4())
@@ -555,8 +650,13 @@ async def get_recent_worlds(request: Request, limit: int = 12):
     Other deployments see public Worlds only.
     """
     try:
+        requester_user_id = get_request_user_id(request)
+        worlds = [
+            serialize_world_summary(world, requester_user_id)
+            for world in db.list_worlds(limit, local_dev=is_world_library_allowed(request))
+        ]
         return JSONResponse({
-            "worlds": db.list_worlds(limit, local_dev=is_world_library_allowed(request))
+            "worlds": worlds
         })
     except Exception as e:
         logging.error(f"Error listing worlds: {e}")
@@ -572,8 +672,12 @@ async def get_my_worlds(request: Request, limit: int = 20):
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
     try:
+        worlds = [
+            serialize_world_summary(world, user_id)
+            for world in db.list_worlds(limit, owner_id=user_id)
+        ]
         return JSONResponse({
-            "worlds": db.list_worlds(limit, owner_id=user_id)
+            "worlds": worlds
         })
     except Exception as e:
         logging.error(f"Error listing owned worlds: {e}")
@@ -584,30 +688,19 @@ async def get_my_worlds(request: Request, limit: int = 20):
 @app.get("/api/worlds/{world_id}")
 async def get_world(request: Request, world_id: str):
     """Get world metadata by ID if visible to the requester."""
+    requester_user_id = get_request_user_id(request)
     generator_data = db.get_visible_generator(
         world_id,
-        requester_owner_id=get_request_user_id(request)
+        requester_owner_id=requester_user_id
     )
     if not generator_data:
         return JSONResponse({"error": "World not found"}, status_code=404)
 
-    theme_desc = generator_data.get('theme_desc') or ""
-    theme_desc_better = generator_data.get('theme_desc_better') or theme_desc
-    title_source = theme_desc_better.strip() or theme_desc.strip()
-    title = title_source.splitlines()[0][:120] if title_source else world_id
-
-    return JSONResponse({
-        "id": world_id,
-        "title": title,
-        "theme": theme_desc,
-        "language": generator_data.get('language'),
-        "player_count": len(generator_data.get('player_defs', [])),
-        "item_count": len(generator_data.get('item_defs', [])),
-        "enemy_count": len(generator_data.get('enemy_defs', [])),
-        "terrain_count": len(generator_data.get('celltype_defs', {})),
-        "owner_id": generator_data.get('owner_id'),
-        "visibility": generator_data.get('visibility', 'unlisted'),
-    })
+    return JSONResponse(serialize_generator_metadata(
+        world_id,
+        generator_data,
+        requester_user_id,
+    ))
 
 class VisibilityUpdateRequest(BaseModel):
     visibility: str
@@ -645,7 +738,7 @@ async def create_game(request: CreateGameRequest, req: Request):
             )
             if not generator_data:
                 return JSONResponse({
-                    "error": f"World ID not found: {request.generator_id}"
+                    "error": "World not found"
                 }, status_code=404)
 
         # Store configuration in session for the new flow
@@ -661,10 +754,10 @@ async def create_game(request: CreateGameRequest, req: Request):
         return JSONResponse({
             "message": "Game configuration saved."
         })
-    except Exception as e:
-        logging.error(f"Error in create_game: {str(e)}")
+    except Exception:
+        logging.exception("Error in create_game")
         return JSONResponse({
-            "error": str(e)
+            "error": "Failed to create game"
         }, status_code=500)
 
 # Auth endpoints
@@ -690,19 +783,26 @@ async def signup(request: SignupRequest, req: Request):
         return JSONResponse({"error": "Username already exists"}, status_code=409)
 
     req.session["user_id"] = user["id"]
-    return JSONResponse({"id": user["id"], "username": user["username"]})
+    return JSONResponse(serialize_user(user))
 
 @app.post("/api/login")
 async def login(request: LoginRequest, req: Request):
+    rate_limit_key = auth_rate_limiter.make_key(req, request.username)
+    if auth_rate_limiter.is_limited(rate_limit_key):
+        return JSONResponse({"error": "Too many login attempts. Try again later."}, status_code=429)
+
     user = db.get_user_by_username(request.username)
     if not user:
+        auth_rate_limiter.record_failure(rate_limit_key)
         return JSONResponse({"error": "Invalid username or password"}, status_code=401)
 
     if not db._verify_password(request.password, user["password_hash"]):
+        auth_rate_limiter.record_failure(rate_limit_key)
         return JSONResponse({"error": "Invalid username or password"}, status_code=401)
 
+    auth_rate_limiter.clear(rate_limit_key)
     req.session["user_id"] = user["id"]
-    return JSONResponse({"id": user["id"], "username": user["username"]})
+    return JSONResponse(serialize_user(user))
 
 @app.post("/api/logout")
 async def api_logout(req: Request):
@@ -719,7 +819,7 @@ async def get_me(req: Request):
     if not user:
         return JSONResponse({"error": "User not found"}, status_code=404)
 
-    return JSONResponse({"id": user["id"], "username": user["username"]})
+    return JSONResponse(serialize_user(user))
 
 # Logout
 @app.post("/logout")
@@ -781,7 +881,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     if not generator_data:
                         await websocket.send_json({
                             "type": "error",
-                            "message": f"World ID not found: {request.generator_id}"
+                            "message": "World not found"
                         })
                         return
 
@@ -839,12 +939,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     "status": "ready"
                 })
 
-            except Exception as e:
-                logging.error(f"Error creating game for session {session_id}: {str(e)}")
+            except Exception:
+                logging.exception("Error creating game for session %s", session_id)
                 session['status'] = 'error'
                 await websocket.send_json({
                     "type": "error",
-                    "message": f"Failed to create game: {str(e)}"
+                    "message": "Failed to create game"
                 })
                 return
 
@@ -863,7 +963,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             # Check for error message through state manager
             if game_instance.state_manager and game_instance.state_manager.error_message:
-                logging.info(f"Sending error message: {game_instance.state_manager.error_message}")
+                logging.info("Sending game state error message")
                 await websocket.send_json({
                     'type': 'error',
                     'message': game_instance.state_manager.error_message
@@ -889,8 +989,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             logging.info("WebSocket client disconnected normally")
         except ConnectionResetError:
             logging.info("WebSocket connection reset by client")
-        except Exception as e:
-            logging.exception(f"Game loop error: {e}")
+        except Exception:
+            logging.exception("Game loop error")
             # Try to send error message if connection is still open
             try:
                 await websocket.send_json({
@@ -908,12 +1008,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         logging.info(f"WebSocket disconnected for session: {session_id}")
-    except Exception as e:
-        logging.error(f"WebSocket error for session {session_id}: {str(e)}")
+    except Exception:
+        logging.exception("WebSocket error for session %s", session_id)
         try:
             await websocket.send_json({
                 "type": "error",
-                "message": str(e)
+                "message": "WebSocket error occurred"
             })
         except:
             pass
@@ -962,7 +1062,7 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
 
             # Check for error message through state manager
             if game_instance.state_manager and game_instance.state_manager.error_message:
-                logging.info(f"Sending error message: {game_instance.state_manager.error_message}")
+                logging.info("Sending game state error message")
                 await websocket.send_json({
                     'type': 'error',
                     'message': game_instance.state_manager.error_message
@@ -988,8 +1088,8 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
             logging.info("WebSocket client disconnected normally")
         except ConnectionResetError:
             logging.info("WebSocket connection reset by client")
-        except Exception as e:
-            logging.exception(f"Game loop error: {e}")
+        except Exception:
+            logging.exception("Game loop error")
             # Try to send error message if connection is still open
             try:
                 await websocket.send_json({
@@ -1000,13 +1100,13 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
                 logging.debug("Could not send error message - connection already closed")
     except WebSocketDisconnect:
         logging.info("WebSocket disconnected during initialization")
-    except Exception as e:
-        logging.exception(f"WebSocket connection error: {e}")
+    except Exception:
+        logging.exception("WebSocket connection error")
         # Send error message to client if possible
         try:
             await websocket.send_json({
                 'type': 'error',
-                'message': f'Failed to initialize game: {str(e)}'
+                'message': 'Failed to initialize game'
             })
         except (WebSocketDisconnect, ConnectionResetError, RuntimeError) as send_error:
             logging.debug(f"Could not send initialization error message: {send_error}")

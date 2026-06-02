@@ -3,6 +3,7 @@ import json
 import uuid
 import sqlite3
 import hashlib
+import hmac
 import time
 import asyncio
 from typing import Dict, List, Optional, Union
@@ -655,7 +656,7 @@ class DatabaseManager:
             salt = bytes.fromhex(salt_hex)
             key = bytes.fromhex(key_hex)
             new_key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
-            return new_key == key
+            return hmac.compare_digest(new_key, key)
         except Exception:
             return False
 

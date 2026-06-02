@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict
 from tools.fa_runtime import fa_runtime
+from privacy_logging import describe_collection
 
 logger = logging.getLogger()
 
@@ -35,7 +36,7 @@ class EntityPlacementManager:
             map_width,
             map_height
         )
-        logger.info(f"Generated entity placements: {self.entity_placements}")
+        logger.info("Generated entity placements (%s)", describe_collection(self.entity_placements))
         return self.entity_placements
 
     def process_placements(self, game_state):
@@ -107,11 +108,11 @@ class EntityPlacementManager:
             y = placement.get('y')
 
             if placement_type not in {'enemy', 'item'} or entity_id is None:
-                logger.warning(f"Skipping invalid placement: {placement}")
+                logger.warning("Skipping invalid placement")
                 continue
 
             if not isinstance(x, int) or not isinstance(y, int):
-                logger.warning(f"Skipping placement with invalid coordinates: {placement}")
+                logger.warning("Skipping placement with invalid coordinates")
                 continue
 
             avoid_start_zone = placement_type == 'enemy'
@@ -130,7 +131,7 @@ class EntityPlacementManager:
                     avoid_start_zone=avoid_start_zone
                 )
                 if replacement is None:
-                    logger.warning(f"Skipping placement because no valid tile was found: {placement}")
+                    logger.warning("Skipping placement because no valid tile was found")
                     continue
                 x, y = replacement
 

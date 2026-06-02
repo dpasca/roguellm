@@ -206,7 +206,7 @@ const app = Vue.createApp({
             return labels[visibility] || labels.unlisted;
         },
         isOwnedWorld(world) {
-            return this.currentUser && world.owner_id === this.currentUser.id;
+            return this.currentUser && world.can_manage === true;
         },
         setAuthMode(mode) {
             this.authMode = mode === 'signup' ? 'signup' : 'login';

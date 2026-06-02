@@ -492,6 +492,8 @@ class WorldApiTests(unittest.TestCase):
             self.assertEqual(data["id"], world_id)
             self.assertEqual(data["title"], "Neon Tokyo")
             self.assertEqual(data["visibility"], "public")
+            self.assertFalse(data["can_manage"])
+            self.assertNotIn("owner_id", data)
             self.assertEqual(data["player_count"], 1)
             self.assertEqual(data["item_count"], 1)
             self.assertEqual(data["enemy_count"], 1)
@@ -520,6 +522,8 @@ class WorldApiTests(unittest.TestCase):
             data = response.json()
             self.assertEqual(data["id"], world_id)
             self.assertEqual(data["visibility"], "unlisted")
+            self.assertFalse(data["can_manage"])
+            self.assertNotIn("owner_id", data)
 
     def test_get_world_blocks_private_for_anonymous(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -565,6 +569,8 @@ class WorldApiTests(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["visibility"], "private")
+            self.assertTrue(response.json()["can_manage"])
+            self.assertNotIn("owner_id", response.json())
 
     def test_recent_worlds_returns_public_without_library_flag(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -600,6 +606,8 @@ class WorldApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             worlds = response.json()["worlds"]
             self.assertEqual([world["id"] for world in worlds], [public_id])
+            self.assertFalse(worlds[0]["can_manage"])
+            self.assertNotIn("owner_id", worlds[0])
 
     def test_create_game_session_fails_for_private_world(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -626,7 +634,7 @@ class WorldApiTests(unittest.TestCase):
                 })
 
             self.assertEqual(response.status_code, 404)
-            self.assertIn("World ID not found", response.json()["error"])
+            self.assertEqual(response.json()["error"], "World not found")
 
     def test_create_game_session_succeeds_for_private_world_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -731,8 +739,11 @@ class WorldApiTests(unittest.TestCase):
 
             self.assertEqual(anonymous.status_code, 401)
             self.assertEqual(response.status_code, 200)
-            ids = {world["id"] for world in response.json()["worlds"]}
+            worlds = response.json()["worlds"]
+            ids = {world["id"] for world in worlds}
             self.assertEqual(ids, {owned_private, owned_public})
+            self.assertTrue(all(world["can_manage"] for world in worlds))
+            self.assertTrue(all("owner_id" not in world for world in worlds))
 
     def test_websocket_creation_succeeds_for_private_world_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -811,7 +822,7 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["username"], "alice")
-            self.assertIn("id", data)
+            self.assertNotIn("id", data)
 
     def test_signup_rejects_duplicate_username(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -842,10 +853,12 @@ class AuthTests(unittest.TestCase):
                 client.post("/api/signup", json={"username": "carol", "password": "mypass123"})
                 login = client.post("/api/login", json={"username": "carol", "password": "mypass123"})
                 self.assertEqual(login.status_code, 200)
+                self.assertNotIn("id", login.json())
 
                 me = client.get("/api/me")
                 self.assertEqual(me.status_code, 200)
                 self.assertEqual(me.json()["username"], "carol")
+                self.assertNotIn("id", me.json())
 
     def test_login_rejects_bad_password(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -856,6 +869,22 @@ class AuthTests(unittest.TestCase):
                 response = client.post("/api/login", json={"username": "dave", "password": "wrongpass"})
 
             self.assertEqual(response.status_code, 401)
+
+    def test_login_rate_limits_repeated_bad_passwords(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            rate_limiter = main.AuthRateLimiter(max_attempts=2, window_seconds=60)
+            with patch.object(main, 'db', manager), \
+                    patch.object(main, 'auth_rate_limiter', rate_limiter):
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "frank", "password": "rightpass"})
+                first = client.post("/api/login", json={"username": "frank", "password": "wrongpass"})
+                second = client.post("/api/login", json={"username": "frank", "password": "wrongpass"})
+                limited = client.post("/api/login", json={"username": "frank", "password": "rightpass"})
+
+            self.assertEqual(first.status_code, 401)
+            self.assertEqual(second.status_code, 401)
+            self.assertEqual(limited.status_code, 429)
 
     def test_logout_clears_session(self):
         with tempfile.TemporaryDirectory() as tmpdir:
