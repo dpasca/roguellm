@@ -157,6 +157,9 @@ Recommended staged approach:
      separate `server_name` block for RogueLLM.
    - Avoid: running a second independent Nginx container on `80`/`443`; it will
      conflict with ChatNext3.
+   - If using ChatNext3 Nginx, do not put RogueLLM server blocks in
+     `active_upstream.conf`; ChatNext3 deploys rewrite that file. Use a
+     separate mounted include directory for deployment-specific ingress files.
 5. Add WebSocket proxy headers for `/ws/*`.
 6. Issue TLS certificates after DNS points at the VPS.
 7. Verify:
