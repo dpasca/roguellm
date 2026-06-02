@@ -32,6 +32,7 @@ ENV/
 # Data
 _data
 _artifacts/
+backups/
 
 # Tools venv (legacy)
 tools/venv

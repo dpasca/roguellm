@@ -148,11 +148,9 @@ Current status:
 - Staging is live on the VPS through the shared ChatNext3 Nginx ingress.
 - A separate `roguellm-production` VPS stack has been prepared with its own env,
   container, volume, loopback port, and Docker network alias.
-- `roguellm.com` currently resolves through the existing DigitalOcean-managed
-  DNS/App Platform path, not the VPS.
-- DNS edits require DigitalOcean domain-record permissions. The locally
-  available `doctl` context can see the account but cannot read or change the
-  domain records.
+- Production DNS has been moved to the registrar-managed zone and points at the
+  VPS ingress. Keep concrete DNS records, server IPs, and registrar credentials
+  out of this repo.
 
 Recommended staged approach:
 
@@ -184,17 +182,27 @@ request body limits, caching behavior, and ACME challenge behavior.
 
 Production cutover checklist:
 
-1. Keep staging on `roguellm-staging.<domain>`.
+1. Keep staging on a separate staging hostname.
 2. Keep the production app running separately as `roguellm-production`.
 3. Add a pending HTTP-only Nginx server block for `roguellm.com` and `www`.
 4. Confirm `curl --resolve roguellm.com:80:<VPS_IP> http://roguellm.com/health`
    reaches the production stack.
-5. Update DigitalOcean DNS records for apex and `www` to the VPS.
+5. Update registrar DNS records for apex and `www` to the VPS.
 6. Wait for DNS to resolve to the VPS.
 7. Issue a Let's Encrypt certificate for apex and `www` using the shared Nginx
    webroot.
 8. Replace the pending HTTP-only block with the final HTTPS block.
 9. Smoke test HTTPS health, login/session, `My Worlds`, private Worlds, and WSS.
+
+Completed cutover notes:
+
+- The active RogueLLM production ingress lives in the shared reverse proxy's
+  deployment-specific include directory, not in ChatNext3's generated active
+  upstream file.
+- The ACME challenge locations use `^~ /.well-known/acme-challenge/` so the
+  dotfile deny rule does not intercept Let's Encrypt probes.
+- The shared certbot renewal cron runs `certbot renew` over the shared
+  certificate directory and reloads Nginx after a successful run.
 
 ## Database Plan
 
@@ -348,7 +356,8 @@ we have a deliberate admin-only redaction design.
 ## Operational Checks
 
 - Backups:
-  - daily Postgres backup
+  - daily SQLite backup while this publish-soon bridge still uses SQLite
+  - daily Postgres backup after the database migration
   - before every migration
   - restore test before launch
 - Monitoring:
@@ -370,6 +379,36 @@ we have a deliberate admin-only redaction design.
   - verify WebSocket
   - verify login
   - verify private/public visibility
+
+## SQLite Bridge Backup Runbook
+
+This is a temporary bridge until production accounts and Worlds move to
+Postgres. The backup script is safe to keep in the open repo because it uses
+placeholder-friendly defaults and expects deployment-specific paths to be passed
+through the server-side environment.
+
+Manual backup:
+
+```bash
+APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> \
+  scripts/backup-production-sqlite.sh
+```
+
+Cron shape:
+
+```cron
+17 2 * * * APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> <APP_DIR>/scripts/backup-production-sqlite.sh >> <PRIVATE_BACKUP_DIR>/backup.log 2>&1
+```
+
+The script:
+
+- creates a consistent copy with SQLite's online backup API inside the running
+  app container;
+- copies the backup out with `docker cp`;
+- compresses it with `gzip`;
+- validates the compressed archive with `PRAGMA integrity_check`;
+- writes a checksum and small metadata file;
+- prunes files older than `RETENTION_DAYS`, defaulting to 14 days.
 
 ## Suggested Implementation Order
 
