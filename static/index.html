@@ -311,12 +311,14 @@
                            @input="selectedWorldId = ''">
                 </div>
 
-                <div v-if="errorMessage" class="error-message">
-                    {{ errorMessage }}
-                </div>
-                <div v-if="infoMessage" class="info-message">
-                    {{ infoMessage }}
-                </div>
+                <div v-if="errorMessage"
+                     class="error-message"
+                     role="alert"
+                     v-text="errorMessage"></div>
+                <div v-if="infoMessage"
+                     class="info-message"
+                     role="status"
+                     v-text="infoMessage"></div>
                 <button v-if="selectedTheme !== 'custom'"
                         @click="launchGame"
                         class="launch-btn"

@@ -161,6 +161,19 @@ const app = Vue.createApp({
                 return null;
             }
         },
+        translationForKey(translations, key) {
+            if (!translations) {
+                return undefined;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(translations, key)) {
+                return translations[key];
+            }
+
+            return key.split('.').reduce((value, part) => {
+                return value && typeof value === 'object' ? value[part] : undefined;
+            }, translations);
+        },
         t(key, params = {}) {
             //console.log(`Translation requested for key: "${key}"`);
             //console.log(`Current language: ${this.selectedLanguage}`);
@@ -168,16 +181,25 @@ const app = Vue.createApp({
             //console.log(`Fallback translations:`, this.fallbackTranslations);
 
             // Get translation from current language or fallback
-            const translation = this.currentTranslations[key] || this.fallbackTranslations[key] || key;
+            const translation = this.translationForKey(this.currentTranslations, key)
+                || this.translationForKey(this.fallbackTranslations, key)
+                || key;
 
             //console.log(`Translation result for "${key}": "${translation}"`);
 
-            if (!this.currentTranslations[key] && !this.fallbackTranslations[key]) {
+            if (
+                !this.translationForKey(this.currentTranslations, key) &&
+                !this.translationForKey(this.fallbackTranslations, key)
+            ) {
                 console.warn(`Missing translation for key: ${key} in language: ${this.selectedLanguage}`);
             }
 
             if (Object.keys(params).length === 0) {
                 return translation;
+            }
+
+            if (typeof translation !== 'string') {
+                return key;
             }
 
             return translation.replace(/\{(\w+)\}/g, (match, paramKey) => {
@@ -189,6 +211,30 @@ const app = Vue.createApp({
         },
         clearInfo() {
             this.infoMessage = null;
+        },
+        async responseErrorMessage(response, fallbackMessage) {
+            const fallback = typeof fallbackMessage === 'string' && fallbackMessage.trim()
+                ? fallbackMessage
+                : 'Request failed';
+
+            try {
+                const rawText = await response.text();
+                if (!rawText.trim()) {
+                    return fallback;
+                }
+
+                try {
+                    const data = JSON.parse(rawText);
+                    const message = data && (data.error || data.message);
+                    return typeof message === 'string' && message.trim()
+                        ? message
+                        : fallback;
+                } catch (parseError) {
+                    return rawText.trim();
+                }
+            } catch (readError) {
+                return fallback;
+            }
         },
         formatWorldCounts(world) {
             return this.t('worldCounts', {
@@ -251,8 +297,7 @@ const app = Vue.createApp({
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || this.t('authFailed'));
+                    throw new Error(await this.responseErrorMessage(response, this.t('authFailed')));
                 }
 
                 this.resetAuthForm();
@@ -274,8 +319,7 @@ const app = Vue.createApp({
             try {
                 const response = await fetch('/api/logout', { method: 'POST' });
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || this.t('logoutFailed'));
+                    throw new Error(await this.responseErrorMessage(response, this.t('logoutFailed')));
                 }
 
                 this.currentUser = null;
@@ -466,8 +510,7 @@ const app = Vue.createApp({
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || this.t('visibilityUpdateFailed'));
+                    throw new Error(await this.responseErrorMessage(response, this.t('visibilityUpdateFailed')));
                 }
 
                 const data = await response.json();
@@ -552,8 +595,7 @@ const app = Vue.createApp({
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to create game session');
+                    throw new Error(await this.responseErrorMessage(response, this.t('errors.failedToCreate')));
                 }
 
                 const data = await response.json();
