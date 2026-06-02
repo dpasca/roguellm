@@ -1,0 +1,40 @@
+name: roguellm-production
+
+services:
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - ./.env.production
+    environment:
+      APP_ENV: production
+      DEFAULT_NEW_WORLD_VISIBILITY: private
+      ENABLE_WORLD_LIBRARY: "0"
+      ENABLE_DEBUG_SEED: "0"
+    ports:
+      - "127.0.0.1:${ROGUELLM_HOST_PORT:-18081}:8000"
+    volumes:
+      - roguellm-production-data:/app/_data
+    networks:
+      default:
+      chatnext3-network:
+        aliases:
+          - roguellm-production
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  roguellm-production-data:
+
+networks:
+  chatnext3-network:
+    external: true

@@ -143,6 +143,17 @@ proxy files containing real hostnames or private paths.
 DNS can point a hostname to the VPS, but the VPS still needs an ingress proxy to
 route traffic by hostname.
 
+Current status:
+
+- Staging is live on the VPS through the shared ChatNext3 Nginx ingress.
+- A separate `roguellm-production` VPS stack has been prepared with its own env,
+  container, volume, loopback port, and Docker network alias.
+- `roguellm.com` currently resolves through the existing DigitalOcean-managed
+  DNS/App Platform path, not the VPS.
+- DNS edits require DigitalOcean domain-record permissions. The locally
+  available `doctl` context can see the account but cannot read or change the
+  domain records.
+
 Recommended staged approach:
 
 1. Choose hostnames:
@@ -170,6 +181,20 @@ Recommended staged approach:
 
 If we use Cloudflare or another DNS proxy later, confirm WebSocket support,
 request body limits, caching behavior, and ACME challenge behavior.
+
+Production cutover checklist:
+
+1. Keep staging on `roguellm-staging.<domain>`.
+2. Keep the production app running separately as `roguellm-production`.
+3. Add a pending HTTP-only Nginx server block for `roguellm.com` and `www`.
+4. Confirm `curl --resolve roguellm.com:80:<VPS_IP> http://roguellm.com/health`
+   reaches the production stack.
+5. Update DigitalOcean DNS records for apex and `www` to the VPS.
+6. Wait for DNS to resolve to the VPS.
+7. Issue a Let's Encrypt certificate for apex and `www` using the shared Nginx
+   webroot.
+8. Replace the pending HTTP-only block with the final HTTPS block.
+9. Smoke test HTTPS health, login/session, `My Worlds`, private Worlds, and WSS.
 
 ## Database Plan
 
