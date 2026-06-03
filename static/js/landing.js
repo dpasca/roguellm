@@ -46,7 +46,6 @@ const app = Vue.createApp({
             isLoadingWorlds: false,
             errorMessage: null,
             infoMessage: null,
-            doWebSearch: true,
             selectedLanguage: 'en',
             supportedLanguages: SUPPORTED_LANGUAGES,
             rawTranslations: {},
@@ -606,7 +605,7 @@ const app = Vue.createApp({
                 analytics.logEvent('game_started', {
                     theme: this.selectedTheme,
                     language: this.selectedLanguage,
-                    do_web_search: this.doWebSearch
+                    do_web_search: true
                 });
             }
 
@@ -616,7 +615,7 @@ const app = Vue.createApp({
                     theme: this.selectedTheme === 'custom' ? this.customDescription : null,
                     generator_id: this.selectedGeneratorId,
                     language: this.selectedLanguage,
-                    do_web_search: this.doWebSearch
+                    do_web_search: true
                 };
                 const debugSeed = this.getDebugSeedFromUrl();
                 if (debugSeed !== null) {

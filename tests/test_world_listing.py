@@ -856,6 +856,7 @@ class WorldApiTests(unittest.TestCase):
                 my_worlds = client.get("/api/my/worlds")
 
             self.assertEqual(created_with["theme_desc"], "Clockwork meadow")
+            self.assertTrue(created_with["do_web_search"])
             self.assertIsNotNone(created_with["owner_id"])
             self.assertEqual(created_with["visibility"], "private")
             self.assertEqual(my_worlds.status_code, 200)

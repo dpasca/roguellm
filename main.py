@@ -104,19 +104,19 @@ game_session_manager = GameSessionManager()
 class CreateGameRequest(BaseModel):
     theme: Optional[str] = None
     language: str = "en"
-    do_web_search: bool = False
+    do_web_search: bool = True
     generator_id: Optional[str] = None
 
 class CreateGameSessionRequest(BaseModel):
     generator_id: Optional[str] = None
     theme: Optional[str] = None
     language: str = "en"
-    do_web_search: bool = False
+    do_web_search: bool = True
 
 class GameCreationRequest(BaseModel):
     theme: Optional[str] = None
     language: str = "en"
-    do_web_search: bool = False
+    do_web_search: bool = True
     generator_id: Optional[str] = None
     debug_seed: Optional[int] = None
 
@@ -620,6 +620,10 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
             return JSONResponse({
                 "error": "World not found"
             }, status_code=404)
+    else:
+        # Web search is now a product default for newly generated Worlds, not a
+        # user-facing toggle. Existing generator runs still skip search later.
+        creation_request = creation_request.model_copy(update={"do_web_search": True})
 
     session_id = str(uuid.uuid4())
 
@@ -744,7 +748,7 @@ async def create_game(request: CreateGameRequest, req: Request):
         # Store configuration in session for the new flow
         req.session["generator_id"] = request.generator_id if request.generator_id else None
         req.session["language"] = request.language
-        req.session["do_web_search"] = request.do_web_search
+        req.session["do_web_search"] = False if request.generator_id else True
 
         # Set theme and compress it
         theme_desc = request.theme if request.theme else "fantasy"

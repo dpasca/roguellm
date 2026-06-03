@@ -134,7 +134,7 @@ HIGH_SPEC_MODEL_API_KEY=<your_api_key>
 
 ## Search Provider Configuration
 
-*RogueLLM* can use web search to improve the game description.
+*RogueLLM* uses web search to improve newly generated game descriptions.
 Sample setup (env variables or `.env` file):
 
 ```bash

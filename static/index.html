@@ -221,13 +221,6 @@
                             <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
-                    <div class="custom-checkbox">
-                        <label>
-                            <input type="checkbox" v-model="doWebSearch">
-                            <span class="checkbox-custom"></span>
-                            <span class="checkbox-label">{{ t('improveGameDescription') }}</span>
-                        </label>
-                    </div>
                     <div class="save-hint" :class="{ saved: currentUser }">
                         <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-save'"></i>
                         <span>{{ currentUser ? t('customSaveHintSignedIn') : t('customSaveHintAnonymous') }}</span>

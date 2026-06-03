@@ -87,6 +87,9 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("worldVisibilityLabel", landing_js)
                     self.assertIn("getDebugSeedFromUrl", landing_js)
                     self.assertIn("debug_seed", landing_js)
+                    self.assertIn("do_web_search: true", landing_js)
+                    self.assertNotIn("doWebSearch", landing_js)
+                    self.assertNotIn("improveGameDescription", html)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))
                     self.assertNotIn("selectedWorld()", landing_js)
 
@@ -188,6 +191,7 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertEqual(websocket.receive_json()["type"], "connection_established")
 
         self.assertEqual(created_with["seed"], 123)
+        self.assertTrue(created_with["do_web_search"])
         self.assertEqual(created_with["visibility"], "private")
         self.assertIsNone(created_with["owner_id"])
 
