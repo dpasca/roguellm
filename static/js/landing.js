@@ -116,6 +116,16 @@ const app = Vue.createApp({
         },
         showEmptySignupPrompt() {
             return !this.currentUser && this.worldTab === 'public';
+        },
+        requiresAuthForSelectedCreation() {
+            return !this.currentUser && this.selectedTheme !== 'world' && !this.isLocalDev;
+        },
+        launchButtonLabel() {
+            if (this.requiresAuthForSelectedCreation) {
+                return this.t('signupToCreate');
+            }
+
+            return this.selectedTheme === 'world' ? this.t('startRun') : this.t('createGame');
         }
     },
     watch: {
@@ -589,6 +599,12 @@ const app = Vue.createApp({
 
             if (this.selectedTheme === 'world' && !this.selectedGeneratorId) {
                 this.errorMessage = this.t('errorWorld');
+                return;
+            }
+
+            if (this.requiresAuthForSelectedCreation) {
+                this.promptSignupForSave();
+                this.errorMessage = this.t('authRequiredToCreateWorld');
                 return;
             }
 

@@ -10,6 +10,7 @@ services:
     environment:
       APP_ENV: production
       DEFAULT_NEW_WORLD_VISIBILITY: private
+      REQUIRE_LOGIN_TO_CREATE_WORLD: "1"
       ENABLE_WORLD_LIBRARY: "0"
       ENABLE_DEBUG_SEED: "0"
     ports:

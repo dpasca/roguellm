@@ -60,6 +60,9 @@ class LandingSmokeTests(unittest.TestCase):
 
                     html = landing.text
                     landing_js = (REPO_ROOT / "static/js/landing.js").read_text(encoding="utf-8")
+                    english_translations = (
+                        REPO_ROOT / "static/translations/en.json"
+                    ).read_text(encoding="utf-8")
                     self.assertIn('class="auth-strip"', html)
                     self.assertIn('class="auth-copy"', html)
                     self.assertIn('class="save-hint"', html)
@@ -87,7 +90,11 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("worldVisibilityLabel", landing_js)
                     self.assertIn("getDebugSeedFromUrl", landing_js)
                     self.assertIn("debug_seed", landing_js)
+                    self.assertIn("requiresAuthForSelectedCreation", landing_js)
+                    self.assertIn("launchButtonLabel", landing_js)
                     self.assertIn("do_web_search: true", landing_js)
+                    self.assertIn("signupToCreate", english_translations)
+                    self.assertIn("authRequiredToCreateWorld", english_translations)
                     self.assertNotIn("doWebSearch", landing_js)
                     self.assertNotIn("improveGameDescription", html)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))

@@ -51,6 +51,26 @@ class ProductionConfigTests(unittest.TestCase):
         }, clear=True):
             self.assertEqual(main.get_default_new_world_visibility(), "private")
 
+    def test_login_required_to_create_world_defaults_to_production_only(self):
+        with patch.dict(os.environ, {"APP_ENV": "production"}, clear=True):
+            self.assertTrue(main.is_login_required_to_create_world())
+
+        with patch.dict(os.environ, {"APP_ENV": "development"}, clear=True):
+            self.assertFalse(main.is_login_required_to_create_world())
+
+    def test_login_required_to_create_world_can_be_overridden(self):
+        with patch.dict(os.environ, {
+            "APP_ENV": "production",
+            "REQUIRE_LOGIN_TO_CREATE_WORLD": "0",
+        }, clear=True):
+            self.assertFalse(main.is_login_required_to_create_world())
+
+        with patch.dict(os.environ, {
+            "APP_ENV": "development",
+            "REQUIRE_LOGIN_TO_CREATE_WORLD": "1",
+        }, clear=True):
+            self.assertTrue(main.is_login_required_to_create_world())
+
 
 if __name__ == "__main__":
     unittest.main()

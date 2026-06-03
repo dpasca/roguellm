@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from db import DatabaseManager
 from fastapi.testclient import TestClient
@@ -680,7 +680,8 @@ class WorldApiTests(unittest.TestCase):
                 visibility="public"
             )
 
-            with patch.object(main, 'db', manager):
+            with patch.object(main, 'db', manager), \
+                    patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "1"}):
                 client = TestClient(main.app)
                 response = client.post("/api/create_game_session", json={
                     "generator_id": world_id,
@@ -691,6 +692,76 @@ class WorldApiTests(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["status"], "creating")
+
+    def test_create_game_session_requires_login_for_new_world_when_enabled(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+
+            with patch.object(main, 'db', manager), \
+                    patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "1"}):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                response = client.post("/api/create_game_session", json={
+                    "theme": "Fresh Arena",
+                    "language": "en",
+                    "do_web_search": False
+                })
+
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(
+                response.json()["error"],
+                main.LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE,
+            )
+            self.assertEqual(main.game_session_manager.sessions, {})
+
+    def test_create_game_session_allows_new_world_for_logged_in_user_when_required(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+
+            with patch.object(main, 'db', manager), \
+                    patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "1"}):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "creator", "password": "secret123"})
+                response = client.post("/api/create_game_session", json={
+                    "theme": "Fresh Arena",
+                    "language": "en",
+                    "do_web_search": False
+                })
+
+            self.assertEqual(response.status_code, 200)
+            session = main.game_session_manager.sessions[response.json()["session_id"]]
+            self.assertIsNone(session["generator_id"])
+            self.assertTrue(session["creation_request"].do_web_search)
+
+    def test_websocket_rejects_unauthenticated_new_world_when_required(self):
+        session_id = "auth-required-session"
+        main.game_session_manager.sessions.clear()
+        main.game_session_manager.sessions[session_id] = {
+            "created_at": 0,
+            "last_accessed": 0,
+            "game_instance": None,
+            "creation_request": main.GameCreationRequest(
+                theme="Fresh Arena",
+                language="en",
+                do_web_search=True,
+            ),
+            "status": "creating",
+            "generator_id": None,
+            "language": "en",
+            "debug_seed": None,
+        }
+
+        with patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "1"}), \
+                patch("main.Game.create", new_callable=AsyncMock) as create_game:
+            client = TestClient(main.app)
+            with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                self.assertEqual(websocket.receive_json()["status"], "creating")
+                error = websocket.receive_json()
+
+        self.assertEqual(error["type"], "error")
+        self.assertEqual(error["message"], main.LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE)
+        create_game.assert_not_awaited()
 
     def test_my_worlds_requires_login_and_returns_owned_worlds(self):
         with tempfile.TemporaryDirectory() as tmpdir:

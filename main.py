@@ -205,6 +205,9 @@ PLACEHOLDER_SESSION_SECRETS = {
 }
 
 VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+FALSY_ENV_VALUES = {"0", "false", "no", "off"}
+LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in or create an account to generate a new World."
 
 
 class AuthRateLimiter:
@@ -258,6 +261,35 @@ def get_app_env() -> str:
 
 def is_production_env() -> bool:
     return get_app_env() in PRODUCTION_ENV_NAMES
+
+
+def get_env_bool(name: str, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value in TRUTHY_ENV_VALUES:
+        return True
+    if normalized_value in FALSY_ENV_VALUES:
+        return False
+
+    logging.warning("Invalid %s=%r; using %s.", name, raw_value, default)
+    return default
+
+
+def is_login_required_to_create_world() -> bool:
+    return get_env_bool("REQUIRE_LOGIN_TO_CREATE_WORLD", is_production_env())
+
+
+def require_login_to_create_world_response(request: Request) -> Optional[JSONResponse]:
+    if is_login_required_to_create_world() and not get_request_user_id(request):
+        return JSONResponse(
+            {"error": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE},
+            status_code=401,
+        )
+
+    return None
 
 
 def is_placeholder_session_secret(session_secret: str) -> bool:
@@ -621,6 +653,10 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
                 "error": "World not found"
             }, status_code=404)
     else:
+        login_required_response = require_login_to_create_world_response(req)
+        if login_required_response is not None:
+            return login_required_response
+
         # Web search is now a product default for newly generated Worlds, not a
         # user-facing toggle. Existing generator runs still skip search later.
         creation_request = creation_request.model_copy(update={"do_web_search": True})
@@ -744,6 +780,10 @@ async def create_game(request: CreateGameRequest, req: Request):
                 return JSONResponse({
                     "error": "World not found"
                 }, status_code=404)
+        else:
+            login_required_response = require_login_to_create_world_response(req)
+            if login_required_response is not None:
+                return login_required_response
 
         # Store configuration in session for the new flow
         req.session["generator_id"] = request.generator_id if request.generator_id else None
@@ -874,10 +914,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             try:
                 request = session['creation_request']
                 seed = request.debug_seed if request.debug_seed is not None else int(time.time())
+                user_id = websocket.session.get("user_id")
 
                 if request.generator_id:
                     # Check if generator exists
-                    user_id = websocket.session.get("user_id")
                     generator_data = db.get_visible_generator(
                         request.generator_id,
                         requester_owner_id=user_id
@@ -894,6 +934,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     language = request.language or generator_data['language']
                     do_web_search = False  # Don't re-do web search for existing generators
                 else:
+                    if is_login_required_to_create_world() and not user_id:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE
+                        })
+                        return
+
                     # Use provided parameters
                     theme_desc = request.theme if request.theme else "fantasy"
                     language = request.language
@@ -906,7 +953,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 })
 
                 # Determine ownership and visibility for newly generated worlds.
-                user_id = websocket.session.get("user_id")
                 world_visibility = get_default_new_world_visibility()
 
                 # Create new game instance with timeout
@@ -1037,6 +1083,14 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
         generator_id = session.get("generator_id")
         language = session.get("language", "en")
         do_web_search = session.get("do_web_search", False)
+        user_id = websocket.session.get("user_id")
+
+        if not generator_id and is_login_required_to_create_world() and not user_id:
+            await websocket.send_json({
+                "type": "error",
+                "message": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE
+            })
+            return
 
         # Decompress theme description
         compressed_theme = session.get("theme_desc")
@@ -1054,7 +1108,9 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
             theme_desc=theme_desc,
             language=language,
             do_web_search=do_web_search,
-            generator_id=generator_id
+            generator_id=generator_id,
+            owner_id=user_id,
+            visibility=get_default_new_world_visibility()
         )
 
         # Create session for this game

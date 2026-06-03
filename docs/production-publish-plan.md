@@ -28,6 +28,8 @@ Keep the work in small publishable slices so the app remains usable:
      age settings.
    - Newly generated Worlds default to `private`; production ignores
      non-private default overrides.
+   - Fresh World generation requires login in production; existing public and
+     unlisted Worlds remain anonymously playable.
 2. Staging slice:
    - Dockerize the current app on the VPS behind HTTPS.
    - Add `/health` and `/health/db` checks.
@@ -110,6 +112,7 @@ treated as a smoke-test bridge, not the final public-account architecture.
    LOW_SPEC_MODEL_API_KEY=<api key>
    HIGH_SPEC_MODEL_API_KEY=<api key>
    DEFAULT_NEW_WORLD_VISIBILITY=private
+   REQUIRE_LOGIN_TO_CREATE_WORLD=1
    ```
 
 3. Build and start the app on a loopback-only host port:
@@ -241,8 +244,9 @@ Important fixes:
 - Use random World IDs, not short content-hash IDs.
 - Stop using `INSERT OR REPLACE` for Worlds.
 - Keep `content_hash` only for dedupe or debugging.
-- Default logged-in and anonymous generated Worlds to `private` for production,
-  unless we explicitly keep anonymous generation disabled or unlisted.
+- Default logged-in generated Worlds to `private` for production.
+- Keep anonymous fresh generation disabled in production; allow anonymous starts
+  only for existing public and unlisted Worlds.
 - Add migrations with a repeatable tool such as Alembic.
 - Add indexes on `owner_id`, `visibility`, `moderation_status`, and
   `updated_at`.

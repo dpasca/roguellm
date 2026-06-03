@@ -18,6 +18,9 @@ SESSION_COOKIE_MAX_AGE_SECONDS=1209600
 # Newly generated Worlds are private by default. Production ignores non-private
 # overrides until the public review flow is implemented.
 DEFAULT_NEW_WORLD_VISIBILITY=private
+# Production should require login before creating fresh generated Worlds.
+# Existing public and unlisted Worlds remain playable without login.
+REQUIRE_LOGIN_TO_CREATE_WORLD=0
 
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys

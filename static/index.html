@@ -228,7 +228,7 @@
                                 type="button"
                                 class="save-hint-btn"
                                 @click="promptSignupForSave">
-                            {{ t('signupToSave') }}
+                            {{ t('signupToCreate') }}
                         </button>
                     </div>
                 </div>
@@ -339,7 +339,7 @@
                         @click="launchGame"
                         class="launch-btn"
                         :disabled="selectedTheme === 'world' && !selectedGeneratorId">
-                    {{ selectedTheme === 'world' ? t('startRun') : t('createGame') }}
+                    {{ launchButtonLabel }}
                 </button>
             </div>
         </div>

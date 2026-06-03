@@ -45,6 +45,9 @@ auth hardening, and public World moderation.
 - Phase 4 is implemented for the WebSocket creation flow: logged-in generated
   Worlds default to `private`; production forces new generated Worlds to remain
   private by default.
+- Production now requires login before creating a fresh generated World by
+  default via `REQUIRE_LOGIN_TO_CREATE_WORLD`; local development remains open
+  unless that flag is enabled.
 - Phase 5 is implemented with `PATCH /api/worlds/{world_id}/visibility` and an
   owner-only control in the World picker.
 - Phase 6 has an initial UI: compact signup/login/logout controls, `My Worlds`,
@@ -60,6 +63,7 @@ Before login:
 
 - Public Worlds can be browsed.
 - Unlisted Worlds can be opened by link/World ID.
+- Fresh generated Worlds require signup/login in production.
 - Local/dev behavior remains easy.
 
 After login:
@@ -155,9 +159,16 @@ When a logged-in user creates a new World:
 Recommended default:
 
 - `private` for real users.
-- `unlisted` for anonymous/dev flows.
+- `unlisted` for local/dev anonymous flows.
 
 This avoids accidentally putting user-generated Worlds into a global list.
+
+Production policy:
+
+- Require login for fresh World generation.
+- Keep starting existing public and unlisted Worlds anonymous.
+- Allow local/dev deployments to keep anonymous generation unless
+  `REQUIRE_LOGIN_TO_CREATE_WORLD=1` is set.
 
 ## Phase 5: Visibility Controls
 
@@ -222,11 +233,12 @@ Phase 3 tests:
 Phase 4 tests:
 
 - Logged-in generated World gets `owner_id`.
-- Anonymous generated World does not become public by default.
+- Login-required deployments reject anonymous fresh World generation.
+- Existing public/unlisted Worlds can still start anonymously.
+- Local/dev anonymous generated Worlds do not become public by default.
 
 ## Open Questions
 
-- Should anonymous generated Worlds be allowed in production?
 - Should unlisted Worlds be visible in the generic recent list during local dev
   only, or also in private deployments?
 - Should public Worlds require moderation later?
