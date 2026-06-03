@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="static/css/base.css">
     <link rel="stylesheet" href="static/css/style.css">
     <link rel="stylesheet" href="static/css/generator.css">
+    <link rel="stylesheet" href="static/css/landing.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <!-- Force versioning of CSS files to prevent caching -->
     <script src="static/js/versioning.js"></script>
@@ -38,85 +39,27 @@
             }
         }
     </script>
-    <style>
-        [v-cloak] {
-            display: none;
-        }
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-size: 1.5em;
-            color: white;
-        }
-        .theme-description {
-            margin: 20px 0;
-        }
-        .textarea-wrapper {
-            position: relative;
-            display: inline-block;
-            width: 100%;
-        }
-        .theme-textarea {
-            width: 100%;
-            padding: 12px;
-            padding-right: 50px;
-            resize: vertical;
-            min-height: 100px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #2a2a2a;
-            color: white;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        .theme-textarea:focus {
-            outline: none;
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-        }
-        .enter-btn {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .enter-btn:hover {
-            background-color: #45a049;
-            transform: translateY(-50%) scale(1.05);
-        }
-        .enter-btn:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            transform: translateY(-50%);
-        }
-        .enter-btn i {
-            font-size: 14px;
-        }
-    </style>
 </head>
-<body style="background-color: #121212; color: white;">
+<body class="landing-page">
     <div id="app" v-cloak>
         <div v-if="isLoading" class="loading">
             Loading...
         </div>
         <div v-else class="landing-container">
-            <h1>{{ t('title') }}</h1>
-            <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
-            <div class="auth-strip">
+            <header class="landing-header">
+                <div class="brand-lockup">
+                    <h1>{{ t('title') }}</h1>
+                    <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
+                </div>
+                <div class="language-selector">
+                    <select v-model="selectedLanguage" class="language-select" :aria-label="t('language')">
+                        <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code" v-text="lang.name">
+                        </option>
+                    </select>
+                </div>
+            </header>
+
+            <section class="auth-strip">
                 <div class="auth-copy">
                     <strong>{{ currentUser ? t('accountSaveTitleSignedIn') : t('accountSaveTitleAnonymous') }}</strong>
                     <span>{{ currentUser ? t('accountSaveBodySignedIn') : t('accountSaveBodyAnonymous') }}</span>
@@ -161,79 +104,62 @@
                         {{ authMode === 'signup' ? t('signup') : t('login') }}
                     </button>
                 </form>
-            </div>
-            <div class="theme-selector">
-                <h2 v-text="t('selectTheme')"></h2>
-                <div class="theme-options">
-                    <div class="theme-option">
-                        <input type="radio" id="fantasy" name="theme" value="fantasy" v-model="selectedTheme">
-                        <label for="fantasy">
-                            <div class="theme-card">
-                                <h3 v-text="t('fantasyTheme')"></h3>
-                                <i class="fas fa-dragon fa-3x"></i>
-                            </div>
-                        </label>
-                    </div>
+            </section>
 
-                    <div class="theme-option">
-                        <input type="radio" id="custom" name="theme" value="custom" v-model="selectedTheme">
-                        <label for="custom">
-                            <div class="theme-card">
-                                <h3 v-text="t('customTheme')"></h3>
-                                <i class="fas fa-magic fa-3x"></i>
-                            </div>
-                        </label>
-                    </div>
+            <nav class="landing-mode-tabs" role="tablist" :aria-label="t('landingModes')">
+                <button type="button"
+                        class="landing-mode-tab"
+                        :class="{ active: selectedTheme === 'world' }"
+                        @click="selectedTheme = 'world'">
+                    <i class="fas fa-map"></i>
+                    <span>{{ t('playWorlds') }}</span>
+                </button>
+                <button type="button"
+                        class="landing-mode-tab"
+                        :class="{ active: selectedTheme === 'custom' }"
+                        @click="selectedTheme = 'custom'">
+                    <i class="fas fa-magic"></i>
+                    <span>{{ t('createWorld') }}</span>
+                </button>
+            </nav>
 
-                    <div class="theme-option">
-                        <input type="radio" id="world" name="theme" value="world" v-model="selectedTheme">
-                        <label for="world">
-                            <div class="theme-card">
-                                <h3 v-text="t('chooseWorld')"></h3>
-                                <i class="fas fa-map fa-3x"></i>
-                            </div>
-                        </label>
-                    </div>
-                </div>
+            <div v-if="errorMessage"
+                 class="error-message"
+                 role="alert"
+                 v-text="errorMessage"></div>
+            <div v-if="infoMessage"
+                 class="info-message"
+                 role="status"
+                 v-text="infoMessage"></div>
 
-                <!-- Add language selector here -->
-                <div class="language-selector">
-                    <div class="language-options">
-                        <select v-model="selectedLanguage" class="language-select">
-                            <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code" v-text="lang.name">
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="theme-description" v-show="selectedTheme === 'custom'">
-                    <div class="textarea-wrapper">
-                        <textarea v-model="customDescription"
-                                :placeholder="t('enterGameDescription')"
-                                rows="4"
-                                maxlength="3000"
-                                class="theme-textarea"
-                                @keydown="handleKeyDown"></textarea>
-                        <button v-if="selectedTheme === 'custom'"
-                                @click="launchGame"
-                                class="enter-btn"
-                                :disabled="!customDescription.trim()">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-                    <div class="save-hint" :class="{ saved: currentUser }">
-                        <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-save'"></i>
-                        <span>{{ currentUser ? t('customSaveHintSignedIn') : t('customSaveHintAnonymous') }}</span>
-                        <button v-if="!currentUser"
+            <main class="landing-main">
+                <section class="landing-panel world-panel" v-if="selectedTheme === 'world'">
+                    <div class="panel-heading">
+                        <h2>{{ t('playWorlds') }}</h2>
+                        <button v-if="isLocalDev && worlds.length"
                                 type="button"
-                                class="save-hint-btn"
-                                @click="promptSignupForSave">
-                            {{ t('signupToCreate') }}
+                                class="dev-shortcut-btn"
+                                @click="quickStartPiedone()">
+                            <i class="fas fa-bolt"></i>
+                            <span>{{ t('quickStartPiedone') }}</span>
                         </button>
                     </div>
-                </div>
 
-                <div class="theme-description" v-show="selectedTheme === 'world'">
+                    <div class="world-id-row">
+                        <input v-model="generatorId"
+                               :placeholder="t('generatorIdLabel')"
+                               class="generator-input"
+                               type="text"
+                               @input="selectedWorldId = ''">
+                        <button type="button"
+                                class="launch-btn"
+                                :disabled="!generatorId.trim()"
+                                @click="launchGame">
+                            <i class="fas fa-play"></i>
+                            <span>{{ t('startRun') }}</span>
+                        </button>
+                    </div>
+
                     <div v-if="availableWorldTabs.length > 1"
                          class="world-tabs"
                          role="tablist">
@@ -246,6 +172,7 @@
                             {{ tab.label }}
                         </button>
                     </div>
+
                     <div v-if="isLoadingWorlds" class="world-list-state">{{ t('loadingWorlds') }}</div>
                     <div v-else-if="worlds.length" class="world-picker">
                         <label v-for="world in worlds"
@@ -266,7 +193,8 @@
                                     type="button"
                                     class="world-start-btn"
                                     @click.stop.prevent="launchGame">
-                                {{ t('startRun') }}
+                                <i class="fas fa-play"></i>
+                                <span>{{ t('startRun') }}</span>
                             </button>
                             <div v-if="selectedWorldId === world.id" class="world-preview">
                                 <dl class="world-preview-facts">
@@ -288,7 +216,8 @@
                                     <button type="button"
                                             class="world-secondary-btn"
                                             @click.stop.prevent="copyWorldLink(world)">
-                                        {{ t('copyShareLink') }}
+                                        <i class="fas fa-link"></i>
+                                        <span>{{ t('copyShareLink') }}</span>
                                     </button>
                                     <label v-if="isOwnedWorld(world)"
                                            class="world-visibility-control"
@@ -305,6 +234,7 @@
                             </div>
                         </label>
                     </div>
+
                     <div v-else class="world-list-state world-empty-state">
                         <strong>{{ emptyWorldsTitle }}</strong>
                         <span>{{ emptyWorldsMessage }}</span>
@@ -312,36 +242,51 @@
                                 type="button"
                                 class="world-secondary-btn"
                                 @click="promptSignupForSave">
-                            {{ t('signupToSave') }}
+                            <i class="fas fa-user-plus"></i>
+                            <span>{{ t('signupToCreate') }}</span>
                         </button>
                     </div>
-                    <div v-if="isLocalDev && worlds.length" class="dev-shortcuts">
-                        <button type="button" @click="quickStartPiedone()">
-                            {{ t('quickStartPiedone') }}
-                        </button>
-                    </div>
-                    <input v-model="generatorId"
-                           :placeholder="t('generatorIdLabel')"
-                           class="generator-input"
-                           type="text"
-                           @input="selectedWorldId = ''">
-                </div>
+                </section>
 
-                <div v-if="errorMessage"
-                     class="error-message"
-                     role="alert"
-                     v-text="errorMessage"></div>
-                <div v-if="infoMessage"
-                     class="info-message"
-                     role="status"
-                     v-text="infoMessage"></div>
-                <button v-if="selectedTheme !== 'custom'"
-                        @click="launchGame"
-                        class="launch-btn"
-                        :disabled="selectedTheme === 'world' && !selectedGeneratorId">
-                    {{ launchButtonLabel }}
-                </button>
-            </div>
+                <section class="landing-panel create-panel" v-if="selectedTheme === 'custom'">
+                    <div class="panel-heading">
+                        <h2>{{ t('createWorld') }}</h2>
+                    </div>
+
+                    <div class="theme-description">
+                        <div class="textarea-wrapper">
+                            <textarea v-model="customDescription"
+                                      :placeholder="t('enterGameDescription')"
+                                      rows="5"
+                                      maxlength="3000"
+                                      class="theme-textarea"
+                                      @keydown="handleKeyDown"></textarea>
+                            <button @click="launchGame"
+                                    class="enter-btn"
+                                    :disabled="!customDescription.trim()">
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="save-hint" :class="{ saved: currentUser }">
+                            <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-user-plus'"></i>
+                            <span>{{ currentUser ? t('customSaveHintSignedIn') : t('customSaveHintAnonymous') }}</span>
+                            <button v-if="!currentUser"
+                                    type="button"
+                                    class="save-hint-btn"
+                                    @click="promptSignupForSave">
+                                {{ t('signupToCreate') }}
+                            </button>
+                        </div>
+                        <button type="button"
+                                class="launch-btn create-launch-btn"
+                                :disabled="!customDescription.trim()"
+                                @click="launchGame">
+                            <i class="fas fa-magic"></i>
+                            <span>{{ launchButtonLabel }}</span>
+                        </button>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
     <!-- Load the landing.js script -->

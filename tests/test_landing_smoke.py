@@ -60,11 +60,19 @@ class LandingSmokeTests(unittest.TestCase):
 
                     html = landing.text
                     landing_js = (REPO_ROOT / "static/js/landing.js").read_text(encoding="utf-8")
+                    landing_css = (
+                        REPO_ROOT / "static/css/landing.css"
+                    ).read_text(encoding="utf-8")
                     english_translations = (
                         REPO_ROOT / "static/translations/en.json"
                     ).read_text(encoding="utf-8")
+                    self.assertIn('static/css/landing.css', html)
+                    self.assertIn('<body class="landing-page">', html)
                     self.assertIn('class="auth-strip"', html)
                     self.assertIn('class="auth-copy"', html)
+                    self.assertIn('class="landing-mode-tabs"', html)
+                    self.assertIn('class="landing-panel world-panel"', html)
+                    self.assertIn('class="landing-panel create-panel"', html)
                     self.assertIn('class="save-hint"', html)
                     self.assertIn('class="world-list-state world-empty-state"', html)
                     self.assertIn('@submit.prevent="submitAuth"', html)
@@ -93,8 +101,13 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("requiresAuthForSelectedCreation", landing_js)
                     self.assertIn("launchButtonLabel", landing_js)
                     self.assertIn("do_web_search: true", landing_js)
+                    self.assertIn("body.landing-page", landing_css)
+                    self.assertIn("playWorlds", english_translations)
+                    self.assertIn("createWorld", english_translations)
                     self.assertIn("signupToCreate", english_translations)
                     self.assertIn("authRequiredToCreateWorld", english_translations)
+                    self.assertNotIn('id="fantasy"', html)
+                    self.assertNotIn('class="theme-options"', html)
                     self.assertNotIn("doWebSearch", landing_js)
                     self.assertNotIn("improveGameDescription", html)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))

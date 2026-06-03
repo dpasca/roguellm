@@ -56,6 +56,9 @@ auth hardening, and public World moderation.
 - Phase 6 now also explains the account payoff: signing in saves generated
   Worlds privately to `My Worlds`, anonymous play remains possible, and empty
   states point users toward creating a saved private World.
+- The landing page now centers `Play Worlds` and `Create World`; the visible
+  Fantasy Theme entry point is removed while the backend fantasy fallback
+  remains for legacy/dev requests.
 
 ## Desired Experience
 

@@ -26,7 +26,7 @@ const CONFIG = {
 const app = Vue.createApp({
     data() {
         return {
-            selectedTheme: 'custom',
+            selectedTheme: 'world',
             customDescription: '',
             generatorId: '',
             selectedWorldId: '',
@@ -125,7 +125,7 @@ const app = Vue.createApp({
                 return this.t('signupToCreate');
             }
 
-            return this.selectedTheme === 'world' ? this.t('startRun') : this.t('createGame');
+            return this.selectedTheme === 'world' ? this.t('startRun') : this.t('createWorld');
         }
     },
     watch: {
@@ -388,9 +388,6 @@ const app = Vue.createApp({
                 this.selectedWorldId = this.worlds[0]?.id || '';
             }
 
-            if (this.worlds.length > 0 && this.selectedTheme === 'custom' && !this.customDescription.trim()) {
-                this.selectedTheme = 'world';
-            }
         },
         chooseInitialWorldTab() {
             if (this.currentUser) {
