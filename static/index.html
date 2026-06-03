@@ -145,106 +145,184 @@
                         </button>
                     </div>
 
-                    <div class="world-id-row">
-                        <input v-model="generatorId"
-                               :placeholder="t('generatorIdLabel')"
-                               class="generator-input"
-                               type="text"
-                               @input="selectedWorldId = ''">
-                        <button type="button"
-                                class="launch-btn"
-                                :disabled="!generatorId.trim()"
-                                @click="launchGame">
-                            <i class="fas fa-play"></i>
-                            <span>{{ t('startRun') }}</span>
-                        </button>
-                    </div>
-
-                    <div v-if="availableWorldTabs.length > 1"
-                         class="world-tabs"
-                         role="tablist">
-                        <button v-for="tab in availableWorldTabs"
-                                :key="tab.id"
-                                type="button"
-                                class="world-tab"
-                                :class="{ active: worldTab === tab.id }"
-                                @click="worldTab = tab.id">
-                            {{ tab.label }}
-                        </button>
-                    </div>
-
-                    <div v-if="isLoadingWorlds" class="world-list-state">{{ t('loadingWorlds') }}</div>
-                    <div v-else-if="worlds.length" class="world-picker">
-                        <label v-for="world in worlds"
-                               :key="world.id"
-                               class="world-option"
-                               :class="{ selected: selectedWorldId === world.id }">
-                            <input type="radio"
-                                   name="world"
-                                   :value="world.id"
-                                   v-model="selectedWorldId">
-                            <span class="world-copy">
-                                <span class="world-title">{{ world.title }}</span>
-                                <span class="world-meta">
-                                    {{ world.language }} · {{ worldVisibilityLabel(world.visibility) }} · {{ formatWorldCounts(world) }}
-                                </span>
-                            </span>
-                            <button v-if="selectedWorldId === world.id"
-                                    type="button"
-                                    class="world-start-btn"
-                                    @click.stop.prevent="launchGame">
-                                <i class="fas fa-play"></i>
-                                <span>{{ t('startRun') }}</span>
-                            </button>
-                            <div v-if="selectedWorldId === world.id" class="world-preview">
-                                <dl class="world-preview-facts">
-                                    <div>
-                                        <dt>{{ t('worldId') }}</dt>
-                                        <dd>{{ world.id }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>{{ t('worldOriginalLanguage') }}</dt>
-                                        <dd>{{ world.language }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>{{ t('worldContents') }}</dt>
-                                        <dd>{{ formatWorldCounts(world) }}</dd>
-                                    </div>
-                                </dl>
-                                <p class="world-preview-theme">{{ world.theme }}</p>
-                                <div class="world-actions">
-                                    <button type="button"
-                                            class="world-secondary-btn"
-                                            @click.stop.prevent="copyWorldLink(world)">
-                                        <i class="fas fa-link"></i>
-                                        <span>{{ t('copyShareLink') }}</span>
-                                    </button>
-                                    <label v-if="isOwnedWorld(world)"
-                                           class="world-visibility-control"
-                                           @click.stop>
-                                        <span>{{ t('visibility') }}</span>
-                                        <select :value="world.visibility"
-                                                @change.stop="updateWorldVisibility(world, $event)">
-                                            <option value="private">{{ t('visibilityPrivate') }}</option>
-                                            <option value="unlisted">{{ t('visibilityUnlisted') }}</option>
-                                            <option value="public">{{ t('visibilityPublic') }}</option>
-                                        </select>
-                                    </label>
-                                </div>
+                    <div class="world-stage">
+                        <div class="world-browser">
+                            <div class="world-id-row">
+                                <input v-model="generatorId"
+                                       :placeholder="t('generatorIdLabel')"
+                                       class="generator-input"
+                                       type="text"
+                                       @input="selectedWorldId = ''">
+                                <button type="button"
+                                        class="launch-btn"
+                                        :disabled="!generatorId.trim()"
+                                        @click="launchGame">
+                                    <i class="fas fa-play"></i>
+                                    <span>{{ t('startRun') }}</span>
+                                </button>
                             </div>
-                        </label>
-                    </div>
 
-                    <div v-else class="world-list-state world-empty-state">
-                        <strong>{{ emptyWorldsTitle }}</strong>
-                        <span>{{ emptyWorldsMessage }}</span>
-                        <button v-if="showEmptySignupPrompt"
-                                type="button"
-                                class="world-secondary-btn"
-                                @click="promptSignupForSave">
-                            <i class="fas fa-user-plus"></i>
-                            <span>{{ t('signupToCreate') }}</span>
-                        </button>
+                            <div v-if="availableWorldTabs.length > 1"
+                                 class="world-tabs"
+                                 role="tablist">
+                                <button v-for="tab in availableWorldTabs"
+                                        :key="tab.id"
+                                        type="button"
+                                        class="world-tab"
+                                        :class="{ active: worldTab === tab.id }"
+                                        @click="worldTab = tab.id">
+                                    {{ tab.label }}
+                                </button>
+                            </div>
+
+                            <div v-if="isLoadingWorlds" class="world-list-state">{{ t('loadingWorlds') }}</div>
+                            <div v-else-if="worlds.length" class="world-picker">
+                                <label v-for="world in worlds"
+                                       :key="world.id"
+                                       class="world-option"
+                                       :class="{ selected: selectedWorldId === world.id }">
+                                    <input type="radio"
+                                           name="world"
+                                           :value="world.id"
+                                           v-model="selectedWorldId">
+                                    <span class="world-copy">
+                                        <span class="world-title">{{ world.title }}</span>
+                                        <span class="world-meta">
+                                            {{ world.language }} · {{ worldVisibilityLabel(world.visibility) }} · {{ formatWorldCounts(world) }}
+                                        </span>
+                                    </span>
+                                    <button v-if="selectedWorldId === world.id"
+                                            type="button"
+                                            class="world-start-btn"
+                                            @click.stop.prevent="launchGame">
+                                        <i class="fas fa-play"></i>
+                                        <span>{{ t('startRun') }}</span>
+                                    </button>
+                                    <div v-if="selectedWorldId === world.id" class="world-preview">
+                                        <dl class="world-preview-facts">
+                                            <div>
+                                                <dt>{{ t('worldId') }}</dt>
+                                                <dd>{{ world.id }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>{{ t('worldOriginalLanguage') }}</dt>
+                                                <dd>{{ world.language }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>{{ t('worldContents') }}</dt>
+                                                <dd>{{ formatWorldCounts(world) }}</dd>
+                                            </div>
+                                        </dl>
+                                        <p class="world-preview-theme">{{ world.theme }}</p>
+                                        <div class="world-actions">
+                                            <button type="button"
+                                                    class="world-secondary-btn"
+                                                    @click.stop.prevent="copyWorldLink(world)">
+                                                <i class="fas fa-link"></i>
+                                                <span>{{ t('copyShareLink') }}</span>
+                                            </button>
+                                            <label v-if="isOwnedWorld(world)"
+                                                   class="world-visibility-control"
+                                                   @click.stop>
+                                                <span>{{ t('visibility') }}</span>
+                                                <select :value="world.visibility"
+                                                        @change.stop="updateWorldVisibility(world, $event)">
+                                                    <option value="private">{{ t('visibilityPrivate') }}</option>
+                                                    <option value="unlisted">{{ t('visibilityUnlisted') }}</option>
+                                                    <option value="public">{{ t('visibilityPublic') }}</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div v-else class="world-list-state world-empty-state">
+                                <strong>{{ emptyWorldsTitle }}</strong>
+                                <span>{{ emptyWorldsMessage }}</span>
+                                <button v-if="showEmptySignupPrompt"
+                                        type="button"
+                                        class="world-secondary-btn"
+                                        @click="promptSignupForSave">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>{{ t('signupToCreate') }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <aside class="game-preview" aria-label="Roguelike run preview">
+                            <div class="preview-header">
+                                <span>Run Preview</span>
+                                <span>Depth 01</span>
+                            </div>
+                            <div class="preview-map" aria-hidden="true">
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile torch"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile water"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile hero"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile enemy"></span>
+                                <span class="tile water"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile chest"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile portal"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile floor"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                                <span class="tile wall"></span>
+                            </div>
+                            <div class="preview-log">
+                                <span>@ enters a generated World.</span>
+                                <span>Search found strange local lore.</span>
+                                <span>A private World waits in My Worlds.</span>
+                            </div>
+                        </aside>
                     </div>
                 </section>
 

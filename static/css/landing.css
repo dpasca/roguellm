@@ -1,5 +1,11 @@
 body.landing-page {
-    background: #101214;
+    background-color: #0c0d10;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(135deg, rgba(240, 178, 86, 0.08), transparent 32%),
+        linear-gradient(315deg, rgba(96, 88, 180, 0.08), transparent 30%);
+    background-size: 46px 46px, 46px 46px, 100% 100%, 100% 100%;
     color: #f4f1ea;
     height: auto;
     min-height: 100vh;
@@ -30,9 +36,9 @@ body.landing-page .landing-container {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     margin: 0 auto;
-    max-width: 1120px;
+    max-width: 1180px;
     padding: 20px;
     text-align: left;
     width: 100%;
@@ -40,10 +46,16 @@ body.landing-page .landing-container {
 
 body.landing-page .landing-header {
     align-items: end;
+    background:
+        linear-gradient(120deg, rgba(28, 24, 24, 0.92), rgba(15, 19, 23, 0.9)),
+        linear-gradient(90deg, rgba(240, 178, 86, 0.14), transparent 42%);
+    border: 1px solid #3a3630;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 40px rgba(0, 0, 0, 0.32);
     display: grid;
-    gap: 14px;
+    gap: 18px;
     grid-template-columns: minmax(0, 1fr) auto;
-    padding-top: 6px;
+    padding: 16px;
 }
 
 body.landing-page .brand-lockup {
@@ -54,13 +66,15 @@ body.landing-page .brand-lockup {
 
 body.landing-page h1 {
     background: none;
-    color: #f4f1ea;
-    font-size: 2.6rem;
+    color: #fff5d0;
+    font-size: 3rem;
     letter-spacing: 0;
     line-height: 1;
     margin: 0;
     position: static;
-    text-shadow: none;
+    text-shadow:
+        0 2px 0 #3a2414,
+        0 0 22px rgba(240, 178, 86, 0.22);
     text-transform: none;
     -webkit-background-clip: initial;
     -webkit-text-fill-color: currentColor;
@@ -71,7 +85,7 @@ body.landing-page h1::after {
 }
 
 body.landing-page .brand-lockup p {
-    color: #aeb8b4;
+    color: #d2c7b2;
     font-size: 0.95rem;
     line-height: 1.45;
     margin: 0;
@@ -82,8 +96,8 @@ body.landing-page .language-selector {
 }
 
 body.landing-page .language-select {
-    background: #1c2021;
-    border: 1px solid #384044;
+    background: #151819;
+    border: 1px solid #4b4338;
     border-radius: 6px;
     color: #f4f1ea;
     font-size: 0.9rem;
@@ -94,8 +108,8 @@ body.landing-page .language-select {
 
 body.landing-page .auth-strip {
     align-items: center;
-    background: #171a1b;
-    border: 1px solid #2c3335;
+    background: rgba(18, 22, 23, 0.94);
+    border: 1px solid #363d39;
     border-radius: 8px;
     box-sizing: border-box;
     display: grid;
@@ -120,7 +134,7 @@ body.landing-page .auth-copy strong {
 
 body.landing-page .auth-copy span,
 body.landing-page .auth-session span {
-    color: #aeb8b4;
+    color: #c2c9bc;
     font-size: 0.82rem;
 }
 
@@ -130,8 +144,8 @@ body.landing-page .auth-session {
 }
 
 body.landing-page .auth-mode {
-    background: #111414;
-    border-color: #30383a;
+    background: #0f1112;
+    border-color: #343a39;
     border-radius: 6px;
 }
 
@@ -155,8 +169,8 @@ body.landing-page .auth-mode-btn.active {
 }
 
 body.landing-page .auth-input {
-    background: #111414;
-    border-color: #384044;
+    background: #0f1112;
+    border-color: #3a4341;
     border-radius: 6px;
     min-height: 38px;
 }
@@ -164,7 +178,7 @@ body.landing-page .auth-input {
 body.landing-page .auth-primary-btn,
 body.landing-page .launch-btn,
 body.landing-page .world-start-btn {
-    background: #3f8f58;
+    background: #3fa362;
     color: #fff;
     font-weight: 700;
 }
@@ -172,7 +186,7 @@ body.landing-page .world-start-btn {
 body.landing-page .auth-primary-btn:hover,
 body.landing-page .launch-btn:hover,
 body.landing-page .world-start-btn:hover {
-    background: #367a4b;
+    background: #348750;
 }
 
 body.landing-page .auth-secondary-btn,
@@ -188,8 +202,8 @@ body.landing-page .dev-shortcut-btn:hover {
 }
 
 body.landing-page .landing-mode-tabs {
-    background: #171a1b;
-    border: 1px solid #2c3335;
+    background: rgba(18, 22, 23, 0.96);
+    border: 1px solid #363d39;
     border-radius: 8px;
     display: grid;
     gap: 6px;
@@ -200,7 +214,7 @@ body.landing-page .landing-mode-tabs {
 body.landing-page .landing-mode-tab {
     background: transparent;
     border: 1px solid transparent;
-    color: #aeb8b4;
+    color: #c2c9bc;
     font-size: 0.95rem;
     font-weight: 700;
     min-height: 44px;
@@ -209,9 +223,11 @@ body.landing-page .landing-mode-tab {
 
 body.landing-page .landing-mode-tab:hover,
 body.landing-page .landing-mode-tab.active {
-    background: #22292b;
-    border-color: #3f8f58;
-    color: #f4f1ea;
+    background:
+        linear-gradient(135deg, rgba(63, 163, 98, 0.18), rgba(240, 178, 86, 0.09)),
+        #202628;
+    border-color: #d39b48;
+    color: #fff5d0;
 }
 
 body.landing-page .landing-main {
@@ -220,10 +236,16 @@ body.landing-page .landing-main {
 }
 
 body.landing-page .landing-panel {
-    background: #171a1b;
-    border: 1px solid #2c3335;
+    background:
+        linear-gradient(180deg, rgba(26, 31, 32, 0.98), rgba(13, 16, 18, 0.98)),
+        linear-gradient(90deg, rgba(211, 155, 72, 0.08), transparent);
+    border: 1px solid #3b403b;
     border-radius: 8px;
     box-sizing: border-box;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+        0 16px 36px rgba(0, 0, 0, 0.28);
     display: grid;
     gap: 14px;
     padding: 14px;
@@ -238,8 +260,8 @@ body.landing-page .panel-heading {
 }
 
 body.landing-page .panel-heading h2 {
-    color: #f4f1ea;
-    font-size: 1.1rem;
+    color: #fff5d0;
+    font-size: 1.15rem;
     line-height: 1.2;
     margin: 0;
 }
@@ -250,9 +272,22 @@ body.landing-page .world-id-row {
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
+body.landing-page .world-stage {
+    align-items: start;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+}
+
+body.landing-page .world-browser {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
 body.landing-page .generator-input {
-    background: #111414;
-    border: 1px solid #384044;
+    background: #0c0f10;
+    border: 1px solid #424c48;
     border-radius: 6px;
     box-sizing: border-box;
     color: #f4f1ea;
@@ -270,8 +305,8 @@ body.landing-page .launch-btn {
 }
 
 body.landing-page .launch-btn:disabled {
-    background: #394144;
-    color: #8e9996;
+    background: #333b3d;
+    color: #9da7a2;
     opacity: 1;
 }
 
@@ -281,17 +316,17 @@ body.landing-page .world-tabs {
 }
 
 body.landing-page .world-tab {
-    background: #111414;
-    border-color: #30383a;
+    background: #0c0f10;
+    border-color: #343d3c;
     border-radius: 6px;
     color: #aeb8b4;
 }
 
 body.landing-page .world-tab:hover,
 body.landing-page .world-tab.active {
-    background: #22292b;
-    border-color: #3f8f58;
-    color: #f4f1ea;
+    background: #23292a;
+    border-color: #3fa362;
+    color: #fff5d0;
 }
 
 body.landing-page .world-picker {
@@ -300,8 +335,10 @@ body.landing-page .world-picker {
 }
 
 body.landing-page .world-option {
-    background: #1d2223;
-    border-color: #30383a;
+    background:
+        linear-gradient(90deg, rgba(63, 163, 98, 0.05), transparent 34%),
+        #171d1e;
+    border-color: #343d3c;
     border-radius: 8px;
     margin: 0;
     padding: 12px;
@@ -309,17 +346,19 @@ body.landing-page .world-option {
 
 body.landing-page .world-option:hover,
 body.landing-page .world-option.selected {
-    background: #232a2c;
-    border-color: #3f8f58;
+    background:
+        linear-gradient(90deg, rgba(63, 163, 98, 0.12), rgba(141, 92, 255, 0.05)),
+        #202728;
+    border-color: #3fa362;
 }
 
 body.landing-page .world-title {
-    color: #f4f1ea;
+    color: #fff5d0;
 }
 
 body.landing-page .world-meta,
 body.landing-page .world-preview-facts dt {
-    color: #98a5a1;
+    color: #aeb8ab;
 }
 
 body.landing-page .world-start-btn,
@@ -332,17 +371,17 @@ body.landing-page .save-hint-btn {
 
 body.landing-page .world-secondary-btn,
 body.landing-page .save-hint-btn {
-    background: #2d6680;
+    background: #2f718a;
     color: #fff;
 }
 
 body.landing-page .world-secondary-btn:hover,
 body.landing-page .save-hint-btn:hover {
-    background: #25536a;
+    background: #285e73;
 }
 
 body.landing-page .world-preview {
-    border-color: #30383a;
+    border-color: #343d3c;
 }
 
 body.landing-page .world-preview-theme,
@@ -352,8 +391,8 @@ body.landing-page .world-preview-facts dd {
 
 body.landing-page .world-empty-state,
 body.landing-page .save-hint {
-    background: #1d2223;
-    border-color: #30383a;
+    background: #171d1e;
+    border-color: #343d3c;
     border-radius: 8px;
 }
 
@@ -363,12 +402,136 @@ body.landing-page .world-empty-state {
 }
 
 body.landing-page .world-empty-state strong {
-    color: #f4f1ea;
+    color: #fff5d0;
 }
 
 body.landing-page .world-empty-state span,
 body.landing-page .save-hint {
     color: #aeb8b4;
+}
+
+body.landing-page .game-preview {
+    background:
+        linear-gradient(180deg, rgba(16, 18, 20, 0.96), rgba(8, 10, 12, 0.98)),
+        linear-gradient(90deg, rgba(141, 92, 255, 0.08), transparent);
+    border: 1px solid #4b4338;
+    border-radius: 8px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 28px rgba(0, 0, 0, 0.42);
+    display: grid;
+    gap: 10px;
+    overflow: hidden;
+    padding: 10px;
+}
+
+body.landing-page .preview-header {
+    align-items: center;
+    color: #fff5d0;
+    display: flex;
+    font-size: 0.72rem;
+    font-weight: 800;
+    justify-content: space-between;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+body.landing-page .preview-header span:last-child {
+    color: #d39b48;
+}
+
+body.landing-page .preview-map {
+    background: #08090a;
+    border: 1px solid #282d2c;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    overflow: hidden;
+}
+
+body.landing-page .tile {
+    align-items: center;
+    aspect-ratio: 1;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22);
+    display: flex;
+    font-size: clamp(0.68rem, 2.4vw, 0.9rem);
+    font-weight: 900;
+    justify-content: center;
+    line-height: 1;
+    min-width: 0;
+}
+
+body.landing-page .tile.wall {
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent),
+        #323034;
+}
+
+body.landing-page .tile.floor {
+    background:
+        linear-gradient(135deg, rgba(240, 178, 86, 0.06), transparent 55%),
+        #171b1b;
+}
+
+body.landing-page .tile.water {
+    background: #123a42;
+}
+
+body.landing-page .tile.torch {
+    background: #271d14;
+}
+
+body.landing-page .tile.hero,
+body.landing-page .tile.enemy,
+body.landing-page .tile.chest,
+body.landing-page .tile.portal {
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent),
+        #171b1b;
+}
+
+body.landing-page .tile.hero::after {
+    color: #83e89b;
+    content: "@";
+    text-shadow: 0 0 10px rgba(131, 232, 155, 0.42);
+}
+
+body.landing-page .tile.enemy::after {
+    color: #f06e6e;
+    content: "M";
+    text-shadow: 0 0 10px rgba(240, 110, 110, 0.42);
+}
+
+body.landing-page .tile.chest::after {
+    color: #f0b256;
+    content: "$";
+    text-shadow: 0 0 10px rgba(240, 178, 86, 0.45);
+}
+
+body.landing-page .tile.portal::after {
+    color: #a789ff;
+    content: "*";
+    text-shadow: 0 0 10px rgba(167, 137, 255, 0.5);
+}
+
+body.landing-page .tile.torch::after {
+    color: #f0b256;
+    content: "!";
+    text-shadow: 0 0 10px rgba(240, 178, 86, 0.5);
+}
+
+body.landing-page .preview-log {
+    border-top: 1px solid #282d2c;
+    color: #c2c9bc;
+    display: grid;
+    font-size: 0.75rem;
+    gap: 5px;
+    line-height: 1.35;
+    padding-top: 8px;
+}
+
+body.landing-page .preview-log span {
+    overflow-wrap: anywhere;
 }
 
 body.landing-page .theme-description {
@@ -468,6 +631,17 @@ body.landing-page .info-message {
     background: #25536a;
 }
 
+@media (max-width: 940px) {
+    body.landing-page .world-stage {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .game-preview {
+        max-width: 420px;
+        width: 100%;
+    }
+}
+
 @media (max-width: 760px) {
     body.landing-page .landing-container {
         padding: 14px;
@@ -498,6 +672,16 @@ body.landing-page .info-message {
 
     body.landing-page .world-id-row {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .game-preview {
+        justify-self: center;
+        max-width: 300px;
+        order: -1;
+    }
+
+    body.landing-page .preview-log {
+        display: none;
     }
 
     body.landing-page .landing-mode-tab {
