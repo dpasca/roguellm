@@ -117,6 +117,10 @@
             <h1>{{ t('title') }}</h1>
             <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
             <div class="auth-strip">
+                <div class="auth-copy">
+                    <strong>{{ currentUser ? t('accountSaveTitleSignedIn') : t('accountSaveTitleAnonymous') }}</strong>
+                    <span>{{ currentUser ? t('accountSaveBodySignedIn') : t('accountSaveBodyAnonymous') }}</span>
+                </div>
                 <div v-if="currentUser" class="auth-session">
                     <span>{{ t('authSignedIn', { username: currentUser.username }) }}</span>
                     <button type="button"
@@ -224,6 +228,16 @@
                             <span class="checkbox-label">{{ t('improveGameDescription') }}</span>
                         </label>
                     </div>
+                    <div class="save-hint" :class="{ saved: currentUser }">
+                        <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-save'"></i>
+                        <span>{{ currentUser ? t('customSaveHintSignedIn') : t('customSaveHintAnonymous') }}</span>
+                        <button v-if="!currentUser"
+                                type="button"
+                                class="save-hint-btn"
+                                @click="promptSignupForSave">
+                            {{ t('signupToSave') }}
+                        </button>
+                    </div>
                 </div>
 
                 <div class="theme-description" v-show="selectedTheme === 'world'">
@@ -298,7 +312,16 @@
                             </div>
                         </label>
                     </div>
-                    <div v-else class="world-list-state">{{ t('noWorlds') }}</div>
+                    <div v-else class="world-list-state world-empty-state">
+                        <strong>{{ emptyWorldsTitle }}</strong>
+                        <span>{{ emptyWorldsMessage }}</span>
+                        <button v-if="showEmptySignupPrompt"
+                                type="button"
+                                class="world-secondary-btn"
+                                @click="promptSignupForSave">
+                            {{ t('signupToSave') }}
+                        </button>
+                    </div>
                     <div v-if="isLocalDev && worlds.length" class="dev-shortcuts">
                         <button type="button" @click="quickStartPiedone()">
                             {{ t('quickStartPiedone') }}

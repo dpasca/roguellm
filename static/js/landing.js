@@ -90,6 +90,33 @@ const app = Vue.createApp({
         },
         isLocalDev() {
             return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+        },
+        emptyWorldsTitle() {
+            if (this.worldTab === 'my') {
+                return this.t('myWorldsEmptyTitle');
+            }
+
+            if (this.worldTab === 'recentDev') {
+                return this.t('recentDevWorldsEmptyTitle');
+            }
+
+            return this.t('publicWorldsEmptyTitle');
+        },
+        emptyWorldsMessage() {
+            if (this.worldTab === 'my') {
+                return this.t('myWorldsEmptyBody');
+            }
+
+            if (this.worldTab === 'recentDev') {
+                return this.t('recentDevWorldsEmptyBody');
+            }
+
+            return this.currentUser
+                ? this.t('publicWorldsEmptyBodySignedIn')
+                : this.t('publicWorldsEmptyBodyAnonymous');
+        },
+        showEmptySignupPrompt() {
+            return !this.currentUser && this.worldTab === 'public';
         }
     },
     watch: {
@@ -260,6 +287,16 @@ const app = Vue.createApp({
             this.clearInfo();
             this.authForm.password = '';
         },
+        promptSignupForSave() {
+            this.setAuthMode('signup');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            this.$nextTick(() => {
+                const usernameInput = document.querySelector('.auth-input');
+                if (usernameInput) {
+                    usernameInput.focus();
+                }
+            });
+        },
         resetAuthForm() {
             this.authForm = {
                 username: '',
@@ -347,7 +384,7 @@ const app = Vue.createApp({
             }
         },
         chooseInitialWorldTab() {
-            if (this.currentUser && this.worldLists.my.length > 0) {
+            if (this.currentUser) {
                 this.worldTab = 'my';
             } else if (this.isLocalDev && this.worldLists.recentDev.length > 0) {
                 this.worldTab = 'recentDev';

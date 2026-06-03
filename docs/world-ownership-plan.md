@@ -43,13 +43,16 @@ auth hardening, and public World moderation.
   blocked unless the logged-in requester owns them.
 - Phase 3 is implemented as minimal username/password session auth.
 - Phase 4 is implemented for the WebSocket creation flow: logged-in generated
-  Worlds default to `private`, while anonymous generated Worlds default to
-  `unlisted`.
+  Worlds default to `private`; production forces new generated Worlds to remain
+  private by default.
 - Phase 5 is implemented with `PATCH /api/worlds/{world_id}/visibility` and an
   owner-only control in the World picker.
 - Phase 6 has an initial UI: compact signup/login/logout controls, `My Worlds`,
   `Public`, and local-only `Recent Dev` tabs, direct share-link copying, and
   visibility display.
+- Phase 6 now also explains the account payoff: signing in saves generated
+  Worlds privately to `My Worlds`, anonymous play remains possible, and empty
+  states point users toward creating a saved private World.
 
 ## Desired Experience
 
@@ -232,11 +235,10 @@ Phase 4 tests:
 
 ## Recommended Next Implementation Step
 
-Tighten the logged-in creation flow:
+Decide the pre-moderation production policy for public visibility:
 
-1. Make sure a newly generated logged-in World appears in `My Worlds` after the
-   first run is created.
-2. Add UI copy or status around the default `private` visibility for new logged
-   in Worlds.
-3. Add a smoke test for creating a logged-in custom World with a mocked game
-   generator and then listing it through `GET /api/my/worlds`.
+1. Hide or disable the `Public` visibility option in production until LLM
+   moderation exists.
+2. Replace direct `public` updates with a pending-review request flow.
+3. Add UI status for private, public-review-pending, approved, and rejected
+   Worlds.

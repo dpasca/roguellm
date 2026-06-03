@@ -798,6 +798,72 @@ class WorldApiTests(unittest.TestCase):
 
             self.assertEqual(created_with["generator_id"], world_id)
 
+    def test_logged_in_custom_world_appears_in_my_worlds_after_creation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            created_with = {}
+            generated_world_id = None
+
+            class FakeGame:
+                state_manager = SimpleNamespace(generator_id=None, error_message=None)
+
+                def add_client(self, websocket):
+                    pass
+
+                def remove_client(self, websocket):
+                    pass
+
+                async def handle_message(self, message):
+                    return {"type": "update"}
+
+            async def fake_create(**kwargs):
+                nonlocal generated_world_id
+                created_with.update(kwargs)
+                generated_world_id = manager.save_generator(
+                    theme_desc=kwargs["theme_desc"],
+                    theme_desc_better="Clockwork Meadow",
+                    language=kwargs["language"],
+                    player_defs=[],
+                    item_defs=[],
+                    enemy_defs=[],
+                    celltype_defs={},
+                    owner_id=kwargs["owner_id"],
+                    visibility=kwargs["visibility"],
+                )
+                game = FakeGame()
+                game.state_manager.generator_id = generated_world_id
+                return game
+
+            with patch.object(main, 'db', manager), \
+                    patch("main.Game.create", side_effect=fake_create), \
+                    patch.dict(os.environ, {"DEFAULT_NEW_WORLD_VISIBILITY": "private"}):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                client.post("/api/signup", json={"username": "owner", "password": "secret123"})
+                response = client.post("/api/create_game_session", json={
+                    "theme": "Clockwork meadow",
+                    "language": "en",
+                    "do_web_search": False,
+                })
+                session_id = response.json()["session_id"]
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "ready")
+                    self.assertEqual(websocket.receive_json()["type"], "connection_established")
+
+                my_worlds = client.get("/api/my/worlds")
+
+            self.assertEqual(created_with["theme_desc"], "Clockwork meadow")
+            self.assertIsNotNone(created_with["owner_id"])
+            self.assertEqual(created_with["visibility"], "private")
+            self.assertEqual(my_worlds.status_code, 200)
+            worlds = my_worlds.json()["worlds"]
+            self.assertEqual([world["id"] for world in worlds], [generated_world_id])
+            self.assertEqual(worlds[0]["visibility"], "private")
+            self.assertTrue(worlds[0]["can_manage"])
+
 
 class AuthTests(unittest.TestCase):
     def make_db(self, directory):
