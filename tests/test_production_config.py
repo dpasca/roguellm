@@ -40,6 +40,14 @@ class ProductionConfigTests(unittest.TestCase):
                 main.SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS,
             )
 
+    def test_abuse_protection_defaults_match_publish_template(self):
+        self.assertEqual(main.AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS, 5)
+        self.assertEqual(main.AUTH_LOGIN_DEFAULT_WINDOW_SECONDS, 60)
+        self.assertEqual(main.AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS, 5)
+        self.assertEqual(main.AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS, 3600)
+        self.assertEqual(main.WORLD_CREATION_DEFAULT_MAX_ATTEMPTS, 10)
+        self.assertEqual(main.WORLD_CREATION_DEFAULT_WINDOW_SECONDS, 3600)
+
     def test_default_new_world_visibility_is_private(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(main.get_default_new_world_visibility(), "private")

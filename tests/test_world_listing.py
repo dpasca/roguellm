@@ -456,6 +456,11 @@ class WorldListingTests(unittest.TestCase):
 
 
 class WorldApiTests(unittest.TestCase):
+    def setUp(self):
+        main.auth_rate_limiter.failures.clear()
+        main.signup_rate_limiter.failures.clear()
+        main.world_creation_rate_limiter.failures.clear()
+
     def make_db(self, directory):
         with patch.dict(os.environ, {
             "DO_STORAGE_SERVER": "",
@@ -1005,6 +1010,11 @@ class WorldApiTests(unittest.TestCase):
 
 
 class AuthTests(unittest.TestCase):
+    def setUp(self):
+        main.auth_rate_limiter.failures.clear()
+        main.signup_rate_limiter.failures.clear()
+        main.world_creation_rate_limiter.failures.clear()
+
     def make_db(self, directory):
         with patch.dict(os.environ, {
             "DO_STORAGE_SERVER": "",

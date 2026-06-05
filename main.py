@@ -212,6 +212,12 @@ LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in or create an account to genera
 LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Try again later."
 SIGNUP_RATE_LIMIT_MESSAGE = "Too many signup attempts. Try again later."
 WORLD_CREATION_RATE_LIMIT_MESSAGE = "Too many new World creation attempts. Try again later."
+AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS = 5
+AUTH_LOGIN_DEFAULT_WINDOW_SECONDS = 60
+AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS = 5
+AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS = 60 * 60
+WORLD_CREATION_DEFAULT_MAX_ATTEMPTS = 10
+WORLD_CREATION_DEFAULT_WINDOW_SECONDS = 60 * 60
 
 
 class AuthRateLimiter:
@@ -346,9 +352,21 @@ def consume_rate_limit_attempt(
     return None
 
 
-auth_rate_limiter = make_rate_limiter("AUTH_LOGIN", 5, 60)
-signup_rate_limiter = make_rate_limiter("AUTH_SIGNUP", 20, 60 * 60)
-world_creation_rate_limiter = make_rate_limiter("WORLD_CREATION", 10, 60 * 60)
+auth_rate_limiter = make_rate_limiter(
+    "AUTH_LOGIN",
+    AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS,
+    AUTH_LOGIN_DEFAULT_WINDOW_SECONDS,
+)
+signup_rate_limiter = make_rate_limiter(
+    "AUTH_SIGNUP",
+    AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS,
+    AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS,
+)
+world_creation_rate_limiter = make_rate_limiter(
+    "WORLD_CREATION",
+    WORLD_CREATION_DEFAULT_MAX_ATTEMPTS,
+    WORLD_CREATION_DEFAULT_WINDOW_SECONDS,
+)
 
 
 def is_login_required_to_create_world() -> bool:
