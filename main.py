@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 import json
 import time
 import os
+import math
 from dotenv import load_dotenv
 import uuid
 import zlib
@@ -208,6 +209,9 @@ VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 FALSY_ENV_VALUES = {"0", "false", "no", "off"}
 LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in or create an account to generate a new World."
+LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Try again later."
+SIGNUP_RATE_LIMIT_MESSAGE = "Too many signup attempts. Try again later."
+WORLD_CREATION_RATE_LIMIT_MESSAGE = "Too many new World creation attempts. Try again later."
 
 
 class AuthRateLimiter:
@@ -222,10 +226,10 @@ class AuthRateLimiter:
         self.clock = clock
         self.failures: Dict[str, List[float]] = {}
 
-    def make_key(self, request: Request, username: str) -> str:
+    def make_key(self, request: Request, username: str = "", scope: str = "auth") -> str:
         client_host = request.client.host if request.client else "unknown"
         normalized_username = (username or "").strip().lower()
-        return f"{client_host}:{normalized_username}"
+        return f"{scope}:{client_host}:{normalized_username}"
 
     def _recent_failures(self, key: str) -> List[float]:
         now = self.clock()
@@ -248,11 +252,20 @@ class AuthRateLimiter:
         recent.append(self.clock())
         self.failures[key] = recent
 
+    def record_attempt(self, key: str):
+        self.record_failure(key)
+
+    def retry_after_seconds(self, key: str) -> int:
+        recent = self._recent_failures(key)
+        if not recent:
+            return 0
+
+        oldest_failure = min(recent)
+        remaining_seconds = self.window_seconds - (self.clock() - oldest_failure)
+        return max(1, math.ceil(remaining_seconds))
+
     def clear(self, key: str):
         self.failures.pop(key, None)
-
-
-auth_rate_limiter = AuthRateLimiter()
 
 
 def get_app_env() -> str:
@@ -276,6 +289,66 @@ def get_env_bool(name: str, default: bool) -> bool:
 
     logging.warning("Invalid %s=%r; using %s.", name, raw_value, default)
     return default
+
+
+def get_env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    try:
+        value = int(raw_value.strip())
+    except ValueError:
+        logging.warning("Invalid %s=%r; using %s.", name, raw_value, default)
+        return default
+
+    if value < minimum:
+        logging.warning("%s must be at least %s; using %s.", name, minimum, default)
+        return default
+
+    return value
+
+
+def make_rate_limiter(
+        env_prefix: str,
+        default_max_attempts: int,
+        default_window_seconds: int,
+) -> AuthRateLimiter:
+    return AuthRateLimiter(
+        max_attempts=get_env_int(f"{env_prefix}_MAX_ATTEMPTS", default_max_attempts),
+        window_seconds=get_env_int(f"{env_prefix}_WINDOW_SECONDS", default_window_seconds),
+    )
+
+
+def is_rate_limiting_enabled() -> bool:
+    return get_env_bool("AUTH_RATE_LIMIT_ENABLED", True)
+
+
+def rate_limit_response(message: str, retry_after_seconds: int) -> JSONResponse:
+    headers = {}
+    if retry_after_seconds > 0:
+        headers["Retry-After"] = str(retry_after_seconds)
+    return JSONResponse({"error": message}, status_code=429, headers=headers)
+
+
+def consume_rate_limit_attempt(
+        limiter: AuthRateLimiter,
+        key: str,
+        message: str,
+) -> Optional[JSONResponse]:
+    if not is_rate_limiting_enabled():
+        return None
+
+    if limiter.is_limited(key):
+        return rate_limit_response(message, limiter.retry_after_seconds(key))
+
+    limiter.record_attempt(key)
+    return None
+
+
+auth_rate_limiter = make_rate_limiter("AUTH_LOGIN", 5, 60)
+signup_rate_limiter = make_rate_limiter("AUTH_SIGNUP", 20, 60 * 60)
+world_creation_rate_limiter = make_rate_limiter("WORLD_CREATION", 10, 60 * 60)
 
 
 def is_login_required_to_create_world() -> bool:
@@ -638,6 +711,8 @@ async def read_game_session(session_id: str, request: Request):
 @app.post("/api/create_game_session")
 async def create_game_session(creation_request: GameCreationRequest, req: Request):
     """Create a new game session and return session ID immediately"""
+    requester_user_id = get_request_user_id(req)
+
     if creation_request.debug_seed is not None and not is_debug_seed_allowed(req):
         return JSONResponse({
             "error": "debug_seed is only available in local development"
@@ -646,7 +721,7 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
     if creation_request.generator_id:
         generator_data = db.get_visible_generator(
             creation_request.generator_id,
-            requester_owner_id=get_request_user_id(req)
+            requester_owner_id=requester_user_id
         )
         if not generator_data:
             return JSONResponse({
@@ -656,6 +731,19 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         login_required_response = require_login_to_create_world_response(req)
         if login_required_response is not None:
             return login_required_response
+
+        rate_limit_key = world_creation_rate_limiter.make_key(
+            req,
+            requester_user_id or "anonymous",
+            "create_world",
+        )
+        rate_limited_response = consume_rate_limit_attempt(
+            world_creation_rate_limiter,
+            rate_limit_key,
+            WORLD_CREATION_RATE_LIMIT_MESSAGE,
+        )
+        if rate_limited_response is not None:
+            return rate_limited_response
 
         # Web search is now a product default for newly generated Worlds, not a
         # user-facing toggle. Existing generator runs still skip search later.
@@ -837,6 +925,15 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/signup")
 async def signup(request: SignupRequest, req: Request):
+    rate_limit_key = signup_rate_limiter.make_key(req, scope="signup")
+    rate_limited_response = consume_rate_limit_attempt(
+        signup_rate_limiter,
+        rate_limit_key,
+        SIGNUP_RATE_LIMIT_MESSAGE,
+    )
+    if rate_limited_response is not None:
+        return rate_limited_response
+
     if not request.username or not request.password:
         return JSONResponse({"error": "Username and password are required"}, status_code=400)
     if len(request.username) < 3:
@@ -853,17 +950,22 @@ async def signup(request: SignupRequest, req: Request):
 
 @app.post("/api/login")
 async def login(request: LoginRequest, req: Request):
-    rate_limit_key = auth_rate_limiter.make_key(req, request.username)
-    if auth_rate_limiter.is_limited(rate_limit_key):
-        return JSONResponse({"error": "Too many login attempts. Try again later."}, status_code=429)
+    rate_limit_key = auth_rate_limiter.make_key(req, request.username, "login")
+    if is_rate_limiting_enabled() and auth_rate_limiter.is_limited(rate_limit_key):
+        return rate_limit_response(
+            LOGIN_RATE_LIMIT_MESSAGE,
+            auth_rate_limiter.retry_after_seconds(rate_limit_key),
+        )
 
     user = db.get_user_by_username(request.username)
     if not user:
-        auth_rate_limiter.record_failure(rate_limit_key)
+        if is_rate_limiting_enabled():
+            auth_rate_limiter.record_failure(rate_limit_key)
         return JSONResponse({"error": "Invalid username or password"}, status_code=401)
 
     if not db._verify_password(request.password, user["password_hash"]):
-        auth_rate_limiter.record_failure(rate_limit_key)
+        if is_rate_limiting_enabled():
+            auth_rate_limiter.record_failure(rate_limit_key)
         return JSONResponse({"error": "Invalid username or password"}, status_code=401)
 
     auth_rate_limiter.clear(rate_limit_key)

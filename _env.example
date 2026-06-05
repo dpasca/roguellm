@@ -14,6 +14,16 @@ SESSION_SECRET_KEY=your_secure_random_session_key_here
 SESSION_COOKIE_SAMESITE=lax
 SESSION_COOKIE_MAX_AGE_SECONDS=1209600
 
+# Abuse Protection
+# Applies to username/password auth and fresh World generation.
+AUTH_RATE_LIMIT_ENABLED=1
+AUTH_LOGIN_MAX_ATTEMPTS=5
+AUTH_LOGIN_WINDOW_SECONDS=60
+AUTH_SIGNUP_MAX_ATTEMPTS=5
+AUTH_SIGNUP_WINDOW_SECONDS=3600
+WORLD_CREATION_MAX_ATTEMPTS=10
+WORLD_CREATION_WINDOW_SECONDS=3600
+
 # World Publishing
 # Newly generated Worlds are private by default. Production ignores non-private
 # overrides until the public review flow is implemented.

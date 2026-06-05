@@ -1091,6 +1091,48 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(second.status_code, 401)
             self.assertEqual(limited.status_code, 429)
 
+    def test_signup_rate_limits_repeated_attempts_by_client(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            rate_limiter = main.AuthRateLimiter(max_attempts=2, window_seconds=60)
+            with patch.object(main, 'db', manager), \
+                    patch.object(main, 'signup_rate_limiter', rate_limiter):
+                client = TestClient(main.app)
+                first = client.post("/api/signup", json={"username": "alpha", "password": "secret123"})
+                second = client.post("/api/signup", json={"username": "bravo", "password": "secret123"})
+                limited = client.post("/api/signup", json={"username": "charlie", "password": "secret123"})
+
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(second.status_code, 200)
+            self.assertEqual(limited.status_code, 429)
+            self.assertEqual(limited.json()["error"], main.SIGNUP_RATE_LIMIT_MESSAGE)
+            self.assertIn("Retry-After", limited.headers)
+
+    def test_new_world_creation_rate_limits_repeated_attempts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            rate_limiter = main.AuthRateLimiter(max_attempts=1, window_seconds=60)
+            with patch.object(main, 'db', manager), \
+                    patch.object(main, 'world_creation_rate_limiter', rate_limiter), \
+                    patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "0"}):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                first = client.post("/api/create_game_session", json={
+                    "theme": "Clockwork canyon",
+                    "language": "en",
+                    "do_web_search": False,
+                })
+                limited = client.post("/api/create_game_session", json={
+                    "theme": "Crystal forest",
+                    "language": "en",
+                    "do_web_search": False,
+                })
+
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(limited.status_code, 429)
+            self.assertEqual(limited.json()["error"], main.WORLD_CREATION_RATE_LIMIT_MESSAGE)
+            self.assertIn("Retry-After", limited.headers)
+
     def test_logout_clears_session(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
