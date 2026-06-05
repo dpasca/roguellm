@@ -895,6 +895,20 @@ async def create_game(request: CreateGameRequest, req: Request):
             if login_required_response is not None:
                 return login_required_response
 
+            requester_user_id = get_request_user_id(req)
+            rate_limit_key = world_creation_rate_limiter.make_key(
+                req,
+                requester_user_id or "anonymous",
+                "create_world",
+            )
+            rate_limited_response = consume_rate_limit_attempt(
+                world_creation_rate_limiter,
+                rate_limit_key,
+                WORLD_CREATION_RATE_LIMIT_MESSAGE,
+            )
+            if rate_limited_response is not None:
+                return rate_limited_response
+
         # Store configuration in session for the new flow
         req.session["generator_id"] = request.generator_id if request.generator_id else None
         req.session["language"] = request.language

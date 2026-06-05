@@ -1133,6 +1133,30 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(limited.json()["error"], main.WORLD_CREATION_RATE_LIMIT_MESSAGE)
             self.assertIn("Retry-After", limited.headers)
 
+    def test_legacy_new_world_creation_uses_world_creation_rate_limit(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            rate_limiter = main.AuthRateLimiter(max_attempts=1, window_seconds=60)
+            with patch.object(main, 'db', manager), \
+                    patch.object(main, 'world_creation_rate_limiter', rate_limiter), \
+                    patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "0"}):
+                client = TestClient(main.app)
+                first = client.post("/api/create_game", json={
+                    "theme": "Clockwork canyon",
+                    "language": "en",
+                    "do_web_search": False,
+                })
+                limited = client.post("/api/create_game", json={
+                    "theme": "Crystal forest",
+                    "language": "en",
+                    "do_web_search": False,
+                })
+
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(limited.status_code, 429)
+            self.assertEqual(limited.json()["error"], main.WORLD_CREATION_RATE_LIMIT_MESSAGE)
+            self.assertIn("Retry-After", limited.headers)
+
     def test_logout_clears_session(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
