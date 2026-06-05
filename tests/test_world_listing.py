@@ -816,6 +816,73 @@ class WorldApiTests(unittest.TestCase):
             self.assertTrue(all(world["can_manage"] for world in worlds))
             self.assertTrue(all("owner_id" not in world for world in worlds))
 
+    def test_my_stats_requires_login_and_counts_owned_worlds(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            owner = manager.create_user("owner", "secret123")
+            manager.save_generator(
+                theme_desc="Owned private world",
+                theme_desc_better="Owned Private World",
+                language="en",
+                player_defs=[{"id": "hero"}, {"id": "mage"}],
+                item_defs=[{"id": "lamp"}],
+                enemy_defs=[{"id": "bat"}],
+                celltype_defs={"floor": {}, "wall": {}},
+                owner_id=owner["id"],
+                visibility="private"
+            )
+            manager.save_generator(
+                theme_desc="Owned public world",
+                theme_desc_better="Owned Public World",
+                language="en",
+                player_defs=[],
+                item_defs=[{"id": "key"}],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=owner["id"],
+                visibility="public"
+            )
+            manager.save_generator(
+                theme_desc="Owned unlisted world",
+                theme_desc_better="Owned Unlisted World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[{"id": "shade"}, {"id": "wisp"}],
+                celltype_defs=[{"id": "fog"}],
+                owner_id=owner["id"],
+                visibility="unlisted"
+            )
+            manager.save_generator(
+                theme_desc="Other private world",
+                theme_desc_better="Other Private World",
+                language="en",
+                player_defs=[{"id": "other"}],
+                item_defs=[{"id": "other-key"}],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id="other-owner",
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager):
+                client = TestClient(main.app)
+                anonymous = client.get("/api/my/stats")
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.get("/api/my/stats")
+
+        self.assertEqual(anonymous.status_code, 401)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["username"], "owner")
+        self.assertEqual(data["stats"], {
+            "total_worlds": 3,
+            "private_worlds": 1,
+            "unlisted_worlds": 1,
+            "public_worlds": 1,
+            "total_entities": 10,
+        })
+
     def test_websocket_creation_succeeds_for_private_world_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)

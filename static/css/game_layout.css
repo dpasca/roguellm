@@ -52,6 +52,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 10px 20px;
     background-color: #1a1a1a;
     border-bottom: 1px solid #333;
@@ -59,8 +60,13 @@
 }
 
 .header-bar h1 {
+    flex: 1 1 auto;
     margin: 0;
+    min-width: 0;
+    overflow: hidden;
     padding: 10px 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Responsive layout */
@@ -112,15 +118,15 @@
     .game-content {
         justify-content: center;
     }
-    
+
     .game-map {
         flex: 0 0 300px;
     }
-    
+
     .player-status {
         flex: 0 0 350px;
     }
-    
+
     .combat-ui {
         flex: 0 0 350px;
     }

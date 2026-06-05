@@ -190,12 +190,46 @@ const app = Vue.createApp({
         closeMenuIfClickedOutside(event) {
             const menu = document.querySelector('.popup-menu');
             const menuIcon = document.querySelector('.menu-icon');
-            const title = document.querySelector('h1');
 
             if (!menu.contains(event.target) &&
-                !menuIcon.contains(event.target) &&
-                !title.contains(event.target)) {
+                !menuIcon.contains(event.target)) {
                 this.isMenuOpen = false;
+            }
+        },
+        homeUrl() {
+            const url = new URL('/', window.location.origin);
+            const urlLang = new URLSearchParams(window.location.search).get('lang');
+            const storedLang = localStorage.getItem('preferredLanguage');
+            const lang = urlLang || storedLang;
+            if (lang) {
+                url.searchParams.set('lang', lang);
+            }
+            return url.toString();
+        },
+        goHome() {
+            this.isMenuOpen = false;
+            const url = this.homeUrl();
+            if (this.gameState.game_over || this.gameState.game_won) {
+                window.location.href = url;
+                return;
+            }
+            window.open(url, '_blank', 'noopener');
+        },
+        quitGame() {
+            this.isMenuOpen = false;
+            if (this.gameState.game_over || this.gameState.game_won) {
+                this.goHome();
+                return;
+            }
+
+            if (!window.confirm(this.$t('menu.quitConfirm'))) {
+                return;
+            }
+
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    action: 'quit'
+                }));
             }
         },
         async shareGame() {

@@ -1,3 +1,57 @@
+.game-header-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.game-header-btn,
+.menu-icon {
+    align-items: center;
+    border-radius: 6px;
+    display: inline-flex;
+    gap: 7px;
+    justify-content: center;
+    margin: 0;
+    min-height: 40px;
+    padding: 9px 12px;
+}
+
+.game-header-btn {
+    background: #273033;
+    border: 1px solid #3a464a;
+    color: #f4f1ea;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.game-header-btn:hover {
+    background: #303b3f;
+}
+
+.game-header-btn.home-btn {
+    background: #2f718a;
+}
+
+.game-header-btn.home-btn:hover {
+    background: #285e73;
+}
+
+.game-header-btn.quit-btn {
+    background: #7b3737;
+}
+
+.game-header-btn.quit-btn:hover {
+    background: #663030;
+}
+
+.game-header-btn:disabled {
+    background: #3a3a3a;
+    border-color: #4a4a4a;
+    color: #9a9a9a;
+}
+
 .popup-menu {
     position: fixed;
     left: 50%;
@@ -23,7 +77,12 @@
 }
 
 .popup-menu button {
-    display: block;
+    align-items: center;
+    background-color: #E0E0E0;
+    color: black;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
     width: 100%;
     padding: 12px 16px;
     margin: 8px 0;
@@ -34,63 +93,12 @@
     transition: all 0.2s ease;
 }
 
-/* Style for the restart button */
-.popup-menu button:nth-child(2) {  /* Restart game button */
-    background-color: #4CAF50;  /* Green */
-    color: black;
-}
-
-.popup-menu button:nth-child(2):hover {
-    background-color: #45a049;
-}
-
-.popup-menu button:nth-child(2) .popup-menu-item-icon {
-    color: black;
-}
-
-/* Style for the new game button */
-.popup-menu button:nth-child(3) {  /* New game button */
-    background-color: #FF9800;  /* Orange */
-    color: black;
-}
-
-.popup-menu button:nth-child(3):hover {
-    background-color: #F57C00;
-}
-
-.popup-menu button:nth-child(3) .popup-menu-item-icon {
-    color: black;
-}
-
-/* Style for the share button */
-.popup-menu button:nth-child(1) {  /* Share game button */
-    background-color: #64B5F6;  /* Light blue */
-    border: none;
-    color: black;
-}
-
-.popup-menu button:nth-child(1):hover {
-    background-color: #42A5F5;
-    transform: translateY(-1px);
-}
-
-.popup-menu button:nth-child(1) .popup-menu-item-icon {
-    color: black;
-}
-
-/* Style for the debug button */
-.popup-menu button:nth-child(4) {  /* Debug button */
-    background-color: #E0E0E0;  /* Light gray */
-    border: none;
-    color: black;
-}
-
-.popup-menu button:nth-child(4):hover {
+.popup-menu button:hover {
     background-color: #BDBDBD;
     transform: translateY(-1px);
 }
 
-.popup-menu button:nth-child(4) .popup-menu-item-icon {
+.popup-menu button .popup-menu-item-icon {
     color: black;
 }
 
@@ -107,11 +115,32 @@
 
 .menu-icon {
     cursor: pointer;
-    padding: 8px;
+    background: #202020;
+    border: 1px solid #444;
+    color: #f4f1ea;
+    min-width: 40px;
+    padding: 9px 12px;
 }
 
 .menu-icon:hover {
-    color: #aaa;
+    background: #303030;
+    color: #fff;
+}
+
+@media screen and (max-width: 700px) {
+    .game-header-actions {
+        gap: 5px;
+    }
+
+    .game-header-btn span {
+        display: none;
+    }
+
+    .game-header-btn,
+    .menu-icon {
+        min-width: 38px;
+        padding: 8px 10px;
+    }
 }
 
 .popup-overlay {

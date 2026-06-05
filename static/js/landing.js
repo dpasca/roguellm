@@ -31,6 +31,7 @@ const app = Vue.createApp({
             generatorId: '',
             selectedWorldId: '',
             currentUser: null,
+            accountStats: null,
             authMode: 'login',
             authForm: {
                 username: '',
@@ -116,6 +117,31 @@ const app = Vue.createApp({
         },
         showEmptySignupPrompt() {
             return !this.currentUser && this.worldTab === 'public';
+        },
+        dashboardInitial() {
+            const username = this.currentUser?.username || this.t('guestUser');
+            return username.trim().charAt(0).toUpperCase() || '?';
+        },
+        dashboardStats() {
+            const stats = this.accountStats || {};
+            return [
+                {
+                    label: this.t('dashboardWorlds'),
+                    value: stats.total_worlds || 0
+                },
+                {
+                    label: this.t('dashboardPrivate'),
+                    value: stats.private_worlds || 0
+                },
+                {
+                    label: this.t('dashboardPublic'),
+                    value: stats.public_worlds || 0
+                },
+                {
+                    label: this.t('dashboardEntities'),
+                    value: stats.total_entities || 0
+                }
+            ];
         },
         requiresAuthForSelectedCreation() {
             return !this.currentUser && this.selectedTheme !== 'world' && !this.isLocalDev;
@@ -314,6 +340,7 @@ const app = Vue.createApp({
         },
         async refreshAuthWorldState(preferredTab = null) {
             await this.loadCurrentUser();
+            await this.loadAccountStats();
             await this.loadWorlds();
 
             if (preferredTab && this.availableWorldTabs.some(tab => tab.id === preferredTab)) {
@@ -369,6 +396,7 @@ const app = Vue.createApp({
                 }
 
                 this.currentUser = null;
+                this.accountStats = null;
                 this.worldLists.my = [];
                 await this.loadWorlds();
                 this.infoMessage = this.t('authSignedOut');
@@ -406,6 +434,24 @@ const app = Vue.createApp({
             } catch (error) {
                 console.warn('User session unavailable:', error);
                 this.currentUser = null;
+            }
+        },
+        async loadAccountStats() {
+            if (!this.currentUser) {
+                this.accountStats = null;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/my/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                this.accountStats = data.stats || null;
+            } catch (error) {
+                console.warn('Account stats unavailable:', error);
+                this.accountStats = null;
             }
         },
         async loadWorlds() {
@@ -691,6 +737,7 @@ const app = Vue.createApp({
 
                 this.selectedLanguage = initialLang;
                 await this.loadCurrentUser();
+                await this.loadAccountStats();
                 await this.loadWorlds();
                 await this.applyDevQuickStartFromUrl();
                 console.log('Setting isLoading to false');

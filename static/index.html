@@ -60,12 +60,22 @@
             </header>
 
             <section class="auth-strip">
-                <div class="auth-copy">
-                    <strong>{{ currentUser ? t('accountSaveTitleSignedIn') : t('accountSaveTitleAnonymous') }}</strong>
-                    <span>{{ currentUser ? t('accountSaveBodySignedIn') : t('accountSaveBodyAnonymous') }}</span>
+                <div class="dashboard-profile" :class="{ signed: currentUser }">
+                    <div class="dashboard-avatar" aria-hidden="true">{{ dashboardInitial }}</div>
+                    <div class="auth-copy">
+                        <strong>{{ currentUser ? t('dashboardWelcome', { username: currentUser.username }) : t('accountSaveTitleAnonymous') }}</strong>
+                        <span>{{ currentUser ? t('accountSaveBodySignedIn') : t('accountSaveBodyAnonymous') }}</span>
+                    </div>
                 </div>
                 <div v-if="currentUser" class="auth-session">
-                    <span>{{ t('authSignedIn', { username: currentUser.username }) }}</span>
+                    <div class="dashboard-stats" aria-label="World stats">
+                        <div v-for="stat in dashboardStats"
+                             :key="stat.label"
+                             class="dashboard-stat">
+                            <strong>{{ stat.value }}</strong>
+                            <span>{{ stat.label }}</span>
+                        </div>
+                    </div>
                     <button type="button"
                             class="auth-secondary-btn"
                             :disabled="isAuthenticating"
@@ -176,7 +186,7 @@
                             </div>
 
                             <div v-if="isLoadingWorlds" class="world-list-state">{{ t('loadingWorlds') }}</div>
-                            <div v-else-if="worlds.length" class="world-picker">
+                            <div v-else-if="worlds.length" class="world-picker" tabindex="0">
                                 <label v-for="world in worlds"
                                        :key="world.id"
                                        class="world-option"

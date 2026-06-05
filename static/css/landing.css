@@ -121,6 +121,32 @@ body.landing-page .auth-strip {
     width: 100%;
 }
 
+body.landing-page .dashboard-profile {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-width: 0;
+}
+
+body.landing-page .dashboard-avatar {
+    align-items: center;
+    background:
+        linear-gradient(135deg, rgba(255, 245, 208, 0.14), transparent),
+        #29221b;
+    border: 1px solid #d39b48;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.26), 0 0 18px rgba(211, 155, 72, 0.18);
+    color: #fff5d0;
+    display: flex;
+    font-size: 1.2rem;
+    font-weight: 900;
+    height: 46px;
+    justify-content: center;
+    line-height: 1;
+    width: 46px;
+}
+
 body.landing-page .auth-copy {
     gap: 3px;
     margin: 0;
@@ -141,6 +167,45 @@ body.landing-page .auth-session span {
 body.landing-page .auth-form,
 body.landing-page .auth-session {
     justify-content: end;
+}
+
+body.landing-page .auth-session {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-width: min(100%, 450px);
+}
+
+body.landing-page .dashboard-stats {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(54px, 1fr));
+    min-width: 0;
+}
+
+body.landing-page .dashboard-stat {
+    background: #0f1112;
+    border: 1px solid #343a39;
+    border-radius: 6px;
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+    padding: 6px 8px;
+}
+
+body.landing-page .dashboard-stat strong {
+    color: #fff5d0;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+body.landing-page .dashboard-stat span {
+    color: #aeb8ab;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
 }
 
 body.landing-page .auth-mode {
@@ -277,11 +342,13 @@ body.landing-page .world-stage {
     display: grid;
     gap: 14px;
     grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+    min-height: 0;
 }
 
 body.landing-page .world-browser {
     display: grid;
     gap: 10px;
+    min-height: 0;
     min-width: 0;
 }
 
@@ -332,6 +399,35 @@ body.landing-page .world-tab.active {
 body.landing-page .world-picker {
     gap: 8px;
     margin: 0;
+    max-height: clamp(240px, 34vh, 520px);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 3px;
+}
+
+body.landing-page .world-picker:focus {
+    outline: 2px solid rgba(211, 155, 72, 0.45);
+    outline-offset: 3px;
+}
+
+body.landing-page .world-picker::-webkit-scrollbar {
+    width: 10px;
+}
+
+body.landing-page .world-picker::-webkit-scrollbar-track {
+    background: #0c0f10;
+    border-radius: 999px;
+}
+
+body.landing-page .world-picker::-webkit-scrollbar-thumb {
+    background: #3a4641;
+    border: 2px solid #0c0f10;
+    border-radius: 999px;
+}
+
+body.landing-page .world-picker::-webkit-scrollbar-thumb:hover {
+    background: #d39b48;
 }
 
 body.landing-page .world-option {
@@ -662,6 +758,11 @@ body.landing-page .info-message {
         grid-template-columns: minmax(0, 1fr);
     }
 
+    body.landing-page .auth-session {
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+    }
+
     body.landing-page .auth-mode,
     body.landing-page .auth-input,
     body.landing-page .auth-primary-btn,
@@ -682,6 +783,10 @@ body.landing-page .info-message {
 
     body.landing-page .preview-log {
         display: none;
+    }
+
+    body.landing-page .world-picker {
+        max-height: min(420px, 46vh);
     }
 
     body.landing-page .landing-mode-tab {
@@ -714,6 +819,20 @@ body.landing-page .info-message {
     body.landing-page .landing-panel,
     body.landing-page .auth-strip {
         padding: 10px;
+    }
+
+    body.landing-page .dashboard-profile {
+        align-items: start;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .dashboard-avatar {
+        height: 40px;
+        width: 40px;
+    }
+
+    body.landing-page .dashboard-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     body.landing-page .world-option {

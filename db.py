@@ -630,6 +630,56 @@ class DatabaseManager:
 
         return self._execute_with_retry(_list, limit, local_dev, owner_id)
 
+    def get_user_world_stats(self, owner_id: str) -> Dict:
+        """Return lightweight dashboard stats for Worlds owned by a user."""
+        def _stats(conn, owner_id):
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(generators)")
+            columns = {row[1] for row in cur.fetchall()}
+            if "owner_id" not in columns:
+                return {
+                    "total_worlds": 0,
+                    "private_worlds": 0,
+                    "unlisted_worlds": 0,
+                    "public_worlds": 0,
+                    "total_entities": 0,
+                }
+
+            visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
+            cur.execute(f"""
+                SELECT {visibility_select}, player_defs, item_defs, enemy_defs, celltype_defs
+                FROM generators
+                WHERE owner_id = ?
+            """, (owner_id,))
+
+            stats = {
+                "total_worlds": 0,
+                "private_worlds": 0,
+                "unlisted_worlds": 0,
+                "public_worlds": 0,
+                "total_entities": 0,
+            }
+            for row in cur.fetchall():
+                visibility = row[0] or "unlisted"
+                stats["total_worlds"] += 1
+                if visibility == "private":
+                    stats["private_worlds"] += 1
+                elif visibility == "public":
+                    stats["public_worlds"] += 1
+                else:
+                    stats["unlisted_worlds"] += 1
+
+                stats["total_entities"] += (
+                    self._json_list_size(row[1])
+                    + self._json_list_size(row[2])
+                    + self._json_list_size(row[3])
+                    + self._json_mapping_size(row[4])
+                )
+
+            return stats
+
+        return self._execute_with_retry(_stats, owner_id)
+
     def _json_list_size(self, raw_value: str) -> int:
         try:
             value = json.loads(raw_value or "[]")

@@ -15,6 +15,7 @@ class ActionType(str, Enum):
     INITIALIZE = "initialize"
     GET_INITIAL_STATE = "get_initial_state"
     RESTART = "restart"
+    QUIT = "quit"
     MOVE = "move"
     ATTACK = "attack"
     RUN = "run"
@@ -53,6 +54,11 @@ class GetInitialStateMessage(BaseMessage):
 class RestartMessage(BaseMessage):
     """Message for restarting the game"""
     action: Literal[ActionType.RESTART] = ActionType.RESTART
+
+
+class QuitMessage(BaseMessage):
+    """Message for ending the current run."""
+    action: Literal[ActionType.QUIT] = ActionType.QUIT
 
 
 class MoveMessage(BaseMessage):
@@ -108,6 +114,7 @@ WebSocketMessage = Union[
     InitializeMessage,
     GetInitialStateMessage,
     RestartMessage,
+    QuitMessage,
     MoveMessage,
     AttackMessage,
     RunMessage,
@@ -161,6 +168,7 @@ def validate_websocket_message(raw_message: dict) -> WebSocketMessage:
             ActionType.INITIALIZE: InitializeMessage,
             ActionType.GET_INITIAL_STATE: GetInitialStateMessage,
             ActionType.RESTART: RestartMessage,
+            ActionType.QUIT: QuitMessage,
             ActionType.MOVE: MoveMessage,
             ActionType.ATTACK: AttackMessage,
             ActionType.RUN: RunMessage,

@@ -32,8 +32,12 @@
   "quickStartPiedone": "Inicio rápido: Piedone",
   "// Game Interface": "Traducciones de la interfaz del juego",
   "menu": {
+    "home": "Inicio",
     "share": "Compartir juego",
     "restart": "Reiniciar juego",
+    "quit": "Salir",
+    "quitConfirm": "¿Salir de esta partida? Puedes volver al inicio o reiniciar desde la pantalla de Game Over.",
+    "more": "Más",
     "newGame": "Crear nuevo juego",
     "debug": "Información de depuración",
     "modelInfo": "Modelo: {model}"
@@ -51,6 +55,7 @@
     },
     "buttons": {
       "restart": "Reiniciar",
+      "home": "Inicio",
       "newGame": "Nuevo juego"
     }
   },
@@ -64,6 +69,7 @@
     },
     "buttons": {
       "playAgain": "Jugar de nuevo",
+      "home": "Inicio",
       "newGame": "Nuevo juego"
     }
   },

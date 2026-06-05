@@ -725,6 +725,28 @@ async def get_my_worlds(request: Request, limit: int = 20):
             "error": "Failed to load worlds"
         }, status_code=500)
 
+@app.get("/api/my/stats")
+async def get_my_stats(request: Request):
+    """Return dashboard stats for the logged-in user."""
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    user = db.get_user_by_id(user_id)
+    if not user:
+        return JSONResponse({"error": "User not found"}, status_code=404)
+
+    try:
+        return JSONResponse({
+            "username": user["username"],
+            "stats": db.get_user_world_stats(user_id),
+        })
+    except Exception as e:
+        logging.error(f"Error loading user stats: {e}")
+        return JSONResponse({
+            "error": "Failed to load user stats"
+        }, status_code=500)
+
 @app.get("/api/worlds/{world_id}")
 async def get_world(request: Request, world_id: str):
     """Get world metadata by ID if visible to the requester."""

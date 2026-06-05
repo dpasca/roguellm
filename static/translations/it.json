@@ -32,8 +32,12 @@
   "quickStartPiedone": "Avvio Rapido: Piedone",
   "// Game Interface": "Traduzioni dell'interfaccia di gioco",
   "menu": {
+    "home": "Home",
     "share": "Condividi Gioco",
     "restart": "Riavvia Gioco",
+    "quit": "Abbandona",
+    "quitConfirm": "Abbandonare questa partita? Potrai tornare alla Home o riavviare dalla schermata Game Over.",
+    "more": "Altro",
     "newGame": "Crea Nuovo Gioco",
     "debug": "Info Debug",
     "modelInfo": "Modello: {model}"
@@ -51,6 +55,7 @@
     },
     "buttons": {
       "restart": "Riavvia",
+      "home": "Home",
       "newGame": "Nuovo Gioco"
     }
   },
@@ -64,6 +69,7 @@
     },
     "buttons": {
       "playAgain": "Gioca di Nuovo",
+      "home": "Home",
       "newGame": "Nuovo Gioco"
     }
   },

@@ -70,6 +70,9 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn('<body class="landing-page">', html)
                     self.assertIn('class="auth-strip"', html)
                     self.assertIn('class="auth-copy"', html)
+                    self.assertIn('class="dashboard-profile"', html)
+                    self.assertIn('class="dashboard-avatar"', html)
+                    self.assertIn('class="dashboard-stats"', html)
                     self.assertIn('class="landing-mode-tabs"', html)
                     self.assertIn('class="landing-panel world-panel"', html)
                     self.assertIn('class="landing-panel create-panel"', html)
@@ -96,6 +99,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("/api/signup", landing_js)
                     self.assertIn("/api/logout", landing_js)
                     self.assertIn("/api/my/worlds", landing_js)
+                    self.assertIn("/api/my/stats", landing_js)
+                    self.assertIn("dashboardStats", landing_js)
                     self.assertIn("copyWorldLink", landing_js)
                     self.assertIn("worldVisibilityLabel", landing_js)
                     self.assertIn("getDebugSeedFromUrl", landing_js)
@@ -106,8 +111,11 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("body.landing-page", landing_css)
                     self.assertIn(".preview-map", landing_css)
                     self.assertIn(".tile.hero::after", landing_css)
+                    self.assertIn(".dashboard-avatar", landing_css)
+                    self.assertIn("overflow-y: auto", landing_css)
                     self.assertIn("playWorlds", english_translations)
                     self.assertIn("createWorld", english_translations)
+                    self.assertIn("dashboardWelcome", english_translations)
                     self.assertIn("signupToCreate", english_translations)
                     self.assertIn("authRequiredToCreateWorld", english_translations)
                     self.assertNotIn('id="fantasy"', html)
@@ -141,6 +149,36 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIsNone(
                         main.game_session_manager.sessions[session_id]["debug_seed"],
                     )
+
+    def test_game_shell_promotes_home_restart_and_quit(self):
+        game_html = (REPO_ROOT / "static/game.html").read_text(encoding="utf-8")
+        game_js = (REPO_ROOT / "static/js/createApp.js").read_text(encoding="utf-8")
+        menu_css = (REPO_ROOT / "static/css/menu.css").read_text(encoding="utf-8")
+        english_translations = (
+            REPO_ROOT / "static/translations/en.json"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('class="game-header-actions"', game_html)
+        self.assertIn('@click="goHome"', game_html)
+        self.assertIn('@click="restartGame"', game_html)
+        self.assertIn('@click="quitGame"', game_html)
+        self.assertIn('$t(\'menu.home\')', game_html)
+        self.assertIn('$t(\'menu.quit\')', game_html)
+        self.assertNotIn('@click="shareGame"', game_html)
+        self.assertNotIn('@click="newGame(true)"', game_html)
+
+        self.assertIn("goHome()", game_js)
+        self.assertIn("quitGame()", game_js)
+        self.assertIn("window.open(url, '_blank', 'noopener')", game_js)
+        self.assertIn("action: 'quit'", game_js)
+
+        self.assertIn(".game-header-actions", menu_css)
+        self.assertIn(".game-header-btn.home-btn", menu_css)
+        self.assertIn(".game-header-btn.quit-btn", menu_css)
+
+        self.assertIn('"home": "Home"', english_translations)
+        self.assertIn('"quit": "Quit"', english_translations)
+        self.assertIn('"quitConfirm"', english_translations)
 
     def test_debug_seed_is_dev_only(self):
         with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": ""}), \

@@ -101,6 +101,15 @@ class WebSocketHandler:
                 await self.game_state_manager.initialize_game()
             )
 
+        if action == 'quit':
+            self.game_state_manager.state.game_over = True
+            self.game_state_manager.state.in_combat = False
+            self.game_state_manager.state.current_enemy = None
+            result = await self.game_state_manager.create_message("You quit the run. Return Home or restart when ready.")
+            result = await self.game_state_manager.create_message_description(result)
+            self.game_state_manager.events_add('quit', result)
+            return result
+
         # Check game over and win states before processing any other action
         if self.game_state_manager.state.game_over:
             result = await self.game_state_manager.create_message("Game Over! Press Restart to play again.")

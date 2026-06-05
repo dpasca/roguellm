@@ -25,6 +25,12 @@
     "authSignedIn": "Signed in as {username}",
     "authSignedOut": "Signed out",
     "language": "Language",
+    "guestUser": "Guest",
+    "dashboardWelcome": "{username}'s Worlds",
+    "dashboardWorlds": "Worlds",
+    "dashboardPrivate": "Private",
+    "dashboardPublic": "Public",
+    "dashboardEntities": "Entities",
     "accountSaveTitleAnonymous": "Create an account to keep your Worlds",
     "accountSaveBodyAnonymous": "Sign up to generate private Worlds and keep them in My Worlds. Existing public and unlisted Worlds can still be played without an account.",
     "accountSaveTitleSignedIn": "Your generated Worlds are saved",
@@ -80,8 +86,12 @@
 
     "// Game Interface": "In-game interface translations",
     "menu": {
+        "home": "Home",
         "share": "Share Game",
         "restart": "Restart Game",
+        "quit": "Quit",
+        "quitConfirm": "Quit this run? You can return Home or restart from the Game Over screen.",
+        "more": "More",
         "newGame": "Create New Game",
         "debug": "Debug Info",
         "modelInfo": "AI Model: {model}"
@@ -99,6 +109,7 @@
         },
         "buttons": {
             "restart": "Restart",
+            "home": "Home",
             "newGame": "New Game"
         }
     },
@@ -112,6 +123,7 @@
         },
         "buttons": {
             "playAgain": "Play Again",
+            "home": "Home",
             "newGame": "New Game"
         }
     },

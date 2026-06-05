@@ -32,8 +32,12 @@
   "quickStartPiedone": "快速开始：Piedone",
   "// Game Interface": "游戏内界面翻译",
   "menu": {
+    "home": "主页",
     "share": "分享游戏",
     "restart": "重新开始游戏",
+    "quit": "退出",
+    "quitConfirm": "退出本局游戏？你可以在游戏结束界面返回主页或重新开始。",
+    "more": "更多",
     "newGame": "创建新游戏",
     "debug": "调试信息",
     "modelInfo": "模型：{model}"
@@ -51,6 +55,7 @@
     },
     "buttons": {
       "restart": "重新开始",
+      "home": "主页",
       "newGame": "新游戏"
     }
   },
@@ -64,6 +69,7 @@
     },
     "buttons": {
       "playAgain": "再玩一次",
+      "home": "主页",
       "newGame": "新游戏"
     }
   },

@@ -108,22 +108,37 @@
     <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
-                <h1 @click="toggleMenu" style="cursor: pointer;" :data-initial-title="gameTitle"
+                <h1 :data-initial-title="gameTitle"
                     v-text="gameState.game_title || gameTitle"></h1>
-                <div class="menu-icon" @click="toggleMenu">
-                    <i class="fas fa-bars"></i>
+                <div class="game-header-actions">
+                    <button type="button"
+                            class="game-header-btn home-btn"
+                            @click="goHome">
+                        <i class="fas fa-house"></i>
+                        <span>{{ $t('menu.home') }}</span>
+                    </button>
+                    <button type="button"
+                            class="game-header-btn"
+                            @click="restartGame">
+                        <i class="fas fa-redo"></i>
+                        <span>{{ $t('menu.restart') }}</span>
+                    </button>
+                    <button type="button"
+                            class="game-header-btn quit-btn"
+                            :disabled="gameState.game_over || gameState.game_won"
+                            @click="quitGame">
+                        <i class="fas fa-door-open"></i>
+                        <span>{{ $t('menu.quit') }}</span>
+                    </button>
+                    <button type="button"
+                            class="menu-icon"
+                            :aria-label="$t('menu.more')"
+                            @click="toggleMenu">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                    </button>
                 </div>
                 <div class="popup-overlay" :class="{ active: isMenuOpen }" @click="toggleMenu"></div>
                 <div class="popup-menu" :class="{ active: isMenuOpen }">
-                    <button @click="shareGame" v-if="generatorId">
-                        <i class="fas fa-share-alt fa-fw popup-menu-item-icon"></i>{{ $t('menu.share') }}
-                    </button>
-                    <button @click="restartGame">
-                        <i class="fas fa-redo fa-fw popup-menu-item-icon"></i>{{ $t('menu.restart') }}
-                    </button>
-                    <button @click="newGame(true)" target="_blank">
-                        <i class="fas fa-plus fa-fw popup-menu-item-icon"></i>{{ $t('menu.newGame') }}
-                    </button>
                     <!-- Debug button - only visible during development -->
                     <button @click="toggleDebugPanel">
                         <i class="fas fa-bug fa-fw popup-menu-item-icon"></i>{{ $t('menu.debug') }}
@@ -163,9 +178,9 @@
                         <i class="fas fa-redo"></i>
                         {{ $t('gameOver.buttons.restart') }}
                     </button>
-                    <button @click="newGame(true)" class="new-game-button">
-                        <i class="fas fa-plus"></i>
-                        {{ $t('gameOver.buttons.newGame') }}
+                    <button @click="goHome" class="new-game-button">
+                        <i class="fas fa-house"></i>
+                        {{ $t('gameOver.buttons.home') }}
                     </button>
                 </div>
             </div>
@@ -197,9 +212,9 @@
                         <i class="fas fa-redo"></i>
                         {{ $t('gameWin.buttons.playAgain') }}
                     </button>
-                    <button @click="newGame(true)" class="new-game-button">
-                        <i class="fas fa-plus"></i>
-                        {{ $t('gameWin.buttons.newGame') }}
+                    <button @click="goHome" class="new-game-button">
+                        <i class="fas fa-house"></i>
+                        {{ $t('gameWin.buttons.home') }}
                     </button>
                 </div>
             </div>
