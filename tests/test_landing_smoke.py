@@ -112,6 +112,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn(".preview-map", landing_css)
                     self.assertIn(".tile.hero::after", landing_css)
                     self.assertIn(".dashboard-avatar", landing_css)
+                    self.assertIn("grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.05fr)", landing_css)
+                    self.assertIn("grid-template-columns: minmax(126px, 150px) minmax(128px, 1fr) minmax(128px, 1fr) auto", landing_css)
                     self.assertIn("overflow-y: auto", landing_css)
                     self.assertIn("playWorlds", english_translations)
                     self.assertIn("createWorld", english_translations)

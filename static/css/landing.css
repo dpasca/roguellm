@@ -114,7 +114,7 @@ body.landing-page .auth-strip {
     box-sizing: border-box;
     display: grid;
     gap: 12px;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.05fr);
     margin: 0;
     max-width: none;
     padding: 12px;
@@ -126,6 +126,7 @@ body.landing-page .dashboard-profile {
     display: grid;
     gap: 12px;
     grid-template-columns: auto minmax(0, 1fr);
+    max-width: 680px;
     min-width: 0;
 }
 
@@ -151,22 +152,36 @@ body.landing-page .auth-copy {
     gap: 3px;
     margin: 0;
     max-width: none;
+    min-width: 0;
 }
 
 body.landing-page .auth-copy strong {
     color: #f4f1ea;
     font-size: 0.9rem;
+    line-height: 1.25;
 }
 
 body.landing-page .auth-copy span,
 body.landing-page .auth-session span {
     color: #c2c9bc;
     font-size: 0.82rem;
+    line-height: 1.38;
 }
 
 body.landing-page .auth-form,
 body.landing-page .auth-session {
+    min-width: 0;
     justify-content: end;
+}
+
+body.landing-page .auth-form {
+    align-items: center;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(126px, 150px) minmax(128px, 1fr) minmax(128px, 1fr) auto;
+    justify-self: end;
+    max-width: 720px;
+    width: 100%;
 }
 
 body.landing-page .auth-session {
@@ -212,6 +227,7 @@ body.landing-page .auth-mode {
     background: #0f1112;
     border-color: #343a39;
     border-radius: 6px;
+    width: 100%;
 }
 
 body.landing-page .auth-mode-btn,
@@ -238,6 +254,7 @@ body.landing-page .auth-input {
     border-color: #3a4341;
     border-radius: 6px;
     min-height: 38px;
+    width: 100%;
 }
 
 body.landing-page .auth-primary-btn,
@@ -252,6 +269,11 @@ body.landing-page .auth-primary-btn:hover,
 body.landing-page .launch-btn:hover,
 body.landing-page .world-start-btn:hover {
     background: #348750;
+}
+
+body.landing-page .auth-primary-btn,
+body.landing-page .auth-secondary-btn {
+    white-space: nowrap;
 }
 
 body.landing-page .auth-secondary-btn,
@@ -728,6 +750,21 @@ body.landing-page .info-message {
 }
 
 @media (max-width: 940px) {
+    body.landing-page .auth-strip {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .dashboard-profile,
+    body.landing-page .auth-form,
+    body.landing-page .auth-session {
+        justify-self: stretch;
+        max-width: none;
+    }
+
+    body.landing-page .auth-form {
+        grid-template-columns: minmax(126px, 150px) minmax(0, 1fr) minmax(0, 1fr) auto;
+    }
+
     body.landing-page .world-stage {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -754,7 +791,6 @@ body.landing-page .info-message {
     }
 
     body.landing-page .auth-form {
-        display: grid;
         grid-template-columns: minmax(0, 1fr);
     }
 
