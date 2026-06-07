@@ -40,8 +40,117 @@ body.landing-page .landing-container {
     margin: 0 auto;
     max-width: 1180px;
     padding: 20px;
+    position: relative;
     text-align: left;
     width: 100%;
+}
+
+body.landing-page .public-review-modal {
+    align-items: center;
+    background: rgba(5, 7, 8, 0.78);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: fixed;
+    z-index: 30;
+}
+
+body.landing-page .public-review-panel {
+    align-items: center;
+    background: #171d1e;
+    border: 1px solid #4b5a57;
+    border-radius: 8px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+    color: #d9dedb;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+    max-width: min(360px, calc(100vw - 40px));
+    padding: 24px;
+    text-align: center;
+}
+
+body.landing-page .state-approved .public-review-panel {
+    border-color: #3fa362;
+}
+
+body.landing-page .state-pending .public-review-panel {
+    border-color: #d39b48;
+}
+
+body.landing-page .state-rejected .public-review-panel,
+body.landing-page .state-needs_human_review .public-review-panel,
+body.landing-page .state-error .public-review-panel {
+    border-color: #c95d5d;
+}
+
+body.landing-page .public-review-panel strong {
+    color: #fff5d0;
+    font-size: 1.05rem;
+}
+
+body.landing-page .public-review-panel span {
+    color: #aeb8b4;
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
+body.landing-page .public-review-spinner {
+    animation: public-review-spin 0.9s linear infinite;
+    border: 3px solid #343d3c;
+    border-top-color: #3fa362;
+    border-radius: 999px;
+    height: 34px;
+    width: 34px;
+}
+
+body.landing-page .public-review-icon {
+    align-items: center;
+    background: #202728;
+    border: 1px solid #4b5a57;
+    border-radius: 999px;
+    color: #d9dedb;
+    display: flex;
+    font-size: 1rem;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+body.landing-page .state-approved .public-review-icon {
+    border-color: #3fa362;
+    color: #83e89b;
+}
+
+body.landing-page .state-pending .public-review-icon {
+    border-color: #d39b48;
+    color: #f0b256;
+}
+
+body.landing-page .state-rejected .public-review-icon,
+body.landing-page .state-needs_human_review .public-review-icon,
+body.landing-page .state-error .public-review-icon {
+    border-color: #c95d5d;
+    color: #f06e6e;
+}
+
+body.landing-page .public-review-close-btn {
+    background: #2f718a;
+    border: 0;
+    color: #fff;
+    font-size: 0.82rem;
+    margin-top: 4px;
+    padding: 8px 14px;
+}
+
+body.landing-page .public-review-close-btn:hover {
+    background: #285e73;
+}
+
+@keyframes public-review-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 body.landing-page .landing-header {

@@ -71,8 +71,13 @@ class GameDefinitionsManager:
         self.language = generator_data.get('language', self.language)
         self.generator_id = generator_id
 
-    def save_generator(self, theme_desc: str, theme_desc_better: str,
-                        owner_id: Optional[str] = None, visibility: str = "unlisted") -> Optional[str]:
+    def save_generator(
+            self,
+            theme_desc: str,
+            theme_desc_better: str,
+            owner_id: Optional[str] = None,
+            visibility: str = "unlisted",
+    ) -> Optional[str]:
         try:
             self.generator_id = db.save_generator(
                 theme_desc=theme_desc,
@@ -83,7 +88,7 @@ class GameDefinitionsManager:
                 enemy_defs=self.enemy_defs,
                 celltype_defs=self.celltype_defs,
                 owner_id=owner_id,
-                visibility=visibility
+                visibility=visibility,
             )
             logger.info(f"Saved generator with ID: {self.generator_id}")
             return self.generator_id

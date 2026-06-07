@@ -32,6 +32,11 @@ import aiofiles
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
 from db import db
+from world_moderation import (
+    get_world_public_review_model_name,
+    process_due_public_world_reviews,
+    process_public_world_review,
+)
 
 load_dotenv()
 
@@ -163,6 +168,13 @@ def serialize_world_summary(world: Dict, requester_user_id: Optional[str]) -> Di
         "created_at": world.get("created_at"),
         "updated_at": world.get("updated_at"),
         "visibility": world.get("visibility", "unlisted"),
+        "moderation_status": world.get("moderation_status", "not_requested"),
+        "moderation_reason": world.get("moderation_reason"),
+        "moderation_confidence": world.get("moderation_confidence"),
+        "moderation_categories": world.get("moderation_categories", []),
+        "public_requested_at": world.get("public_requested_at"),
+        "public_review_after": world.get("public_review_after"),
+        "public_reviewed_at": world.get("public_reviewed_at"),
         "can_manage": can_manage_world(world, requester_user_id),
     }
 
@@ -187,6 +199,13 @@ def serialize_generator_metadata(
         "enemy_count": len(generator_data.get('enemy_defs', [])),
         "terrain_count": len(generator_data.get('celltype_defs', {})),
         "visibility": generator_data.get('visibility', 'unlisted'),
+        "moderation_status": generator_data.get('moderation_status', 'not_requested'),
+        "moderation_reason": generator_data.get('moderation_reason'),
+        "moderation_confidence": generator_data.get('moderation_confidence'),
+        "moderation_categories": generator_data.get('moderation_categories', []),
+        "public_requested_at": generator_data.get('public_requested_at'),
+        "public_review_after": generator_data.get('public_review_after'),
+        "public_reviewed_at": generator_data.get('public_reviewed_at'),
         "can_manage": can_manage_world(generator_data, requester_user_id),
     }
 
@@ -212,12 +231,19 @@ LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in or create an account to genera
 LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Try again later."
 SIGNUP_RATE_LIMIT_MESSAGE = "Too many signup attempts. Try again later."
 WORLD_CREATION_RATE_LIMIT_MESSAGE = "Too many new World creation attempts. Try again later."
+PUBLIC_REVIEW_QUEUED_MESSAGE = "Public review is queued. The World will remain private or unlisted until approved."
+PUBLIC_REVIEW_ALREADY_PUBLIC_MESSAGE = "World is already public."
+PUBLIC_REVIEW_COMPLETED_MESSAGE = "Public review completed."
 AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS = 5
 AUTH_LOGIN_DEFAULT_WINDOW_SECONDS = 60
 AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS = 5
 AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS = 60 * 60
 WORLD_CREATION_DEFAULT_MAX_ATTEMPTS = 10
 WORLD_CREATION_DEFAULT_WINDOW_SECONDS = 60 * 60
+WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS = 0
+WORLD_PUBLIC_REVIEW_DEFAULT_POLL_SECONDS = 30
+WORLD_PUBLIC_REVIEW_DEFAULT_MAX_PER_POLL = 3
+WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING = 10
 
 
 class AuthRateLimiter:
@@ -501,6 +527,51 @@ def get_default_new_world_visibility() -> str:
 
     return visibility
 
+
+def get_world_public_review_delay_seconds() -> int:
+    return get_env_int(
+        "WORLD_PUBLIC_REVIEW_DELAY_SECONDS",
+        WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS,
+        minimum=0,
+    )
+
+
+def get_world_public_review_poll_seconds() -> int:
+    return get_env_int(
+        "WORLD_PUBLIC_REVIEW_POLL_SECONDS",
+        WORLD_PUBLIC_REVIEW_DEFAULT_POLL_SECONDS,
+    )
+
+
+def get_world_public_review_max_per_poll() -> int:
+    return get_env_int(
+        "WORLD_PUBLIC_REVIEW_MAX_PER_POLL",
+        WORLD_PUBLIC_REVIEW_DEFAULT_MAX_PER_POLL,
+    )
+
+
+def is_world_public_review_immediate_enabled() -> bool:
+    return get_env_bool("WORLD_PUBLIC_REVIEW_IMMEDIATE_ENABLED", True)
+
+
+def get_world_public_review_immediate_max_pending() -> int:
+    return get_env_int(
+        "WORLD_PUBLIC_REVIEW_IMMEDIATE_MAX_PENDING",
+        WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING,
+        minimum=0,
+    )
+
+
+def is_public_review_queue_overwhelmed() -> bool:
+    if not hasattr(db, "count_pending_public_reviews"):
+        return True
+
+    return db.count_pending_public_reviews() >= get_world_public_review_immediate_max_pending()
+
+
+def is_world_public_review_worker_enabled() -> bool:
+    return get_env_bool("WORLD_PUBLIC_REVIEW_WORKER_ENABLED", is_production_env())
+
 #==================================================================
 # FastAPI
 #==================================================================
@@ -519,12 +590,32 @@ async def lifespan(app: FastAPI):
             game_session_manager.cleanup_expired_sessions()
 
     cleanup_task_handle = asyncio.create_task(cleanup_task())
+    public_review_task_handle = None
+
+    async def public_review_task():
+        while True:
+            try:
+                processed_count = await process_due_public_world_reviews(
+                    db,
+                    limit=get_world_public_review_max_per_poll(),
+                )
+                if processed_count:
+                    logging.info("Processed %s public World review(s).", processed_count)
+            except Exception as e:
+                logging.error(f"Error in public World review worker: {e}")
+
+            await asyncio.sleep(get_world_public_review_poll_seconds())
+
+    if is_world_public_review_worker_enabled() and hasattr(db, "list_due_public_reviews"):
+        public_review_task_handle = asyncio.create_task(public_review_task())
 
     yield
 
     # Shutdown - ensure database uploads are completed
     logging.info("Shutting down database manager...")
     cleanup_task_handle.cancel()
+    if public_review_task_handle is not None:
+        public_review_task_handle.cancel()
     db.shutdown()
 
 app = FastAPI(lifespan=lifespan)
@@ -890,8 +981,53 @@ async def update_world_visibility(request: VisibilityUpdateRequest, req: Request
     if visibility not in ("private", "unlisted", "public"):
         return JSONResponse({"error": "Invalid visibility"}, status_code=400)
 
-    db.update_generator_visibility(world_id, visibility)
-    return JSONResponse({"id": world_id, "visibility": visibility})
+    if visibility == "public":
+        if generator_data.get("visibility") == "public":
+            return JSONResponse({
+                "id": world_id,
+                "visibility": "public",
+                "moderation_status": generator_data.get("moderation_status", "approved"),
+                "moderation_reason": generator_data.get("moderation_reason"),
+                "public_reviewed_at": generator_data.get("public_reviewed_at"),
+                "message": PUBLIC_REVIEW_ALREADY_PUBLIC_MESSAGE,
+            })
+
+        reviewed_world = db.request_public_visibility(
+            world_id,
+            requested_by_owner_id=user_id,
+            review_delay_seconds=get_world_public_review_delay_seconds(),
+            reviewer_model=get_world_public_review_model_name(),
+        )
+        if not reviewed_world:
+            return JSONResponse({"error": "Failed to queue public review"}, status_code=409)
+
+        response_status = 202
+        response_message = PUBLIC_REVIEW_QUEUED_MESSAGE
+        if is_world_public_review_immediate_enabled() and not is_public_review_queue_overwhelmed():
+            await process_public_world_review(db, reviewed_world)
+            reviewed_world = db.get_generator(world_id) or reviewed_world
+            response_status = 200
+            response_message = PUBLIC_REVIEW_COMPLETED_MESSAGE
+
+        return JSONResponse({
+            "id": world_id,
+            "visibility": reviewed_world.get("visibility", "private"),
+            "moderation_status": reviewed_world.get("moderation_status", "pending"),
+            "moderation_reason": reviewed_world.get("moderation_reason"),
+            "moderation_confidence": reviewed_world.get("moderation_confidence"),
+            "moderation_categories": reviewed_world.get("moderation_categories", []),
+            "public_requested_at": reviewed_world.get("public_requested_at"),
+            "public_review_after": reviewed_world.get("public_review_after"),
+            "public_reviewed_at": reviewed_world.get("public_reviewed_at"),
+            "message": response_message,
+        }, status_code=response_status)
+
+    db.set_generator_non_public_visibility(world_id, visibility)
+    return JSONResponse({
+        "id": world_id,
+        "visibility": visibility,
+        "moderation_status": "not_requested",
+    })
 
 # Legacy API endpoint for backward compatibility
 @app.post("/api/create_game")

@@ -115,7 +115,7 @@ class GameStateManager:
             manager.definitions.save_generator(
                 theme_desc, manager.theme_desc_better,
                 owner_id=manager.owner_id,
-                visibility=manager.visibility or "unlisted"
+                visibility=manager.visibility or "unlisted",
             )
             manager.generator_id = db.save_generator(
                 theme_desc=theme_desc,
@@ -126,7 +126,7 @@ class GameStateManager:
                 enemy_defs=manager.definitions.enemy_defs,
                 celltype_defs=manager.definitions.celltype_defs,
                 owner_id=manager.owner_id,
-                visibility=manager.visibility or "unlisted"
+                visibility=manager.visibility or "unlisted",
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 

@@ -47,6 +47,8 @@ class ProductionConfigTests(unittest.TestCase):
         self.assertEqual(main.AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS, 3600)
         self.assertEqual(main.WORLD_CREATION_DEFAULT_MAX_ATTEMPTS, 10)
         self.assertEqual(main.WORLD_CREATION_DEFAULT_WINDOW_SECONDS, 3600)
+        self.assertEqual(main.WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS, 0)
+        self.assertEqual(main.WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING, 10)
 
     def test_default_new_world_visibility_is_private(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -78,6 +80,13 @@ class ProductionConfigTests(unittest.TestCase):
             "REQUIRE_LOGIN_TO_CREATE_WORLD": "1",
         }, clear=True):
             self.assertTrue(main.is_login_required_to_create_world())
+
+    def test_public_review_worker_defaults_to_production_only(self):
+        with patch.dict(os.environ, {"APP_ENV": "production"}, clear=True):
+            self.assertTrue(main.is_world_public_review_worker_enabled())
+
+        with patch.dict(os.environ, {"APP_ENV": "development"}, clear=True):
+            self.assertFalse(main.is_world_public_review_worker_enabled())
 
 
 if __name__ == "__main__":

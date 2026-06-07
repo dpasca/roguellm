@@ -38,6 +38,14 @@ const app = Vue.createApp({
                 password: ''
             },
             isAuthenticating: false,
+            publicReviewDialog: {
+                isOpen: false,
+                status: 'idle',
+                reason: '',
+                reviewAfter: null,
+                reviewedAt: null,
+                canClose: false
+            },
             worldTab: 'public',
             worldLists: {
                 public: [],
@@ -305,13 +313,134 @@ const app = Vue.createApp({
                 terrain: world.terrain_count
             });
         },
-        worldVisibilityLabel(visibility) {
+        worldVisibilityLabel(world) {
+            const status = world?.moderation_status || 'not_requested';
+            if (status === 'pending') {
+                return this.t('visibilityPublicPending');
+            }
+            if (status === 'rejected') {
+                return this.t('visibilityPublicRejected');
+            }
+            if (status === 'needs_human_review') {
+                return this.t('visibilityNeedsHumanReview');
+            }
+            if (status === 'error') {
+                return this.t('visibilityReviewError');
+            }
+
             const labels = {
                 private: this.t('visibilityPrivate'),
                 unlisted: this.t('visibilityUnlisted'),
                 public: this.t('visibilityPublic')
             };
+            const visibility = world?.visibility || 'unlisted';
             return labels[visibility] || labels.unlisted;
+        },
+        formatReviewTimestamp(timestamp) {
+            if (!timestamp) {
+                return this.t('reviewSoon');
+            }
+
+            const normalizedTimestamp = String(timestamp).replace(' ', 'T');
+            const date = new Date(normalizedTimestamp.endsWith('Z')
+                ? normalizedTimestamp
+                : `${normalizedTimestamp}Z`);
+            if (Number.isNaN(date.getTime())) {
+                return timestamp;
+            }
+
+            return date.toLocaleString();
+        },
+        publicReviewIcon() {
+            const icons = {
+                approved: 'fas fa-check',
+                pending: 'fas fa-clock',
+                rejected: 'fas fa-exclamation-triangle',
+                needs_human_review: 'fas fa-user-shield',
+                error: 'fas fa-exclamation-circle'
+            };
+            return icons[this.publicReviewDialog.status] || 'fas fa-info-circle';
+        },
+        publicReviewTitle() {
+            const titles = {
+                reviewing: this.t('publicReviewTitle'),
+                approved: this.t('publicReviewApprovedTitle'),
+                pending: this.t('publicReviewQueuedTitle'),
+                rejected: this.t('publicReviewRejectedTitle'),
+                needs_human_review: this.t('publicReviewNeedsHumanTitle'),
+                error: this.t('publicReviewErrorTitle')
+            };
+            return titles[this.publicReviewDialog.status] || this.t('publicReviewTitle');
+        },
+        publicReviewBody() {
+            const status = this.publicReviewDialog.status;
+            if (status === 'reviewing') {
+                return this.t('publicReviewBody');
+            }
+            if (status === 'approved') {
+                return this.t('publicReviewApprovedBody', {
+                    reviewedAt: this.formatReviewTimestamp(this.publicReviewDialog.reviewedAt)
+                });
+            }
+            if (status === 'pending') {
+                return this.t('publicReviewQueuedBody', {
+                    reviewAfter: this.formatReviewTimestamp(this.publicReviewDialog.reviewAfter)
+                });
+            }
+            if (status === 'rejected') {
+                return this.publicReviewDialog.reason || this.t('publicReviewRejectedBody');
+            }
+            if (status === 'needs_human_review') {
+                return this.publicReviewDialog.reason || this.t('publicReviewNeedsHumanBody');
+            }
+            if (status === 'error') {
+                return this.publicReviewDialog.reason || this.t('publicReviewErrorBody');
+            }
+            return this.t('publicReviewBody');
+        },
+        openPublicReviewDialog() {
+            this.publicReviewDialog = {
+                isOpen: true,
+                status: 'reviewing',
+                reason: '',
+                reviewAfter: null,
+                reviewedAt: null,
+                canClose: false
+            };
+        },
+        finishPublicReviewDialog(data) {
+            const moderationStatus = data?.moderation_status || 'error';
+            const status = moderationStatus === 'approved' && data?.visibility === 'public'
+                ? 'approved'
+                : moderationStatus;
+            this.publicReviewDialog = {
+                isOpen: true,
+                status,
+                reason: data?.moderation_reason || '',
+                reviewAfter: data?.public_review_after || null,
+                reviewedAt: data?.public_reviewed_at || null,
+                canClose: true
+            };
+        },
+        failPublicReviewDialog(message) {
+            this.publicReviewDialog = {
+                isOpen: true,
+                status: 'error',
+                reason: message || this.t('publicReviewErrorBody'),
+                reviewAfter: null,
+                reviewedAt: null,
+                canClose: true
+            };
+        },
+        closePublicReviewDialog() {
+            this.publicReviewDialog = {
+                isOpen: false,
+                status: 'idle',
+                reason: '',
+                reviewAfter: null,
+                reviewedAt: null,
+                canClose: false
+            };
         },
         isOwnedWorld(world) {
             return this.currentUser && world.can_manage === true;
@@ -585,9 +714,12 @@ const app = Vue.createApp({
             this.clearError();
             this.clearInfo();
 
-            const previousVisibility = world.visibility;
+            const previousWorld = { ...world };
             const visibility = event.target.value;
-            world.visibility = visibility;
+            const isPublicReviewRequest = visibility === 'public';
+            if (isPublicReviewRequest) {
+                this.openPublicReviewDialog();
+            }
 
             try {
                 const response = await fetch(`/api/worlds/${world.id}/visibility`, {
@@ -603,11 +735,20 @@ const app = Vue.createApp({
                 }
 
                 const data = await response.json();
-                this.replaceWorldInLists({ ...world, visibility: data.visibility });
+                this.replaceWorldInLists({ ...world, ...data });
+                if (isPublicReviewRequest) {
+                    this.finishPublicReviewDialog(data);
+                } else if (data.message) {
+                    this.infoMessage = data.message;
+                }
             } catch (error) {
-                world.visibility = previousVisibility;
-                event.target.value = previousVisibility;
-                this.errorMessage = error.message || this.t('visibilityUpdateFailed');
+                Object.assign(world, previousWorld);
+                event.target.value = previousWorld.visibility;
+                if (isPublicReviewRequest) {
+                    this.failPublicReviewDialog(error.message || this.t('visibilityUpdateFailed'));
+                } else {
+                    this.errorMessage = error.message || this.t('visibilityUpdateFailed');
+                }
             }
         },
         async applyDevQuickStartFromUrl() {

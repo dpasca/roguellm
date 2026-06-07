@@ -25,12 +25,25 @@ WORLD_CREATION_MAX_ATTEMPTS=10
 WORLD_CREATION_WINDOW_SECONDS=3600
 
 # World Publishing
-# Newly generated Worlds are private by default. Production ignores non-private
-# overrides until the public review flow is implemented.
+# Newly generated Worlds are private by default. Public publishing is a queued
+# LLM review flow; direct public visibility should not be enabled in production.
 DEFAULT_NEW_WORLD_VISIBILITY=private
 # Production should require login before creating fresh generated Worlds.
 # Existing public and unlisted Worlds remain playable without login.
 REQUIRE_LOGIN_TO_CREATE_WORLD=0
+
+# Public World review. Defaults reuse LOW_SPEC_MODEL_* below, but these let us
+# assign a separate reviewer model or OpenAI-compatible endpoint. Reviews run
+# immediately unless the pending review queue reaches the immediate threshold.
+WORLD_PUBLIC_REVIEW_DELAY_SECONDS=0
+WORLD_PUBLIC_REVIEW_IMMEDIATE_ENABLED=1
+WORLD_PUBLIC_REVIEW_IMMEDIATE_MAX_PENDING=10
+WORLD_PUBLIC_REVIEW_POLL_SECONDS=30
+WORLD_PUBLIC_REVIEW_MAX_PER_POLL=3
+WORLD_PUBLIC_REVIEW_WORKER_ENABLED=1
+# WORLD_PUBLIC_REVIEW_MODEL_NAME=gpt-4.1-mini
+# WORLD_PUBLIC_REVIEW_MODEL_BASE_URL=https://api.openai.com/v1
+# WORLD_PUBLIC_REVIEW_MODEL_API_KEY=your_review_model_api_key_here
 
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys

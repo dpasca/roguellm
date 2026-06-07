@@ -46,6 +46,31 @@
             Loading...
         </div>
         <div v-else class="landing-container">
+            <div v-if="publicReviewDialog.isOpen"
+                 class="public-review-modal"
+                 :class="`state-${publicReviewDialog.status}`"
+                 role="alertdialog"
+                 aria-modal="true"
+                 :aria-label="publicReviewTitle()">
+                <div class="public-review-panel">
+                    <div v-if="publicReviewDialog.status === 'reviewing'"
+                         class="public-review-spinner"
+                         aria-hidden="true"></div>
+                    <div v-else
+                         class="public-review-icon"
+                         aria-hidden="true">
+                        <i :class="publicReviewIcon()"></i>
+                    </div>
+                    <strong>{{ publicReviewTitle() }}</strong>
+                    <span>{{ publicReviewBody() }}</span>
+                    <button v-if="publicReviewDialog.canClose"
+                            type="button"
+                            class="public-review-close-btn"
+                            @click="closePublicReviewDialog">
+                        {{ t('publicReviewClose') }}
+                    </button>
+                </div>
+            </div>
             <header class="landing-header">
                 <div class="brand-lockup">
                     <h1>{{ t('title') }}</h1>
@@ -198,7 +223,7 @@
                                     <span class="world-copy">
                                         <span class="world-title">{{ world.title }}</span>
                                         <span class="world-meta">
-                                            {{ world.language }} · {{ worldVisibilityLabel(world.visibility) }} · {{ formatWorldCounts(world) }}
+                                            {{ world.language }} · {{ worldVisibilityLabel(world) }} · {{ formatWorldCounts(world) }}
                                         </span>
                                     </span>
                                     <button v-if="selectedWorldId === world.id"
@@ -239,7 +264,7 @@
                                                         @change.stop="updateWorldVisibility(world, $event)">
                                                     <option value="private">{{ t('visibilityPrivate') }}</option>
                                                     <option value="unlisted">{{ t('visibilityUnlisted') }}</option>
-                                                    <option value="public">{{ t('visibilityPublic') }}</option>
+                                                    <option value="public">{{ t('visibilityRequestPublic') }}</option>
                                                 </select>
                                             </label>
                                         </div>

@@ -1,4 +1,5 @@
 import os
+import asyncio
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -7,6 +8,11 @@ from unittest.mock import AsyncMock, patch
 from db import DatabaseManager
 from fastapi.testclient import TestClient
 import main
+from world_moderation import (
+    WorldPublicReviewResult,
+    build_world_review_payload,
+    process_due_public_world_reviews,
+)
 
 
 class WorldListingTests(unittest.TestCase):
@@ -48,6 +54,30 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(worlds[0]["terrain_count"], 2)
         self.assertEqual(worlds[0]["visibility"], "unlisted")
         self.assertIsNone(worlds[0]["owner_id"])
+
+    def test_review_payload_uses_prompt_and_generated_world_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="A clockwork library under the sea",
+                theme_desc_better="Clockwork Library\nA quieter second line",
+                language="en",
+                player_defs=[{"name": "Diver"}],
+                item_defs=[{"id": "key"}],
+                enemy_defs=[{"enemy_id": "eel"}],
+                celltype_defs={"reef": {}},
+            )
+            world = manager.get_generator(world_id)
+
+        payload = build_world_review_payload({"id": world_id, **world})
+
+        self.assertEqual(payload["original_prompt"], "A clockwork library under the sea")
+        self.assertEqual(payload["generated_title_and_summary"], "Clockwork Library\nA quieter second line")
+        self.assertEqual(payload["generated_players"], [{"name": "Diver"}])
+        self.assertEqual(payload["generated_items"], [{"id": "key"}])
+        self.assertEqual(payload["generated_enemies"], [{"enemy_id": "eel"}])
+        self.assertEqual(payload["generated_terrain"], {"reef": {}})
+        self.assertNotIn("prompt_and_research_context", payload)
 
     def test_list_worlds_counts_list_based_terrain_definitions(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -156,17 +186,24 @@ class WorldListingTests(unittest.TestCase):
                     for row in conn.execute("PRAGMA table_info(generators)").fetchall()
                 }
                 row = conn.execute("""
-                    SELECT owner_id, visibility, updated_at
+                    SELECT owner_id, visibility, moderation_status, updated_at
                     FROM generators
                     WHERE id = ?
                 """, ("oldworld",)).fetchone()
 
         self.assertIn("owner_id", columns)
         self.assertIn("visibility", columns)
+        self.assertIn("moderation_status", columns)
+        self.assertIn("moderation_reason", columns)
+        self.assertIn("moderation_model", columns)
+        self.assertIn("public_requested_at", columns)
+        self.assertIn("public_review_after", columns)
+        self.assertIn("public_reviewed_at", columns)
         self.assertIn("updated_at", columns)
         self.assertIsNone(row[0])
         self.assertEqual(row[1], "unlisted")
-        self.assertIsNotNone(row[2])
+        self.assertEqual(row[2], "not_requested")
+        self.assertIsNotNone(row[3])
 
     def test_list_worlds_excludes_private_and_unlisted_outside_local_dev(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1201,7 +1238,7 @@ class VisibilityControlTests(unittest.TestCase):
         manager.init_db()
         return manager
 
-    def test_owner_can_change_visibility(self):
+    def test_owner_can_change_visibility_to_unlisted(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
             user = manager.create_user("owner", "secret123")
@@ -1221,12 +1258,194 @@ class VisibilityControlTests(unittest.TestCase):
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
                 client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "unlisted"})
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["visibility"], "unlisted")
+            updated = manager.get_generator(world_id)
+            self.assertEqual(updated["visibility"], "unlisted")
+            self.assertEqual(updated["moderation_status"], "not_requested")
+
+    def test_owner_public_visibility_reviews_immediately_when_queue_has_capacity(self):
+        async def approve_public_review(db_manager, world):
+            db_manager.record_public_review(
+                generator_id=world["id"],
+                requested_by_owner_id=world.get("owner_id"),
+                model_name="internal-reviewer",
+                decision="approve",
+                confidence=0.98,
+                categories=[],
+                public_reason="Approved for public listing.",
+                internal_notes="No issues found.",
+            )
+            return True
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            owner_id = user["id"]
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden\nA quiet place",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[{"id": "shears"}],
+                enemy_defs=[{"id": "rabbit"}],
+                celltype_defs={"grass": {"name": "Grass"}},
+                owner_id=owner_id,
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "WORLD_PUBLIC_REVIEW_IMMEDIATE_ENABLED": "1",
+                "WORLD_PUBLIC_REVIEW_IMMEDIATE_MAX_PENDING": "3",
+                "WORLD_PUBLIC_REVIEW_DELAY_SECONDS": "0",
+            }), patch("main.process_public_world_review", side_effect=approve_public_review) as review_mock:
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
 
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json()["visibility"], "public")
+            body = response.json()
+            self.assertEqual(body["visibility"], "public")
+            self.assertEqual(body["moderation_status"], "approved")
+            self.assertNotIn("moderation_model", body)
+            review_mock.assert_awaited_once()
             updated = manager.get_generator(world_id)
             self.assertEqual(updated["visibility"], "public")
+            self.assertEqual(updated["moderation_status"], "approved")
+            self.assertEqual(updated["moderation_model"], "internal-reviewer")
+
+    def test_owner_public_visibility_queues_review_when_queue_is_overwhelmed(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            owner_id = user["id"]
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden\nA quiet place",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[{"id": "shears"}],
+                enemy_defs=[{"id": "rabbit"}],
+                celltype_defs={"grass": {"name": "Grass"}},
+                owner_id=owner_id,
+                visibility="private"
+            )
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "WORLD_PUBLIC_REVIEW_IMMEDIATE_ENABLED": "1",
+                "WORLD_PUBLIC_REVIEW_IMMEDIATE_MAX_PENDING": "0",
+                "WORLD_PUBLIC_REVIEW_DELAY_SECONDS": "0",
+                "WORLD_PUBLIC_REVIEW_MODEL_NAME": "review-model",
+            }), patch("main.process_public_world_review", new_callable=AsyncMock) as review_mock:
+                client = TestClient(main.app)
+                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
+
+            self.assertEqual(response.status_code, 202)
+            body = response.json()
+            self.assertEqual(body["visibility"], "private")
+            self.assertEqual(body["moderation_status"], "pending")
+            self.assertNotIn("moderation_model", body)
+            review_mock.assert_not_awaited()
+            updated = manager.get_generator(world_id)
+            self.assertEqual(updated["visibility"], "private")
+            self.assertEqual(updated["moderation_status"], "pending")
+            self.assertEqual(updated["moderation_model"], "review-model")
+
+    def test_public_review_approval_publishes_world(self):
+        class ApprovingReviewer:
+            model_name = "review-model"
+
+            async def review_world(self, world):
+                return WorldPublicReviewResult(
+                    decision="approve",
+                    confidence=0.98,
+                    categories=[],
+                    public_reason="Approved for public listing.",
+                    internal_notes="No issues found.",
+                )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden\nA quiet place",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[{"id": "shears"}],
+                enemy_defs=[{"id": "rabbit"}],
+                celltype_defs={"grass": {"name": "Grass"}},
+                owner_id=user["id"],
+                visibility="private"
+            )
+            queued = manager.request_public_visibility(
+                world_id,
+                requested_by_owner_id=user["id"],
+                review_delay_seconds=0,
+                reviewer_model="review-model",
+            )
+            self.assertEqual(queued["moderation_status"], "pending")
+
+            processed_count = asyncio.run(process_due_public_world_reviews(
+                manager,
+                reviewer=ApprovingReviewer(),
+            ))
+
+            self.assertEqual(processed_count, 1)
+            updated = manager.get_generator(world_id)
+            self.assertEqual(updated["visibility"], "public")
+            self.assertEqual(updated["moderation_status"], "approved")
+            self.assertEqual(updated["moderation_model"], "review-model")
+            self.assertEqual(updated["moderation_confidence"], 0.98)
+            self.assertIsNotNone(updated["public_reviewed_at"])
+
+    def test_public_review_rejection_does_not_publish_world(self):
+        class RejectingReviewer:
+            model_name = "review-model"
+
+            async def review_world(self, world):
+                return WorldPublicReviewResult(
+                    decision="reject",
+                    confidence=0.92,
+                    categories=["pii"],
+                    public_reason="This World cannot be published publicly in its current form.",
+                    internal_notes="Private information risk.",
+                )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            user = manager.create_user("owner", "secret123")
+            world_id = manager.save_generator(
+                theme_desc="A hidden garden",
+                theme_desc_better="Hidden Garden\nA quiet place",
+                language="en",
+                player_defs=[{"name": "Gardener"}],
+                item_defs=[{"id": "shears"}],
+                enemy_defs=[{"id": "rabbit"}],
+                celltype_defs={"grass": {"name": "Grass"}},
+                owner_id=user["id"],
+                visibility="unlisted"
+            )
+            manager.request_public_visibility(
+                world_id,
+                requested_by_owner_id=user["id"],
+                review_delay_seconds=0,
+                reviewer_model="review-model",
+            )
+
+            processed_count = asyncio.run(process_due_public_world_reviews(
+                manager,
+                reviewer=RejectingReviewer(),
+            ))
+
+            self.assertEqual(processed_count, 1)
+            updated = manager.get_generator(world_id)
+            self.assertEqual(updated["visibility"], "unlisted")
+            self.assertEqual(updated["moderation_status"], "rejected")
+            self.assertEqual(updated["moderation_categories"], ["pii"])
 
     def test_anonymous_cannot_change_visibility(self):
         with tempfile.TemporaryDirectory() as tmpdir:

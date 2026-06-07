@@ -59,6 +59,12 @@ auth hardening, and public World moderation.
 - The landing page now centers `Play Worlds` and `Create World`; the visible
   Fantasy Theme entry point is removed while the backend fantasy fallback
   remains for legacy/dev requests.
+- Public visibility requests run LLM review immediately with a waiting modal
+  unless the internal pending-review queue is over the inline-review threshold.
+  The reviewer receives the original prompt plus generated public/playable
+  World data; raw web-search results are excluded. A World remains private or
+  unlisted while `moderation_status = pending`; only an approved review may
+  change `visibility` to `public`.
 
 ## Desired Experience
 
@@ -73,8 +79,9 @@ After login:
 
 - Users can see `My Worlds`.
 - New generated Worlds are owned by the current user.
-- Users can change visibility between private, unlisted, and public.
-- Public Worlds appear in a public list.
+- Users can change visibility between private and unlisted immediately.
+- Users can request public visibility; public Worlds appear in a public list
+  only after automated LLM approval.
 - Shared links keep working for unlisted/public Worlds.
 
 ## Phase 1: Add Ownership And Visibility Shape
@@ -244,16 +251,24 @@ Phase 4 tests:
 
 - Should unlisted Worlds be visible in the generic recent list during local dev
   only, or also in private deployments?
-- Should public Worlds require moderation later?
+- Should public Worlds get a human appeal path after automated rejection?
 - Should users be able to fork another public World into their own private copy?
 - Should Runs be persisted per user, or are only Worlds owned at first?
 
 ## Recommended Next Implementation Step
 
-Decide the pre-moderation production policy for public visibility:
+The pre-moderation production policy for public visibility is implemented:
 
-1. Hide or disable the `Public` visibility option in production until LLM
-   moderation exists.
-2. Replace direct `public` updates with a pending-review request flow.
-3. Add UI status for private, public-review-pending, approved, and rejected
-   Worlds.
+1. Direct `public` updates are replaced with a pending-review request flow.
+2. UI status covers private, public-review-pending, approved, rejected,
+   human-review-needed, and review-error Worlds.
+3. The reviewer uses a configurable OpenAI-compatible model via
+   `WORLD_PUBLIC_REVIEW_MODEL_*`, falling back to `LOW_SPEC_MODEL_*`.
+
+Recommended next implementation step:
+
+1. Choose the dedicated production review model.
+2. Exercise immediate review, overloaded queued review, and the background
+   worker in staging.
+3. Add an admin/human appeal path for `needs_human_review` and disputed
+   rejections.

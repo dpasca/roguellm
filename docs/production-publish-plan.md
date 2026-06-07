@@ -40,8 +40,12 @@ Keep the work in small publishable slices so the app remains usable:
    - Add signup rate limits and stronger password hashing.
    - Keep all Worlds private unless reviewed.
 4. Public-worlds slice:
-   - Add the five-minute pending public request flow.
-   - Run structured LLM moderation before any World becomes browseable.
+   - The pending public request flow is implemented; reviews run immediately
+     unless the internal pending queue is over the inline-review threshold.
+   - The browser shows a waiting modal during inline review instead of exposing
+     reviewer details.
+   - Run and verify structured LLM moderation in staging before treating public
+     publishing as production-ready.
 
 Completed publish-hardening slice:
 
@@ -302,14 +306,21 @@ Recommended flow:
 
 1. Owner clicks “Make Public”.
 2. API sets `moderation_status = 'pending'`, records `public_requested_at`, and
-   sets `public_review_after = now + 5 minutes`.
+   sets `public_review_after = now` by default.
 3. World remains private or unlisted while pending.
-4. A background worker picks up due reviews.
-5. The worker calls an LLM with structured output.
+4. If the internal queue is below the immediate-review threshold, the API runs
+   the LLM review before returning while the browser shows a waiting modal.
+   Otherwise a background worker picks up due reviews.
+5. Immediate and queued reviews call an LLM with structured output over the
+   original prompt plus generated public/playable World data. Raw web-search
+   results are excluded because unrelated snippets can contain noisy contact
+   details. The review model is configurable with `WORLD_PUBLIC_REVIEW_MODEL_*`
+   and falls back to `LOW_SPEC_MODEL_*`.
 6. If approved, set `visibility = 'public'` and
    `moderation_status = 'approved'`.
 7. If rejected, keep it non-public and store a short non-sensitive reason.
-8. UI shows pending/rejected/approved status.
+8. UI shows pending/rejected/approved status without exposing the reviewer
+   model to the player.
 
 Use model-based structured review as the primary classifier. Do not implement
 keyword or regex gates as the primary moderation logic.

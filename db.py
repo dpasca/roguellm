@@ -11,9 +11,17 @@ from contextlib import contextmanager
 import logging
 import boto3
 from threading import Lock, Thread
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
+VALID_WORLD_MODERATION_STATUSES = {
+    "not_requested",
+    "pending",
+    "approved",
+    "rejected",
+    "needs_human_review",
+    "error",
+}
 
 
 class DatabaseManager:
@@ -200,6 +208,22 @@ class DatabaseManager:
                     owner_id TEXT NULL,
                     visibility TEXT NOT NULL DEFAULT 'unlisted'
                         CHECK (visibility IN ('private', 'unlisted', 'public')),
+                    moderation_status TEXT NOT NULL DEFAULT 'not_requested'
+                        CHECK (moderation_status IN (
+                            'not_requested',
+                            'pending',
+                            'approved',
+                            'rejected',
+                            'needs_human_review',
+                            'error'
+                        )),
+                    moderation_reason TEXT NULL,
+                    moderation_model TEXT NULL,
+                    moderation_confidence REAL NULL,
+                    moderation_categories TEXT NULL,
+                    public_requested_at TIMESTAMP NULL,
+                    public_review_after TIMESTAMP NULL,
+                    public_reviewed_at TIMESTAMP NULL,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -227,6 +251,14 @@ class DatabaseManager:
             )
             self._ensure_column(conn, "generators", "owner_id", "TEXT NULL")
             self._ensure_column(conn, "generators", "visibility", "TEXT NOT NULL DEFAULT 'unlisted'")
+            self._ensure_column(conn, "generators", "moderation_status", "TEXT NOT NULL DEFAULT 'not_requested'")
+            self._ensure_column(conn, "generators", "moderation_reason", "TEXT NULL")
+            self._ensure_column(conn, "generators", "moderation_model", "TEXT NULL")
+            self._ensure_column(conn, "generators", "moderation_confidence", "REAL NULL")
+            self._ensure_column(conn, "generators", "moderation_categories", "TEXT NULL")
+            self._ensure_column(conn, "generators", "public_requested_at", "TIMESTAMP NULL")
+            self._ensure_column(conn, "generators", "public_review_after", "TIMESTAMP NULL")
+            self._ensure_column(conn, "generators", "public_reviewed_at", "TIMESTAMP NULL")
             self._ensure_column(conn, "generators", "updated_at", "TIMESTAMP")
             self._backfill_generator_ownership_shape(conn)
             conn.execute("""
@@ -235,6 +267,21 @@ class DatabaseManager:
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS world_moderation_reviews (
+                    id TEXT PRIMARY KEY,
+                    generator_id TEXT NOT NULL,
+                    requested_by_owner_id TEXT NULL,
+                    model_name TEXT NOT NULL,
+                    decision TEXT NOT NULL,
+                    confidence REAL NULL,
+                    categories TEXT NULL,
+                    public_reason TEXT NULL,
+                    internal_notes TEXT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
                 )
             """)
             conn.commit()
@@ -273,6 +320,21 @@ class DatabaseManager:
                     SET updated_at = CURRENT_TIMESTAMP
                     WHERE updated_at IS NULL
                 """)
+
+        if "moderation_status" in columns:
+            conn.execute("""
+                UPDATE generators
+                SET moderation_status = 'not_requested'
+                WHERE moderation_status IS NULL
+                   OR moderation_status NOT IN (
+                        'not_requested',
+                        'pending',
+                        'approved',
+                        'rejected',
+                        'needs_human_review',
+                        'error'
+                   )
+            """)
 
     def backup_db(self):
         """Upload current DB to remote storage"""
@@ -407,6 +469,51 @@ class DatabaseManager:
             )
         return normalized
 
+    def _normalize_moderation_status(self, moderation_status: Optional[str]) -> str:
+        normalized = (moderation_status or "not_requested").strip().lower()
+        if normalized not in VALID_WORLD_MODERATION_STATUSES:
+            raise ValueError(
+                "moderation_status must be one of: "
+                f"{', '.join(sorted(VALID_WORLD_MODERATION_STATUSES))}"
+            )
+        return normalized
+
+    def _utc_timestamp(self, value: Optional[datetime] = None) -> str:
+        timestamp = value or datetime.now(timezone.utc)
+        return timestamp.astimezone(timezone.utc).replace(
+            microsecond=0,
+            tzinfo=None,
+        ).isoformat(sep=" ")
+
+    def _json_list_value(self, raw_value: Optional[str]) -> List:
+        try:
+            value = json.loads(raw_value or "[]")
+            return value if isinstance(value, list) else []
+        except json.JSONDecodeError:
+            return []
+
+    def _generator_from_row(self, row) -> Dict:
+        return {
+            'theme_desc': row[0],
+            'theme_desc_better': row[1],
+            'language': row[2],
+            'player_defs': json.loads(row[3]),
+            'item_defs': json.loads(row[4]),
+            'enemy_defs': json.loads(row[5]),
+            'celltype_defs': json.loads(row[6]),
+            'owner_id': row[7],
+            'visibility': row[8],
+            'moderation_status': row[9] or "not_requested",
+            'moderation_reason': row[10],
+            'moderation_model': row[11],
+            'moderation_confidence': row[12],
+            'moderation_categories': self._json_list_value(row[13]),
+            'public_requested_at': row[14],
+            'public_review_after': row[15],
+            'public_reviewed_at': row[16],
+            'updated_at': row[17],
+        }
+
     def get_generator(self, generator_id: str) -> Optional[Dict]:
         """
         Retrieve a generator by its ID.
@@ -415,7 +522,12 @@ class DatabaseManager:
         def _get(conn, generator_id):
             cur = conn.cursor()
             cur.execute("""
-                SELECT theme_desc, theme_desc_better, language, player_defs, item_defs, enemy_defs, celltype_defs, owner_id, visibility, updated_at
+                SELECT theme_desc, theme_desc_better, language,
+                       player_defs, item_defs, enemy_defs, celltype_defs,
+                       owner_id, visibility, moderation_status,
+                       moderation_reason, moderation_model, moderation_confidence,
+                       moderation_categories, public_requested_at,
+                       public_review_after, public_reviewed_at, updated_at
                 FROM generators
                 WHERE id = ?
             """, (generator_id,))
@@ -424,18 +536,7 @@ class DatabaseManager:
             if result is None:
                 return None
 
-            return {
-                'theme_desc': result[0],
-                'theme_desc_better': result[1],
-                'language': result[2],
-                'player_defs': json.loads(result[3]),
-                'item_defs': json.loads(result[4]),
-                'enemy_defs': json.loads(result[5]),
-                'celltype_defs': json.loads(result[6]),
-                'owner_id': result[7],
-                'visibility': result[8],
-                'updated_at': result[9]
-            }
+            return self._generator_from_row(result)
 
         return self._execute_with_retry(_get, generator_id)
 
@@ -545,6 +646,278 @@ class DatabaseManager:
 
         return self._execute_with_retry(_update, generator_id, visibility)
 
+    def set_generator_non_public_visibility(self, generator_id: str, visibility: str) -> bool:
+        """Set private/unlisted visibility and clear any pending public request."""
+        visibility = self._normalize_visibility(visibility)
+        if visibility == "public":
+            raise ValueError("Use public review flow before setting visibility to public")
+
+        def _update(conn, generator_id, visibility):
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE generators
+                SET visibility = ?,
+                    moderation_status = 'not_requested',
+                    moderation_reason = NULL,
+                    moderation_model = NULL,
+                    moderation_confidence = NULL,
+                    moderation_categories = NULL,
+                    public_requested_at = NULL,
+                    public_review_after = NULL,
+                    public_reviewed_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (visibility, generator_id))
+            conn.commit()
+            return cur.rowcount > 0
+
+        return self._execute_with_retry(_update, generator_id, visibility)
+
+    def request_public_visibility(
+            self,
+            generator_id: str,
+            requested_by_owner_id: str,
+            review_delay_seconds: int,
+            reviewer_model: str,
+    ) -> Optional[Dict]:
+        """Queue a public visibility review while keeping the World non-public."""
+        delay_seconds = max(0, int(review_delay_seconds))
+        requested_at = datetime.now(timezone.utc)
+        review_after = requested_at + timedelta(seconds=delay_seconds)
+        requested_at_text = self._utc_timestamp(requested_at)
+        review_after_text = self._utc_timestamp(review_after)
+
+        def _request(
+                conn,
+                generator_id,
+                requested_by_owner_id,
+                reviewer_model,
+                requested_at_text,
+                review_after_text,
+        ):
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE generators
+                SET moderation_status = 'pending',
+                    moderation_reason = 'Public review is queued.',
+                    moderation_model = ?,
+                    moderation_confidence = NULL,
+                    moderation_categories = '[]',
+                    public_requested_at = ?,
+                    public_review_after = ?,
+                    public_reviewed_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                  AND owner_id = ?
+                  AND visibility != 'public'
+            """, (
+                reviewer_model,
+                requested_at_text,
+                review_after_text,
+                generator_id,
+                requested_by_owner_id,
+            ))
+            conn.commit()
+            if cur.rowcount == 0:
+                return None
+
+            cur.execute("""
+                SELECT theme_desc, theme_desc_better, language,
+                       player_defs, item_defs, enemy_defs, celltype_defs,
+                       owner_id, visibility, moderation_status,
+                       moderation_reason, moderation_model, moderation_confidence,
+                       moderation_categories, public_requested_at,
+                       public_review_after, public_reviewed_at, updated_at
+                FROM generators
+                WHERE id = ?
+            """, (generator_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+
+            world = self._generator_from_row(row)
+            world["id"] = generator_id
+            return world
+
+        return self._execute_with_retry(
+            _request,
+            generator_id,
+            requested_by_owner_id,
+            reviewer_model,
+            requested_at_text,
+            review_after_text,
+        )
+
+    def list_due_public_reviews(self, limit: int = 5) -> List[Dict]:
+        """Return pending public review rows whose review-after time has passed."""
+        limit = max(1, min(limit, 20))
+        now_text = self._utc_timestamp()
+
+        def _list(conn, limit, now_text):
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, theme_desc, theme_desc_better, language,
+                       player_defs, item_defs, enemy_defs, celltype_defs,
+                       owner_id, visibility, moderation_status,
+                       moderation_reason, moderation_model, moderation_confidence,
+                       moderation_categories, public_requested_at,
+                       public_review_after, public_reviewed_at, updated_at
+                FROM generators
+                WHERE moderation_status = 'pending'
+                  AND visibility != 'public'
+                  AND public_review_after IS NOT NULL
+                  AND public_review_after <= ?
+                ORDER BY public_review_after ASC
+                LIMIT ?
+            """, (now_text, limit))
+
+            reviews = []
+            for row in cur.fetchall():
+                world = self._generator_from_row(row[1:])
+                world["id"] = row[0]
+                reviews.append(world)
+            return reviews
+
+        return self._execute_with_retry(_list, limit, now_text)
+
+    def count_pending_public_reviews(self) -> int:
+        """Return the number of non-public Worlds waiting for public review."""
+        def _count(conn):
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT COUNT(*)
+                FROM generators
+                WHERE moderation_status = 'pending'
+                  AND visibility != 'public'
+            """)
+            return int(cur.fetchone()[0])
+
+        return self._execute_with_retry(_count)
+
+    def record_public_review(
+            self,
+            generator_id: str,
+            requested_by_owner_id: Optional[str],
+            model_name: str,
+            decision: str,
+            confidence: Optional[float],
+            categories: List[str],
+            public_reason: str,
+            internal_notes: str,
+    ) -> bool:
+        """Record an LLM public review and publish only approved Worlds."""
+        normalized_decision = (decision or "").strip().lower()
+        if normalized_decision not in {"approve", "reject", "needs_human_review", "error"}:
+            normalized_decision = "needs_human_review"
+
+        if normalized_decision == "approve":
+            moderation_status = "approved"
+            visibility_update = "public"
+        elif normalized_decision == "reject":
+            moderation_status = "rejected"
+            visibility_update = None
+        elif normalized_decision == "error":
+            moderation_status = "error"
+            visibility_update = None
+        else:
+            moderation_status = "needs_human_review"
+            visibility_update = None
+
+        reviewed_at = self._utc_timestamp()
+        categories_json = json.dumps(categories or [], sort_keys=True)
+        confidence_value = None
+        if confidence is not None:
+            confidence_value = max(0.0, min(1.0, float(confidence)))
+
+        def _record(conn):
+            cur = conn.cursor()
+            review_id = str(uuid.uuid4())
+            cur.execute("""
+                INSERT INTO world_moderation_reviews
+                (id, generator_id, requested_by_owner_id, model_name, decision,
+                 confidence, categories, public_reason, internal_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                review_id,
+                generator_id,
+                requested_by_owner_id,
+                model_name,
+                normalized_decision,
+                confidence_value,
+                categories_json,
+                public_reason,
+                internal_notes,
+            ))
+
+            if visibility_update:
+                cur.execute("""
+                    UPDATE generators
+                    SET visibility = ?,
+                        moderation_status = ?,
+                        moderation_reason = ?,
+                        moderation_model = ?,
+                        moderation_confidence = ?,
+                        moderation_categories = ?,
+                        public_reviewed_at = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                      AND moderation_status = 'pending'
+                """, (
+                    visibility_update,
+                    moderation_status,
+                    public_reason,
+                    model_name,
+                    confidence_value,
+                    categories_json,
+                    reviewed_at,
+                    generator_id,
+                ))
+            else:
+                cur.execute("""
+                    UPDATE generators
+                    SET moderation_status = ?,
+                        moderation_reason = ?,
+                        moderation_model = ?,
+                        moderation_confidence = ?,
+                        moderation_categories = ?,
+                        public_reviewed_at = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                      AND moderation_status = 'pending'
+                """, (
+                    moderation_status,
+                    public_reason,
+                    model_name,
+                    confidence_value,
+                    categories_json,
+                    reviewed_at,
+                    generator_id,
+                ))
+
+            conn.commit()
+            return cur.rowcount > 0
+
+        return self._execute_with_retry(_record)
+
+    def record_public_review_error(
+            self,
+            generator_id: str,
+            model_name: str,
+            public_reason: str,
+            internal_notes: str,
+    ) -> bool:
+        """Record a review failure without exposing internal error details."""
+        return self.record_public_review(
+            generator_id=generator_id,
+            requested_by_owner_id=None,
+            model_name=model_name,
+            decision="error",
+            confidence=None,
+            categories=["review_error"],
+            public_reason=public_reason,
+            internal_notes=internal_notes,
+        )
+
     def list_worlds(self, limit: int = 20, local_dev: bool = False, owner_id: Optional[str] = None) -> List[Dict]:
         """
         Return recent reusable generated worlds.
@@ -566,6 +939,14 @@ class DatabaseManager:
             has_updated_at = "updated_at" in columns
             has_owner_id = "owner_id" in columns
             has_visibility = "visibility" in columns
+            has_moderation_status = "moderation_status" in columns
+            has_moderation_reason = "moderation_reason" in columns
+            has_moderation_model = "moderation_model" in columns
+            has_moderation_confidence = "moderation_confidence" in columns
+            has_moderation_categories = "moderation_categories" in columns
+            has_public_requested_at = "public_requested_at" in columns
+            has_public_review_after = "public_review_after" in columns
+            has_public_reviewed_at = "public_reviewed_at" in columns
 
             created_at_select = "created_at" if has_created_at else "NULL AS created_at"
             updated_at_select = "updated_at" if has_updated_at else "NULL AS updated_at"
@@ -592,12 +973,56 @@ class DatabaseManager:
 
             owner_id_select = "owner_id" if has_owner_id else "NULL AS owner_id"
             visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
+            moderation_status_select = (
+                "moderation_status"
+                if has_moderation_status
+                else "'not_requested' AS moderation_status"
+            )
+            moderation_reason_select = (
+                "moderation_reason"
+                if has_moderation_reason
+                else "NULL AS moderation_reason"
+            )
+            moderation_model_select = (
+                "moderation_model"
+                if has_moderation_model
+                else "NULL AS moderation_model"
+            )
+            moderation_confidence_select = (
+                "moderation_confidence"
+                if has_moderation_confidence
+                else "NULL AS moderation_confidence"
+            )
+            moderation_categories_select = (
+                "moderation_categories"
+                if has_moderation_categories
+                else "'[]' AS moderation_categories"
+            )
+            public_requested_at_select = (
+                "public_requested_at"
+                if has_public_requested_at
+                else "NULL AS public_requested_at"
+            )
+            public_review_after_select = (
+                "public_review_after"
+                if has_public_review_after
+                else "NULL AS public_review_after"
+            )
+            public_reviewed_at_select = (
+                "public_reviewed_at"
+                if has_public_reviewed_at
+                else "NULL AS public_reviewed_at"
+            )
 
             cur.execute(f"""
                 SELECT id, theme_desc, theme_desc_better, language,
                        player_defs, item_defs, enemy_defs, celltype_defs,
                        {created_at_select}, {updated_at_select},
-                       {owner_id_select}, {visibility_select}
+                       {owner_id_select}, {visibility_select},
+                       {moderation_status_select}, {moderation_reason_select},
+                       {moderation_model_select}, {moderation_confidence_select},
+                       {moderation_categories_select}, {public_requested_at_select},
+                       {public_review_after_select}, {public_reviewed_at_select}
                 FROM generators
                 WHERE {where_clause}
                 ORDER BY {order_by}
@@ -624,6 +1049,14 @@ class DatabaseManager:
                     "updated_at": row[9],
                     "owner_id": row[10],
                     "visibility": row[11],
+                    "moderation_status": row[12] or "not_requested",
+                    "moderation_reason": row[13],
+                    "moderation_model": row[14],
+                    "moderation_confidence": row[15],
+                    "moderation_categories": self._json_list_value(row[16]),
+                    "public_requested_at": row[17],
+                    "public_review_after": row[18],
+                    "public_reviewed_at": row[19],
                 })
 
             return worlds
