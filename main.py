@@ -234,6 +234,10 @@ WORLD_CREATION_RATE_LIMIT_MESSAGE = "Too many new World creation attempts. Try a
 PUBLIC_REVIEW_QUEUED_MESSAGE = "Public review is queued. The World will remain private or unlisted until approved."
 PUBLIC_REVIEW_ALREADY_PUBLIC_MESSAGE = "World is already public."
 PUBLIC_REVIEW_COMPLETED_MESSAGE = "Public review completed."
+PASSWORD_POLICY_MESSAGE = (
+    "Password must be at least 10 characters, use at least 3 character types "
+    "(lowercase, uppercase, number, symbol), and not include your username."
+)
 AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS = 5
 AUTH_LOGIN_DEFAULT_WINDOW_SECONDS = 60
 AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS = 5
@@ -244,6 +248,30 @@ WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS = 0
 WORLD_PUBLIC_REVIEW_DEFAULT_POLL_SECONDS = 30
 WORLD_PUBLIC_REVIEW_DEFAULT_MAX_PER_POLL = 3
 WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING = 10
+
+
+def password_character_type_count(password: str) -> int:
+    return sum([
+        any(character.islower() for character in password),
+        any(character.isupper() for character in password),
+        any(character.isdigit() for character in password),
+        any(not character.isalnum() for character in password),
+    ])
+
+
+def validate_signup_password(username: str, password: str) -> Optional[str]:
+    if len(password) < 10:
+        return PASSWORD_POLICY_MESSAGE
+    if len(set(password)) < 5:
+        return "Password is too repetitive. Choose a less predictable password."
+    if password_character_type_count(password) < 3:
+        return PASSWORD_POLICY_MESSAGE
+
+    normalized_username = username.strip().lower()
+    if normalized_username and normalized_username in password.lower():
+        return "Password must not include your username."
+
+    return None
 
 
 class AuthRateLimiter:
@@ -1102,14 +1130,18 @@ async def signup(request: SignupRequest, req: Request):
     if rate_limited_response is not None:
         return rate_limited_response
 
-    if not request.username or not request.password:
+    username = request.username.strip()
+    password = request.password
+    if not username or not password:
         return JSONResponse({"error": "Username and password are required"}, status_code=400)
-    if len(request.username) < 3:
+    if len(username) < 3:
         return JSONResponse({"error": "Username must be at least 3 characters"}, status_code=400)
-    if len(request.password) < 6:
-        return JSONResponse({"error": "Password must be at least 6 characters"}, status_code=400)
 
-    user = db.create_user(request.username, request.password)
+    password_error = validate_signup_password(username, password)
+    if password_error:
+        return JSONResponse({"error": password_error}, status_code=400)
+
+    user = db.create_user(username, password)
     if not user:
         return JSONResponse({"error": "Username already exists"}, status_code=409)
 

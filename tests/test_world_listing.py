@@ -14,6 +14,9 @@ from world_moderation import (
     process_due_public_world_reviews,
 )
 
+VALID_TEST_PASSWORD = "Secret123!"
+OTHER_VALID_TEST_PASSWORD = "Better123!"
+
 
 class WorldListingTests(unittest.TestCase):
     def make_db(self, directory):
@@ -591,7 +594,7 @@ class WorldApiTests(unittest.TestCase):
     def test_get_world_returns_private_for_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="Secret Base",
                 theme_desc_better="Hidden Base",
@@ -606,7 +609,7 @@ class WorldApiTests(unittest.TestCase):
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.get(f"/api/worlds/{world_id}")
 
             self.assertEqual(response.status_code, 200)
@@ -681,7 +684,7 @@ class WorldApiTests(unittest.TestCase):
     def test_create_game_session_succeeds_for_private_world_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="Secret Base",
                 theme_desc_better="Hidden Base",
@@ -696,7 +699,7 @@ class WorldApiTests(unittest.TestCase):
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.post("/api/create_game_session", json={
                     "generator_id": world_id,
                     "theme": "fantasy",
@@ -764,7 +767,7 @@ class WorldApiTests(unittest.TestCase):
                     patch.dict(os.environ, {"REQUIRE_LOGIN_TO_CREATE_WORLD": "1"}):
                 main.game_session_manager.sessions.clear()
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "creator", "password": "secret123"})
+                client.post("/api/signup", json={"username": "creator", "password": VALID_TEST_PASSWORD})
                 response = client.post("/api/create_game_session", json={
                     "theme": "Fresh Arena",
                     "language": "en",
@@ -808,8 +811,8 @@ class WorldApiTests(unittest.TestCase):
     def test_my_worlds_requires_login_and_returns_owned_worlds(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            owner = manager.create_user("owner", "secret123")
-            manager.create_user("other", "secret123")
+            owner = manager.create_user("owner", VALID_TEST_PASSWORD)
+            manager.create_user("other", VALID_TEST_PASSWORD)
             owned_private = manager.save_generator(
                 theme_desc="Owned private world",
                 theme_desc_better="Owned Private World",
@@ -847,7 +850,7 @@ class WorldApiTests(unittest.TestCase):
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
                 anonymous = client.get("/api/my/worlds")
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.get("/api/my/worlds")
 
             self.assertEqual(anonymous.status_code, 401)
@@ -861,7 +864,7 @@ class WorldApiTests(unittest.TestCase):
     def test_my_stats_requires_login_and_counts_owned_worlds(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            owner = manager.create_user("owner", "secret123")
+            owner = manager.create_user("owner", VALID_TEST_PASSWORD)
             manager.save_generator(
                 theme_desc="Owned private world",
                 theme_desc_better="Owned Private World",
@@ -910,7 +913,7 @@ class WorldApiTests(unittest.TestCase):
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
                 anonymous = client.get("/api/my/stats")
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.get("/api/my/stats")
 
         self.assertEqual(anonymous.status_code, 401)
@@ -928,7 +931,7 @@ class WorldApiTests(unittest.TestCase):
     def test_websocket_creation_succeeds_for_private_world_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="Secret Base",
                 theme_desc_better="Hidden Base",
@@ -962,7 +965,7 @@ class WorldApiTests(unittest.TestCase):
                     patch("main.Game.create", side_effect=fake_create):
                 main.game_session_manager.sessions.clear()
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.post("/api/create_game_session", json={
                     "generator_id": world_id,
                     "language": "en",
@@ -1019,7 +1022,7 @@ class WorldApiTests(unittest.TestCase):
                     patch.dict(os.environ, {"DEFAULT_NEW_WORLD_VISIBILITY": "private"}):
                 main.game_session_manager.sessions.clear()
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "owner", "password": "secret123"})
+                client.post("/api/signup", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.post("/api/create_game_session", json={
                     "theme": "Clockwork meadow",
                     "language": "en",
@@ -1069,7 +1072,7 @@ class AuthTests(unittest.TestCase):
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                response = client.post("/api/signup", json={"username": "alice", "password": "secret123"})
+                response = client.post("/api/signup", json={"username": "alice", "password": VALID_TEST_PASSWORD})
 
             self.assertEqual(response.status_code, 200)
             data = response.json()
@@ -1081,29 +1084,41 @@ class AuthTests(unittest.TestCase):
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "bob", "password": "secret123"})
-                response = client.post("/api/signup", json={"username": "bob", "password": "otherpass"})
+                client.post("/api/signup", json={"username": "bob", "password": VALID_TEST_PASSWORD})
+                response = client.post("/api/signup", json={"username": "bob", "password": OTHER_VALID_TEST_PASSWORD})
 
             self.assertEqual(response.status_code, 409)
 
-    def test_signup_rejects_short_username_or_password(self):
+    def test_signup_rejects_short_username_or_weak_password(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                r1 = client.post("/api/signup", json={"username": "ab", "password": "secret123"})
+                r1 = client.post("/api/signup", json={"username": "ab", "password": VALID_TEST_PASSWORD})
                 r2 = client.post("/api/signup", json={"username": "alice", "password": "short"})
+                r3 = client.post("/api/signup", json={"username": "alice", "password": "alexandria"})
+                r4 = client.post("/api/signup", json={"username": "alice", "password": "Aaaaaaaa1!"})
+                r5 = client.post("/api/signup", json={"username": "alice", "password": "AliceSafe123!"})
 
             self.assertEqual(r1.status_code, 400)
             self.assertEqual(r2.status_code, 400)
+            self.assertEqual(r3.status_code, 400)
+            self.assertEqual(r3.json()["error"], main.PASSWORD_POLICY_MESSAGE)
+            self.assertEqual(r4.status_code, 400)
+            self.assertEqual(
+                r4.json()["error"],
+                "Password is too repetitive. Choose a less predictable password."
+            )
+            self.assertEqual(r5.status_code, 400)
+            self.assertEqual(r5.json()["error"], "Password must not include your username.")
 
     def test_login_stores_session_and_me_returns_user(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "carol", "password": "mypass123"})
-                login = client.post("/api/login", json={"username": "carol", "password": "mypass123"})
+                client.post("/api/signup", json={"username": "carol", "password": VALID_TEST_PASSWORD})
+                login = client.post("/api/login", json={"username": "carol", "password": VALID_TEST_PASSWORD})
                 self.assertEqual(login.status_code, 200)
                 self.assertNotIn("id", login.json())
 
@@ -1117,7 +1132,7 @@ class AuthTests(unittest.TestCase):
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "dave", "password": "rightpass"})
+                client.post("/api/signup", json={"username": "dave", "password": VALID_TEST_PASSWORD})
                 response = client.post("/api/login", json={"username": "dave", "password": "wrongpass"})
 
             self.assertEqual(response.status_code, 401)
@@ -1129,10 +1144,10 @@ class AuthTests(unittest.TestCase):
             with patch.object(main, 'db', manager), \
                     patch.object(main, 'auth_rate_limiter', rate_limiter):
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "frank", "password": "rightpass"})
+                client.post("/api/signup", json={"username": "frank", "password": VALID_TEST_PASSWORD})
                 first = client.post("/api/login", json={"username": "frank", "password": "wrongpass"})
                 second = client.post("/api/login", json={"username": "frank", "password": "wrongpass"})
-                limited = client.post("/api/login", json={"username": "frank", "password": "rightpass"})
+                limited = client.post("/api/login", json={"username": "frank", "password": VALID_TEST_PASSWORD})
 
             self.assertEqual(first.status_code, 401)
             self.assertEqual(second.status_code, 401)
@@ -1145,9 +1160,9 @@ class AuthTests(unittest.TestCase):
             with patch.object(main, 'db', manager), \
                     patch.object(main, 'signup_rate_limiter', rate_limiter):
                 client = TestClient(main.app)
-                first = client.post("/api/signup", json={"username": "alpha", "password": "secret123"})
-                second = client.post("/api/signup", json={"username": "bravo", "password": "secret123"})
-                limited = client.post("/api/signup", json={"username": "charlie", "password": "secret123"})
+                first = client.post("/api/signup", json={"username": "alpha", "password": VALID_TEST_PASSWORD})
+                second = client.post("/api/signup", json={"username": "bravo", "password": VALID_TEST_PASSWORD})
+                limited = client.post("/api/signup", json={"username": "charlie", "password": VALID_TEST_PASSWORD})
 
             self.assertEqual(first.status_code, 200)
             self.assertEqual(second.status_code, 200)
@@ -1209,7 +1224,7 @@ class AuthTests(unittest.TestCase):
             manager = self.make_db(tmpdir)
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/signup", json={"username": "eve", "password": "secret123"})
+                client.post("/api/signup", json={"username": "eve", "password": VALID_TEST_PASSWORD})
                 client.post("/api/logout")
                 me = client.get("/api/me")
 
@@ -1241,7 +1256,7 @@ class VisibilityControlTests(unittest.TestCase):
     def test_owner_can_change_visibility_to_unlisted(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             owner_id = user["id"]
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
@@ -1257,7 +1272,7 @@ class VisibilityControlTests(unittest.TestCase):
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "unlisted"})
 
             self.assertEqual(response.status_code, 200)
@@ -1282,7 +1297,7 @@ class VisibilityControlTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             owner_id = user["id"]
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
@@ -1302,7 +1317,7 @@ class VisibilityControlTests(unittest.TestCase):
                 "WORLD_PUBLIC_REVIEW_DELAY_SECONDS": "0",
             }), patch("main.process_public_world_review", side_effect=approve_public_review) as review_mock:
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
 
             self.assertEqual(response.status_code, 200)
@@ -1319,7 +1334,7 @@ class VisibilityControlTests(unittest.TestCase):
     def test_owner_public_visibility_queues_review_when_queue_is_overwhelmed(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             owner_id = user["id"]
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
@@ -1340,7 +1355,7 @@ class VisibilityControlTests(unittest.TestCase):
                 "WORLD_PUBLIC_REVIEW_MODEL_NAME": "review-model",
             }), patch("main.process_public_world_review", new_callable=AsyncMock) as review_mock:
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
 
             self.assertEqual(response.status_code, 202)
@@ -1369,7 +1384,7 @@ class VisibilityControlTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
                 theme_desc_better="Hidden Garden\nA quiet place",
@@ -1417,7 +1432,7 @@ class VisibilityControlTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
                 theme_desc_better="Hidden Garden\nA quiet place",
@@ -1471,7 +1486,7 @@ class VisibilityControlTests(unittest.TestCase):
     def test_non_owner_cannot_change_visibility(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            owner = manager.create_user("owner", "secret123")
+            owner = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
                 theme_desc_better="Hidden Garden",
@@ -1483,11 +1498,11 @@ class VisibilityControlTests(unittest.TestCase):
                 owner_id=owner["id"],
                 visibility="private"
             )
-            manager.create_user("other", "secret123")
+            manager.create_user("other", VALID_TEST_PASSWORD)
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "other", "password": "secret123"})
+                client.post("/api/login", json={"username": "other", "password": VALID_TEST_PASSWORD})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "public"})
 
             self.assertEqual(response.status_code, 403)
@@ -1495,7 +1510,7 @@ class VisibilityControlTests(unittest.TestCase):
     def test_invalid_visibility_rejected(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            user = manager.create_user("owner", "secret123")
+            user = manager.create_user("owner", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="A hidden garden",
                 theme_desc_better="Hidden Garden",
@@ -1510,7 +1525,7 @@ class VisibilityControlTests(unittest.TestCase):
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.patch(f"/api/worlds/{world_id}/visibility", json={"visibility": "super-secret"})
 
             self.assertEqual(response.status_code, 400)
@@ -1518,11 +1533,11 @@ class VisibilityControlTests(unittest.TestCase):
     def test_missing_world_returns_404(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
-            manager.create_user("owner", "secret123")
+            manager.create_user("owner", VALID_TEST_PASSWORD)
 
             with patch.object(main, 'db', manager):
                 client = TestClient(main.app)
-                client.post("/api/login", json={"username": "owner", "password": "secret123"})
+                client.post("/api/login", json={"username": "owner", "password": VALID_TEST_PASSWORD})
                 response = client.patch("/api/worlds/nonexistent/visibility", json={"visibility": "public"})
 
             self.assertEqual(response.status_code, 404)
