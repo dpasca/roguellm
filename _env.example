@@ -24,6 +24,11 @@ AUTH_SIGNUP_WINDOW_SECONDS=3600
 WORLD_CREATION_MAX_ATTEMPTS=10
 WORLD_CREATION_WINDOW_SECONDS=3600
 
+# Admin Area
+# Comma-separated registered usernames allowed to access /admin.
+# Leave empty to disable the admin area.
+ADMIN_USERNAMES=
+
 # World Publishing
 # Newly generated Worlds are private by default. Public publishing is a queued
 # LLM review flow; direct public visibility should not be enabled in production.

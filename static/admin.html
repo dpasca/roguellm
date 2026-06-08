@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Admin - RogueLLM</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body class="admin-page">
+    <main class="admin-shell">
+        <header class="admin-header">
+            <div>
+                <p class="admin-kicker">RogueLLM</p>
+                <h1>Admin</h1>
+            </div>
+            <div class="admin-session">
+                <span id="admin-user" class="admin-user">-</span>
+                <a class="admin-home-link" href="/" title="Home">
+                    <i class="fas fa-home" aria-hidden="true"></i>
+                    <span>Home</span>
+                </a>
+            </div>
+        </header>
+
+        <section class="admin-summary" aria-label="Admin summary">
+            <div class="admin-stat">
+                <strong id="stat-users">0</strong>
+                <span>Users</span>
+            </div>
+            <div class="admin-stat">
+                <strong id="stat-worlds">0</strong>
+                <span>Worlds</span>
+            </div>
+            <div class="admin-stat">
+                <strong id="stat-reset">0</strong>
+                <span>Reset mode</span>
+            </div>
+        </section>
+
+        <section class="admin-panel" aria-label="Registered users">
+            <div class="admin-panel-heading">
+                <h2>Registered Users</h2>
+                <button id="refresh-users" class="admin-icon-btn" type="button" title="Refresh">
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+
+            <div id="admin-message" class="admin-message" role="status" hidden></div>
+
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Username</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Worlds</th>
+                            <th scope="col">Visibility</th>
+                            <th scope="col">Password</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr>
+                            <td colspan="6" class="admin-empty">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

@@ -266,9 +266,13 @@ class DatabaseManager:
                     id TEXT PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
+                    password_reset_required INTEGER NOT NULL DEFAULT 0,
+                    password_reset_marked_at TIMESTAMP NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            self._ensure_column(conn, "users", "password_reset_required", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(conn, "users", "password_reset_marked_at", "TIMESTAMP NULL")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS world_moderation_reviews (
                     id TEXT PRIMARY KEY,
@@ -1113,6 +1117,103 @@ class DatabaseManager:
 
         return self._execute_with_retry(_stats, owner_id)
 
+    def list_users_with_world_counts(self, limit: int = 100) -> List[Dict]:
+        """Return registered users with admin-safe world count metadata."""
+        limit = max(1, min(limit, 500))
+
+        def _list(conn, limit):
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(users)")
+            user_columns = {row[1] for row in cur.fetchall()}
+            reset_required_select = (
+                "COALESCE(u.password_reset_required, 0)"
+                if "password_reset_required" in user_columns
+                else "0"
+            )
+            reset_marked_at_select = (
+                "u.password_reset_marked_at"
+                if "password_reset_marked_at" in user_columns
+                else "NULL"
+            )
+            created_at_select = "u.created_at" if "created_at" in user_columns else "NULL"
+
+            cur.execute("PRAGMA table_info(generators)")
+            generator_columns = {row[1] for row in cur.fetchall()}
+            has_owner_id = "owner_id" in generator_columns
+
+            if not has_owner_id:
+                cur.execute(f"""
+                    SELECT u.id, u.username, {created_at_select},
+                           {reset_required_select}, {reset_marked_at_select}
+                    FROM users u
+                    ORDER BY LOWER(u.username) ASC
+                    LIMIT ?
+                """, (limit,))
+                return [
+                    {
+                        "id": row[0],
+                        "username": row[1],
+                        "created_at": row[2],
+                        "password_reset_required": bool(row[3]),
+                        "password_reset_marked_at": row[4],
+                        "stats": {
+                            "total_worlds": 0,
+                            "private_worlds": 0,
+                            "unlisted_worlds": 0,
+                            "public_worlds": 0,
+                        },
+                    }
+                    for row in cur.fetchall()
+                ]
+
+            visibility_expr = (
+                "COALESCE(g.visibility, 'unlisted')"
+                if "visibility" in generator_columns
+                else "'unlisted'"
+            )
+            cur.execute(f"""
+                SELECT u.id, u.username, {created_at_select},
+                       {reset_required_select}, {reset_marked_at_select},
+                       COUNT(g.id) AS total_worlds,
+                       SUM(CASE
+                           WHEN g.id IS NOT NULL AND {visibility_expr} = 'private' THEN 1
+                           ELSE 0
+                       END) AS private_worlds,
+                       SUM(CASE
+                           WHEN g.id IS NOT NULL AND {visibility_expr} = 'unlisted' THEN 1
+                           ELSE 0
+                       END) AS unlisted_worlds,
+                       SUM(CASE
+                           WHEN g.id IS NOT NULL AND {visibility_expr} = 'public' THEN 1
+                           ELSE 0
+                       END) AS public_worlds
+                FROM users u
+                LEFT JOIN generators g ON g.owner_id = u.id
+                GROUP BY u.id, u.username, {created_at_select},
+                         {reset_required_select}, {reset_marked_at_select}
+                ORDER BY LOWER(u.username) ASC
+                LIMIT ?
+            """, (limit,))
+
+            return [
+                {
+                    "id": row[0],
+                    "username": row[1],
+                    "created_at": row[2],
+                    "password_reset_required": bool(row[3]),
+                    "password_reset_marked_at": row[4],
+                    "stats": {
+                        "total_worlds": int(row[5] or 0),
+                        "private_worlds": int(row[6] or 0),
+                        "unlisted_worlds": int(row[7] or 0),
+                        "public_worlds": int(row[8] or 0),
+                    },
+                }
+                for row in cur.fetchall()
+            ]
+
+        return self._execute_with_retry(_list, limit)
+
     def _json_list_size(self, raw_value: str) -> int:
         try:
             value = json.loads(raw_value or "[]")
@@ -1163,24 +1264,62 @@ class DatabaseManager:
     def get_user_by_username(self, username: str) -> Optional[Dict]:
         def _get(conn):
             cur = conn.cursor()
-            cur.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,))
+            cur.execute("""
+                SELECT id, username, password_hash,
+                       COALESCE(password_reset_required, 0), password_reset_marked_at
+                FROM users
+                WHERE username = ?
+            """, (username,))
             row = cur.fetchone()
             if row is None:
                 return None
-            return {"id": row[0], "username": row[1], "password_hash": row[2]}
+            return {
+                "id": row[0],
+                "username": row[1],
+                "password_hash": row[2],
+                "password_reset_required": bool(row[3]),
+                "password_reset_marked_at": row[4],
+            }
 
         return self._execute_with_retry(_get)
 
     def get_user_by_id(self, user_id: str) -> Optional[Dict]:
         def _get(conn):
             cur = conn.cursor()
-            cur.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+            cur.execute("""
+                SELECT id, username, COALESCE(password_reset_required, 0), password_reset_marked_at
+                FROM users
+                WHERE id = ?
+            """, (user_id,))
             row = cur.fetchone()
             if row is None:
                 return None
-            return {"id": row[0], "username": row[1]}
+            return {
+                "id": row[0],
+                "username": row[1],
+                "password_reset_required": bool(row[2]),
+                "password_reset_marked_at": row[3],
+            }
 
         return self._execute_with_retry(_get)
+
+    def set_user_password_reset_required(self, user_id: str, required: bool) -> bool:
+        def _set(conn, user_id, required):
+            reset_required = 1 if required else 0
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE users
+                SET password_reset_required = ?,
+                    password_reset_marked_at = CASE
+                        WHEN ? = 1 THEN CURRENT_TIMESTAMP
+                        ELSE NULL
+                    END
+                WHERE id = ?
+            """, (reset_required, reset_required, user_id))
+            conn.commit()
+            return cur.rowcount > 0
+
+        return self._execute_with_retry(_set, user_id, required)
 
 # Create a global instance with configurable upload frequency
 # Can be overridden by setting UPLOAD_FREQUENCY_MINUTES environment variable

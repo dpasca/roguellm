@@ -126,6 +126,9 @@ class GameCreationRequest(BaseModel):
     generator_id: Optional[str] = None
     debug_seed: Optional[int] = None
 
+class AdminPasswordResetRequest(BaseModel):
+    password_reset_required: bool
+
 def is_local_dev_request(request: Request) -> bool:
     client_host = request.client.host if request.client else ""
     return client_host in {"127.0.0.1", "::1", "localhost"}
@@ -148,6 +151,47 @@ def get_request_user_id(request: Request) -> Optional[str]:
 
 def serialize_user(user: Dict) -> Dict:
     return {"username": user["username"]}
+
+
+def get_admin_usernames() -> set:
+    admin_usernames = set()
+    for raw_value in (
+            os.getenv("ADMIN_USERNAMES", ""),
+            os.getenv("ADMIN_USERNAME", ""),
+    ):
+        for username in raw_value.split(","):
+            normalized_username = username.strip().lower()
+            if normalized_username:
+                admin_usernames.add(normalized_username)
+
+    return admin_usernames
+
+
+def get_request_user(request: Request) -> Optional[Dict]:
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return None
+
+    return db.get_user_by_id(user_id)
+
+
+def is_admin_user(user: Optional[Dict]) -> bool:
+    if not user:
+        return False
+
+    admin_usernames = get_admin_usernames()
+    if not admin_usernames:
+        return False
+
+    return user["username"].strip().lower() in admin_usernames
+
+
+def require_admin_user(request: Request) -> Dict:
+    user = get_request_user(request)
+    if not is_admin_user(user):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    return user
 
 
 def can_manage_world(world: Dict, requester_user_id: Optional[str]) -> bool:
@@ -709,6 +753,22 @@ async def get_database_health():
         "latency_ms": round((time.perf_counter() - started_at) * 1000, 3),
     })
 
+@app.get("/admin")
+async def read_admin(request: Request):
+    require_admin_user(request)
+
+    try:
+        async with aiofiles.open("static/admin.html", "r", encoding="utf-8") as f:
+            html_content = await f.read()
+
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        logging.exception("Admin page template is missing")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception:
+        logging.exception("Error reading admin page")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 # Landing page
 @app.get("/")
 async def read_landing(request: Request):
@@ -971,6 +1031,50 @@ async def get_my_stats(request: Request):
         return JSONResponse({
             "error": "Failed to load user stats"
         }, status_code=500)
+
+@app.get("/api/admin/users")
+async def get_admin_users(request: Request, limit: int = 100):
+    """List registered users and lightweight ownership stats for admins."""
+    admin_user = require_admin_user(request)
+
+    try:
+        return JSONResponse({
+            "admin": serialize_user(admin_user),
+            "users": db.list_users_with_world_counts(limit),
+        })
+    except Exception:
+        logging.exception("Error listing admin users")
+        return JSONResponse({
+            "error": "Failed to load users"
+        }, status_code=500)
+
+@app.patch("/api/admin/users/{user_id}/password-reset")
+async def set_admin_user_password_reset(
+        request: AdminPasswordResetRequest,
+        req: Request,
+        user_id: str,
+):
+    """Mark or clear a user's password-reset-required flag."""
+    require_admin_user(req)
+
+    try:
+        updated = db.set_user_password_reset_required(
+            user_id,
+            request.password_reset_required,
+        )
+    except Exception:
+        logging.exception("Error updating admin password-reset flag")
+        return JSONResponse({
+            "error": "Failed to update user"
+        }, status_code=500)
+
+    if not updated:
+        return JSONResponse({"error": "User not found"}, status_code=404)
+
+    return JSONResponse({
+        "id": user_id,
+        "password_reset_required": request.password_reset_required,
+    })
 
 @app.get("/api/worlds/{world_id}")
 async def get_world(request: Request, world_id: str):

@@ -1240,6 +1240,182 @@ class AuthTests(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
 
 
+class AdminTests(unittest.TestCase):
+    def setUp(self):
+        main.auth_rate_limiter.failures.clear()
+        main.signup_rate_limiter.failures.clear()
+        main.world_creation_rate_limiter.failures.clear()
+
+    def make_db(self, directory):
+        with patch.dict(os.environ, {
+            "DO_STORAGE_SERVER": "",
+            "DO_SPACES_ACCESS_KEY": "",
+            "DO_SPACES_SECRET_KEY": "",
+            "DO_STORAGE_CONTAINER": "",
+        }):
+            manager = DatabaseManager()
+        manager.db_path = os.path.join(directory, "test_admin.db")
+        manager.init_db()
+        return manager
+
+    def test_admin_area_is_ignored_without_admin_access(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            manager.create_user("admin", VALID_TEST_PASSWORD)
+            manager.create_user("player", VALID_TEST_PASSWORD)
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "ADMIN_USERNAMES": "",
+                "ADMIN_USERNAME": "",
+            }):
+                client = TestClient(main.app)
+                client.post("/api/login", json={
+                    "username": "admin",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                disabled_page = client.get("/admin")
+                disabled_api = client.get("/api/admin/users")
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "ADMIN_USERNAMES": "admin",
+                "ADMIN_USERNAME": "",
+            }):
+                client = TestClient(main.app)
+                anonymous_page = client.get("/admin")
+                client.post("/api/login", json={
+                    "username": "player",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                non_admin_page = client.get("/admin")
+                non_admin_api = client.get("/api/admin/users")
+
+        self.assertEqual(disabled_page.status_code, 404)
+        self.assertEqual(disabled_api.status_code, 404)
+        self.assertEqual(anonymous_page.status_code, 404)
+        self.assertEqual(non_admin_page.status_code, 404)
+        self.assertEqual(non_admin_api.status_code, 404)
+
+    def test_admin_can_list_registered_users_with_world_counts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            manager.create_user("admin", VALID_TEST_PASSWORD)
+            alice = manager.create_user("alice", VALID_TEST_PASSWORD)
+            bob = manager.create_user("bob", VALID_TEST_PASSWORD)
+            manager.set_user_password_reset_required(bob["id"], True)
+            manager.save_generator(
+                theme_desc="Alice private",
+                theme_desc_better="Alice Private",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=alice["id"],
+                visibility="private",
+            )
+            manager.save_generator(
+                theme_desc="Alice public",
+                theme_desc_better="Alice Public",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=alice["id"],
+                visibility="public",
+            )
+            manager.save_generator(
+                theme_desc="Bob unlisted",
+                theme_desc_better="Bob Unlisted",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=bob["id"],
+                visibility="unlisted",
+            )
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "ADMIN_USERNAMES": "admin",
+                "ADMIN_USERNAME": "",
+            }):
+                client = TestClient(main.app)
+                client.post("/api/login", json={
+                    "username": "admin",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                page = client.get("/admin")
+                response = client.get("/api/admin/users")
+
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("/static/js/admin.js", page.text)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("password_hash", response.text)
+        data = response.json()
+        self.assertEqual(data["admin"]["username"], "admin")
+        users = {user["username"]: user for user in data["users"]}
+        self.assertEqual(users["admin"]["stats"]["total_worlds"], 0)
+        self.assertEqual(users["alice"]["stats"], {
+            "total_worlds": 2,
+            "private_worlds": 1,
+            "unlisted_worlds": 0,
+            "public_worlds": 1,
+        })
+        self.assertEqual(users["bob"]["stats"], {
+            "total_worlds": 1,
+            "private_worlds": 0,
+            "unlisted_worlds": 1,
+            "public_worlds": 0,
+        })
+        self.assertTrue(users["bob"]["password_reset_required"])
+        self.assertIsNotNone(users["bob"]["password_reset_marked_at"])
+
+    def test_admin_can_toggle_password_reset_required(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            manager.create_user("admin", VALID_TEST_PASSWORD)
+            target = manager.create_user("target", VALID_TEST_PASSWORD)
+
+            with patch.object(main, 'db', manager), patch.dict(os.environ, {
+                "ADMIN_USERNAMES": "admin",
+                "ADMIN_USERNAME": "",
+            }):
+                client = TestClient(main.app)
+                client.post("/api/login", json={
+                    "username": "admin",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                set_response = client.patch(
+                    f"/api/admin/users/{target['id']}/password-reset",
+                    json={"password_reset_required": True},
+                )
+                after_set = client.get("/api/admin/users")
+                clear_response = client.patch(
+                    f"/api/admin/users/{target['id']}/password-reset",
+                    json={"password_reset_required": False},
+                )
+                after_clear = client.get("/api/admin/users")
+
+        self.assertEqual(set_response.status_code, 200)
+        self.assertTrue(set_response.json()["password_reset_required"])
+        users_after_set = {
+            user["username"]: user
+            for user in after_set.json()["users"]
+        }
+        self.assertTrue(users_after_set["target"]["password_reset_required"])
+        self.assertIsNotNone(users_after_set["target"]["password_reset_marked_at"])
+
+        self.assertEqual(clear_response.status_code, 200)
+        self.assertFalse(clear_response.json()["password_reset_required"])
+        users_after_clear = {
+            user["username"]: user
+            for user in after_clear.json()["users"]
+        }
+        self.assertFalse(users_after_clear["target"]["password_reset_required"])
+        self.assertIsNone(users_after_clear["target"]["password_reset_marked_at"])
+
+
 class VisibilityControlTests(unittest.TestCase):
     def make_db(self, directory):
         with patch.dict(os.environ, {

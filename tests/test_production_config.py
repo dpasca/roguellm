@@ -50,6 +50,20 @@ class ProductionConfigTests(unittest.TestCase):
         self.assertEqual(main.WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS, 0)
         self.assertEqual(main.WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING, 10)
 
+    def test_admin_usernames_default_to_disabled(self):
+        with patch.dict(os.environ, {
+            "ADMIN_USERNAMES": "",
+            "ADMIN_USERNAME": "",
+        }):
+            self.assertEqual(main.get_admin_usernames(), set())
+
+    def test_admin_usernames_accept_comma_list(self):
+        with patch.dict(os.environ, {
+            "ADMIN_USERNAMES": "davide, Admin",
+            "ADMIN_USERNAME": "",
+        }):
+            self.assertEqual(main.get_admin_usernames(), {"davide", "admin"})
+
     def test_default_new_world_visibility_is_private(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(main.get_default_new_world_visibility(), "private")
