@@ -85,6 +85,9 @@ const app = Vue.createApp({
             });
             return Array.from(worldsById.values());
         },
+        hasCurrentWorldOptions() {
+            return this.worlds.length > 0;
+        },
         availableWorldTabs() {
             const tabs = [];
             if (this.currentUser) {
@@ -555,6 +558,10 @@ const app = Vue.createApp({
                 this.worldTab = 'public';
             }
             this.selectFirstWorldForTab();
+
+            if (!this.hasCurrentWorldOptions) {
+                this.selectedTheme = 'custom';
+            }
         },
         async loadCurrentUser() {
             try {
