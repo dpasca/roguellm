@@ -1,8 +1,12 @@
 import json
 import string
 import unittest
+from pathlib import Path
 
 from game_messages import SUPPORTED_LOCALES, TRANSLATIONS_DIR, msg
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_gameplay_log(locale):
@@ -20,6 +24,36 @@ def placeholders(template):
 
 
 class GameplayLogLocalizationTests(unittest.TestCase):
+    def test_supported_locales_match_translation_files(self):
+        locale_files = {
+            path.stem
+            for path in TRANSLATIONS_DIR.glob("*.json")
+        }
+
+        self.assertEqual(locale_files, set(SUPPORTED_LOCALES))
+
+    def test_update_script_uses_backend_supported_locales(self):
+        script = (REPO_ROOT / "tools" / "run_update_locales.sh").read_text(encoding="utf-8")
+
+        self.assertIn("from game_messages import SUPPORTED_LOCALES", script)
+        self.assertIn('if locale != "en"', script)
+
+    def test_game_i18n_keeps_chinese_locale_order_stable(self):
+        game_js = (REPO_ROOT / "static" / "js" / "createApp.js").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "const [enResponse, itResponse, jaResponse, esResponse, zhHansResponse, zhHantResponse]",
+            game_js,
+        )
+        self.assertLess(
+            game_js.index("fetch('/static/translations/zh-Hans.json')"),
+            game_js.index("fetch('/static/translations/zh-Hant.json')"),
+        )
+        self.assertLess(
+            game_js.index("zhHansResponse.json()"),
+            game_js.index("zhHantResponse.json()"),
+        )
+
     def test_supported_locale_files_have_complete_gameplay_log_keys(self):
         english_log = load_gameplay_log("en")
         self.assertTrue(english_log)

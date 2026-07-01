@@ -776,7 +776,7 @@ const i18n = VueI18n.createI18n({
 async function loadTranslations() {
     try {
         // First load all translations
-        const [enResponse, itResponse, jaResponse, esResponse, zhHantResponse, zhHansResponse] = await Promise.all([
+        const [enResponse, itResponse, jaResponse, esResponse, zhHansResponse, zhHantResponse] = await Promise.all([
             fetch('/static/translations/en.json'),
             fetch('/static/translations/it.json'),
             fetch('/static/translations/ja.json'),

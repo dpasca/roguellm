@@ -22,7 +22,14 @@ pip install --upgrade pip
 pip install -r "$REPO_ROOT/requirements.txt"
 
 # Run the Python script with the correct paths
-python "$SCRIPT_DIR/update_locales.py" "$REPO_ROOT/static/translations" "it,ja,es,zh-Hans,zh-Hant"
+TARGET_LANGS="$(PYTHONPATH="$REPO_ROOT" python - <<'PY'
+from game_messages import SUPPORTED_LOCALES
+
+print(",".join(locale for locale in SUPPORTED_LOCALES if locale != "en"))
+PY
+)"
+
+python "$SCRIPT_DIR/update_locales.py" "$REPO_ROOT/static/translations" "$TARGET_LANGS"
 
 # Deactivate virtual environment
 deactivate
