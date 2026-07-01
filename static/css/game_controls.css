@@ -24,6 +24,43 @@
     color: rgba(255, 255, 255, 0.9);
 }
 
+.control-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    z-index: 2;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.6);
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    background: #8395a7;
+    color: #111;
+}
+
+.control-badge.reward {
+    background: #4cd137;
+}
+
+.control-badge.danger {
+    background: #ffd93d;
+}
+
+.control-badge.deadly {
+    background: #ff6b6b;
+    color: #fff;
+}
+
+.control-badge.quiet {
+    background: #a4b0be;
+}
+
 /* Custom triangle arrows */
 .controls button::after {
     content: '';
@@ -80,7 +117,7 @@
         width: 35px;
         height: 35px;
     }
-    
+
     .controls button::after {
         transform: scale(0.9);
     }

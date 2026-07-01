@@ -5,7 +5,7 @@ import os
 import logging
 import asyncio
 import aiofiles
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
@@ -14,6 +14,7 @@ from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from entity_placement_manager import EntityPlacementManager
 from privacy_logging import describe_collection, describe_text
+from game_messages import msg as localized_msg
 
 logger = logging.getLogger()
 
@@ -58,6 +59,7 @@ class GameStateManager:
         self.entity_manager = EntityPlacementManager(self.random, self.definitions, self.gen_ai)
 
         self.generator_id = generator_id
+        self.loaded_from_generator = False
         self.theme_desc = theme_desc
         self.theme_desc_better = None
         self.do_web_search = do_web_search
@@ -181,10 +183,14 @@ class GameStateManager:
         self.theme_desc_better = active_data['theme_desc_better']
         self.language = language
         self.generator_id = generator_id
+        self.loaded_from_generator = True
 
     def get_game_title(self):
         """Get the game title from the AI generator."""
         return self.gen_ai.game_title
+
+    def msg(self, key: str, **params) -> str:
+        return localized_msg(getattr(self, "language", "en"), key, **params)
 
     async def make_defs_from_json(self, filename: str, transform_fn=None):
         """Load and transform JSON definitions from file."""
@@ -254,6 +260,228 @@ class GameStateManager:
             self.state.map_width,
             self.state.map_height
         )
+
+    async def initialize_tile_info(self):
+        """Prebuild fast tile summaries so movement never waits on narration."""
+        generated_tiles = []
+        generator = getattr(self.gen_ai, "gen_tile_quick_info", None)
+
+        if callable(generator) and not getattr(self, "loaded_from_generator", False):
+            try:
+                generated_tiles = await generator(
+                    self.state.cell_types,
+                    self.entity_placements,
+                    getattr(self.definitions, "enemy_defs", []),
+                    getattr(self.definitions, "item_defs", []),
+                    self.state.map_width,
+                    self.state.map_height
+                )
+            except Exception as e:
+                logger.error(f"Failed to generate tile quick info: {str(e)}")
+
+        self.state.tile_info = self._normalize_tile_info(generated_tiles)
+
+    def _normalize_tile_info(self, generated_tiles: List[dict]) -> List[List[Dict[str, Any]]]:
+        generated_by_pos = {}
+        for tile in generated_tiles or []:
+            if not isinstance(tile, dict):
+                continue
+            x = tile.get("x")
+            y = tile.get("y")
+            if isinstance(x, int) and isinstance(y, int):
+                generated_by_pos[(x, y)] = tile
+
+        return [
+            [
+                self._compose_tile_info(x, y, generated_by_pos.get((x, y), {}))
+                for x in range(self.state.map_width)
+            ]
+            for y in range(self.state.map_height)
+        ]
+
+    def _compose_tile_info(self, x: int, y: int, generated: Dict[str, Any]) -> Dict[str, Any]:
+        cell = self.state.cell_types[y][x]
+        placement = self._placement_at(x, y)
+        label = self._clean_generated_text(generated.get("label"), self._cell_name(cell))
+        quick_desc = self._clean_generated_text(generated.get("quick_desc"), "")
+        inspect_desc = self._clean_generated_text(generated.get("inspect_desc"), "")
+
+        info = {
+            "x": x,
+            "y": y,
+            "label": label,
+            "quick_desc": quick_desc or self._fallback_quick_desc(cell, placement),
+            "inspect_desc": inspect_desc or self._fallback_inspect_desc(cell, placement),
+            "terrain_name": self._cell_name(cell),
+            "terrain_icon": self._cell_icon(cell),
+            "danger_level": "safe",
+            "hint": self.msg("tile.clear"),
+            "entity_type": "",
+            "entity_name": "",
+            "entity_icon": "",
+            "entity_status": "",
+            "tags": [],
+        }
+
+        if not placement:
+            return info
+
+        entity_id = placement.get("entity_id")
+        if placement.get("type") == "enemy":
+            enemy_def = self._enemy_def(entity_id)
+            entity_name = enemy_def.get("name", entity_id or "Enemy")
+            info.update({
+                "danger_level": self._danger_level_for_enemy(enemy_def),
+                "hint": self.msg("tile.hostile", entity=entity_name),
+                "entity_type": "enemy",
+                "entity_name": entity_name,
+                "entity_icon": enemy_def.get("font_awesome_icon", ""),
+                "entity_status": "active",
+                "tags": ["enemy"],
+            })
+        elif placement.get("type") == "item":
+            item_def = self._item_def(entity_id)
+            entity_name = item_def.get("name", entity_id or "Item")
+            info.update({
+                "danger_level": "reward",
+                "hint": self.msg("tile.reward", entity=entity_name),
+                "entity_type": "item",
+                "entity_name": entity_name,
+                "entity_icon": fa_runtime.get_valid_icon(
+                    item_def.get("font_awesome_icon", "fa-solid fa-box"),
+                    "item"
+                ) or "fa-solid fa-box",
+                "entity_status": "available",
+                "tags": ["item"],
+            })
+
+        return info
+
+    def _clean_generated_text(self, value: Any, fallback: str) -> str:
+        if not isinstance(value, str):
+            return fallback
+        cleaned = " ".join(value.split()).strip()
+        return cleaned or fallback
+
+    def _cell_name(self, cell: Any) -> str:
+        if isinstance(cell, dict):
+            return cell.get("name", "Unknown")
+        if isinstance(cell, str):
+            return cell
+        return "Unknown"
+
+    def _cell_description(self, cell: Any) -> str:
+        if isinstance(cell, dict):
+            return cell.get("description") or self._cell_name(cell)
+        return self._cell_name(cell)
+
+    def _cell_icon(self, cell: Any) -> str:
+        if isinstance(cell, dict):
+            return cell.get("font_awesome_icon", "")
+        return ""
+
+    def _fallback_quick_desc(self, cell: Any, placement: Optional[dict]) -> str:
+        name = self._cell_name(cell)
+        if placement and placement.get("type") == "enemy":
+            return self.msg("tile.hostile_presence", terrain=name)
+        if placement and placement.get("type") == "item":
+            item = self._item_def(placement.get("entity_id"))
+            return self.msg(
+                "tile.item_nearby",
+                terrain=name,
+                item=item.get('name', self.msg("tile.useful_item")),
+            )
+        return self.msg("tile.clear_quick", terrain=name)
+
+    def _fallback_inspect_desc(self, cell: Any, placement: Optional[dict]) -> str:
+        description = self._cell_description(cell) or self._fallback_quick_desc(cell, placement)
+        if placement and placement.get("type") == "enemy":
+            enemy = self._enemy_def(placement.get("entity_id"))
+            return self.msg(
+                "tile.enemy_controls",
+                description=description,
+                enemy=enemy.get('name', self.msg("tile.an_enemy")),
+            )
+        if placement and placement.get("type") == "item":
+            item = self._item_def(placement.get("entity_id"))
+            return self.msg(
+                "tile.item_recoverable",
+                description=description,
+                item=item.get('name', self.msg("tile.an_item")),
+            )
+        return description
+
+    def _placement_at(self, x: int, y: int) -> Optional[dict]:
+        return next(
+            (
+                placement
+                for placement in getattr(self, "entity_placements", [])
+                if placement.get("x") == x and placement.get("y") == y
+            ),
+            None
+        )
+
+    def _enemy_def(self, enemy_id: Optional[str]) -> Dict[str, Any]:
+        return next(
+            (
+                enemy
+                for enemy in getattr(self.definitions, "enemy_defs", [])
+                if enemy.get("enemy_id") == enemy_id
+            ),
+            {}
+        )
+
+    def _item_def(self, item_id: Optional[str]) -> Dict[str, Any]:
+        return next(
+            (
+                item
+                for item in getattr(self.definitions, "item_defs", [])
+                if item.get("id") == item_id
+            ),
+            {}
+        )
+
+    def _danger_level_for_enemy(self, enemy_def: Dict[str, Any]) -> str:
+        attack_max = enemy_def.get("attack", {}).get("max", 0)
+        hp_max = enemy_def.get("hp", {}).get("max", 0)
+        if attack_max >= self.state.player_max_hp * 0.25 or hp_max >= self.state.player_attack * 5:
+            return "deadly"
+        if attack_max >= self.state.player_max_hp * 0.12 or hp_max >= self.state.player_attack * 3:
+            return "risky"
+        return "guarded"
+
+    def get_tile_info(self, x: int, y: int) -> Optional[Dict[str, Any]]:
+        if not self.state or not self.state.tile_info:
+            return None
+        if y < 0 or y >= len(self.state.tile_info):
+            return None
+        if x < 0 or x >= len(self.state.tile_info[y]):
+            return None
+        return self.state.tile_info[y][x]
+
+    def get_current_tile_info(self) -> Optional[Dict[str, Any]]:
+        x, y = self.state.player_pos
+        return self.get_tile_info(x, y)
+
+    def format_tile_message(self, tile_info: Optional[Dict[str, Any]]) -> str:
+        if not tile_info:
+            return ""
+
+        label = tile_info.get("label") or tile_info.get("terrain_name") or self.msg("tile.area")
+        quick_desc = tile_info.get("quick_desc") or ""
+        hint = tile_info.get("hint") or ""
+        clear_hint = self.msg("tile.clear")
+
+        parts = [label]
+        if (
+            quick_desc
+            and quick_desc != label
+            and not quick_desc.startswith(label)
+        ):
+            parts.append(quick_desc)
+        if hint and hint != clear_hint and hint not in quick_desc:
+            parts.append(hint)
+        return " ".join(parts)
 
     async def initialize_game(self):
         """Initialize the game state and return initial message."""
@@ -335,6 +563,9 @@ class GameStateManager:
         # Process the entity placements to populate enemies and items
         self.entity_placements = self.entity_manager.process_placements(self.state)
 
+        # Prebuild fast, tappable tile summaries after placements are sanitized.
+        await self.initialize_tile_info()
+
         # Set initial position as explored
         x, y = self.state.player_pos
         self.state.explored[y][x] = True
@@ -370,8 +601,12 @@ class GameStateManager:
 
     async def create_message_room(self):
         """Create a message with room description."""
+        tile_message = self.format_tile_message(self.get_current_tile_info())
+        if tile_message:
+            return await self.create_message(tile_message, tile_message)
+
         room_description = await self._gen_room_description()
-        return await self.create_message(room_description)
+        return await self.create_message(room_description, room_description)
 
     async def create_message_description(self, message):
         """Create or enhance message description using AI."""

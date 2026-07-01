@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 class Enemy(BaseModel):
     id: str
@@ -24,6 +24,7 @@ class Equipment(BaseModel):
 
 class GameState(BaseModel):
     cell_types: List[List[dict]] = []
+    tile_info: List[List[Dict[str, Any]]] = Field(default_factory=list)
     map_width: int
     map_height: int
     player: dict = {}

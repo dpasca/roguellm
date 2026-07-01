@@ -1,8 +1,11 @@
 import logging
 from typing import Dict, Any
 from websocket_schemas import validate_websocket_message, ValidationError
+from game_messages import msg
 
 logger = logging.getLogger()
+
+FAST_DESCRIPTION_ACTIONS = {'move', 'attack', 'run', 'use_item', 'equip_item'}
 
 
 class WebSocketHandler:
@@ -12,6 +15,9 @@ class WebSocketHandler:
         self.game_state_manager = game_state_manager
         self.player_action_handler = player_action_handler
         self.connected_clients = set()
+
+    def msg(self, key: str, **params) -> str:
+        return msg(getattr(self.game_state_manager, "language", "en"), key, **params)
 
     async def handle_message(self, message: dict) -> dict:
         """
@@ -65,7 +71,7 @@ class WebSocketHandler:
                 initial_message = await self.game_state_manager.initialize_game()
                 # For get_initial_state, return the initialization message with description
                 if action == 'get_initial_state':
-                    result = await self.game_state_manager.create_message_description(initial_message)
+                    result = await self.game_state_manager.create_message_room()
                     self.game_state_manager.events_add('initialize', result)
                     return result
                 return initial_message
@@ -80,9 +86,7 @@ class WebSocketHandler:
         if action == 'get_initial_state':
             # If this is the first time getting initial state, generate a room description
             if not self.game_state_manager.event_history:
-                room_description = await self.game_state_manager._gen_room_description()
-                result = await self.game_state_manager.create_message(room_description)
-                result = await self.game_state_manager.create_message_description(result)
+                result = await self.game_state_manager.create_message_room()
                 self.game_state_manager.events_add('initialize', result)
                 return result
             else:
@@ -105,21 +109,21 @@ class WebSocketHandler:
             self.game_state_manager.state.game_over = True
             self.game_state_manager.state.in_combat = False
             self.game_state_manager.state.current_enemy = None
-            result = await self.game_state_manager.create_message("You quit the run. Return Home or restart when ready.")
-            result = await self.game_state_manager.create_message_description(result)
+            description = self.msg("run.quit")
+            result = await self.game_state_manager.create_message(description, description)
             self.game_state_manager.events_add('quit', result)
             return result
 
         # Check game over and win states before processing any other action
         if self.game_state_manager.state.game_over:
-            result = await self.game_state_manager.create_message("Game Over! Press Restart to play again.")
-            result = await self.game_state_manager.create_message_description(result)
+            description = self.msg("run.game_over")
+            result = await self.game_state_manager.create_message(description, description)
             self.game_state_manager.events_add('game_over', result)
             return result
 
         if self.game_state_manager.state.game_won:
-            result = await self.game_state_manager.create_message("Congratulations! You have won the game! Press Restart to play again.")
-            result = await self.game_state_manager.create_message_description(result)
+            description = self.msg("run.game_won")
+            result = await self.game_state_manager.create_message(description, description)
             self.game_state_manager.events_add('game_won', result)
             return result
 
@@ -135,8 +139,15 @@ class WebSocketHandler:
         if result.get('description_raw') == "":
             return result
 
-        # Create or fill 'description' field if not already present or if empty
-        result = await self.game_state_manager.create_message_description(result)
+        if (
+            action in FAST_DESCRIPTION_ACTIONS
+            and result.get('description_raw')
+            and not result.get('description')
+        ):
+            result['description'] = result['description_raw']
+        else:
+            # Create or fill 'description' field if not already present or if empty
+            result = await self.game_state_manager.create_message_description(result)
         self.game_state_manager.events_add(action, result)  # Record the event
         return result
 

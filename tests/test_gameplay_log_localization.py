@@ -1,0 +1,54 @@
+import json
+import string
+import unittest
+
+from game_messages import SUPPORTED_LOCALES, TRANSLATIONS_DIR, msg
+
+
+def load_gameplay_log(locale):
+    with (TRANSLATIONS_DIR / f"{locale}.json").open("r", encoding="utf-8") as locale_file:
+        return json.load(locale_file).get("gameplayLog", {})
+
+
+def placeholders(template):
+    formatter = string.Formatter()
+    return {
+        field_name
+        for _, field_name, _, _ in formatter.parse(template)
+        if field_name
+    }
+
+
+class GameplayLogLocalizationTests(unittest.TestCase):
+    def test_supported_locale_files_have_complete_gameplay_log_keys(self):
+        english_log = load_gameplay_log("en")
+        self.assertTrue(english_log)
+
+        english_keys = set(english_log)
+        for locale in SUPPORTED_LOCALES:
+            with self.subTest(locale=locale):
+                locale_log = load_gameplay_log(locale)
+                self.assertEqual(set(locale_log), english_keys)
+
+    def test_supported_locale_gameplay_log_placeholders_match_english(self):
+        english_log = load_gameplay_log("en")
+
+        for locale in SUPPORTED_LOCALES:
+            locale_log = load_gameplay_log(locale)
+            for key, english_template in english_log.items():
+                with self.subTest(locale=locale, key=key):
+                    self.assertEqual(
+                        placeholders(locale_log[key]),
+                        placeholders(english_template),
+                    )
+
+    def test_message_helper_uses_locale_files(self):
+        message = msg("es", "combat.player_hit", damage=7, enemy="Robot")
+
+        self.assertIn("Robot", message)
+        self.assertIn("7", message)
+        self.assertIn("Infliges", message)
+
+
+if __name__ == "__main__":
+    unittest.main()

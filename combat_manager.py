@@ -1,6 +1,7 @@
 import random
 import logging
 from models import Enemy
+from game_messages import msg
 
 logger = logging.getLogger()
 
@@ -32,9 +33,9 @@ class CombatManager:
         enemy._hp_reward = int(enemy._xp_reward * 1.0)
         return enemy
 
-    async def handle_combat_action(self, game_state, action: str) -> str:
+    async def handle_combat_action(self, game_state, action: str, language: str = "en") -> str:
         if not game_state.in_combat or not game_state.current_enemy:
-            return "No enemy to fight!"
+            return msg(language, "combat.no_enemy")
 
         if action == 'attack':
             # Player attacks
@@ -43,7 +44,12 @@ class CombatManager:
                 game_state.player_attack + 5
             ))
             game_state.current_enemy.hp -= damage_dealt
-            combat_log = f"You deal {damage_dealt} damage to the {game_state.current_enemy.name}!"
+            combat_log = msg(
+                language,
+                "combat.player_hit",
+                damage=damage_dealt,
+                enemy=game_state.current_enemy.name,
+            )
 
             # Check if enemy is defeated
             if game_state.current_enemy.hp <= 0:
@@ -57,10 +63,11 @@ class CombatManager:
 
                 # Mark enemy as defeated
                 x, y = game_state.player_pos
+                defeated_enemy_name = game_state.current_enemy.name
                 game_state.defeated_enemies.append({
                     'x': x,
                     'y': y,
-                    'name': game_state.current_enemy.name,
+                    'name': defeated_enemy_name,
                     'id': game_state.current_enemy.id,
                     'font_awesome_icon': game_state.current_enemy.font_awesome_icon,
                     'is_defeated': True
@@ -74,8 +81,12 @@ class CombatManager:
 
                 game_state.in_combat = False
                 game_state.current_enemy = None
+                self._mark_enemy_tile_defeated(game_state, x, y, defeated_enemy_name, language)
 
-                return f"{combat_log}\nYou defeated the enemy, gained {xp_gained} XP and {hp_gained} HP"
+                return (
+                    f"{combat_log}\n" +
+                    msg(language, "combat.defeated_enemy", xp=xp_gained, hp=hp_gained)
+                )
 
             # Enemy counter-attacks
             damage_taken = max(0, self.random.randint(
@@ -84,13 +95,26 @@ class CombatManager:
             ) - game_state.player_defense)
 
             self._apply_player_damage(game_state, damage_taken)
-            combat_log += f"\nThe {game_state.current_enemy.name} hits you for {damage_taken} damage!"
+            combat_log += "\n" + msg(
+                language,
+                "combat.enemy_hit",
+                enemy=game_state.current_enemy.name,
+                damage=damage_taken,
+            )
 
             if game_state.player_hp <= 0:
                 self._mark_player_defeated(game_state)
-                return f"{combat_log}\nYou have been defeated!"
+                return f"{combat_log}\n{msg(language, 'combat.player_defeated')}"
 
-            return f"{combat_log}\nEnemy HP: {game_state.current_enemy.hp}/{game_state.current_enemy.max_hp}"
+            return (
+                f"{combat_log}\n" +
+                msg(
+                    language,
+                    "combat.enemy_hp",
+                    hp=game_state.current_enemy.hp,
+                    max_hp=game_state.current_enemy.max_hp,
+                )
+            )
 
         elif action == 'run':
             # 50% chance to escape
@@ -98,7 +122,7 @@ class CombatManager:
                 game_state.in_combat = False
                 game_state.current_enemy = None
                 game_state.player_pos_prev = game_state.player_pos
-                return "You broke away from the fight!"
+                return msg(language, "combat.run_success")
             else:
                 # Enemy gets a free attack
                 damage_taken = max(0, self.random.randint(
@@ -109,11 +133,24 @@ class CombatManager:
                 self._apply_player_damage(game_state, damage_taken)
                 if game_state.player_hp <= 0:
                     self._mark_player_defeated(game_state)
-                    return f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!\nYou have been defeated!"
+                    return (
+                        msg(
+                            language,
+                            "combat.run_failed",
+                            enemy=game_state.current_enemy.name,
+                            damage=damage_taken,
+                        ) +
+                        f"\n{msg(language, 'combat.player_defeated')}"
+                    )
 
-                return f"Failed to escape! The {game_state.current_enemy.name} hits you for {damage_taken} damage!"
+                return msg(
+                    language,
+                    "combat.run_failed",
+                    enemy=game_state.current_enemy.name,
+                    damage=damage_taken,
+                )
 
-        return "Invalid combat action!"
+        return msg(language, "combat.invalid_action")
 
     def _apply_player_damage(self, game_state, damage: int) -> None:
         game_state.player_hp = max(0, game_state.player_hp - damage)
@@ -121,3 +158,26 @@ class CombatManager:
     def _mark_player_defeated(self, game_state) -> None:
         game_state.game_over = True
         game_state.in_combat = False
+
+    def _mark_enemy_tile_defeated(
+            self,
+            game_state,
+            x: int,
+            y: int,
+            enemy_name: str,
+            language: str = "en"
+    ) -> None:
+        tile_info = getattr(game_state, "tile_info", None)
+        if not tile_info or y >= len(tile_info) or x >= len(tile_info[y]):
+            return
+
+        tile = tile_info[y][x]
+        label = tile.get("label") or tile.get("terrain_name") or msg(language, "tile.area")
+        tile.update({
+            "danger_level": "safe",
+            "hint": msg(language, "tile.defeated", entity=enemy_name),
+            "entity_status": "defeated",
+            "quick_desc": msg(language, "tile.enemy_defeated_quick", terrain=label, enemy=enemy_name),
+            "inspect_desc": msg(language, "tile.enemy_defeated_inspect", enemy=enemy_name),
+            "tags": ["defeated"],
+        })

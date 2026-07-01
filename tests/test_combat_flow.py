@@ -136,6 +136,18 @@ class CombatFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(state.defeated_enemies)
         self.assertTrue(state.enemies[0]["is_defeated"])
 
+    async def test_attack_log_uses_requested_language(self):
+        state = make_state(player_hp=50, enemy=make_enemy(hp=30, attack=20))
+        combat = CombatManager(ScriptedRandom(randints=[15, 20]), definitions=None)
+
+        message = await combat.handle_combat_action(state, "attack", language="it")
+
+        self.assertIn("Infliggi 15 danni", message)
+        self.assertIn("ti colpisce infliggendo", message)
+        self.assertIn("HP nemico", message)
+        self.assertNotIn("You deal", message)
+        self.assertNotIn("Enemy HP", message)
+
     async def test_defeating_last_enemy_sets_win_state(self):
         state = make_state(player_hp=50, enemy=make_enemy(hp=5, attack=20))
         state.current_enemy._xp_reward = 12

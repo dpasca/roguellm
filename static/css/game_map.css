@@ -9,12 +9,30 @@
     transition: all 0.2s ease;
 }
 
+.cell.inspectable {
+    cursor: pointer;
+}
+
+.cell.inspectable:focus-visible,
+.cell.selected {
+    outline: 2px solid #f8f0a0;
+    outline-offset: -2px;
+}
+
+.cell.has-tile-warning:not(.selected) {
+    box-shadow: inset 0 0 0 2px rgba(255, 100, 100, 0.55);
+}
+
+.cell.has-tile-reward:not(.selected) {
+    box-shadow: inset 0 0 0 2px rgba(90, 210, 130, 0.65);
+}
+
 .cell i {
     color: inherit;
 }
 
-.row { 
-    display: flex; 
+.row {
+    display: flex;
 }
 
 /* Map Container */
@@ -34,7 +52,7 @@
     position: absolute;
     background-color: rgba(0,0,0,0.25);
     border-radius: 50%;
-    transition: left 0.5s ease, top 0.5s ease;
+    transition: left 0.15s ease, top 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -56,10 +74,71 @@
     text-shadow: none;
 }
 
+.cell i.item-icon {
+    color: #b8ffcc !important;
+    text-shadow:
+        2px 2px 2px #000000,
+        -1px 0 2px #000000,
+        0 1px 2px #000000;
+}
+
+.tile-inspector {
+    width: 300px;
+    box-sizing: border-box;
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #333;
+    border-left: 4px solid #7f8c8d;
+    background: rgba(15, 18, 20, 0.92);
+}
+
+.tile-inspector.danger-reward {
+    border-left-color: #4cd137;
+}
+
+.tile-inspector.danger-guarded,
+.tile-inspector.danger-risky {
+    border-left-color: #ffd93d;
+}
+
+.tile-inspector.danger-deadly {
+    border-left-color: #ff6b6b;
+}
+
+.tile-inspector-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tile-inspector-header i {
+    width: 24px;
+    color: #f1f2f6;
+    text-align: center;
+}
+
+.tile-inspector-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.tile-inspector-header p,
+.tile-inspector-desc {
+    margin: 4px 0 0;
+    color: #c8d6e5;
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+
 /* Responsive Map */
 @media screen and (max-width: 180mm) {
     .cell {
         width: 22px;
         height: 26px;
     }
-} 
+
+    .tile-inspector {
+        width: 100%;
+    }
+}

@@ -225,6 +225,42 @@ Return a JSON array of placement objects. Each object should have:
 }
 """
 
+SYS_GEN_TILE_QUICK_INFO_MSG = """
+You are an expert mobile roguelike level writer. Your task is to prebuild short,
+fast-to-read tile summaries for a game map. These summaries are shown during
+gameplay, so they must be practical, compact, and useful at a glance.
+
+The user will provide a list of map tiles. Each tile includes coordinates,
+terrain, and optionally an enemy or item placed on that tile.
+
+For each tile, write:
+- A compact label, 1-4 words
+- A quick description, 4-10 words
+- An inspect description, 8-18 words
+
+Guidelines:
+- Make descriptions fit the game theme and terrain.
+- Keep gameplay clarity more important than literary flourish.
+- Do not mention exact hidden stats.
+- If an enemy or item is present, make that tile feel meaningfully distinct.
+- Use the exact x and y coordinates provided by the user.
+- Return one entry for every tile provided by the user.
+
+# Response Format
+Return only a JSON object with this exact shape:
+{
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "label": "Short label",
+      "quick_desc": "Brief at-a-glance text.",
+      "inspect_desc": "Slightly richer text for tap-to-inspect."
+    }
+  ]
+}
+"""
+
 DUMMY_PLACEMENTS = """[
   {"entity_id": "goblin", "type": "enemy", "x": 0, "y": 3},
   {"entity_id": "goblin", "type": "enemy", "x": 1, "y": 0},

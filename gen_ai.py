@@ -17,6 +17,7 @@ from gen_ai_prompts import (
     SYS_TRANSLATE_WORLD_JSON_MSG,
     SYS_GEN_MAP_CSV_MSG,
     SYS_GEN_ENTITY_PLACEMENT_MSG,
+    SYS_GEN_TILE_QUICK_INFO_MSG,
     ADAPT_SENTENCE_SYSTEM_MSG,
     ROOM_DESC_SYSTEM_MSG,
     DUMMY_PLACEMENTS,
@@ -667,6 +668,87 @@ Each placement should indicate whether it's an enemy or an item.
                 f"Line: {e.lineno}, Column: {e.colno}\n" +
                 f"JSON content: {describe_text(placements_json)}")
             return []
+
+    async def gen_tile_quick_info(
+            self,
+            cell_types: List[List[dict]],
+            placements: List[dict],
+            enemy_defs: List[dict],
+            item_defs: List[dict],
+            map_width: int,
+            map_height: int
+    ) -> List[dict]:
+        """Generate prebuilt tile summaries for fast, model-free gameplay turns."""
+        if DO_BYPASS_WORLD_GEN:
+            return []
+
+        placements_by_pos = {
+            (placement.get("x"), placement.get("y")): placement
+            for placement in placements
+            if isinstance(placement, dict)
+        }
+        enemies_by_id = {
+            enemy.get("enemy_id"): enemy
+            for enemy in enemy_defs
+            if isinstance(enemy, dict)
+        }
+        items_by_id = {
+            item.get("id"): item
+            for item in item_defs
+            if isinstance(item, dict)
+        }
+
+        tiles = []
+        for y in range(map_height):
+            for x in range(map_width):
+                cell = cell_types[y][x]
+                terrain_name = cell.get("name", "Unknown") if isinstance(cell, dict) else str(cell)
+                terrain_description = cell.get("description", "") if isinstance(cell, dict) else str(cell)
+                tile = {
+                    "x": x,
+                    "y": y,
+                    "terrain_name": terrain_name,
+                    "terrain_description": terrain_description,
+                }
+                placement = placements_by_pos.get((x, y))
+                if placement:
+                    entity_id = placement.get("entity_id")
+                    if placement.get("type") == "enemy":
+                        enemy = enemies_by_id.get(entity_id, {})
+                        tile["entity"] = {
+                            "type": "enemy",
+                            "name": enemy.get("name", entity_id),
+                        }
+                    elif placement.get("type") == "item":
+                        item = items_by_id.get(entity_id, {})
+                        tile["entity"] = {
+                            "type": "item",
+                            "name": item.get("name", entity_id),
+                        }
+                tiles.append(tile)
+
+        response = await self._quick_completion(
+            system_msg=append_language_and_desc_to_prompt(
+                SYS_GEN_TILE_QUICK_INFO_MSG + SYS_GENERAL_JSON_RULES_MSG,
+                self.language,
+                self.theme_desc_better
+            ),
+            user_msg=json.dumps({"tiles": tiles}, ensure_ascii=False),
+            quality=MODEL_QUALITY_FOR_JSON,
+            temp=0.4
+        )
+
+        try:
+            data = json.loads(extract_clean_data(response))
+        except json.JSONDecodeError:
+            logger.error("Invalid tile quick-info JSON (%s)", describe_text(response))
+            return []
+
+        if not isinstance(data, dict) or not isinstance(data.get("tiles"), list):
+            logger.error("Tile quick-info response had unexpected shape (%s)", describe_text(response))
+            return []
+
+        return data["tiles"]
 
     # Generator for generic sentences
     async def gen_adapt_sentence(

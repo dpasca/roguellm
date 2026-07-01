@@ -115,6 +115,10 @@ const app = Vue.createApp({
                     armor: null
                 },
                 explored: [],
+                tile_info: [],
+                item_placements: [],
+                enemies: [],
+                defeated_enemies: [],
                 in_combat: false,
                 current_enemy: null,
                 game_over: false,
@@ -128,7 +132,9 @@ const app = Vue.createApp({
             isDebugPanelOpen: false,
             errorMessage: null,
             generatorId: null,
-            showShareNotification: false
+            showShareNotification: false,
+            selectedTile: null,
+            hasRequestedInitialState: false
         }
     },
     computed: {
@@ -150,9 +156,76 @@ const app = Vue.createApp({
                 );
             }
             return 0;
+        },
+        selectedTileInfo() {
+            if (!this.gameState || !this.gameState.player_pos) return null;
+            const tile = this.selectedTile || {
+                x: this.gameState.player_pos[0],
+                y: this.gameState.player_pos[1]
+            };
+            return this.getTileInfo(tile.x, tile.y);
         }
     },
     methods: {
+        getTileInfo(x, y) {
+            if (!this.gameState) return null;
+
+            const row = this.gameState.tile_info && this.gameState.tile_info[y];
+            if (row && row[x]) {
+                return row[x];
+            }
+
+            const cellRow = this.gameState.cell_types && this.gameState.cell_types[y];
+            const cellType = cellRow && cellRow[x];
+            if (!cellType) return null;
+
+            return {
+                x,
+                y,
+                label: cellType.name || 'Area',
+                quick_desc: cellType.description || '',
+                inspect_desc: cellType.description || '',
+                terrain_name: cellType.name || 'Area',
+                terrain_icon: cellType.font_awesome_icon || '',
+                danger_level: 'safe',
+                hint: 'Clear',
+                entity_type: '',
+                entity_name: '',
+                entity_icon: '',
+                entity_status: '',
+                tags: []
+            };
+        },
+        isAdjacentTile(x, y) {
+            if (!this.gameState || !this.gameState.player_pos) return false;
+            const [px, py] = this.gameState.player_pos;
+            return Math.abs(px - x) + Math.abs(py - y) <= 1;
+        },
+        isInspectableTile(x, y) {
+            return Boolean(this.getTileInfo(x, y));
+        },
+        isSelectedTile(x, y) {
+            return this.selectedTile && this.selectedTile.x === x && this.selectedTile.y === y;
+        },
+        selectTile(x, y) {
+            if (!this.isInspectableTile(x, y)) return;
+            this.selectedTile = { x, y };
+        },
+        ensureSelectedTile() {
+            if (!this.gameState || !this.gameState.player_pos) return;
+            if (this.selectedTile && this.isInspectableTile(this.selectedTile.x, this.selectedTile.y)) {
+                return;
+            }
+            this.selectedTile = {
+                x: this.gameState.player_pos[0],
+                y: this.gameState.player_pos[1]
+            };
+        },
+        getTileAriaLabel(x, y) {
+            const tile = this.getTileInfo(x, y);
+            if (!tile) return `Tile ${x}, ${y}`;
+            return `${tile.label}. ${tile.hint || tile.quick_desc || ''}`;
+        },
         getCellStyle(x, y) {
             if (!this.gameState.cell_types || this.gameState.cell_types.length === 0) return {};
 
@@ -167,16 +240,55 @@ const app = Vue.createApp({
                 color: scaleColor(cellType.map_color, scaleFg)
             };
         },
+        getEnemyAt(x, y) {
+            const enemies = this.gameState.enemies || [];
+            const defeated = this.gameState.defeated_enemies || [];
+            return enemies.find(e => e.x === x && e.y === y) ||
+                defeated.find(e => e.x === x && e.y === y);
+        },
+        getItemAt(x, y) {
+            const items = this.gameState.item_placements || [];
+            return items.find(item => item.x === x && item.y === y && !item.is_collected);
+        },
         getCellIcon(x, y) {
             // Check if there's an enemy at this position (either active or defeated)
-            const enemy = this.gameState.enemies.find(e => e.x === x && e.y === y) ||
-                this.gameState.defeated_enemies.find(e => e.x === x && e.y === y);
+            const enemy = this.getEnemyAt(x, y);
             if (enemy) {
                 const baseClass = enemy.font_awesome_icon;
                 const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
                 return `${baseClass} ${enemyClass}`;
             }
+            const item = this.getItemAt(x, y);
+            if (item) {
+                return `${item.font_awesome_icon || 'fa-solid fa-box'} item-icon`;
+            }
             return this.gameState.cell_types[y][x].font_awesome_icon;
+        },
+        getDirectionTileInfo(direction) {
+            if (!this.canMove(direction)) return null;
+            const [x, y] = this.getNextPosition(direction);
+            return this.getTileInfo(x, y);
+        },
+        getDirectionBadge(direction) {
+            const tile = this.getDirectionTileInfo(direction);
+            if (!tile) return '';
+
+            if (tile.entity_type === 'item' && tile.entity_status !== 'collected') return '+';
+            if (['deadly', 'risky', 'guarded'].includes(tile.danger_level)) return '!';
+
+            const [x, y] = this.getNextPosition(direction);
+            if (this.gameState.explored && this.gameState.explored[y] && this.gameState.explored[y][x]) {
+                return '·';
+            }
+            return '?';
+        },
+        getDirectionBadgeClass(direction) {
+            const tile = this.getDirectionTileInfo(direction);
+            if (!tile) return '';
+            if (tile.entity_type === 'item' && tile.entity_status !== 'collected') return 'reward';
+            if (tile.danger_level === 'deadly') return 'deadly';
+            if (['risky', 'guarded'].includes(tile.danger_level)) return 'danger';
+            return 'quiet';
         },
         toggleMenu() {
             this.isMenuOpen = !this.isMenuOpen;
@@ -262,6 +374,7 @@ const app = Vue.createApp({
             }
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            this.hasRequestedInitialState = false;
             this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game/${sessionId}`);
 
             this.ws.onmessage = async (event) => {
@@ -284,7 +397,7 @@ const app = Vue.createApp({
 
                         if (response.status === 'ready') {
                             // Game is ready, request initial state
-                            this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
+                            this.requestInitialState();
                         }
                         return;
                     }
@@ -302,7 +415,7 @@ const app = Vue.createApp({
                             this.generatorId = response.generator_id;
                         }
                         // Request initial state
-                        this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
+                        this.requestInitialState();
                         return;
                     }
 
@@ -326,6 +439,12 @@ const app = Vue.createApp({
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
             };
+        },
+        requestInitialState() {
+            if (this.hasRequestedInitialState) return;
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            this.hasRequestedInitialState = true;
+            this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
         },
         async restartGame() {
             // Show loading overlay
@@ -473,7 +592,16 @@ const app = Vue.createApp({
             if (response.type === 'update' && response.state) {
                 console.log('Received state update:', response.state);
                 const wasInCombat = this.gameState.in_combat;
+                const previousPos = this.gameState.player_pos;
                 this.gameState = response.state;
+                const currentPos = this.gameState.player_pos;
+                const playerMoved = previousPos && currentPos &&
+                    (previousPos[0] !== currentPos[0] || previousPos[1] !== currentPos[1]);
+                if (playerMoved) {
+                    this.selectedTile = { x: currentPos[0], y: currentPos[1] };
+                } else {
+                    this.ensureSelectedTile();
+                }
 
                 // Update game title
                 if (response.state.game_title) {

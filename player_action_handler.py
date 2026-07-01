@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Optional
 from models import Item, Enemy
 from combat_manager import CombatManager
+from game_messages import msg
 
 logger = logging.getLogger()
 
@@ -13,13 +14,16 @@ class PlayerActionHandler:
         self.game_state_manager = game_state_manager
         self.combat_manager = combat_manager
 
+    def msg(self, key: str, **params) -> str:
+        return msg(getattr(self.game_state_manager, "language", "en"), key, **params)
+
     async def handle_move(self, direction: str) -> dict:
         """Handle player movement."""
         if not direction:
-            return await self.game_state_manager.create_message("No direction specified!")
+            return await self.game_state_manager.create_message(self.msg("action.no_direction"))
 
         if self.game_state_manager.state.game_won or self.game_state_manager.state.game_over:
-            return await self.game_state_manager.create_message("Game is over! Press Restart to play again.")
+            return await self.game_state_manager.create_message(self.msg("action.game_over"))
 
         # Save previous position
         self.game_state_manager.state.player_pos_prev = self.game_state_manager.state.player_pos
@@ -41,9 +45,10 @@ class PlayerActionHandler:
             moved = False
 
         if moved:
+            was_new_tile = not self.game_state_manager.state.explored[y][x]
             self.game_state_manager.state.player_pos = (x, y)
             self.game_state_manager.state.explored[y][x] = True
-            encounter_result = await self._check_encounters()
+            encounter_result = await self._check_encounters(was_new_tile=was_new_tile)
 
             # Process temporary effects
             effects_log = await self._process_temporary_effects()
@@ -52,17 +57,17 @@ class PlayerActionHandler:
 
             return encounter_result
         else:
-            return await self.game_state_manager.create_message("You can't move in that direction.")
+            return await self.game_state_manager.create_message(self.msg("action.cant_move"))
 
     async def handle_use_item(self, item_id: str) -> dict:
         """Handle using an item from inventory."""
         if not item_id:
-            return await self.game_state_manager.create_message("No item specified!")
+            return await self.game_state_manager.create_message(self.msg("item.no_item"))
 
         # Find the item in inventory
         item = next((item for item in self.game_state_manager.state.inventory if item.id == item_id), None)
         if not item:
-            return await self.game_state_manager.create_message("Item not found in inventory!")
+            return await self.game_state_manager.create_message(self.msg("item.not_found"))
 
         if item.type == 'consumable':
             # Remove the consumable immediately as it will be consumed
@@ -74,7 +79,9 @@ class PlayerActionHandler:
                 self.game_state_manager.state.player_hp = min(self.game_state_manager.state.player_max_hp,
                                         self.game_state_manager.state.player_hp + heal_amount)
                 actual_heal = self.game_state_manager.state.player_hp - old_hp
-                return await self.game_state_manager.create_message(f"Used {item.name} and restored {actual_heal} HP!")
+                return await self.game_state_manager.create_message(
+                    self.msg("item.used_health", item=item.name, amount=actual_heal)
+                )
             elif 'attack' in item.effect:
                 attack_boost = item.effect['attack']
                 duration = item.effect.get('duration', 3)  # Default to 3 turns if not specified
@@ -88,7 +95,14 @@ class PlayerActionHandler:
 
                 # Apply the boost
                 self.game_state_manager.state.player_attack += attack_boost
-                return await self.game_state_manager.create_message(f"Used {item.name}! Attack increased by {attack_boost} for {duration} turns!")
+                return await self.game_state_manager.create_message(
+                    self.msg(
+                        "item.used_attack",
+                        item=item.name,
+                        amount=attack_boost,
+                        duration=duration,
+                    )
+                )
             elif 'defense' in item.effect:
                 defense_boost = item.effect['defense']
                 duration = item.effect.get('duration', 3)  # Default to 3 turns if not specified
@@ -102,19 +116,26 @@ class PlayerActionHandler:
 
                 # Apply the boost
                 self.game_state_manager.state.player_defense += defense_boost
-                return await self.game_state_manager.create_message(f"Used {item.name}! Defense increased by {defense_boost} for {duration} turns!")
+                return await self.game_state_manager.create_message(
+                    self.msg(
+                        "item.used_defense",
+                        item=item.name,
+                        amount=defense_boost,
+                        duration=duration,
+                    )
+                )
 
-        return await self.game_state_manager.create_message(f"Cannot use this type of item!")
+        return await self.game_state_manager.create_message(self.msg("item.cannot_use"))
 
     async def handle_equip_item(self, item_id: str) -> dict:
         """Handle equipping an item."""
         if not item_id:
-            return await self.game_state_manager.create_message("No item specified!")
+            return await self.game_state_manager.create_message(self.msg("item.no_item"))
 
         # Find the item in inventory
         item = next((item for item in self.game_state_manager.state.inventory if item.id == item_id), None)
         if not item:
-            return await self.game_state_manager.create_message("Item not found in inventory!")
+            return await self.game_state_manager.create_message(self.msg("item.not_found"))
 
         if item.type in ['weapon', 'armor']:
             if item.is_equipped:
@@ -137,16 +158,20 @@ class PlayerActionHandler:
                 self.game_state_manager.state.player_defense += item.effect.get('defense', 0)
 
             item.is_equipped = True
-            return await self.game_state_manager.create_message(f"Equipped {item.name}!")
+            return await self.game_state_manager.create_message(self.msg("item.equipped", item=item.name))
 
-        return await self.game_state_manager.create_message(f"This item cannot be equipped!")
+        return await self.game_state_manager.create_message(self.msg("item.cannot_equip"))
 
     async def handle_combat_action(self, action: str) -> dict:
         """Handle combat actions by delegating to combat manager."""
-        result = await self.combat_manager.handle_combat_action(self.game_state_manager.state, action)
+        result = await self.combat_manager.handle_combat_action(
+            self.game_state_manager.state,
+            action,
+            language=getattr(self.game_state_manager, "language", "en"),
+        )
         if self._all_enemy_placements_defeated():
             self.game_state_manager.state.game_won = True
-            result += "\nCongratulations! You have defeated all enemies!"
+            result += f"\n{self.msg('run.all_enemies_defeated')}"
         return await self.game_state_manager.create_message(result)
 
     async def _process_temporary_effects(self) -> str:
@@ -161,10 +186,12 @@ class PlayerActionHandler:
                 effects_to_remove.append(effect_name)
                 if effect['type'] == 'attack':
                     self.game_state_manager.state.player_attack -= effect['amount']
-                    effects_log.append(f"The {effect_name} effect has worn off")
+                    effect_label = self.msg(f"effect.{effect_name}")
+                    effects_log.append(self.msg("effect.expired", effect=effect_label))
                 elif effect['type'] == 'defense':
                     self.game_state_manager.state.player_defense -= effect['amount']
-                    effects_log.append(f"The {effect_name} effect has worn off")
+                    effect_label = self.msg(f"effect.{effect_name}")
+                    effects_log.append(self.msg("effect.expired", effect=effect_label))
 
         # Remove expired effects
         for effect_name in effects_to_remove:
@@ -172,7 +199,7 @@ class PlayerActionHandler:
 
         return "\n".join(effects_log)
 
-    async def _check_encounters(self) -> dict:
+    async def _check_encounters(self, was_new_tile: bool = True) -> dict:
         """Check for encounters at the current position."""
         x, y = self.game_state_manager.state.player_pos
 
@@ -241,12 +268,18 @@ class PlayerActionHandler:
                     ]
 
                 if was_defeated:
+                    self._mark_enemy_tile_defeated(x, y, enemy.name)
                     return await self.game_state_manager.create_message(
-                        f"You see a defeated {enemy.name} here."
+                        self.msg("encounter.defeated_enemy", enemy=enemy.name)
                     )
                 else:
                     return await self.game_state_manager.create_message(
-                        f"A {enemy.name} appears! (HP: {enemy.hp}, Attack: {enemy.attack})"
+                        self.msg(
+                            "encounter.enemy_appears",
+                            enemy=enemy.name,
+                            hp=enemy.hp,
+                            attack=enemy.attack,
+                        )
                     )
 
         # Check if there's a pre-placed item at this location
@@ -277,8 +310,9 @@ class PlayerActionHandler:
                             p for p in self.game_state_manager.entity_placements
                             if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                         ]
+                        self._mark_item_tile_collected(x, y, item.name)
                         return await self.game_state_manager.create_message(
-                            f"You found another {item.name}, but you already have one."
+                            self.msg("item.found_duplicate", item=item.name)
                         )
 
                 # Add item to inventory and remove from placements
@@ -287,20 +321,48 @@ class PlayerActionHandler:
                     p for p in self.game_state_manager.entity_placements
                     if not (p['x'] == x and p['y'] == y and p['type'] == 'item')
                 ]
+                self._mark_item_tile_collected(x, y, item.name)
                 return await self.game_state_manager.create_message(
-                    f"You found a {item.name}! {item.description}"
+                    self.msg("item.found", item=item.name, description=item.description)
                 )
 
-        # Only get room description if we're in a new cell type or don't have a previous description
-        px = self.game_state_manager.state.player_pos[0]
-        py = self.game_state_manager.state.player_pos[1]
-        cur_ct = self.game_state_manager.state.cell_types[py][px]
-        if self.game_state_manager.last_described_ct != cur_ct:
-            self.game_state_manager.last_described_ct = cur_ct
+        if was_new_tile:
             return await self.game_state_manager.create_message_room()
-        else:
-            # Return empty description if in same room type
-            return await self.game_state_manager.create_message('')
+
+        return await self.game_state_manager.create_message('')
+
+    def _mark_item_tile_collected(self, x: int, y: int, item_name: str) -> None:
+        for item in self.game_state_manager.state.item_placements:
+            if item.get('x') == x and item.get('y') == y:
+                item['is_collected'] = True
+                break
+
+        get_tile_info = getattr(self.game_state_manager, 'get_tile_info', None)
+        tile_info = get_tile_info(x, y) if callable(get_tile_info) else None
+        if tile_info:
+            label = tile_info.get('label') or tile_info.get('terrain_name') or self.msg('tile.area')
+            tile_info.update({
+                'danger_level': 'safe',
+                'hint': self.msg('tile.collected', entity=item_name),
+                'entity_status': 'collected',
+                'quick_desc': self.msg('tile.item_collected_quick', terrain=label, item=item_name),
+                'inspect_desc': self.msg('tile.item_collected_inspect', item=item_name),
+                'tags': ['collected'],
+            })
+
+    def _mark_enemy_tile_defeated(self, x: int, y: int, enemy_name: str) -> None:
+        get_tile_info = getattr(self.game_state_manager, 'get_tile_info', None)
+        tile_info = get_tile_info(x, y) if callable(get_tile_info) else None
+        if tile_info:
+            label = tile_info.get('label') or tile_info.get('terrain_name') or self.msg('tile.area')
+            tile_info.update({
+                'danger_level': 'safe',
+                'hint': self.msg('tile.defeated', entity=enemy_name),
+                'entity_status': 'defeated',
+                'quick_desc': self.msg('tile.enemy_defeated_quick', terrain=label, enemy=enemy_name),
+                'inspect_desc': self.msg('tile.enemy_defeated_inspect', enemy=enemy_name),
+                'tags': ['defeated'],
+            })
 
     def _generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a definition."""

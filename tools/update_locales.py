@@ -34,10 +34,14 @@ def generate_translation(
 
     system_prompt = """You are a professional language translator.
 Your task is to translate text accurately, adapting to the context and tone.
+Do not translate JSON keys.
+Preserve placeholders such as {item}, {damage}, and {max_hp} exactly.
 Return ONLY the translated JSON without any markdown formatting or explanation."""
 
     user_prompt = f"""Translate the following content from English to {target_lang}.
 Ensure all JSON formatting remains intact.
+Do not add, remove, or rename any keys.
+Preserve every placeholder inside braces exactly as written.
 Content to translate:
 
 {json.dumps(translations, ensure_ascii=False, indent=2)}"""
