@@ -241,25 +241,129 @@ class GameStateManager:
         self.definitions.celltype_defs = result["celltype_defs"]
 
     def make_random_map(self):
-        """Generate a random map for testing purposes."""
-        if not self.definitions.celltype_defs:
-            # Fallback to basic cell types if definitions aren't loaded
-            basic_types = ['grass', 'forest', 'mountain', 'water']
-            return [[self.random.choice(basic_types)
-                    for _ in range(self.state.map_width)]
-                   for _ in range(self.state.map_height)]
+        """Generate a playable map from either list- or mapping-based definitions."""
+        raw_defs = self.definitions.celltype_defs
+        cell_types = []
 
-        return [[self.random.choice(list(self.definitions.celltype_defs.keys()))
+        if isinstance(raw_defs, dict):
+            for cell_id, cell_def in raw_defs.items():
+                if not isinstance(cell_def, dict):
+                    continue
+                normalized = dict(cell_def)
+                normalized.setdefault('id', str(cell_id))
+                cell_types.append(normalized)
+        elif isinstance(raw_defs, list):
+            cell_types = [dict(cell_def) for cell_def in raw_defs if isinstance(cell_def, dict)]
+
+        if not cell_types:
+            cell_types = [
+                {
+                    'id': 'open-ground',
+                    'name': 'Open Ground',
+                    'description': 'A quiet stretch of open ground.',
+                    'map_color': '#49614f',
+                    'font_awesome_icon': 'fa-solid fa-location-dot',
+                },
+                {
+                    'id': 'woodland',
+                    'name': 'Woodland',
+                    'description': 'Dense cover closes in around the path.',
+                    'map_color': '#355a47',
+                    'font_awesome_icon': 'fa-solid fa-tree',
+                },
+                {
+                    'id': 'high-ground',
+                    'name': 'High Ground',
+                    'description': 'Broken stone rises above the surrounding area.',
+                    'map_color': '#665846',
+                    'font_awesome_icon': 'fa-solid fa-mountain',
+                },
+                {
+                    'id': 'water',
+                    'name': 'Water',
+                    'description': 'Dark water cuts across the route.',
+                    'map_color': '#31566d',
+                    'font_awesome_icon': 'fa-solid fa-water',
+                },
+            ]
+
+        return [[self.random.choice(cell_types)
                 for _ in range(self.state.map_width)]
                for _ in range(self.state.map_height)]
 
+    def make_fallback_placements(self):
+        """Place saved-world entities deterministically when model placement is unavailable."""
+        start_x, start_y = self.state.player_pos
+        candidates = sorted(
+            (
+                (abs(x - start_x) + abs(y - start_y), y, x)
+                for y in range(self.state.map_height)
+                for x in range(self.state.map_width)
+                if (x, y) != (start_x, start_y)
+            )
+        )
+        occupied = set()
+        placements = []
+
+        def reserve_position(avoid_start_zone=False):
+            for _, y, x in candidates:
+                if (x, y) in occupied:
+                    continue
+                if avoid_start_zone and abs(x - start_x) <= 1 and abs(y - start_y) <= 1:
+                    continue
+                occupied.add((x, y))
+                return x, y
+            return None
+
+        enemy_defs = self.definitions.enemy_defs if isinstance(self.definitions.enemy_defs, list) else []
+        for enemy_def in enemy_defs:
+            if not isinstance(enemy_def, dict) or not enemy_def.get('enemy_id'):
+                continue
+            position = reserve_position(avoid_start_zone=True)
+            if position is None:
+                break
+            placements.append({
+                'type': 'enemy',
+                'entity_id': enemy_def['enemy_id'],
+                'x': position[0],
+                'y': position[1],
+            })
+
+        item_defs = self.definitions.item_defs if isinstance(self.definitions.item_defs, list) else []
+        for item_def in item_defs:
+            if not isinstance(item_def, dict) or not item_def.get('id'):
+                continue
+            position = reserve_position()
+            if position is None:
+                break
+            placements.append({
+                'type': 'item',
+                'entity_id': item_def['id'],
+                'x': position[0],
+                'y': position[1],
+            })
+
+        return placements
+
     async def initialize_game_placements(self):
         """Generate entity placements (both enemies and items)."""
-        self.entity_placements = await self.entity_manager.generate_placements(
-            self.state.cell_types,
-            self.state.map_width,
-            self.state.map_height
-        )
+        try:
+            self.entity_placements = await self.entity_manager.generate_placements(
+                self.state.cell_types,
+                self.state.map_width,
+                self.state.map_height
+            )
+        except Exception as exc:
+            logger.error("Failed to generate entity placements: %s", exc)
+            self.entity_placements = []
+
+        if not self.entity_placements:
+            logger.warning("Using deterministic fallback entity placements")
+            self.entity_placements = self.make_fallback_placements()
+
+        # Keep the placement processor in sync when the fallback path supplied
+        # the list instead of the model-backed generator.
+        self.entity_manager.entity_placements = list(self.entity_placements)
 
     async def initialize_tile_info(self):
         """Prebuild fast tile summaries so movement never waits on narration."""
@@ -497,19 +601,27 @@ class GameStateManager:
             self.log_error("Invalid JSON in game_config.json file.")
             config = {}
 
-        # Initialize game state
+        map_config = config.get('map_size', {}) if isinstance(config.get('map_size'), dict) else {}
+        player_config = config.get('player', {}) if isinstance(config.get('player'), dict) else {}
+        map_width = config.get('map_width', map_config.get('width', 10))
+        map_height = config.get('map_height', map_config.get('height', 10))
+        player_start_x = config.get('player_start_x', 0)
+        player_start_y = config.get('player_start_y', 0)
+
+        # Initialize game state. Support both the legacy flat config and the
+        # current grouped map/player sections.
         self.state = GameState(
-            player_pos=(config.get('player_start_x', 0), config.get('player_start_y', 0)),
-            player_pos_prev=(config.get('player_start_x', 0), config.get('player_start_y', 0)),
-            player_hp=config.get('player_hp', 100),
-            player_max_hp=config.get('player_max_hp', 100),
-            player_attack=config.get('player_attack', 10),
-            player_defense=config.get('player_defense', 5),
-            map_width=config.get('map_width', 10),
-            map_height=config.get('map_height', 10),
+            player_pos=(player_start_x, player_start_y),
+            player_pos_prev=(player_start_x, player_start_y),
+            player_hp=config.get('player_hp', player_config.get('base_hp', 100)),
+            player_max_hp=config.get('player_max_hp', player_config.get('max_hp', 100)),
+            player_attack=config.get('player_attack', player_config.get('base_attack', 10)),
+            player_defense=config.get('player_defense', player_config.get('base_defense', 5)),
+            map_width=map_width,
+            map_height=map_height,
             cell_types=[],  # Initialize empty, will be set below
-            explored=[[False for _ in range(config.get('map_width', 10))]
-                     for _ in range(config.get('map_height', 10))],
+            explored=[[False for _ in range(map_width)]
+                     for _ in range(map_height)],
             inventory=[],
             equipment=Equipment(),
             in_combat=False,

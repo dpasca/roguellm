@@ -38,6 +38,8 @@ DEV_WORLDS = [
                 "height_cm": 190,
                 "weight_kg": 110,
                 "font_awesome_icon": "fa-solid fa-user",
+                "sprite_url": "/static/assets/worlds/piedone/piedone.png",
+                "sprite_token_url": "/static/assets/worlds/piedone/piedone-token.png",
             }
         ],
         "item_defs": [
@@ -76,6 +78,8 @@ DEV_WORLDS = [
                 "defense": {"min": 1, "max": 3},
                 "xp": 8,
                 "weapons": ["Chain", "Cheap Knife"],
+                "sprite_url": "/static/assets/worlds/piedone/street-punk.png",
+                "sprite_token_url": "/static/assets/worlds/piedone/street-punk-token.png",
             },
             {
                 "enemy_id": "dock_thug",
@@ -96,6 +100,8 @@ DEV_WORLDS = [
                 "defense": {"min": 4, "max": 6},
                 "xp": 22,
                 "weapons": ["Cane Sword", "Pistol"],
+                "sprite_url": "/static/assets/worlds/piedone/yakuza-lieutenant.png",
+                "sprite_token_url": "/static/assets/worlds/piedone/yakuza-lieutenant-token.png",
             },
         ],
         "celltype_defs": [
@@ -143,6 +149,8 @@ DEV_WORLDS = [
                         "height_cm": 190,
                         "weight_kg": 110,
                         "font_awesome_icon": "fa-solid fa-user",
+                        "sprite_url": "/static/assets/worlds/piedone/piedone.png",
+                        "sprite_token_url": "/static/assets/worlds/piedone/piedone-token.png",
                     }
                 ],
                 "item_defs": [
@@ -181,6 +189,8 @@ DEV_WORLDS = [
                         "defense": {"min": 1, "max": 3},
                         "xp": 8,
                         "weapons": ["Chain", "Cheap Knife"],
+                        "sprite_url": "/static/assets/worlds/piedone/street-punk.png",
+                        "sprite_token_url": "/static/assets/worlds/piedone/street-punk-token.png",
                     },
                     {
                         "enemy_id": "dock_thug",
@@ -201,6 +211,8 @@ DEV_WORLDS = [
                         "defense": {"min": 4, "max": 6},
                         "xp": 22,
                         "weapons": ["Cane Sword", "Pistol"],
+                        "sprite_url": "/static/assets/worlds/piedone/yakuza-lieutenant.png",
+                        "sprite_token_url": "/static/assets/worlds/piedone/yakuza-lieutenant-token.png",
                     },
                 ],
                 "celltype_defs": [

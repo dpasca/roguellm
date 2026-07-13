@@ -104,7 +104,7 @@
     </style>
 </head>
 
-<body style="background-color: #121212; color: white;">
+<body class="game-page">
     <div id="app" v-cloak>
         <div class="container">
             <div class="header-bar">
@@ -226,25 +226,39 @@
                     <div class="game-left-column">
                         <!-- Game Map -->
                         <div class="game-map" :class="{ 'in-combat': gameState.in_combat }">
-                            <div v-if="gameState && gameState.explored" class="map">
-                                <div v-for="(row, y) in gameState.explored" :key="y" class="row">
-                                    <div v-for="(cell, x) in row" :key="x" class="cell" :data-x="x" :data-y="y"
-                                        role="button"
-                                        :tabindex="isInspectableTile(x, y) ? 0 : -1"
-                                        :aria-label="getTileAriaLabel(x, y)"
-                                        :class="{
-                                            explored: gameState.explored[y][x],
-                                            unexplored: !gameState.explored[y][x],
-                                            inspectable: isInspectableTile(x, y),
-                                            selected: isSelectedTile(x, y),
-                                            'has-tile-warning': getTileInfo(x, y) && ['deadly', 'risky', 'guarded'].includes(getTileInfo(x, y).danger_level),
-                                            'has-tile-reward': getTileInfo(x, y) && getTileInfo(x, y).entity_type === 'item' && getTileInfo(x, y).entity_status !== 'collected'
-                                        }" :style="getCellStyle(x, y)"
-                                        @click="selectTile(x, y)"
-                                        @keydown.enter.prevent="selectTile(x, y)"
-                                        @keydown.space.prevent="selectTile(x, y)">
-                                        <i :class="getCellIcon(x, y)"></i>
+                            <div class="map-surface">
+                                <div v-if="gameState && gameState.explored" class="map">
+                                    <div v-for="(row, y) in gameState.explored" :key="y" class="row">
+                                        <div v-for="(cell, x) in row" :key="x" class="cell" :data-x="x" :data-y="y"
+                                            role="button"
+                                            :tabindex="isInspectableTile(x, y) ? 0 : -1"
+                                            :aria-label="getTileAriaLabel(x, y)"
+                                            :class="{
+                                                explored: gameState.explored[y][x],
+                                                unexplored: !gameState.explored[y][x],
+                                                inspectable: isInspectableTile(x, y),
+                                                selected: isSelectedTile(x, y),
+                                                'has-tile-warning': getTileInfo(x, y) && ['deadly', 'risky', 'guarded'].includes(getTileInfo(x, y).danger_level),
+                                                'has-tile-reward': getTileInfo(x, y) && getTileInfo(x, y).entity_type === 'item' && getTileInfo(x, y).entity_status !== 'collected'
+                                            }" :style="getCellStyle(x, y)"
+                                            @click="selectTile(x, y)"
+                                            @keydown.enter.prevent="selectTile(x, y)"
+                                            @keydown.space.prevent="selectTile(x, y)">
+                                            <img v-if="getCellSprite(x, y)"
+                                                :src="getCellSprite(x, y)"
+                                                :alt="getCellEntityAlt(x, y)"
+                                                class="entity-token"
+                                                :class="{ defeated: getEnemyAt(x, y) && getEnemyAt(x, y).is_defeated }">
+                                            <i v-else :class="getCellIcon(x, y)"></i>
+                                        </div>
                                     </div>
+                                </div>
+                                <div id="player-icon" class="player-icon">
+                                    <img v-if="getEntitySprite(gameState.player, 'token')"
+                                        :src="getEntitySprite(gameState.player, 'token')"
+                                        :alt="gameState.player.name || 'Player'"
+                                        class="player-token">
+                                    <i v-else :class="gameState.player.font_awesome_icon || 'fa-solid fa-user'"></i>
                                 </div>
                             </div>
                             <div class="controls" v-if="gameState && !gameState.in_combat">
@@ -269,47 +283,58 @@
                                         getDirectionBadge('e') }}</span>
                                 </button>
                             </div>
-                            <!-- Move the player icon inside the game-map container -->
-                            <div id="player-icon" class="player-icon">
-                                <i class="fa-solid fa-user"></i>
-                            </div>
                         </div>
 
                         <!-- Combat UI -->
                         <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
-                            <div class="enemy-header">
-                                <h3>{{ gameState.current_enemy.name }}</h3>
-                                <i :class="gameState.current_enemy.font_awesome_icon"></i>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">
-                                    <i class="fas fa-heart fa-fw" style="color: #ff6b6b;"></i>
-                                    <span class="label-text">{{ $t('combat.stats.hp') }}</span>
-                                </span>
-                                <span class="status-value">
-                                    <div class="health-bar-container">
-                                        <div class="health-bar">
-                                            <div class="health-bar-fill" :style="{ width: getEnemyHealthPercentage + '%' }">
-                                            </div>
-                                        </div>
-                                        <span class="health-text">{{ gameState.current_enemy.hp }}/{{
-                                            gameState.current_enemy.max_hp }}</span>
+                            <div class="combat-stage">
+                                <section class="combatant combatant-player">
+                                    <h3>{{ gameState.player.name }}</h3>
+                                    <div class="combat-sprite-frame">
+                                        <img v-if="getEntitySprite(gameState.player)"
+                                            :src="getEntitySprite(gameState.player)"
+                                            :alt="gameState.player.name || 'Player'"
+                                            class="combat-sprite">
+                                        <i v-else :class="gameState.player.font_awesome_icon || 'fa-solid fa-user'"
+                                            class="combat-sprite-fallback"></i>
                                     </div>
-                                </span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">
-                                    <i class="fas fa-fist-raised fa-fw" style="color: #ffd93d;"></i>
-                                    <span class="label-text">{{ $t('combat.stats.attack') }}</span>
-                                </span>
-                                <span class="status-value">{{ gameState.current_enemy.attack }}</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label">
-                                    <i class="fas fa-shield-alt fa-fw" style="color: #4dabf7;"></i>
-                                    <span class="label-text">{{ $t('combat.stats.defense') }}</span>
-                                </span>
-                                <span class="status-value">{{ gameState.current_enemy.defense }}</span>
+                                    <div class="combat-health">
+                                        <div class="health-bar">
+                                            <div class="health-bar-fill"
+                                                :style="{ width: getPlayerHealthPercentage + '%' }"></div>
+                                        </div>
+                                        <span>{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
+                                    </div>
+                                    <div class="combatant-stats">
+                                        <span><i class="fas fa-fist-raised fa-fw"></i>{{ gameState.player_attack }}</span>
+                                        <span><i class="fas fa-shield-alt fa-fw"></i>{{ gameState.player_defense }}</span>
+                                    </div>
+                                </section>
+
+                                <div class="versus-mark" aria-hidden="true"><span>VS</span></div>
+
+                                <section class="combatant combatant-enemy">
+                                    <h3>{{ gameState.current_enemy.name }}</h3>
+                                    <div class="combat-sprite-frame">
+                                        <img v-if="getEntitySprite(gameState.current_enemy)"
+                                            :src="getEntitySprite(gameState.current_enemy)"
+                                            :alt="gameState.current_enemy.name"
+                                            class="combat-sprite">
+                                        <i v-else :class="gameState.current_enemy.font_awesome_icon"
+                                            class="combat-sprite-fallback"></i>
+                                    </div>
+                                    <div class="combat-health enemy-health">
+                                        <div class="health-bar">
+                                            <div class="health-bar-fill"
+                                                :style="{ width: getEnemyHealthPercentage + '%' }"></div>
+                                        </div>
+                                        <span>{{ gameState.current_enemy.hp }}/{{ gameState.current_enemy.max_hp }}</span>
+                                    </div>
+                                    <div class="combatant-stats">
+                                        <span><i class="fas fa-fist-raised fa-fw"></i>{{ gameState.current_enemy.attack }}</span>
+                                        <span><i class="fas fa-shield-alt fa-fw"></i>{{ gameState.current_enemy.defense }}</span>
+                                    </div>
+                                </section>
                             </div>
                             <div class="combat-buttons">
                                 <button @click="attack" class="attack-button"><i class="fas fa-hammer fa-fw"></i> {{
@@ -337,8 +362,13 @@
                     <!-- Player Status -->
                     <div class="player-status">
                         <div class="player-header">
+                            <div class="player-avatar">
+                                <img v-if="getEntitySprite(gameState.player)"
+                                    :src="getEntitySprite(gameState.player)"
+                                    :alt="gameState.player.name || 'Player'">
+                                <i v-else :class="gameState.player.font_awesome_icon"></i>
+                            </div>
                             <h3>{{ gameState.player.name }}</h3>
-                            <i :class="gameState.player.font_awesome_icon"></i>
                         </div>
                         <div class="status-item">
                             <span class="status-label">

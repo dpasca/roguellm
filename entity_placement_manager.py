@@ -70,6 +70,8 @@ class EntityPlacementManager:
                         'name': enemy_def['name'],
                         'id': enemy_id,
                         'font_awesome_icon': icon,
+                        'sprite_url': enemy_def.get('sprite_url'),
+                        'sprite_token_url': enemy_def.get('sprite_token_url'),
                         'is_defeated': was_defeated
                     }
                     game_state.enemies.append(enemy)

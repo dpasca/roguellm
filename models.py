@@ -9,6 +9,9 @@ class Enemy(BaseModel):
     attack: int
     font_awesome_icon: str
     weapons: List[str]
+    defense: int = 0
+    sprite_url: Optional[str] = None
+    sprite_token_url: Optional[str] = None
 
 class Item(BaseModel):
     id: str

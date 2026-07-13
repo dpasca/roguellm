@@ -27,7 +27,9 @@ class CombatManager:
             max_hp=hp,
             attack=attack,
             defense=defense,
-            weapons=enemy_def.get('weapons', [])  # Add default empty list if weapons not present
+            weapons=enemy_def.get('weapons', []),  # Add default empty list if weapons not present
+            sprite_url=enemy_def.get('sprite_url'),
+            sprite_token_url=enemy_def.get('sprite_token_url'),
         )
         enemy._xp_reward = enemy_def.get('xp', 10)
         enemy._hp_reward = int(enemy._xp_reward * 1.0)
@@ -70,6 +72,8 @@ class CombatManager:
                     'name': defeated_enemy_name,
                     'id': game_state.current_enemy.id,
                     'font_awesome_icon': game_state.current_enemy.font_awesome_icon,
+                    'sprite_url': game_state.current_enemy.sprite_url,
+                    'sprite_token_url': game_state.current_enemy.sprite_token_url,
                     'is_defeated': True
                 })
 

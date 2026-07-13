@@ -65,6 +65,8 @@ PRESERVED_WORLD_FIELD_NAMES = {
     "xp",
     "font_awesome_icon",
     "map_color",
+    "sprite_url",
+    "sprite_token_url",
 }
 TRANSLATABLE_STRING_LIST_FIELD_NAMES = {"weapons"}
 

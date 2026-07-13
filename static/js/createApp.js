@@ -15,7 +15,7 @@ function updatePlayerPosition(x, y, force = false) {
     const cell = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
     if (!cell || !playerIcon) return;
 
-    const gameMap = document.querySelector('.game-map');
+    const gameMap = document.querySelector('.map-surface') || document.querySelector('.game-map');
     if (!gameMap) return;
 
     // If not forcing update and position hasn't changed, skip update
@@ -236,6 +236,7 @@ const app = Vue.createApp({
             const scaleFg = isExplored ? 0.9 : 0.8; // Unexplored cells are darker
 
             return {
+                '--tile-color': cellType.map_color,
                 backgroundColor: scaleColor(cellType.map_color, scaleBg),
                 color: scaleColor(cellType.map_color, scaleFg)
             };
@@ -250,10 +251,28 @@ const app = Vue.createApp({
             const items = this.gameState.item_placements || [];
             return items.find(item => item.x === x && item.y === y && !item.is_collected);
         },
+        getEntitySprite(entity, variant = 'sprite') {
+            if (!entity) return '';
+            if (variant === 'token') {
+                return entity.sprite_token_url || entity.sprite_url || '';
+            }
+            return entity.sprite_url || entity.sprite_token_url || '';
+        },
+        getCellSprite(x, y) {
+            if (this.isPlayerPosition(x, y)) return '';
+            return this.getEntitySprite(this.getEnemyAt(x, y), 'token');
+        },
+        getCellEntityAlt(x, y) {
+            const enemy = this.getEnemyAt(x, y);
+            if (enemy) return enemy.name || 'Enemy';
+            const item = this.getItemAt(x, y);
+            if (item) return item.name || 'Item';
+            return '';
+        },
         getCellIcon(x, y) {
             // Check if there's an enemy at this position (either active or defeated)
             const enemy = this.getEnemyAt(x, y);
-            if (enemy) {
+            if (enemy && !this.isPlayerPosition(x, y)) {
                 const baseClass = enemy.font_awesome_icon;
                 const enemyClass = enemy.is_defeated ? 'enemy-icon defeated' : 'enemy-icon';
                 return `${baseClass} ${enemyClass}`;

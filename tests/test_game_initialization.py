@@ -1,5 +1,6 @@
 import random
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from game_state_manager import GameStateManager, WORLD_TRANSLATION_CACHE_VERSION
@@ -98,6 +99,50 @@ class FakeGenAI:
 
 
 class GameInitializationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_model_failure_uses_list_definitions_for_playable_fallbacks(self):
+        class FailingEntityManager:
+            async def generate_placements(self, cell_types, map_width, map_height):
+                raise RuntimeError("model unavailable")
+
+        manager = GameStateManager.__new__(GameStateManager)
+        manager.random = random.Random(0)
+        manager.state = SimpleNamespace(
+            player_pos=(0, 0),
+            map_width=4,
+            map_height=4,
+            cell_types=[],
+        )
+        manager.definitions = SimpleNamespace(
+            celltype_defs=[{
+                "id": "street",
+                "name": "Street",
+                "description": "A street",
+                "map_color": "#333333",
+                "font_awesome_icon": "fa-solid fa-road",
+            }],
+            enemy_defs=[{"enemy_id": "punk"}],
+            item_defs=[{"id": "coffee"}],
+        )
+        manager.entity_manager = FailingEntityManager()
+
+        fallback_map = manager.make_random_map()
+        manager.state.cell_types = fallback_map
+        await manager.initialize_game_placements()
+
+        self.assertEqual(len(fallback_map), 4)
+        self.assertEqual(len(fallback_map[0]), 4)
+        self.assertEqual(fallback_map[0][0]["id"], "street")
+        self.assertEqual(manager.entity_placements[0], {
+            "type": "enemy",
+            "entity_id": "punk",
+            "x": 2,
+            "y": 0,
+        })
+        self.assertEqual(
+            manager.entity_manager.entity_placements,
+            manager.entity_placements,
+        )
+
     async def test_initialize_game_uses_sanitized_entity_placements_for_encounters(self):
         manager = GameStateManager.__new__(GameStateManager)
         manager.random = random.Random(0)
