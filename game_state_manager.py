@@ -20,7 +20,7 @@ logger = logging.getLogger()
 
 # Use random map (for testing)
 USE_RANDOM_MAP = False
-WORLD_TRANSLATION_CACHE_VERSION = 4
+WORLD_TRANSLATION_CACHE_VERSION = 5
 
 
 class GameStateManager:
@@ -293,6 +293,10 @@ class GameStateManager:
 
     def make_fallback_placements(self):
         """Place saved-world entities deterministically when model placement is unavailable."""
+        return self.ensure_entity_placement_density([])
+
+    def ensure_entity_placement_density(self, placements: List[dict]) -> List[dict]:
+        """Fill sparse model output so a run has a reliable gameplay rhythm."""
         start_x, start_y = self.state.player_pos
         candidates = sorted(
             (
@@ -302,48 +306,101 @@ class GameStateManager:
                 if (x, y) != (start_x, start_y)
             )
         )
-        occupied = set()
-        placements = []
+        normalized = [dict(placement) for placement in placements if isinstance(placement, dict)]
+        occupied = {
+            (placement.get('x'), placement.get('y'))
+            for placement in normalized
+            if isinstance(placement.get('x'), int)
+            and isinstance(placement.get('y'), int)
+            and 0 <= placement['x'] < self.state.map_width
+            and 0 <= placement['y'] < self.state.map_height
+        }
 
-        def reserve_position(avoid_start_zone=False):
-            for _, y, x in candidates:
+        def reserve_position(avoid_start_zone=False, target_distance=None):
+            eligible = []
+            for distance, y, x in candidates:
                 if (x, y) in occupied:
                     continue
                 if avoid_start_zone and abs(x - start_x) <= 1 and abs(y - start_y) <= 1:
                     continue
-                occupied.add((x, y))
-                return x, y
-            return None
+                distance_error = abs(distance - target_distance) if target_distance is not None else 0
+                eligible.append((distance_error, distance, y, x))
+            if not eligible:
+                return None
+            _, _, y, x = min(eligible)
+            occupied.add((x, y))
+            return x, y
 
-        enemy_defs = self.definitions.enemy_defs if isinstance(self.definitions.enemy_defs, list) else []
-        for enemy_def in enemy_defs:
-            if not isinstance(enemy_def, dict) or not enemy_def.get('enemy_id'):
-                continue
-            position = reserve_position(avoid_start_zone=True)
+        max_distance = max(1, (self.state.map_width - 1) + (self.state.map_height - 1))
+
+        def paced_distance(index, target_count, minimum):
+            if target_count <= 1:
+                return minimum
+            return round(minimum + index * (max_distance - minimum) / (target_count - 1))
+
+        raw_enemy_defs = getattr(self.definitions, "enemy_defs", [])
+        enemy_defs = raw_enemy_defs if isinstance(raw_enemy_defs, list) else []
+        enemy_ids = [
+            enemy_def['enemy_id']
+            for enemy_def in enemy_defs
+            if isinstance(enemy_def, dict) and enemy_def.get('enemy_id')
+        ]
+        raw_item_defs = getattr(self.definitions, "item_defs", [])
+        item_defs = raw_item_defs if isinstance(raw_item_defs, list) else []
+        item_ids = [
+            item_def['id']
+            for item_def in item_defs
+            if isinstance(item_def, dict) and item_def.get('id')
+        ]
+
+        area = self.state.map_width * self.state.map_height
+        enemy_target = min(8, max(len(enemy_ids), area // 12)) if enemy_ids else 0
+        item_target = min(6, max(len(item_ids), area // 16)) if item_ids else 0
+
+        valid_enemy_count = sum(
+            1
+            for placement in normalized
+            if placement.get('type') == 'enemy'
+            and placement.get('entity_id') in enemy_ids
+            and isinstance(placement.get('x'), int)
+            and isinstance(placement.get('y'), int)
+        )
+        for index in range(valid_enemy_count, enemy_target):
+            position = reserve_position(
+                avoid_start_zone=True,
+                target_distance=paced_distance(index, enemy_target, 2),
+            )
             if position is None:
                 break
-            placements.append({
+            normalized.append({
                 'type': 'enemy',
-                'entity_id': enemy_def['enemy_id'],
+                'entity_id': enemy_ids[index % len(enemy_ids)],
                 'x': position[0],
                 'y': position[1],
             })
 
-        item_defs = self.definitions.item_defs if isinstance(self.definitions.item_defs, list) else []
-        for item_def in item_defs:
-            if not isinstance(item_def, dict) or not item_def.get('id'):
-                continue
-            position = reserve_position()
+        valid_item_count = sum(
+            1
+            for placement in normalized
+            if placement.get('type') == 'item'
+            and placement.get('entity_id') in item_ids
+            and isinstance(placement.get('x'), int)
+            and isinstance(placement.get('y'), int)
+        )
+        for index in range(valid_item_count, item_target):
+            position = reserve_position(
+                target_distance=paced_distance(index, item_target, 1),
+            )
             if position is None:
                 break
-            placements.append({
+            normalized.append({
                 'type': 'item',
-                'entity_id': item_def['id'],
+                'entity_id': item_ids[index % len(item_ids)],
                 'x': position[0],
                 'y': position[1],
             })
 
-        return placements
+        return normalized
 
     async def initialize_game_placements(self):
         """Generate entity placements (both enemies and items)."""
@@ -360,10 +417,325 @@ class GameStateManager:
         if not self.entity_placements:
             logger.warning("Using deterministic fallback entity placements")
             self.entity_placements = self.make_fallback_placements()
+        else:
+            self.entity_placements = self.ensure_entity_placement_density(self.entity_placements)
 
         # Keep the placement processor in sync when the fallback path supplied
         # the list instead of the model-backed generator.
         self.entity_manager.entity_placements = list(self.entity_placements)
+
+    def initialize_story_placements(self) -> None:
+        """Place reusable, structured story opportunities across the map."""
+        available_terrain_ids = {
+            self._cell_id(cell)
+            for row in self.state.cell_types
+            for cell in row
+        }
+        templates = [
+            template
+            for template in self._story_templates()
+            if template.get("terrain_id") in available_terrain_ids
+        ][:6]
+        if not templates:
+            templates = [
+                template
+                for template in self._fallback_story_templates()
+                if template.get("terrain_id") in available_terrain_ids
+            ][:6]
+        occupied = {
+            (placement.get('x'), placement.get('y'))
+            for placement in self.entity_placements
+            if isinstance(placement, dict)
+        }
+        start_x, start_y = self.state.player_pos
+        story_placements = []
+        remaining_templates = list(templates)
+
+        for index in range(len(templates)):
+            target_distance = 1 + (index * 2)
+            candidates = []
+
+            for template_index, template in enumerate(remaining_templates):
+                terrain_id = template.get("terrain_id")
+                for y in range(self.state.map_height):
+                    for x in range(self.state.map_width):
+                        if (x, y) == (start_x, start_y) or (x, y) in occupied:
+                            continue
+                        if self._cell_id(self.state.cell_types[y][x]) != terrain_id:
+                            continue
+                        distance = abs(x - start_x) + abs(y - start_y)
+                        candidates.append((
+                            abs(distance - target_distance),
+                            distance,
+                            template_index,
+                            y,
+                            x,
+                        ))
+
+            if not candidates:
+                break
+
+            _, _, template_index, y, x = min(candidates)
+            template = remaining_templates.pop(template_index)
+
+            occupied.add((x, y))
+            story = dict(template)
+            story.update({
+                "type": "story",
+                "instance_id": f"{template['id']}:{x}:{y}",
+                "x": x,
+                "y": y,
+                "status": "available",
+            })
+            story_placements.append(story)
+
+        self.state.story_placements = story_placements
+        self.state.current_story = None
+        self.state.resolved_story_ids = []
+
+    def _story_templates(self) -> List[Dict[str, Any]]:
+        templates = []
+        for terrain_index, cell_def in enumerate(self._celltype_definition_list()):
+            terrain_id = self._cell_id(cell_def) or f"terrain-{terrain_index}"
+            raw_encounters = cell_def.get("encounters", []) if isinstance(cell_def, dict) else []
+            if not isinstance(raw_encounters, list):
+                continue
+            for encounter_index, raw_encounter in enumerate(raw_encounters):
+                normalized = self._normalize_story_template(
+                    raw_encounter,
+                    terrain_id,
+                    encounter_index,
+                )
+                if normalized:
+                    templates.append(normalized)
+
+        if templates:
+            return templates
+        return self._fallback_story_templates()
+
+    def _normalize_story_template(
+            self,
+            raw_encounter: Any,
+            terrain_id: str,
+            encounter_index: int,
+    ) -> Optional[Dict[str, Any]]:
+        if not isinstance(raw_encounter, dict):
+            return None
+
+        encounter_id = raw_encounter.get("id")
+        title = raw_encounter.get("title")
+        description = raw_encounter.get("description")
+        choices = raw_encounter.get("choices")
+        if not isinstance(encounter_id, str) or not encounter_id.strip():
+            encounter_id = f"{terrain_id}-story-{encounter_index}"
+        if not isinstance(title, str) or not title.strip():
+            return None
+        if not isinstance(description, str) or not description.strip():
+            return None
+        if not isinstance(choices, list):
+            return None
+
+        normalized_choices = []
+        for choice_index, raw_choice in enumerate(choices[:3]):
+            if not isinstance(raw_choice, dict):
+                continue
+            choice_id = raw_choice.get("id")
+            label = raw_choice.get("label")
+            result = raw_choice.get("result")
+            if not isinstance(choice_id, str) or not choice_id.strip():
+                choice_id = f"choice-{choice_index}"
+            if not isinstance(label, str) or not label.strip():
+                continue
+            if not isinstance(result, str) or not result.strip():
+                continue
+            normalized_choices.append({
+                "id": choice_id,
+                "label": label,
+                "result": result,
+                "effect": self._normalize_story_effect(raw_choice.get("effect")),
+            })
+
+        if len(normalized_choices) < 2:
+            return None
+
+        icon = raw_encounter.get("font_awesome_icon")
+        if not isinstance(icon, str) or not icon.strip():
+            icon = "fa-solid fa-diamond"
+
+        resolved_description = raw_encounter.get("resolved_description")
+        if not isinstance(resolved_description, str):
+            resolved_description = ""
+
+        return {
+            "id": encounter_id,
+            "terrain_id": terrain_id,
+            "title": title,
+            "description": description,
+            "resolved_description": resolved_description,
+            "font_awesome_icon": icon,
+            "choices": normalized_choices,
+        }
+
+    def _normalize_story_effect(self, raw_effect: Any) -> Dict[str, Any]:
+        if not isinstance(raw_effect, dict):
+            return {}
+
+        effect = {}
+        health = raw_effect.get("health")
+        if isinstance(health, int) and not isinstance(health, bool):
+            effect["health"] = max(-50, min(50, health))
+
+        xp = raw_effect.get("xp")
+        if isinstance(xp, int) and not isinstance(xp, bool):
+            effect["xp"] = max(0, min(100, xp))
+
+        item_ids = {
+            item.get("id")
+            for item in getattr(self.definitions, "item_defs", [])
+            if isinstance(item, dict)
+        }
+        item_id = raw_effect.get("item_id")
+        if isinstance(item_id, str) and item_id in item_ids:
+            effect["item_id"] = item_id
+
+        enemy_ids = {
+            enemy.get("enemy_id")
+            for enemy in getattr(self.definitions, "enemy_defs", [])
+            if isinstance(enemy, dict)
+        }
+        combat_enemy_id = raw_effect.get("combat_enemy_id")
+        if isinstance(combat_enemy_id, str) and combat_enemy_id in enemy_ids:
+            effect["combat_enemy_id"] = combat_enemy_id
+
+        return effect
+
+    def _fallback_story_templates(self) -> List[Dict[str, Any]]:
+        templates = []
+        cell_defs = self._celltype_definition_list()
+        if not cell_defs:
+            seen_ids = set()
+            for row in getattr(self.state, "cell_types", []):
+                for cell in row:
+                    if not isinstance(cell, dict):
+                        continue
+                    terrain_id = self._cell_id(cell)
+                    if not terrain_id or terrain_id in seen_ids:
+                        continue
+                    seen_ids.add(terrain_id)
+                    cell_defs.append(dict(cell))
+
+        for index, cell_def in enumerate(cell_defs[:6]):
+            terrain_id = self._cell_id(cell_def) or f"terrain-{index}"
+            terrain_name = self._cell_name(cell_def)
+            terrain_description = self._cell_description(cell_def)
+            templates.append({
+                "id": f"fallback-story-{terrain_id}",
+                "terrain_id": terrain_id,
+                "title": self.msg("story.fallback_title", terrain=terrain_name),
+                "description": self.msg(
+                    "story.fallback_description",
+                    description=terrain_description,
+                ),
+                "resolved_description": self.msg("story.fallback_resolved"),
+                "font_awesome_icon": "fa-solid fa-magnifying-glass",
+                "choices": [
+                    {
+                        "id": "investigate",
+                        "label": self.msg("story.fallback_investigate"),
+                        "result": self.msg("story.fallback_investigate_result"),
+                        "effect": {"xp": 4},
+                    },
+                    {
+                        "id": "take_risk",
+                        "label": self.msg("story.fallback_risk"),
+                        "result": self.msg("story.fallback_risk_result"),
+                        "effect": {"health": -5, "xp": 9},
+                    },
+                ],
+            })
+        return templates
+
+    def _celltype_definition_list(self) -> List[Dict[str, Any]]:
+        raw_defs = getattr(self.definitions, "celltype_defs", [])
+        if isinstance(raw_defs, list):
+            return [cell for cell in raw_defs if isinstance(cell, dict)]
+        if isinstance(raw_defs, dict):
+            normalized = []
+            for cell_id, cell in raw_defs.items():
+                if not isinstance(cell, dict):
+                    continue
+                cell_copy = dict(cell)
+                cell_copy.setdefault("id", str(cell_id))
+                normalized.append(cell_copy)
+            return normalized
+        return []
+
+    def _cell_id(self, cell: Any) -> str:
+        if isinstance(cell, dict):
+            value = cell.get("id")
+            return str(value) if value is not None else ""
+        return str(cell) if cell is not None else ""
+
+    def initialize_objective(self) -> None:
+        player = self.state.player if isinstance(self.state.player, dict) else {}
+        custom_objective = player.get("objective") if isinstance(player.get("objective"), dict) else {}
+        custom_title = custom_objective.get("title")
+        custom_description = custom_objective.get("description")
+        if not isinstance(custom_title, str) or not custom_title.strip():
+            custom_title = ""
+        if not isinstance(custom_description, str) or not custom_description.strip():
+            custom_description = ""
+        enemy_target = sum(
+            1
+            for placement in self.entity_placements
+            if placement.get("type") == "enemy"
+        )
+
+        if enemy_target:
+            kind = "enemies"
+            target = enemy_target
+            default_title = self.msg("objective.default_title")
+            default_description = self.msg("objective.default_description")
+        else:
+            kind = "stories"
+            target = len(self.state.story_placements)
+            default_title = self.msg("objective.story_title")
+            default_description = self.msg("objective.story_description")
+
+        self.state.objective = {
+            "kind": kind,
+            "title": custom_title or default_title,
+            "description": custom_description or default_description,
+            "current": 0,
+            "target": target,
+            "completed": False,
+        }
+        self.update_objective_progress()
+
+    def update_objective_progress(self) -> None:
+        objective = getattr(self.state, "objective", {})
+        if not isinstance(objective, dict) or not objective:
+            return
+
+        if objective.get("kind") == "enemies":
+            enemy_positions = {
+                (placement.get("x"), placement.get("y"))
+                for placement in self.entity_placements
+                if placement.get("type") == "enemy"
+            }
+            defeated_positions = {
+                (enemy.get("x"), enemy.get("y"))
+                for enemy in self.state.defeated_enemies
+            }
+            current = len(enemy_positions & defeated_positions)
+        else:
+            current = len(self.state.resolved_story_ids)
+
+        target = objective.get("target", 0)
+        objective["current"] = min(current, target) if isinstance(target, int) else current
+        objective["completed"] = bool(target and current >= target)
+        if objective.get("kind") == "stories" and objective["completed"]:
+            self.state.game_won = True
 
     async def initialize_tile_info(self):
         """Prebuild fast tile summaries so movement never waits on narration."""
@@ -458,6 +830,19 @@ class GameStateManager:
                 "entity_status": "available",
                 "tags": ["item"],
             })
+        elif placement.get("type") == "story":
+            entity_name = placement.get("title") or self.msg("story.opportunity")
+            info.update({
+                "quick_desc": placement.get("description") or info["quick_desc"],
+                "inspect_desc": placement.get("description") or info["inspect_desc"],
+                "danger_level": "story",
+                "hint": self.msg("story.opportunity_title", title=entity_name),
+                "entity_type": "story",
+                "entity_name": entity_name,
+                "entity_icon": placement.get("font_awesome_icon", "fa-solid fa-diamond"),
+                "entity_status": placement.get("status", "available"),
+                "tags": ["story"],
+            })
 
         return info
 
@@ -495,6 +880,8 @@ class GameStateManager:
                 terrain=name,
                 item=item.get('name', self.msg("tile.useful_item")),
             )
+        if placement and placement.get("type") == "story":
+            return placement.get("description") or self.msg("story.opportunity")
         return self.msg("tile.clear_quick", terrain=name)
 
     def _fallback_inspect_desc(self, cell: Any, placement: Optional[dict]) -> str:
@@ -513,16 +900,28 @@ class GameStateManager:
                 description=description,
                 item=item.get('name', self.msg("tile.an_item")),
             )
+        if placement and placement.get("type") == "story":
+            return placement.get("description") or description
         return description
 
     def _placement_at(self, x: int, y: int) -> Optional[dict]:
-        return next(
+        entity_placement = next(
             (
                 placement
                 for placement in getattr(self, "entity_placements", [])
                 if placement.get("x") == x and placement.get("y") == y
             ),
             None
+        )
+        if entity_placement:
+            return entity_placement
+        return next(
+            (
+                placement
+                for placement in getattr(self.state, "story_placements", [])
+                if placement.get("x") == x and placement.get("y") == y
+            ),
+            None,
         )
 
     def _enemy_def(self, enemy_id: Optional[str]) -> Dict[str, Any]:
@@ -628,6 +1027,11 @@ class GameStateManager:
             current_enemy=None,
             enemies=[],
             defeated_enemies=[],
+            story_placements=[],
+            current_story=None,
+            resolved_story_ids=[],
+            objective={},
+            combat_source="",
             game_over=False,
             game_won=False,
             temporary_effects={},
@@ -674,6 +1078,11 @@ class GameStateManager:
 
         # Process the entity placements to populate enemies and items
         self.entity_placements = self.entity_manager.process_placements(self.state)
+
+        # Add paced, choice-driven opportunities independently of combat/item
+        # placement so sparse maps still offer meaningful decisions.
+        self.initialize_story_placements()
+        self.initialize_objective()
 
         # Prebuild fast, tappable tile summaries after placements are sanitized.
         await self.initialize_tile_info()

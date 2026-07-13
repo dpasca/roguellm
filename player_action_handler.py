@@ -25,6 +25,9 @@ class PlayerActionHandler:
         if self.game_state_manager.state.game_won or self.game_state_manager.state.game_over:
             return await self.game_state_manager.create_message(self.msg("action.game_over"))
 
+        if self.game_state_manager.state.current_story:
+            return await self.game_state_manager.create_message(self.msg("story.choose_first"))
+
         # Save previous position
         self.game_state_manager.state.player_pos_prev = self.game_state_manager.state.player_pos
         # Get current position
@@ -172,7 +175,158 @@ class PlayerActionHandler:
         if self._all_enemy_placements_defeated():
             self.game_state_manager.state.game_won = True
             result += f"\n{self.msg('run.all_enemies_defeated')}"
+        self._update_objective_progress()
         return await self.game_state_manager.create_message(result)
+
+    async def handle_story_choice(self, choice_id: str) -> dict:
+        """Resolve one structured choice from the active story encounter."""
+        story = self.game_state_manager.state.current_story
+        if not story:
+            return await self.game_state_manager.create_message(self.msg("story.no_active"))
+
+        choice = next(
+            (
+                candidate
+                for candidate in story.get("choices", [])
+                if candidate.get("id") == choice_id
+            ),
+            None,
+        )
+        if not choice:
+            return await self.game_state_manager.create_message(self.msg("story.invalid_choice"))
+
+        result_text = choice.get("result") or story.get("description") or story.get("title", "")
+        result_parts = [result_text]
+        story_outcome = {
+            "title": story.get("title", ""),
+            "icon": story.get("font_awesome_icon") or "fa-solid fa-diamond",
+            "choice_id": choice_id,
+            "choice_label": choice.get("label", ""),
+            "result": result_text,
+            "effects": [],
+            "combat_started": False,
+            "enemy_name": "",
+        }
+        effect = choice.get("effect") if isinstance(choice.get("effect"), dict) else {}
+
+        health_change = effect.get("health", 0)
+        if isinstance(health_change, int) and not isinstance(health_change, bool) and health_change:
+            old_hp = self.game_state_manager.state.player_hp
+            self.game_state_manager.state.player_hp = max(
+                0,
+                min(
+                    self.game_state_manager.state.player_max_hp,
+                    old_hp + health_change,
+                ),
+            )
+            actual_change = self.game_state_manager.state.player_hp - old_hp
+            if actual_change > 0:
+                effect_label = self.msg("story.health_gain", amount=actual_change)
+                result_parts.append(effect_label)
+                story_outcome["effects"].append({
+                    "type": "health",
+                    "amount": actual_change,
+                    "label": effect_label,
+                })
+            elif actual_change < 0:
+                effect_label = self.msg("story.health_loss", amount=abs(actual_change))
+                result_parts.append(effect_label)
+                story_outcome["effects"].append({
+                    "type": "health",
+                    "amount": actual_change,
+                    "label": effect_label,
+                })
+
+        xp_change = effect.get("xp", 0)
+        if isinstance(xp_change, int) and not isinstance(xp_change, bool) and xp_change > 0:
+            self.game_state_manager.state.player_xp += xp_change
+            effect_label = self.msg("story.xp_gain", amount=xp_change)
+            result_parts.append(effect_label)
+            story_outcome["effects"].append({
+                "type": "xp",
+                "amount": xp_change,
+                "label": effect_label,
+            })
+
+        item_id = effect.get("item_id")
+        if isinstance(item_id, str):
+            item_def = next(
+                (
+                    item
+                    for item in self.game_state_manager.definitions.item_defs
+                    if item.get("id") == item_id
+                ),
+                None,
+            )
+            if item_def:
+                item = self._generate_item_from_def(item_def)
+                self.game_state_manager.state.inventory.append(item)
+                effect_label = self.msg("story.item_gain", item=item.name)
+                result_parts.append(effect_label)
+                story_outcome["effects"].append({
+                    "type": "item",
+                    "item_name": item.name,
+                    "label": effect_label,
+                })
+
+        instance_id = story.get("instance_id")
+        if isinstance(instance_id, str):
+            for placement in self.game_state_manager.state.story_placements:
+                if placement.get("instance_id") == instance_id:
+                    placement["status"] = "resolved"
+                    placement["chosen_choice_id"] = choice_id
+                    break
+            if instance_id not in self.game_state_manager.state.resolved_story_ids:
+                self.game_state_manager.state.resolved_story_ids.append(instance_id)
+
+        self._mark_story_tile_resolved(story)
+        self.game_state_manager.state.current_story = None
+
+        if self.game_state_manager.state.player_hp <= 0:
+            self.game_state_manager.state.game_over = True
+            effect_label = self.msg("story.player_defeated")
+            result_parts.append(effect_label)
+            story_outcome["effects"].append({
+                "type": "defeat",
+                "label": effect_label,
+            })
+        else:
+            combat_enemy_id = effect.get("combat_enemy_id")
+            if isinstance(combat_enemy_id, str):
+                enemy_def = next(
+                    (
+                        enemy
+                        for enemy in self.game_state_manager.definitions.enemy_defs
+                        if enemy.get("enemy_id") == combat_enemy_id
+                    ),
+                    None,
+                )
+                if enemy_def:
+                    enemy = self._generate_enemy_from_def(enemy_def)
+                    self.game_state_manager.state.current_enemy = enemy
+                    self.game_state_manager.state.in_combat = True
+                    self.game_state_manager.state.combat_source = "story"
+                    effect_label = self.msg(
+                        "encounter.enemy_appears",
+                        enemy=enemy.name,
+                        hp=enemy.hp,
+                        attack=enemy.attack,
+                    )
+                    result_parts.append(effect_label)
+                    story_outcome["effects"].append({
+                        "type": "combat",
+                        "enemy_name": enemy.name,
+                        "label": effect_label,
+                    })
+                    story_outcome["combat_started"] = True
+                    story_outcome["enemy_name"] = enemy.name
+
+        self._update_objective_progress()
+        response = await self.game_state_manager.create_message(
+            "\n".join(part for part in result_parts if part)
+        )
+        response["story_outcome"] = story_outcome
+        return response
 
     async def _process_temporary_effects(self) -> str:
         """Process temporary effects and return a log of what happened."""
@@ -220,6 +374,7 @@ class PlayerActionHandler:
                 enemy = self._generate_enemy_from_def(enemy_def)
                 self.game_state_manager.state.current_enemy = enemy
                 self.game_state_manager.state.in_combat = True
+                self.game_state_manager.state.combat_source = "map"
 
                 # Check if this enemy was previously defeated
                 was_defeated = any(
@@ -259,6 +414,7 @@ class PlayerActionHandler:
                 if was_defeated:
                     self.game_state_manager.state.current_enemy = None
                     self.game_state_manager.state.in_combat = False
+                    self.game_state_manager.state.combat_source = ""
 
                 # Only remove enemy placement if it was defeated
                 if was_defeated:
@@ -326,6 +482,25 @@ class PlayerActionHandler:
                     self.msg("item.found", item=item.name, description=item.description)
                 )
 
+        story_here = next(
+            (
+                story
+                for story in self.game_state_manager.state.story_placements
+                if story.get("x") == x
+                and story.get("y") == y
+                and story.get("status") == "available"
+            ),
+            None,
+        )
+        if story_here:
+            self.game_state_manager.state.current_story = dict(story_here)
+            description = "\n".join(
+                part
+                for part in [story_here.get("title"), story_here.get("description")]
+                if part
+            )
+            return await self.game_state_manager.create_message(description)
+
         if was_new_tile:
             return await self.game_state_manager.create_message_room()
 
@@ -363,6 +538,36 @@ class PlayerActionHandler:
                 'inspect_desc': self.msg('tile.enemy_defeated_inspect', enemy=enemy_name),
                 'tags': ['defeated'],
             })
+
+    def _mark_story_tile_resolved(self, story: dict) -> None:
+        x = story.get("x")
+        y = story.get("y")
+        if not isinstance(x, int) or not isinstance(y, int):
+            return
+
+        get_tile_info = getattr(self.game_state_manager, 'get_tile_info', None)
+        tile_info = get_tile_info(x, y) if callable(get_tile_info) else None
+        if not tile_info:
+            return
+
+        title = story.get("title") or tile_info.get("label") or self.msg("tile.area")
+        terrain = tile_info.get("terrain_name") or tile_info.get("label") or self.msg("tile.area")
+        tile_info.update({
+            "danger_level": "safe",
+            "hint": self.msg("story.resolved", title=title),
+            "entity_status": "resolved",
+            "quick_desc": self.msg("story.resolved_quick", terrain=terrain, title=title),
+            "inspect_desc": story.get("resolved_description") or self.msg(
+                "story.resolved_inspect",
+                title=title,
+            ),
+            "tags": ["story", "resolved"],
+        })
+
+    def _update_objective_progress(self) -> None:
+        updater = getattr(self.game_state_manager, "update_objective_progress", None)
+        if callable(updater):
+            updater()
 
     def _generate_enemy_from_def(self, enemy_def: dict) -> Enemy:
         """Generate an enemy from a definition."""

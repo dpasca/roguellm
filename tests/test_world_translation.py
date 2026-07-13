@@ -19,6 +19,10 @@ class WorldTranslationTests(unittest.TestCase):
                     "name": "Piedone",
                     "class": "archivist",
                     "font_awesome_icon": "fa-solid fa-user",
+                    "objective": {
+                        "title": "Break the archive lock",
+                        "description": "Defeat every guardian in the archive.",
+                    },
                 }
             ],
             "item_defs": [
@@ -48,6 +52,23 @@ class WorldTranslationTests(unittest.TestCase):
                     "description": "A quiet reef.",
                     "map_color": "#123456",
                     "font_awesome_icon": "fa-solid fa-water",
+                    "encounters": [{
+                        "id": "singing_shell",
+                        "title": "The Singing Shell",
+                        "description": "A shell repeats a warning.",
+                        "font_awesome_icon": "fa-solid fa-music",
+                        "choices": [{
+                            "id": "listen",
+                            "label": "Listen closely",
+                            "result": "You learn the safe rhythm.",
+                            "effect": {"xp": 7},
+                        }, {
+                            "id": "break",
+                            "label": "Break it",
+                            "result": "The sound stops painfully.",
+                            "effect": {"health": -3},
+                        }],
+                    }],
                 }
             },
         }
@@ -58,6 +79,10 @@ class WorldTranslationTests(unittest.TestCase):
                     "name": "ピエドーネ",
                     "class": "記録係",
                     "font_awesome_icon": "translated-icon",
+                    "objective": {
+                        "title": "書庫の鍵を破れ",
+                        "description": "書庫の守護者をすべて倒せ。",
+                    },
                 }
             ],
             "item_defs": [
@@ -87,6 +112,23 @@ class WorldTranslationTests(unittest.TestCase):
                     "description": "静かなサンゴ礁。",
                     "map_color": "#999999",
                     "font_awesome_icon": "translated-icon",
+                    "encounters": [{
+                        "id": "translated-shell",
+                        "title": "歌う貝殻",
+                        "description": "貝殻が警告を繰り返す。",
+                        "font_awesome_icon": "translated-icon",
+                        "choices": [{
+                            "id": "translated-listen",
+                            "label": "よく聞く",
+                            "result": "安全なリズムを学んだ。",
+                            "effect": {"xp": 99},
+                        }, {
+                            "id": "translated-break",
+                            "label": "壊す",
+                            "result": "痛みとともに音が止まった。",
+                            "effect": {"health": -99},
+                        }],
+                    }],
                 }
             },
         }
@@ -96,6 +138,7 @@ class WorldTranslationTests(unittest.TestCase):
         self.assertTrue(normalized["theme_desc_better"].startswith("Piedone a Tokyo\n"))
         self.assertEqual(normalized["player_defs"][0]["name"], "Piedone")
         self.assertEqual(normalized["player_defs"][0]["font_awesome_icon"], "fa-solid fa-user")
+        self.assertEqual(normalized["player_defs"][0]["objective"]["title"], "書庫の鍵を破れ")
         self.assertEqual(normalized["item_defs"][0]["id"], "key")
         self.assertEqual(normalized["item_defs"][0]["name"], "Piedone's Brass Key")
         self.assertEqual(normalized["item_defs"][0]["type"], "consumable")
@@ -106,6 +149,12 @@ class WorldTranslationTests(unittest.TestCase):
         self.assertEqual(normalized["enemy_defs"][0]["weapons"], ["静電噛みつき"])
         self.assertEqual(normalized["celltype_defs"]["reef"]["name"], "サンゴ礁")
         self.assertEqual(normalized["celltype_defs"]["reef"]["map_color"], "#123456")
+        encounter = normalized["celltype_defs"]["reef"]["encounters"][0]
+        self.assertEqual(encounter["id"], "singing_shell")
+        self.assertEqual(encounter["title"], "歌う貝殻")
+        self.assertEqual(encounter["choices"][0]["id"], "listen")
+        self.assertEqual(encounter["choices"][0]["label"], "よく聞く")
+        self.assertEqual(encounter["choices"][0]["effect"], {"xp": 7})
 
 
 if __name__ == "__main__":

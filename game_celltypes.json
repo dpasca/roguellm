@@ -5,35 +5,100 @@
         "name": "Desert",
         "description": "A desert",
         "map_color": "#FFD700",
-        "font_awesome_icon": "fa-solid fa-desert"
+        "font_awesome_icon": "fa-solid fa-desert",
+        "encounters": [
+            {
+                "id": "mirage_caravan",
+                "title": "Mirage Caravan",
+                "description": "Fresh tracks vanish beneath an abandoned caravan.",
+                "resolved_description": "Only cooling sand remains around the caravan.",
+                "font_awesome_icon": "fa-solid fa-compass",
+                "choices": [
+                    {"id": "follow_tracks", "label": "Follow the tracks", "result": "The trail reveals a useful shortcut, but the heat bites hard.", "effect": {"health": -4, "xp": 8}},
+                    {"id": "search_wagon", "label": "Search the wagon", "result": "A careful search uncovers an old traveler's clue.", "effect": {"xp": 4}}
+                ]
+            }
+        ]
     },
     {
         "id": "1",
         "name": "Forest",
         "description": "A forest",
         "map_color": "#228B22",
-        "font_awesome_icon": "fa-solid fa-tree"
+        "font_awesome_icon": "fa-solid fa-tree",
+        "encounters": [
+            {
+                "id": "whispering_cairn",
+                "title": "Whispering Cairn",
+                "description": "A mossy stone pile repeats fragments of your thoughts.",
+                "resolved_description": "The cairn has fallen silent.",
+                "font_awesome_icon": "fa-solid fa-ear-listen",
+                "choices": [
+                    {"id": "answer_whisper", "label": "Answer the whisper", "result": "The forest tests your nerve and yields a hidden truth.", "effect": {"health": -3, "xp": 9}},
+                    {"id": "study_marks", "label": "Study the markings", "result": "The old trail marks reveal who passed this way.", "effect": {"xp": 5}}
+                ]
+            }
+        ]
     },
     {
         "id": "2",
         "name": "Mountain Base",
         "description": "Base of a mountain",
         "map_color": "#8B4513",
-        "font_awesome_icon": "fa-solid fa-mountain"
+        "font_awesome_icon": "fa-solid fa-mountain",
+        "encounters": [
+            {
+                "id": "broken_lift",
+                "title": "Broken Supply Lift",
+                "description": "A loaded platform hangs from one badly frayed rope.",
+                "resolved_description": "The lift's rope hangs loose against the rock.",
+                "font_awesome_icon": "fa-solid fa-person-hiking",
+                "choices": [
+                    {"id": "climb_platform", "label": "Climb onto it", "result": "The risky ascent gives you a commanding view of the route.", "effect": {"health": -5, "xp": 10}},
+                    {"id": "inspect_cargo", "label": "Inspect the cargo", "result": "The manifests expose the enemy's supply route.", "effect": {"xp": 5}}
+                ]
+            }
+        ]
     },
     {
         "id": "3",
         "name": "Mountain",
         "description": "A mountain",
         "map_color": "#8B4513",
-        "font_awesome_icon": "fa-solid fa-mountain"
+        "font_awesome_icon": "fa-solid fa-mountain",
+        "encounters": [
+            {
+                "id": "storm_ledge",
+                "title": "Storm Ledge",
+                "description": "Lightning exposes two routes across a narrow ledge.",
+                "resolved_description": "The worst of the storm has passed.",
+                "font_awesome_icon": "fa-solid fa-bolt",
+                "choices": [
+                    {"id": "cross_now", "label": "Cross immediately", "result": "You beat the storm and memorize the high route.", "effect": {"health": -6, "xp": 11}},
+                    {"id": "find_cover", "label": "Find cover", "result": "Patience reveals a safer path through the rocks.", "effect": {"xp": 4}}
+                ]
+            }
+        ]
     },
     {
         "id": "4",
         "name": "Cave",
         "description": "A dark cave",
         "map_color": "#191900",
-        "font_awesome_icon": "fa-solid fa-cave"
+        "font_awesome_icon": "fa-solid fa-cave",
+        "encounters": [
+            {
+                "id": "cold_campfire",
+                "title": "Cold Campfire",
+                "description": "A recently abandoned camp hides signs of a hurried escape.",
+                "resolved_description": "The searched camp offers no further clues.",
+                "font_awesome_icon": "fa-solid fa-fire",
+                "choices": [
+                    {"id": "read_journal", "label": "Read the journal", "result": "The final entry names a danger waiting deeper inside.", "effect": {"xp": 7}},
+                    {"id": "follow_drag_marks", "label": "Follow the drag marks", "result": "The trail teaches you plenty, painfully.", "effect": {"health": -4, "xp": 10}}
+                ]
+            }
+        ]
     }
     ]
 }

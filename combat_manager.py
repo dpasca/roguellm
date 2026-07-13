@@ -55,6 +55,9 @@ class CombatManager:
 
             # Check if enemy is defeated
             if game_state.current_enemy.hp <= 0:
+                combat_source = getattr(game_state, "combat_source", "")
+                is_map_combat = combat_source != "story"
+
                 # Award XP for defeating the enemy
                 xp_gained = getattr(game_state.current_enemy, '_xp_reward', 20)
                 game_state.player_xp += xp_gained
@@ -63,29 +66,32 @@ class CombatManager:
                 hp_gained = getattr(game_state.current_enemy, '_hp_reward', 0)
                 game_state.player_hp = min(game_state.player_max_hp, game_state.player_hp + hp_gained)
 
-                # Mark enemy as defeated
                 x, y = game_state.player_pos
                 defeated_enemy_name = game_state.current_enemy.name
-                game_state.defeated_enemies.append({
-                    'x': x,
-                    'y': y,
-                    'name': defeated_enemy_name,
-                    'id': game_state.current_enemy.id,
-                    'font_awesome_icon': game_state.current_enemy.font_awesome_icon,
-                    'sprite_url': game_state.current_enemy.sprite_url,
-                    'sprite_token_url': game_state.current_enemy.sprite_token_url,
-                    'is_defeated': True
-                })
+                if is_map_combat:
+                    # Story fights are consequences, not map-clear objectives.
+                    game_state.defeated_enemies.append({
+                        'x': x,
+                        'y': y,
+                        'name': defeated_enemy_name,
+                        'id': game_state.current_enemy.id,
+                        'font_awesome_icon': game_state.current_enemy.font_awesome_icon,
+                        'sprite_url': game_state.current_enemy.sprite_url,
+                        'sprite_token_url': game_state.current_enemy.sprite_token_url,
+                        'is_defeated': True
+                    })
 
-                # Update existing enemy in enemies list
-                for enemy in game_state.enemies:
-                    if enemy['x'] == x and enemy['y'] == y:
-                        enemy['is_defeated'] = True
-                        break
+                    # Update existing enemy in enemies list
+                    for enemy in game_state.enemies:
+                        if enemy['x'] == x and enemy['y'] == y:
+                            enemy['is_defeated'] = True
+                            break
 
                 game_state.in_combat = False
                 game_state.current_enemy = None
-                self._mark_enemy_tile_defeated(game_state, x, y, defeated_enemy_name, language)
+                game_state.combat_source = ""
+                if is_map_combat:
+                    self._mark_enemy_tile_defeated(game_state, x, y, defeated_enemy_name, language)
 
                 return (
                     f"{combat_log}\n" +
@@ -125,6 +131,7 @@ class CombatManager:
             if self.random.random() < 0.5:
                 game_state.in_combat = False
                 game_state.current_enemy = None
+                game_state.combat_source = ""
                 game_state.player_pos_prev = game_state.player_pos
                 return msg(language, "combat.run_success")
             else:
@@ -162,6 +169,7 @@ class CombatManager:
     def _mark_player_defeated(self, game_state) -> None:
         game_state.game_over = True
         game_state.in_combat = False
+        game_state.combat_source = ""
 
     def _mark_enemy_tile_defeated(
             self,

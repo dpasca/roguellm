@@ -103,6 +103,35 @@
     "equip": "Equipar",
     "unequip": "Desequipar"
   },
+  "objectivePanel": {
+    "eyebrow": "Objetivo actual",
+    "progress": "{current} / {target} completados"
+  },
+  "storyPanel": {
+    "eyebrow": "Oportunidad narrativa",
+    "prompt": "Elige cómo actuar",
+    "resolving": "Resolviendo tu elección…",
+    "outcomeEyebrow": "Resultado",
+    "chosen": "Elegiste",
+    "consequences": "Consecuencias",
+    "continue": "Continuar",
+    "continueCombat": "Enfrentarse a {enemy}",
+    "historyEyebrow": "Tu viaje",
+    "history": "Historial de la partida",
+    "historyEvent": "En el camino",
+    "historyEmpty": "Tus decisiones y descubrimientos aparecerán aquí."
+  },
+  "mobileHud": {
+    "mission": "Misión",
+    "character": "Personaje",
+    "items": "Objetos",
+    "history": "Historial",
+    "gameMenu": "Menú del juego",
+    "close": "Cerrar panel",
+    "none": "Ninguno",
+    "emptyInventory": "Tu inventario está vacío.",
+    "openCharacter": "Abrir detalles del personaje"
+  },
   "debug": {
     "title": "Información de depuración",
     "itemsOnMap": "Objetos en el mapa",
@@ -162,6 +191,30 @@
     "tile.enemy_defeated_inspect": "{enemy} ya fue derrotado aquí.",
     "tile.useful_item": "Objeto útil",
     "tile.an_enemy": "Un enemigo",
-    "tile.an_item": "Un objeto"
+    "tile.an_item": "Un objeto",
+    "story.choose_first": "Elige cómo afrontar esta situación antes de continuar.",
+    "story.no_active": "No hay ningún encuentro narrativo activo.",
+    "story.invalid_choice": "Esa opción ya no está disponible.",
+    "story.health_gain": "Recuperaste {amount} HP.",
+    "story.health_loss": "Perdiste {amount} HP.",
+    "story.xp_gain": "Ganaste {amount} XP.",
+    "story.item_gain": "Recibiste {item}.",
+    "story.player_defeated": "La decisión resulta fatal.",
+    "story.resolved": "Resuelto: {title}",
+    "story.resolved_quick": "{terrain}. Resuelto: {title}.",
+    "story.resolved_inspect": "Ya decidiste cómo afrontar {title}.",
+    "story.opportunity": "Oportunidad narrativa",
+    "story.opportunity_title": "Oportunidad: {title}",
+    "story.fallback_title": "Algo extraño en {terrain}",
+    "story.fallback_description": "{description} Algo aquí exige una decisión.",
+    "story.fallback_resolved": "Nada más aquí requiere tu atención.",
+    "story.fallback_investigate": "Investigar con cuidado",
+    "story.fallback_investigate_result": "Una búsqueda paciente revela una pista útil.",
+    "story.fallback_risk": "Tomar el atajo arriesgado",
+    "story.fallback_risk_result": "El atajo duele, pero enseña más que la ruta segura.",
+    "objective.default_title": "Elimina la amenaza",
+    "objective.default_description": "Encuentra y derrota a todos los enemigos del mapa.",
+    "objective.story_title": "Explora lo desconocido",
+    "objective.story_description": "Resuelve cada oportunidad narrativa del mapa."
   }
 }

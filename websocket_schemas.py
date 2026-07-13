@@ -21,6 +21,7 @@ class ActionType(str, Enum):
     RUN = "run"
     USE_ITEM = "use_item"
     EQUIP_ITEM = "equip_item"
+    CHOOSE_STORY = "choose_story"
 
 
 class Direction(str, Enum):
@@ -109,6 +110,20 @@ class EquipItemMessage(BaseMessage):
         return v.strip()
 
 
+class ChooseStoryMessage(BaseMessage):
+    """Message for resolving a choice in the active story encounter."""
+    action: Literal[ActionType.CHOOSE_STORY] = ActionType.CHOOSE_STORY
+    choice_id: str = Field(..., min_length=1, max_length=100, description="ID of the selected story choice")
+
+    @validator('choice_id')
+    def validate_choice_id(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Choice ID cannot be empty")
+        if any(char in v for char in ['<', '>', '"', "'", '&', '\n', '\r', '\t']):
+            raise ValueError("Choice ID contains invalid characters")
+        return v.strip()
+
+
 # Union type for all possible message types
 WebSocketMessage = Union[
     InitializeMessage,
@@ -119,7 +134,8 @@ WebSocketMessage = Union[
     AttackMessage,
     RunMessage,
     UseItemMessage,
-    EquipItemMessage
+    EquipItemMessage,
+    ChooseStoryMessage,
 ]
 
 
@@ -174,6 +190,7 @@ def validate_websocket_message(raw_message: dict) -> WebSocketMessage:
             ActionType.RUN: RunMessage,
             ActionType.USE_ITEM: UseItemMessage,
             ActionType.EQUIP_ITEM: EquipItemMessage,
+            ActionType.CHOOSE_STORY: ChooseStoryMessage,
         }
 
         message_class = message_classes[action_enum]

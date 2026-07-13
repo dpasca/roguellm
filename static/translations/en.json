@@ -176,6 +176,35 @@
         "equip": "Equip",
         "unequip": "Unequip"
     },
+    "objectivePanel": {
+        "eyebrow": "Current objective",
+        "progress": "{current} / {target} complete"
+    },
+    "storyPanel": {
+        "eyebrow": "Story opportunity",
+        "prompt": "Choose your approach",
+        "resolving": "Resolving your choice…",
+        "outcomeEyebrow": "Outcome",
+        "chosen": "You chose",
+        "consequences": "Consequences",
+        "continue": "Continue",
+        "continueCombat": "Face {enemy}",
+        "historyEyebrow": "Your journey",
+        "history": "Run history",
+        "historyEvent": "On the road",
+        "historyEmpty": "Your choices and discoveries will appear here."
+    },
+    "mobileHud": {
+        "mission": "Mission",
+        "character": "Character",
+        "items": "Items",
+        "history": "History",
+        "gameMenu": "Game menu",
+        "close": "Close panel",
+        "none": "None",
+        "emptyInventory": "Your inventory is empty.",
+        "openCharacter": "Open character details"
+    },
     "debug": {
         "title": "Debug Information",
         "itemsOnMap": "Items on Map",
@@ -235,6 +264,30 @@
         "tile.enemy_defeated_inspect": "{enemy} has already been defeated here.",
         "tile.useful_item": "Useful item",
         "tile.an_enemy": "An enemy",
-        "tile.an_item": "An item"
+        "tile.an_item": "An item",
+        "story.choose_first": "Choose how to handle this situation before moving on.",
+        "story.no_active": "There is no active story encounter.",
+        "story.invalid_choice": "That choice is no longer available.",
+        "story.health_gain": "Recovered {amount} HP.",
+        "story.health_loss": "Lost {amount} HP.",
+        "story.xp_gain": "Gained {amount} XP.",
+        "story.item_gain": "Received {item}.",
+        "story.player_defeated": "The decision proves fatal.",
+        "story.resolved": "Resolved: {title}",
+        "story.resolved_quick": "{terrain}. Resolved {title}.",
+        "story.resolved_inspect": "You have already decided how to handle {title}.",
+        "story.opportunity": "Story opportunity",
+        "story.opportunity_title": "Opportunity: {title}",
+        "story.fallback_title": "Something unusual at {terrain}",
+        "story.fallback_description": "{description} Something here demands a decision.",
+        "story.fallback_resolved": "Nothing else here requires your attention.",
+        "story.fallback_investigate": "Investigate carefully",
+        "story.fallback_investigate_result": "A patient search uncovers a useful clue.",
+        "story.fallback_risk": "Take the risky shortcut",
+        "story.fallback_risk_result": "The shortcut hurts, but teaches you more than the safe route would.",
+        "objective.default_title": "Clear the threat",
+        "objective.default_description": "Track down and defeat every hostile on the map.",
+        "objective.story_title": "Explore the unknown",
+        "objective.story_description": "Resolve every story opportunity on the map."
     }
 }

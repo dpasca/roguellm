@@ -5,7 +5,7 @@ from game_messages import msg
 
 logger = logging.getLogger()
 
-FAST_DESCRIPTION_ACTIONS = {'move', 'attack', 'run', 'use_item', 'equip_item'}
+FAST_DESCRIPTION_ACTIONS = {'move', 'attack', 'run', 'use_item', 'equip_item', 'choose_story'}
 
 
 class WebSocketHandler:
@@ -164,6 +164,8 @@ class WebSocketHandler:
             return await self.player_action_handler.handle_use_item(validated_message.item_id)
         elif action == 'equip_item':
             return await self.player_action_handler.handle_equip_item(validated_message.item_id)
+        elif action == 'choose_story' and not self.game_state_manager.state.in_combat:
+            return await self.player_action_handler.handle_story_choice(validated_message.choice_id)
         elif action == 'initialize':
             return await self.game_state_manager.initialize_game()
         elif action == 'get_initial_state':

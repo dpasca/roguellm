@@ -103,6 +103,35 @@
     "equip": "装備",
     "unequip": "装備解除"
   },
+  "objectivePanel": {
+    "eyebrow": "現在の目標",
+    "progress": "{current} / {target} 完了"
+  },
+  "storyPanel": {
+    "eyebrow": "物語イベント",
+    "prompt": "行動を選ぶ",
+    "resolving": "選択を処理中…",
+    "outcomeEyebrow": "結果",
+    "chosen": "選んだ行動",
+    "consequences": "影響",
+    "continue": "続ける",
+    "continueCombat": "{enemy}と戦う",
+    "historyEyebrow": "旅の記録",
+    "history": "冒険の履歴",
+    "historyEvent": "道中",
+    "historyEmpty": "選択と発見がここに記録されます。"
+  },
+  "mobileHud": {
+    "mission": "ミッション",
+    "character": "キャラクター",
+    "items": "アイテム",
+    "history": "履歴",
+    "gameMenu": "ゲームメニュー",
+    "close": "パネルを閉じる",
+    "none": "なし",
+    "emptyInventory": "インベントリは空です。",
+    "openCharacter": "キャラクター詳細を開く"
+  },
   "debug": {
     "title": "デバッグ情報",
     "itemsOnMap": "マップ上のアイテム",
@@ -162,6 +191,30 @@
     "tile.enemy_defeated_inspect": "{enemy}はここですでに倒されています。",
     "tile.useful_item": "役立つアイテム",
     "tile.an_enemy": "敵",
-    "tile.an_item": "アイテム"
+    "tile.an_item": "アイテム",
+    "story.choose_first": "先へ進む前に、この状況への対処を選んでください。",
+    "story.no_active": "進行中の物語イベントはありません。",
+    "story.invalid_choice": "その選択肢はもう利用できません。",
+    "story.health_gain": "HPを{amount}回復しました。",
+    "story.health_loss": "HPを{amount}失いました。",
+    "story.xp_gain": "{amount} XPを獲得しました。",
+    "story.item_gain": "{item}を入手しました。",
+    "story.player_defeated": "その決断が命取りになりました。",
+    "story.resolved": "解決済み: {title}",
+    "story.resolved_quick": "{terrain}。{title}は解決済み。",
+    "story.resolved_inspect": "{title}への対処はすでに決めました。",
+    "story.opportunity": "物語イベント",
+    "story.opportunity_title": "機会: {title}",
+    "story.fallback_title": "{terrain}の異変",
+    "story.fallback_description": "{description} ここでは決断が必要です。",
+    "story.fallback_resolved": "ここにはもう注意すべきものはありません。",
+    "story.fallback_investigate": "慎重に調べる",
+    "story.fallback_investigate_result": "根気よく調べると、役立つ手掛かりが見つかりました。",
+    "story.fallback_risk": "危険な近道を進む",
+    "story.fallback_risk_result": "近道で傷つきましたが、安全な道より多くを学びました。",
+    "objective.default_title": "脅威を排除せよ",
+    "objective.default_description": "マップ上の敵をすべて見つけて倒してください。",
+    "objective.story_title": "未知を探索せよ",
+    "objective.story_description": "マップ上の物語イベントをすべて解決してください。"
   }
 }

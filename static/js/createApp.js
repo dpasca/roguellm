@@ -119,6 +119,10 @@ const app = Vue.createApp({
                 item_placements: [],
                 enemies: [],
                 defeated_enemies: [],
+                story_placements: [],
+                current_story: null,
+                resolved_story_ids: [],
+                objective: {},
                 in_combat: false,
                 current_enemy: null,
                 game_over: false,
@@ -126,6 +130,9 @@ const app = Vue.createApp({
                 game_title: 'RogueLLM'
             },
             gameLogs: [],
+            storyOutcome: null,
+            isStoryChoicePending: false,
+            mobilePanel: null,
             ws: null,
             gameTitle: 'RogueLLM: Unknown Title',
             isMenuOpen: false,
@@ -144,6 +151,11 @@ const app = Vue.createApp({
         getEnemyHealthPercentage() {
             if (!this.gameState.current_enemy) return 0;
             return (this.gameState.current_enemy.hp / this.gameState.current_enemy.max_hp) * 100;
+        },
+        getObjectivePercentage() {
+            const objective = this.gameState && this.gameState.objective;
+            if (!objective || !objective.target) return 0;
+            return Math.min(100, (objective.current / objective.target) * 100);
         },
         countExploredTiles() {
             if (this.gameState && this.gameState.explored_tiles !== undefined) {
@@ -164,6 +176,20 @@ const app = Vue.createApp({
                 y: this.gameState.player_pos[1]
             };
             return this.getTileInfo(tile.x, tile.y);
+        },
+        hasActiveInteraction() {
+            return Boolean(
+                this.storyOutcome ||
+                (this.gameState && this.gameState.current_story)
+            );
+        },
+        currentLocationName() {
+            if (!this.gameState || !this.gameState.player_pos || !this.gameState.cell_types) {
+                return '—';
+            }
+            const [x, y] = this.gameState.player_pos;
+            const cell = this.gameState.cell_types[y] && this.gameState.cell_types[y][x];
+            return cell && cell.name ? cell.name : '—';
         }
     },
     methods: {
@@ -210,6 +236,13 @@ const app = Vue.createApp({
         selectTile(x, y) {
             if (!this.isInspectableTile(x, y)) return;
             this.selectedTile = { x, y };
+            if (
+                window.matchMedia('(max-width: 900px)').matches &&
+                !this.hasActiveInteraction &&
+                !this.gameState.in_combat
+            ) {
+                this.mobilePanel = 'tile';
+            }
         },
         ensureSelectedTile() {
             if (!this.gameState || !this.gameState.player_pos) return;
@@ -251,6 +284,10 @@ const app = Vue.createApp({
             const items = this.gameState.item_placements || [];
             return items.find(item => item.x === x && item.y === y && !item.is_collected);
         },
+        getStoryAt(x, y) {
+            const stories = this.gameState.story_placements || [];
+            return stories.find(story => story.x === x && story.y === y);
+        },
         getEntitySprite(entity, variant = 'sprite') {
             if (!entity) return '';
             if (variant === 'token') {
@@ -267,6 +304,8 @@ const app = Vue.createApp({
             if (enemy) return enemy.name || 'Enemy';
             const item = this.getItemAt(x, y);
             if (item) return item.name || 'Item';
+            const story = this.getStoryAt(x, y);
+            if (story) return story.title || 'Story opportunity';
             return '';
         },
         getCellIcon(x, y) {
@@ -281,6 +320,10 @@ const app = Vue.createApp({
             if (item) {
                 return `${item.font_awesome_icon || 'fa-solid fa-box'} item-icon`;
             }
+            const story = this.getStoryAt(x, y);
+            if (story && story.status === 'available') {
+                return `${story.font_awesome_icon || 'fa-solid fa-diamond'} story-icon`;
+            }
             return this.gameState.cell_types[y][x].font_awesome_icon;
         },
         getDirectionTileInfo(direction) {
@@ -293,6 +336,7 @@ const app = Vue.createApp({
             if (!tile) return '';
 
             if (tile.entity_type === 'item' && tile.entity_status !== 'collected') return '+';
+            if (tile.entity_type === 'story' && tile.entity_status === 'available') return '◆';
             if (['deadly', 'risky', 'guarded'].includes(tile.danger_level)) return '!';
 
             const [x, y] = this.getNextPosition(direction);
@@ -305,6 +349,7 @@ const app = Vue.createApp({
             const tile = this.getDirectionTileInfo(direction);
             if (!tile) return '';
             if (tile.entity_type === 'item' && tile.entity_status !== 'collected') return 'reward';
+            if (tile.entity_type === 'story' && tile.entity_status === 'available') return 'story';
             if (tile.danger_level === 'deadly') return 'deadly';
             if (['risky', 'guarded'].includes(tile.danger_level)) return 'danger';
             return 'quiet';
@@ -511,6 +556,9 @@ const app = Vue.createApp({
                 this.ws.readyState === WebSocket.OPEN &&
                 !this.gameState.game_over &&
                 !this.gameState.in_combat &&
+                !this.gameState.current_story &&
+                !this.storyOutcome &&
+                !this.mobilePanel &&
                 !this.isMoveInProgress) {
 
                 this.isMoveInProgress = true;
@@ -541,13 +589,117 @@ const app = Vue.createApp({
                 }));
             }
         },
+        chooseStory(choiceId) {
+            if (this.ws &&
+                this.ws.readyState === WebSocket.OPEN &&
+                this.gameState.current_story &&
+                !this.gameState.in_combat &&
+                !this.storyOutcome &&
+                !this.isStoryChoicePending) {
+                this.isStoryChoicePending = true;
+                this.ws.send(JSON.stringify({
+                    action: 'choose_story',
+                    choice_id: choiceId
+                }));
+            }
+        },
+        dismissStoryOutcome() {
+            const revealCombat = Boolean(
+                this.storyOutcome &&
+                this.storyOutcome.combat_started &&
+                this.gameState &&
+                this.gameState.in_combat
+            );
+            this.storyOutcome = null;
+
+            this.$nextTick(() => {
+                const target = document.querySelector(revealCombat ? '.combat-ui' : '.game-map');
+                if (target && !window.matchMedia('(max-width: 900px)').matches) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        },
+        toggleMobilePanel(panel) {
+            if (this.hasActiveInteraction || this.gameState.in_combat) return;
+            this.mobilePanel = this.mobilePanel === panel ? null : panel;
+        },
+        closeMobilePanel() {
+            this.mobilePanel = null;
+        },
+        getMobilePanelTitle(panel) {
+            switch (panel) {
+                case 'tile': return this.selectedTileInfo ? this.selectedTileInfo.label : '';
+                case 'objective': return this.$t('mobileHud.mission');
+                case 'character': return this.gameState.player.name || this.$t('mobileHud.character');
+                case 'inventory': return this.$t('player.inventory');
+                case 'history': return this.$t('storyPanel.history');
+                default: return '';
+            }
+        },
+        getMobilePanelIcon(panel) {
+            switch (panel) {
+                case 'tile':
+                    return this.selectedTileInfo
+                        ? (this.selectedTileInfo.entity_icon || this.selectedTileInfo.terrain_icon || 'fa-solid fa-location-dot')
+                        : 'fa-solid fa-location-dot';
+                case 'objective': return 'fa-solid fa-crosshairs';
+                case 'character': return 'fa-solid fa-user';
+                case 'inventory': return 'fa-solid fa-briefcase';
+                case 'history': return 'fa-solid fa-route';
+                default: return 'fa-solid fa-circle-info';
+            }
+        },
+        handleGlobalKeydown(event) {
+            if (event.key === 'Escape' && this.mobilePanel) {
+                this.closeMobilePanel();
+            }
+        },
+        getStoryEffectIcon(effect) {
+            if (!effect) return 'fa-solid fa-sparkles';
+            switch (effect.type) {
+                case 'health':
+                    return effect.amount < 0 ? 'fa-solid fa-heart-crack' : 'fa-solid fa-heart';
+                case 'xp':
+                    return 'fa-solid fa-star';
+                case 'item':
+                    return 'fa-solid fa-box-open';
+                case 'combat':
+                    return 'fa-solid fa-burst';
+                case 'defeat':
+                    return 'fa-solid fa-skull';
+                default:
+                    return 'fa-solid fa-sparkles';
+            }
+        },
+        getStoryEffectClass(effect) {
+            if (!effect) return 'effect-neutral';
+            if (effect.type === 'health' && effect.amount < 0) return 'effect-damage';
+            return `effect-${effect.type || 'neutral'}`;
+        },
+        getLogIcon(log) {
+            const kind = log && typeof log === 'object' ? log.kind : 'event';
+            switch (kind) {
+                case 'story': return 'fa-solid fa-diamond';
+                case 'combat': return 'fa-solid fa-burst';
+                case 'move': return 'fa-solid fa-location-dot';
+                case 'item': return 'fa-solid fa-box-open';
+                default: return 'fa-solid fa-compass';
+            }
+        },
+        getLogTitle(log) {
+            if (log && typeof log === 'object' && log.title) return log.title;
+            return this.$t('storyPanel.historyEvent');
+        },
+        getLogText(log) {
+            return log && typeof log === 'object' ? log.text : log;
+        },
         isPlayerPosition(x, y) {
             return this.gameState &&
                 this.gameState.player_pos[0] === x &&
                 this.gameState.player_pos[1] === y;
         },
         canMove(direction) {
-            if (!this.gameState || this.gameState.in_combat) return false;
+            if (!this.gameState || this.gameState.in_combat || this.gameState.current_story || this.storyOutcome || this.mobilePanel) return false;
             const [x, y] = this.gameState.player_pos;
             switch (direction) {
                 case 'n': return y > 0;
@@ -598,6 +750,9 @@ const app = Vue.createApp({
                 });
         },
         handleWindowResize() {
+            if (!window.matchMedia('(max-width: 900px)').matches) {
+                this.mobilePanel = null;
+            }
             // Force position update on resize
             const playerIcon = document.getElementById('player-icon');
             if (playerIcon && playerIcon.dataset.x && playerIcon.dataset.y) {
@@ -608,11 +763,28 @@ const app = Vue.createApp({
             }
         },
         handleGameState(response) {
+            this.isStoryChoicePending = false;
             if (response.type === 'update' && response.state) {
                 console.log('Received state update:', response.state);
                 const wasInCombat = this.gameState.in_combat;
                 const previousPos = this.gameState.player_pos;
                 this.gameState = response.state;
+                if (
+                    this.gameState.current_story ||
+                    response.story_outcome ||
+                    (!wasInCombat && this.gameState.in_combat) ||
+                    ['initialize', 'restart'].includes(response.response_action)
+                ) {
+                    this.mobilePanel = null;
+                }
+                if (response.story_outcome) {
+                    this.storyOutcome = response.story_outcome;
+                } else if (
+                    this.gameState.current_story ||
+                    ['initialize', 'restart'].includes(response.response_action)
+                ) {
+                    this.storyOutcome = null;
+                }
                 const currentPos = this.gameState.player_pos;
                 const playerMoved = previousPos && currentPos &&
                     (previousPos[0] !== currentPos[0] || previousPos[1] !== currentPos[1]);
@@ -644,7 +816,22 @@ const app = Vue.createApp({
                 this.isMoveInProgress = false;
 
                 if (response.description) {
-                    this.gameLogs.push(response.description);
+                    const action = response.response_action || 'event';
+                    const kind = response.story_outcome
+                        ? 'story'
+                        : ['attack', 'run'].includes(action)
+                            ? 'combat'
+                            : ['use_item', 'equip_item'].includes(action)
+                                ? 'item'
+                                : action === 'move'
+                                    ? 'move'
+                                    : 'event';
+                    this.gameLogs.push({
+                        kind,
+                        title: response.story_outcome ? response.story_outcome.title : '',
+                        text: response.story_outcome ? response.story_outcome.result : response.description,
+                        effects: response.story_outcome ? response.story_outcome.effects : []
+                    });
                 }
 
                 // Hide loading screen when we receive any game state update
@@ -711,6 +898,7 @@ const app = Vue.createApp({
 
         // Add event listeners
         document.addEventListener('click', this.closeMenuIfClickedOutside);
+        document.addEventListener('keydown', this.handleGlobalKeydown);
         window.addEventListener('resize', this.handleWindowResize);
 
         // Get initial title from SSR if available
@@ -721,6 +909,7 @@ const app = Vue.createApp({
     },
     beforeUnmount() {
         document.removeEventListener('click', this.closeMenuIfClickedOutside);
+        document.removeEventListener('keydown', this.handleGlobalKeydown);
         // Remove the resize event listener
         window.removeEventListener('resize', this.handleWindowResize);
 
@@ -746,6 +935,44 @@ const app = Vue.createApp({
                 const [x, y] = this.gameState.player_pos;
                 this.$nextTick(() => {
                     updatePlayerPosition(x, y, true); // Force update
+                });
+            }
+        },
+        'gameState.current_story': function (newVal, oldVal) {
+            if (newVal && !oldVal) {
+                this.$nextTick(() => {
+                    const storyPanel = document.querySelector('.interaction-panel');
+                    const firstChoice = storyPanel && storyPanel.querySelector('.story-choices button:not(:disabled)');
+                    if (firstChoice) {
+                        firstChoice.focus({ preventScroll: true });
+                    }
+                    if (storyPanel && !window.matchMedia('(max-width: 900px)').matches) {
+                        storyPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        },
+        storyOutcome(newVal, oldVal) {
+            if (newVal && !oldVal) {
+                this.$nextTick(() => {
+                    const outcomePanel = document.querySelector('.story-outcome');
+                    const continueButton = outcomePanel && outcomePanel.querySelector('.story-continue-button');
+                    if (continueButton) {
+                        continueButton.focus({ preventScroll: true });
+                    }
+                    if (outcomePanel && !window.matchMedia('(max-width: 900px)').matches) {
+                        outcomePanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        },
+        mobilePanel(newVal, oldVal) {
+            if (newVal && newVal !== oldVal) {
+                this.$nextTick(() => {
+                    const closeButton = document.querySelector('.mobile-panel-close');
+                    if (closeButton) {
+                        closeButton.focus({ preventScroll: true });
+                    }
                 });
             }
         },
@@ -854,7 +1081,9 @@ document.addEventListener('touchstart', function (event) {
 }, { passive: false });
 
 document.addEventListener('touchmove', function (event) {
-    event.preventDefault();
+    if (event.touches.length > 1) {
+        event.preventDefault();
+    }
 }, { passive: false });
 
 let lastTouchEnd = 0;

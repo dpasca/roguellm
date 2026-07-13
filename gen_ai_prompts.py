@@ -96,7 +96,8 @@ characters, items, enemies, terrain, tone, and meaning.
 
 # Translate
 - Descriptions, narration-oriented prose, classes/roles, generic item names,
-  enemy archetype names, terrain names, and weapon names.
+  enemy archetype names, terrain names, weapon names, objective text, and all
+  story encounter titles, descriptions, choice labels, and outcomes.
 
 # Response Format
 Reply with the same JSON object shape, translated to the target language.
@@ -115,6 +116,10 @@ The new player definition must follow the same format as the sample definition,
 but adapt it to match the game theme. For example, replace a "warrior" class
 with "space marine" for a sci-fi theme.
 Include only free font-awesome icons, do not use any pro icons.
+
+The objective field must give the player one concise, theme-specific mission.
+The runtime tracks completion by defeating the enemies placed on the map, so the
+objective must describe confronting, clearing, stopping, or defeating those threats.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -169,6 +174,21 @@ describing game map cell types. The user will provide a sample JSON object of an
 game.
 Unleash your creativity. We want to impress and stimulate the imagination of the
 game player.
+
+Each map cell type must include exactly one compact story encounter using the
+encounters array shown in the sample. Each encounter must:
+- Be specific to that terrain and game theme
+- Present exactly 2 meaningful choices with distinct outcomes
+- Keep title, description, labels, and results concise
+- Use unique, stable id values for the encounter and its choices
+- Use only free Font Awesome icons
+
+Choice effects may contain only these fields:
+- "xp": an integer from 0 to 20
+- "health": an integer from -15 to 15
+
+Do not add any other effect fields. At least one choice should involve a real
+tradeoff rather than being an obviously superior option.
 
 # Response Format
 Reply with a new JSON object that contains up to 9 item definitions.

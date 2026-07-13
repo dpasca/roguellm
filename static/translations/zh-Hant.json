@@ -103,6 +103,35 @@
     "equip": "裝備",
     "unequip": "卸下裝備"
   },
+  "objectivePanel": {
+    "eyebrow": "目前目標",
+    "progress": "已完成 {current} / {target}"
+  },
+  "storyPanel": {
+    "eyebrow": "劇情機會",
+    "prompt": "選擇你的行動",
+    "resolving": "正在處理你的選擇…",
+    "outcomeEyebrow": "結果",
+    "chosen": "你的選擇",
+    "consequences": "影響",
+    "continue": "繼續",
+    "continueCombat": "迎戰{enemy}",
+    "historyEyebrow": "你的旅程",
+    "history": "本局紀錄",
+    "historyEvent": "旅途中",
+    "historyEmpty": "你的選擇與發現會記錄在這裡。"
+  },
+  "mobileHud": {
+    "mission": "任務",
+    "character": "角色",
+    "items": "物品",
+    "history": "紀錄",
+    "gameMenu": "遊戲選單",
+    "close": "關閉面板",
+    "none": "無",
+    "emptyInventory": "背包是空的。",
+    "openCharacter": "開啟角色詳情"
+  },
   "debug": {
     "title": "除錯資訊",
     "itemsOnMap": "地圖上的物品",
@@ -162,6 +191,30 @@
     "tile.enemy_defeated_inspect": "{enemy}已經在這裡被擊敗了。",
     "tile.useful_item": "有用物品",
     "tile.an_enemy": "敵人",
-    "tile.an_item": "物品"
+    "tile.an_item": "物品",
+    "story.choose_first": "繼續前進之前，請選擇如何處理目前局面。",
+    "story.no_active": "目前沒有進行中的劇情事件。",
+    "story.invalid_choice": "該選項已無法使用。",
+    "story.health_gain": "恢復了{amount}點生命值。",
+    "story.health_loss": "失去了{amount}點生命值。",
+    "story.xp_gain": "獲得了{amount}點經驗值。",
+    "story.item_gain": "獲得了{item}。",
+    "story.player_defeated": "這個決定帶來了致命後果。",
+    "story.resolved": "已解決：{title}",
+    "story.resolved_quick": "{terrain}。已解決{title}。",
+    "story.resolved_inspect": "你已經決定如何處理{title}。",
+    "story.opportunity": "劇情事件",
+    "story.opportunity_title": "機會：{title}",
+    "story.fallback_title": "{terrain}的異常",
+    "story.fallback_description": "{description}這裡需要做出決定。",
+    "story.fallback_resolved": "這裡已經沒有需要留意的事了。",
+    "story.fallback_investigate": "仔細調查",
+    "story.fallback_investigate_result": "耐心搜索後發現了一條有用的線索。",
+    "story.fallback_risk": "冒險走捷徑",
+    "story.fallback_risk_result": "捷徑讓你受了傷，但也比安全路線教會你更多。",
+    "objective.default_title": "清除威脅",
+    "objective.default_description": "找出並擊敗地圖上的所有敵人。",
+    "objective.story_title": "探索未知",
+    "objective.story_description": "解決地圖上的所有劇情事件。"
   }
 }

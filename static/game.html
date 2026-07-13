@@ -221,11 +221,145 @@
 
             <!-- Game Container -->
             <div class="game-container">
+                <div v-if="hasActiveInteraction" class="interaction-backdrop" aria-hidden="true"></div>
                 <!-- Replace previous containers with .game-content -->
                 <div class="game-content">
                     <div class="game-left-column">
+                        <section class="mobile-player-hud" :aria-label="$t('mobileHud.character')">
+                            <button type="button" class="mobile-hud-identity"
+                                @click="toggleMobilePanel('character')"
+                                :aria-label="$t('mobileHud.openCharacter')">
+                                <span class="mobile-hud-avatar">
+                                    <img v-if="getEntitySprite(gameState.player, 'token')"
+                                        :src="getEntitySprite(gameState.player, 'token')"
+                                        :alt="gameState.player.name || 'Player'">
+                                    <i v-else :class="gameState.player.font_awesome_icon || 'fa-solid fa-user'"></i>
+                                </span>
+                                <span class="mobile-hud-name">
+                                    <strong>{{ gameState.player.name }}</strong>
+                                    <small><i class="fa-solid fa-location-dot" aria-hidden="true"></i>{{ currentLocationName }}</small>
+                                </span>
+                            </button>
+                            <div class="mobile-hud-health"
+                                :aria-label="`${$t('player.stats.hp')} ${gameState.player_hp} / ${gameState.player_max_hp}`">
+                                <span><i class="fa-solid fa-heart" aria-hidden="true"></i>{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</span>
+                                <div class="mobile-hud-health-track" aria-hidden="true">
+                                    <span :style="{ width: getPlayerHealthPercentage + '%' }"></span>
+                                </div>
+                            </div>
+                            <div class="mobile-hud-quick-stats">
+                                <span :aria-label="`${$t('player.stats.attack')} ${gameState.player_attack}`">
+                                    <i class="fa-solid fa-hand-fist" aria-hidden="true"></i>{{ gameState.player_attack }}
+                                </span>
+                                <span :aria-label="`${$t('player.stats.xp')} ${gameState.player_xp}`">
+                                    <i class="fa-solid fa-star" aria-hidden="true"></i>{{ gameState.player_xp }}
+                                </span>
+                            </div>
+                        </section>
+
+                        <section v-if="gameState.objective && gameState.objective.title" class="objective-card"
+                            :class="{ complete: gameState.objective.completed }">
+                            <div class="objective-icon" aria-hidden="true">
+                                <i :class="gameState.objective.completed ? 'fa-solid fa-check' : 'fa-solid fa-crosshairs'"></i>
+                            </div>
+                            <div class="objective-copy">
+                                <span class="objective-eyebrow">{{ $t('objectivePanel.eyebrow') }}</span>
+                                <h2>{{ gameState.objective.title }}</h2>
+                                <p>{{ gameState.objective.description }}</p>
+                                <div class="objective-progress-row">
+                                    <div class="objective-progress-track" aria-hidden="true">
+                                        <span :style="{ width: getObjectivePercentage + '%' }"></span>
+                                    </div>
+                                    <strong>{{ $t('objectivePanel.progress', {
+                                        current: gameState.objective.current,
+                                        target: gameState.objective.target
+                                    }) }}</strong>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section v-if="storyOutcome"
+                            class="interaction-panel story-encounter story-outcome"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="story-outcome-title"
+                            aria-live="assertive">
+                            <div class="interaction-grabber" aria-hidden="true"></div>
+                            <div class="story-encounter-heading">
+                                <div class="story-encounter-icon outcome-icon" aria-hidden="true">
+                                    <i :class="storyOutcome.icon || 'fa-solid fa-diamond'"></i>
+                                </div>
+                                <div>
+                                    <span class="story-eyebrow">{{ $t('storyPanel.outcomeEyebrow') }}</span>
+                                    <h2 id="story-outcome-title">{{ storyOutcome.title }}</h2>
+                                </div>
+                            </div>
+                            <div class="story-choice-summary">
+                                <span>{{ $t('storyPanel.chosen') }}</span>
+                                <strong>{{ storyOutcome.choice_label }}</strong>
+                            </div>
+                            <p class="story-outcome-result">{{ storyOutcome.result }}</p>
+                            <div v-if="storyOutcome.effects && storyOutcome.effects.length" class="story-effects"
+                                :aria-label="$t('storyPanel.consequences')">
+                                <div v-for="(effect, index) in storyOutcome.effects"
+                                    :key="`${effect.type}-${index}`"
+                                    class="story-effect"
+                                    :class="getStoryEffectClass(effect)">
+                                    <i :class="getStoryEffectIcon(effect)" aria-hidden="true"></i>
+                                    <span>{{ effect.label }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="story-continue-button" @click="dismissStoryOutcome">
+                                <span>{{ storyOutcome.combat_started
+                                    ? $t('storyPanel.continueCombat', { enemy: storyOutcome.enemy_name })
+                                    : $t('storyPanel.continue') }}</span>
+                                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </section>
+
+                        <section v-else-if="gameState.current_story && !gameState.in_combat"
+                            class="interaction-panel story-encounter"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="story-encounter-title"
+                            aria-live="polite">
+                            <div class="interaction-grabber" aria-hidden="true"></div>
+                            <div class="story-encounter-heading">
+                                <div class="story-encounter-icon" aria-hidden="true">
+                                    <i :class="gameState.current_story.font_awesome_icon || 'fa-solid fa-diamond'"></i>
+                                </div>
+                                <div>
+                                    <span class="story-eyebrow">{{ $t('storyPanel.eyebrow') }}</span>
+                                    <h2 id="story-encounter-title">{{ gameState.current_story.title }}</h2>
+                                </div>
+                            </div>
+                            <p class="story-description">{{ gameState.current_story.description }}</p>
+                            <div class="story-choice-block">
+                                <span>{{ isStoryChoicePending ? $t('storyPanel.resolving') : $t('storyPanel.prompt') }}</span>
+                                <div class="story-choices">
+                                    <button v-for="(choice, index) in gameState.current_story.choices"
+                                        :key="choice.id"
+                                        type="button"
+                                        :disabled="isStoryChoicePending"
+                                        @click="chooseStory(choice.id)">
+                                        <strong>{{ index + 1 }}</strong>
+                                        <span>{{ choice.label }}</span>
+                                        <i :class="isStoryChoicePending ? 'fa-solid fa-circle-notch fa-spin' : 'fa-solid fa-arrow-right'"
+                                            aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
                         <!-- Game Map -->
-                        <div class="game-map" :class="{ 'in-combat': gameState.in_combat }">
+                        <div class="game-map" :class="{
+                            'in-combat': gameState.in_combat,
+                            'in-story': hasActiveInteraction,
+                            'panel-open': mobilePanel
+                        }" :style="{
+                            '--map-cols': gameState.map_width || 1,
+                            '--map-rows': gameState.map_height || 1
+                        }">
                             <div class="map-surface">
                                 <div v-if="gameState && gameState.explored" class="map">
                                     <div v-for="(row, y) in gameState.explored" :key="y" class="row">
@@ -239,7 +373,8 @@
                                                 inspectable: isInspectableTile(x, y),
                                                 selected: isSelectedTile(x, y),
                                                 'has-tile-warning': getTileInfo(x, y) && ['deadly', 'risky', 'guarded'].includes(getTileInfo(x, y).danger_level),
-                                                'has-tile-reward': getTileInfo(x, y) && getTileInfo(x, y).entity_type === 'item' && getTileInfo(x, y).entity_status !== 'collected'
+                                                'has-tile-reward': getTileInfo(x, y) && getTileInfo(x, y).entity_type === 'item' && getTileInfo(x, y).entity_status !== 'collected',
+                                                'has-tile-story': getTileInfo(x, y) && getTileInfo(x, y).entity_type === 'story' && getTileInfo(x, y).entity_status === 'available'
                                             }" :style="getCellStyle(x, y)"
                                             @click="selectTile(x, y)"
                                             @keydown.enter.prevent="selectTile(x, y)"
@@ -261,7 +396,7 @@
                                     <i v-else :class="gameState.player.font_awesome_icon || 'fa-solid fa-user'"></i>
                                 </div>
                             </div>
-                            <div class="controls" v-if="gameState && !gameState.in_combat">
+                            <div class="controls" v-if="gameState && !gameState.in_combat && !hasActiveInteraction">
                                 <button type="button" aria-label="Move north" @click="move('n')" data-dir="n"
                                     :disabled="!canMove('n')">
                                     <span v-if="getDirectionBadge('n')" :class="['control-badge', getDirectionBadgeClass('n')]">{{
@@ -286,7 +421,7 @@
                         </div>
 
                         <!-- Combat UI -->
-                        <div v-if="gameState && gameState.in_combat && gameState.current_enemy" class="combat-ui">
+                        <div v-if="gameState && gameState.in_combat && gameState.current_enemy && !storyOutcome" class="combat-ui">
                             <div class="combat-stage">
                                 <section class="combatant combatant-player">
                                     <h3>{{ gameState.player.name }}</h3>
@@ -344,7 +479,7 @@
                             </div>
                         </div>
 
-                        <div v-if="selectedTileInfo && !gameState.in_combat" class="tile-inspector"
+                        <div v-if="selectedTileInfo && !gameState.in_combat && !hasActiveInteraction" class="tile-inspector"
                             :class="`danger-${selectedTileInfo.danger_level || 'safe'}`">
                             <div class="tile-inspector-header">
                                 <i :class="selectedTileInfo.entity_icon || selectedTileInfo.terrain_icon"></i>
@@ -473,6 +608,195 @@
                         </div>
                     </div>
                 </div>
+
+                <div v-if="mobilePanel" class="mobile-panel-backdrop" aria-hidden="true"
+                    @click="closeMobilePanel"></div>
+
+                <aside v-if="mobilePanel" class="mobile-game-panel" :class="`panel-${mobilePanel}`"
+                    role="dialog" aria-labelledby="mobile-panel-title">
+                    <header class="mobile-panel-header">
+                        <span class="mobile-panel-heading-icon" aria-hidden="true">
+                            <i :class="getMobilePanelIcon(mobilePanel)"></i>
+                        </span>
+                        <h2 id="mobile-panel-title">{{ getMobilePanelTitle(mobilePanel) }}</h2>
+                        <button type="button" class="mobile-panel-close" @click="closeMobilePanel"
+                            :aria-label="$t('mobileHud.close')">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </header>
+
+                    <div class="mobile-panel-body">
+                        <section v-if="mobilePanel === 'tile' && selectedTileInfo" class="mobile-tile-detail"
+                            :class="`danger-${selectedTileInfo.danger_level || 'safe'}`">
+                            <div class="mobile-tile-status">
+                                <span v-if="selectedTileInfo.hint">{{ selectedTileInfo.hint }}</span>
+                                <strong v-if="selectedTileInfo.terrain_name">{{ selectedTileInfo.terrain_name }}</strong>
+                            </div>
+                            <p>{{ selectedTileInfo.inspect_desc || selectedTileInfo.quick_desc }}</p>
+                            <div v-if="selectedTileInfo.tags && selectedTileInfo.tags.length" class="mobile-tile-tags">
+                                <span v-for="tag in selectedTileInfo.tags" :key="tag">{{ tag }}</span>
+                            </div>
+                        </section>
+
+                        <section v-else-if="mobilePanel === 'objective'" class="mobile-mission-detail">
+                            <span class="objective-eyebrow">{{ $t('objectivePanel.eyebrow') }}</span>
+                            <h3>{{ gameState.objective.title }}</h3>
+                            <p>{{ gameState.objective.description }}</p>
+                            <div class="mobile-mission-progress">
+                                <div class="objective-progress-track" aria-hidden="true">
+                                    <span :style="{ width: getObjectivePercentage + '%' }"></span>
+                                </div>
+                                <strong>{{ $t('objectivePanel.progress', {
+                                    current: gameState.objective.current,
+                                    target: gameState.objective.target
+                                }) }}</strong>
+                            </div>
+                        </section>
+
+                        <section v-else-if="mobilePanel === 'character'" class="mobile-character-detail">
+                            <header>
+                                <div class="mobile-character-avatar">
+                                    <img v-if="getEntitySprite(gameState.player)"
+                                        :src="getEntitySprite(gameState.player)"
+                                        :alt="gameState.player.name || 'Player'">
+                                    <i v-else :class="gameState.player.font_awesome_icon || 'fa-solid fa-user'"></i>
+                                </div>
+                                <div>
+                                    <h3>{{ gameState.player.name }}</h3>
+                                    <p><i class="fa-solid fa-location-dot" aria-hidden="true"></i>{{ currentLocationName }}</p>
+                                </div>
+                            </header>
+                            <div class="mobile-character-stats">
+                                <div class="mobile-stat-card stat-health">
+                                    <span><i class="fa-solid fa-heart" aria-hidden="true"></i>{{ $t('player.stats.hp') }}</span>
+                                    <strong>{{ gameState.player_hp }}/{{ gameState.player_max_hp }}</strong>
+                                </div>
+                                <div class="mobile-stat-card">
+                                    <span><i class="fa-solid fa-hand-fist" aria-hidden="true"></i>{{ $t('player.stats.attack') }}</span>
+                                    <strong>{{ gameState.player_attack }}</strong>
+                                </div>
+                                <div class="mobile-stat-card">
+                                    <span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i>{{ $t('player.stats.defense') }}</span>
+                                    <strong>{{ gameState.player_defense }}</strong>
+                                </div>
+                                <div class="mobile-stat-card">
+                                    <span><i class="fa-solid fa-star" aria-hidden="true"></i>{{ $t('player.stats.xp') }}</span>
+                                    <strong>{{ gameState.player_xp }}</strong>
+                                </div>
+                            </div>
+                            <div class="mobile-equipment-row">
+                                <div>
+                                    <span><i class="fa-solid fa-gavel" aria-hidden="true"></i>{{ $t('player.equipment.weapon') }}</span>
+                                    <strong>{{ gameState.equipment.weapon ? gameState.equipment.weapon.name : $t('mobileHud.none') }}</strong>
+                                </div>
+                                <div>
+                                    <span><i class="fa-solid fa-shield" aria-hidden="true"></i>{{ $t('player.equipment.armor') }}</span>
+                                    <strong>{{ gameState.equipment.armor ? gameState.equipment.armor.name : $t('mobileHud.none') }}</strong>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section v-else-if="mobilePanel === 'inventory'" class="mobile-inventory-detail">
+                            <p v-if="!gameState.inventory.length" class="mobile-panel-empty">
+                                <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+                                {{ $t('mobileHud.emptyInventory') }}
+                            </p>
+                            <div v-else class="inventory-grid">
+                                <div v-for="item in gameState.inventory" :key="item.id" class="item-card"
+                                    :class="{ equipped: item.is_equipped }">
+                                    <div class="item-card-header">
+                                        <h4>{{ item.name }}</h4>
+                                        <div class="item-actions">
+                                            <button v-if="item.type === 'consumable'" @click="useItem(item.id)"
+                                                class="use-button">{{ $t('inventory.use') }}</button>
+                                            <button v-if="item.type === 'weapon' || item.type === 'armor'"
+                                                @click="equipItem(item.id)"
+                                                :class="{ 'equipped-button': item.is_equipped }">
+                                                {{ item.is_equipped ? '●' : '○' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p>{{ item.description }}</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section v-else-if="mobilePanel === 'history'" class="mobile-history-detail">
+                            <p v-if="!gameLogs.length" class="mobile-panel-empty">
+                                <i class="fa-solid fa-route" aria-hidden="true"></i>
+                                {{ $t('storyPanel.historyEmpty') }}
+                            </p>
+                            <div v-else class="mobile-history-entries">
+                                <article v-for="(log, index) in gameLogs.slice().reverse()" :key="index"
+                                    class="game-log-entry" :class="`kind-${log.kind || 'event'}`">
+                                    <div class="game-log-entry-icon" aria-hidden="true">
+                                        <i :class="getLogIcon(log)"></i>
+                                    </div>
+                                    <div class="game-log-entry-copy">
+                                        <strong>{{ getLogTitle(log) }}</strong>
+                                        <p>{{ getLogText(log) }}</p>
+                                        <div v-if="log.effects && log.effects.length" class="game-log-effects">
+                                            <span v-for="(effect, effectIndex) in log.effects"
+                                                :key="`${effect.type}-${effectIndex}`"
+                                                :class="getStoryEffectClass(effect)">
+                                                <i :class="getStoryEffectIcon(effect)" aria-hidden="true"></i>
+                                                {{ effect.label }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+                </aside>
+
+                <div v-if="isGameInitialized && !hasActiveInteraction && !gameState.in_combat && !gameState.game_over && !gameState.game_won"
+                    class="mobile-bottom-chrome">
+                    <section class="mobile-recent-history" :aria-label="$t('mobileHud.history')">
+                        <button v-for="(log, index) in gameLogs.slice(-1)" :key="`recent-${gameLogs.length}-${index}`"
+                            type="button" @click="toggleMobilePanel('history')"
+                            :aria-label="`${getLogTitle(log)}. ${getLogText(log)}`">
+                            <i :class="getLogIcon(log)" aria-hidden="true"></i>
+                            <span>
+                                <strong>{{ getLogTitle(log) }}</strong>
+                                <small>{{ getLogText(log) }}</small>
+                            </span>
+                            <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                        </button>
+                        <button v-if="!gameLogs.length" type="button" class="mobile-recent-empty"
+                            @click="toggleMobilePanel('history')">
+                            <i class="fa-solid fa-route" aria-hidden="true"></i>
+                            <span>{{ $t('storyPanel.historyEmpty') }}</span>
+                            <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                        </button>
+                    </section>
+
+                    <nav class="mobile-game-dock" :aria-label="$t('mobileHud.gameMenu')">
+                        <button type="button" :class="{ active: mobilePanel === 'objective' }"
+                            @click="toggleMobilePanel('objective')" :aria-expanded="mobilePanel === 'objective'">
+                            <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+                            <span>{{ $t('mobileHud.mission') }}</span>
+                            <small>{{ gameState.objective.current || 0 }}/{{ gameState.objective.target || 0 }}</small>
+                        </button>
+                        <button type="button" :class="{ active: mobilePanel === 'character' }"
+                            @click="toggleMobilePanel('character')" :aria-expanded="mobilePanel === 'character'">
+                            <i class="fa-solid fa-user" aria-hidden="true"></i>
+                            <span>{{ $t('mobileHud.character') }}</span>
+                        </button>
+                        <button type="button" :class="{ active: mobilePanel === 'inventory' }"
+                            @click="toggleMobilePanel('inventory')" :aria-expanded="mobilePanel === 'inventory'">
+                            <i class="fa-solid fa-briefcase" aria-hidden="true"></i>
+                            <span>{{ $t('mobileHud.items') }}</span>
+                            <small v-if="gameState.inventory.length">{{ gameState.inventory.length }}</small>
+                        </button>
+                        <button type="button" :class="{ active: mobilePanel === 'history' }"
+                            @click="toggleMobilePanel('history')" :aria-expanded="mobilePanel === 'history'">
+                            <i class="fa-solid fa-route" aria-hidden="true"></i>
+                            <span>{{ $t('mobileHud.history') }}</span>
+                            <small v-if="gameLogs.length">{{ gameLogs.length }}</small>
+                        </button>
+                    </nav>
+                </div>
             </div>
 
             <!-- Debug Panel -->
@@ -498,11 +822,39 @@
             </div>
 
             <!-- Game Log -->
-            <div class="game-log">
-                <div v-for="(log, index) in gameLogs" :key="index">
-                    {{ log }}
+            <section class="game-log" aria-live="polite">
+                <header class="game-log-header">
+                    <div class="game-log-header-icon" aria-hidden="true">
+                        <i class="fa-solid fa-route"></i>
+                    </div>
+                    <div>
+                        <span>{{ $t('storyPanel.historyEyebrow') }}</span>
+                        <h2>{{ $t('storyPanel.history') }}</h2>
+                    </div>
+                    <strong>{{ gameLogs.length }}</strong>
+                </header>
+                <p v-if="!gameLogs.length" class="game-log-empty">{{ $t('storyPanel.historyEmpty') }}</p>
+                <div v-else class="game-log-entries">
+                    <article v-for="(log, index) in gameLogs" :key="index" class="game-log-entry"
+                        :class="`kind-${log.kind || 'event'}`">
+                        <div class="game-log-entry-icon" aria-hidden="true">
+                            <i :class="getLogIcon(log)"></i>
+                        </div>
+                        <div class="game-log-entry-copy">
+                            <strong>{{ getLogTitle(log) }}</strong>
+                            <p>{{ getLogText(log) }}</p>
+                            <div v-if="log.effects && log.effects.length" class="game-log-effects">
+                                <span v-for="(effect, effectIndex) in log.effects"
+                                    :key="`${effect.type}-${effectIndex}`"
+                                    :class="getStoryEffectClass(effect)">
+                                    <i :class="getStoryEffectIcon(effect)" aria-hidden="true"></i>
+                                    {{ effect.label }}
+                                </span>
+                            </div>
+                        </div>
+                    </article>
                 </div>
-            </div>
+            </section>
 
             <div v-if="errorMessage" class="error-message">
                 {{ errorMessage }}

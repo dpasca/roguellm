@@ -103,6 +103,35 @@
     "equip": "Equipaggia",
     "unequip": "Rimuovi"
   },
+  "objectivePanel": {
+    "eyebrow": "Obiettivo attuale",
+    "progress": "{current} / {target} completati"
+  },
+  "storyPanel": {
+    "eyebrow": "Occasione narrativa",
+    "prompt": "Scegli il tuo approccio",
+    "resolving": "Elaborazione della scelta…",
+    "outcomeEyebrow": "Esito",
+    "chosen": "Hai scelto",
+    "consequences": "Conseguenze",
+    "continue": "Continua",
+    "continueCombat": "Affronta {enemy}",
+    "historyEyebrow": "Il tuo viaggio",
+    "history": "Cronologia della partita",
+    "historyEvent": "Lungo il cammino",
+    "historyEmpty": "Le tue scelte e scoperte appariranno qui."
+  },
+  "mobileHud": {
+    "mission": "Missione",
+    "character": "Personaggio",
+    "items": "Oggetti",
+    "history": "Cronologia",
+    "gameMenu": "Menu di gioco",
+    "close": "Chiudi pannello",
+    "none": "Nessuno",
+    "emptyInventory": "L'inventario è vuoto.",
+    "openCharacter": "Apri i dettagli del personaggio"
+  },
   "debug": {
     "title": "Informazioni di Debug",
     "itemsOnMap": "Oggetti sulla Mappa",
@@ -162,6 +191,30 @@
     "tile.enemy_defeated_inspect": "{enemy} è già stato sconfitto qui.",
     "tile.useful_item": "Oggetto utile",
     "tile.an_enemy": "Un nemico",
-    "tile.an_item": "Un oggetto"
+    "tile.an_item": "Un oggetto",
+    "story.choose_first": "Scegli come affrontare questa situazione prima di proseguire.",
+    "story.no_active": "Non c'è alcun incontro narrativo attivo.",
+    "story.invalid_choice": "Questa scelta non è più disponibile.",
+    "story.health_gain": "Hai recuperato {amount} HP.",
+    "story.health_loss": "Hai perso {amount} HP.",
+    "story.xp_gain": "Hai ottenuto {amount} XP.",
+    "story.item_gain": "Hai ricevuto {item}.",
+    "story.player_defeated": "La decisione si rivela fatale.",
+    "story.resolved": "Risolto: {title}",
+    "story.resolved_quick": "{terrain}. Risolto: {title}.",
+    "story.resolved_inspect": "Hai già deciso come affrontare {title}.",
+    "story.opportunity": "Opportunità narrativa",
+    "story.opportunity_title": "Opportunità: {title}",
+    "story.fallback_title": "Qualcosa di insolito a {terrain}",
+    "story.fallback_description": "{description} Qualcosa qui richiede una decisione.",
+    "story.fallback_resolved": "Nient'altro qui richiede la tua attenzione.",
+    "story.fallback_investigate": "Indaga con cautela",
+    "story.fallback_investigate_result": "Una ricerca paziente rivela un indizio utile.",
+    "story.fallback_risk": "Prendi la scorciatoia rischiosa",
+    "story.fallback_risk_result": "La scorciatoia fa male, ma insegna più del percorso sicuro.",
+    "objective.default_title": "Elimina la minaccia",
+    "objective.default_description": "Trova e sconfiggi ogni nemico sulla mappa.",
+    "objective.story_title": "Esplora l'ignoto",
+    "objective.story_description": "Risolvi ogni opportunità narrativa sulla mappa."
   }
 }
