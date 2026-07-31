@@ -9,6 +9,7 @@
     "leaveWarning": "¿Estás seguro de que quieres salir del juego?"
   },
   "// Theme Selection": "Traducciones relacionadas con la selección de tema",
+  "account": "Cuenta",
   "selectTheme": "Selecciona tu tema",
   "fantasyTheme": "Tema de fantasía",
   "customTheme": "Tema personalizado",
@@ -17,6 +18,10 @@
   "// Game Setup": "Traducciones de configuración y preparación del juego",
   "useGameId": "Usar ID del mundo",
   "chooseWorld": "Elegir mundo",
+  "lobbyEyebrow": "Aventuras generadas por IA",
+  "lobbyTitle": "Elige un mundo. Haz tuya la historia.",
+  "lobbyBody": "Cada partida tiene su propio mapa, personajes y decisiones. Elige un mundo o crea uno a partir de una idea.",
+  "worldCodePrompt": "¿Tienes un ID o enlace de mundo?",
   "loadingWorlds": "Cargando mundos...",
   "customThemeDescription": "Introduce una descripción para tu tema personalizado:",
   "generatorIdLabel": "Introduce el ID del mundo:",
@@ -28,6 +33,7 @@
   "worldId": "ID del mundo",
   "worldOriginalLanguage": "Idioma original",
   "worldContents": "Contenido",
+  "worldDetails": "Detalles del mundo",
   "worldCounts": "{enemies} enemigos · {items} objetos · {terrain} terrenos",
   "quickStartPiedone": "Inicio rápido: Piedone",
   "// Game Interface": "Traducciones de la interfaz del juego",
@@ -72,6 +78,15 @@
       "home": "Inicio",
       "newGame": "Nuevo juego"
     }
+  },
+  "runEnd": {
+    "report": "Informe de partida",
+    "victoryTitle": "Mundo completado",
+    "victoryBody": "Completaste el objetivo y dejaste tu huella en este mundo.",
+    "defeatTitle": "La partida termina aquí",
+    "defeatBody": "El mundo recuerda hasta dónde llegaste. Prueba otra ruta o elige una nueva aventura.",
+    "finalMoments": "Últimos momentos",
+    "chooseWorld": "Elegir otro mundo"
   },
   "combat": {
     "stats": {
@@ -171,8 +186,8 @@
     "effect.strength": "fuerza",
     "effect.protection": "protección",
     "run.quit": "Abandonaste la partida. Vuelve al Inicio o reinicia cuando quieras.",
-    "run.game_over": "¡Game Over! Pulsa Reiniciar para jugar de nuevo.",
-    "run.game_won": "¡Felicidades! ¡Ganaste la partida! Pulsa Reiniciar para jugar de nuevo.",
+    "run.game_over": "La partida ha terminado. Este mundo recuerda hasta dónde llegaste.",
+    "run.game_won": "El objetivo está completo. Este mundo es tuyo.",
     "run.all_enemies_defeated": "¡Felicidades! ¡Has derrotado a todos los enemigos!",
     "tile.area": "Área",
     "tile.clear": "Libre",

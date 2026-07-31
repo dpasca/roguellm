@@ -9,6 +9,7 @@
     "leaveWarning": "您確定要離開遊戲嗎？"
   },
   "// Theme Selection": "主題選擇相關翻譯",
+  "account": "帳戶",
   "selectTheme": "選擇您的主題",
   "fantasyTheme": "奇幻主題",
   "customTheme": "自訂主題",
@@ -17,6 +18,10 @@
   "// Game Setup": "遊戲設置和配置翻譯",
   "useGameId": "使用世界 ID",
   "chooseWorld": "選擇世界",
+  "lobbyEyebrow": "AI 生成冒險",
+  "lobbyTitle": "選擇一個世界，寫下你的故事。",
+  "lobbyBody": "每次冒險都有獨特的地圖、角色與抉擇。選擇下方的世界，或用一個創意生成新世界。",
+  "worldCodePrompt": "有世界 ID 或連結？",
   "loadingWorlds": "正在載入世界...",
   "customThemeDescription": "輸入您的自訂主題描述：",
   "generatorIdLabel": "輸入世界 ID：",
@@ -28,6 +33,7 @@
   "worldId": "世界 ID",
   "worldOriginalLanguage": "原始語言",
   "worldContents": "內容",
+  "worldDetails": "世界詳情",
   "worldCounts": "{enemies} 個敵人 · {items} 個物品 · {terrain} 種地形",
   "quickStartPiedone": "快速開始：Piedone",
   "// Game Interface": "遊戲內介面翻譯",
@@ -72,6 +78,15 @@
       "home": "首頁",
       "newGame": "新遊戲"
     }
+  },
+  "runEnd": {
+    "report": "冒險報告",
+    "victoryTitle": "世界已完成",
+    "victoryBody": "你完成了目標，並在這個世界留下了自己的印記。",
+    "defeatTitle": "本次冒險到此為止",
+    "defeatBody": "世界會記得你走了多遠。嘗試另一條路線，或選擇新的冒險。",
+    "finalMoments": "最後時刻",
+    "chooseWorld": "選擇另一個世界"
   },
   "combat": {
     "stats": {
@@ -171,8 +186,8 @@
     "effect.strength": "力量",
     "effect.protection": "防護",
     "run.quit": "你已放棄本局。可以返回首頁，或準備好後重新開始。",
-    "run.game_over": "Game Over！按重新開始再次遊玩。",
-    "run.game_won": "恭喜！你贏得了遊戲！按重新開始再次遊玩。",
+    "run.game_over": "本次冒險已經結束。這個世界會記得你走了多遠。",
+    "run.game_won": "目標已經完成。這個世界屬於你。",
     "run.all_enemies_defeated": "恭喜！你擊敗了所有敵人！",
     "tile.area": "區域",
     "tile.clear": "安全",

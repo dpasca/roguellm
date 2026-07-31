@@ -1,4 +1,6 @@
 // Language configuration
+document.documentElement.classList.add('landing-root');
+
 const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
     { code: 'es', name: 'Español' },
@@ -37,6 +39,9 @@ const app = Vue.createApp({
                 username: '',
                 password: ''
             },
+            isAccountPanelOpen: false,
+            isWorldCodePanelOpen: false,
+            worldMenuId: null,
             isAuthenticating: false,
             publicReviewDialog: {
                 isOpen: false,
@@ -84,6 +89,12 @@ const app = Vue.createApp({
                 worlds.forEach((world) => worldsById.set(world.id, world));
             });
             return Array.from(worldsById.values());
+        },
+        activeWorldMenu() {
+            if (!this.worldMenuId) {
+                return null;
+            }
+            return this.allWorlds.find(world => world.id === this.worldMenuId) || null;
         },
         hasCurrentWorldOptions() {
             return this.worlds.length > 0;
@@ -454,13 +465,84 @@ const app = Vue.createApp({
             this.clearInfo();
             this.authForm.password = '';
         },
+        toggleAccountPanel() {
+            if (this.isAccountPanelOpen) {
+                this.closeAccountPanel();
+                return;
+            }
+
+            this.isWorldCodePanelOpen = false;
+            this.worldMenuId = null;
+            this.isAccountPanelOpen = true;
+            this.$nextTick(() => {
+                const closeButton = document.querySelector('.auth-panel-close');
+                if (closeButton) {
+                    closeButton.focus({ preventScroll: true });
+                }
+            });
+        },
+        closeAccountPanel() {
+            this.isAccountPanelOpen = false;
+            this.$nextTick(() => {
+                const trigger = document.querySelector('.account-trigger');
+                if (trigger) {
+                    trigger.focus({ preventScroll: true });
+                }
+            });
+        },
         promptSignupForSave() {
             this.setAuthMode('signup');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            this.isWorldCodePanelOpen = false;
+            this.worldMenuId = null;
+            this.isAccountPanelOpen = true;
             this.$nextTick(() => {
                 const usernameInput = document.querySelector('.auth-input');
                 if (usernameInput) {
-                    usernameInput.focus();
+                    usernameInput.focus({ preventScroll: true });
+                }
+            });
+        },
+        openWorldCodePanel() {
+            this.clearError();
+            this.clearInfo();
+            this.isAccountPanelOpen = false;
+            this.worldMenuId = null;
+            this.isWorldCodePanelOpen = true;
+            this.$nextTick(() => {
+                const input = document.querySelector('.world-code-panel .generator-input');
+                if (input) {
+                    input.focus({ preventScroll: true });
+                }
+            });
+        },
+        closeWorldCodePanel() {
+            this.isWorldCodePanelOpen = false;
+            this.$nextTick(() => {
+                const trigger = document.querySelector('.world-code-trigger');
+                if (trigger) {
+                    trigger.focus({ preventScroll: true });
+                }
+            });
+        },
+        openWorldMenu(worldId) {
+            this.clearInfo();
+            this.isAccountPanelOpen = false;
+            this.isWorldCodePanelOpen = false;
+            this.worldMenuId = worldId;
+            this.$nextTick(() => {
+                const closeButton = document.querySelector('.world-menu-panel .lobby-sheet-close');
+                if (closeButton) {
+                    closeButton.focus({ preventScroll: true });
+                }
+            });
+        },
+        closeWorldMenu() {
+            const worldId = this.worldMenuId;
+            this.worldMenuId = null;
+            this.$nextTick(() => {
+                const trigger = document.querySelector(`[data-world-menu="${worldId}"]`);
+                if (trigger) {
+                    trigger.focus({ preventScroll: true });
                 }
             });
         },

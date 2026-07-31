@@ -76,22 +76,50 @@
                     <h1>{{ t('title') }}</h1>
                     <p v-html="t('subtitle_with_author', { author: `<a href='${config.links.author.url}' target='_blank'>${config.links.author.text}</a>` })"></p>
                 </div>
-                <div class="language-selector">
-                    <select v-model="selectedLanguage" class="language-select" :aria-label="t('language')">
-                        <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code" v-text="lang.name">
-                        </option>
-                    </select>
+                <div class="lobby-tools">
+                    <div class="language-selector">
+                        <select v-model="selectedLanguage" class="language-select" :aria-label="t('language')">
+                            <option v-for="lang in supportedLanguages" :key="lang.code" :value="lang.code" v-text="lang.name">
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button"
+                            class="account-trigger"
+                            :class="{ signed: currentUser }"
+                            :aria-label="t('account')"
+                            :aria-expanded="isAccountPanelOpen"
+                            @click="toggleAccountPanel">
+                        <span aria-hidden="true">{{ dashboardInitial }}</span>
+                        <strong>{{ currentUser ? currentUser.username : t('account') }}</strong>
+                    </button>
                 </div>
             </header>
 
-            <section class="auth-strip">
-                <div class="dashboard-profile" :class="{ signed: currentUser }">
+            <button v-if="isAccountPanelOpen"
+                    type="button"
+                    class="account-backdrop"
+                    :aria-label="t('publicReviewClose')"
+                    @click="closeAccountPanel"></button>
+            <section v-if="isAccountPanelOpen"
+                     class="auth-strip"
+                     role="dialog"
+                     aria-modal="true"
+                     :aria-label="t('account')"
+                     @keydown.esc="closeAccountPanel">
+                <header class="auth-panel-header">
                     <div class="dashboard-avatar" aria-hidden="true">{{ dashboardInitial }}</div>
                     <div class="auth-copy">
                         <strong>{{ currentUser ? t('dashboardWelcome', { username: currentUser.username }) : t('accountSaveTitleAnonymous') }}</strong>
                         <span>{{ currentUser ? t('accountSaveBodySignedIn') : t('accountSaveBodyAnonymous') }}</span>
                     </div>
-                </div>
+                    <button type="button"
+                            class="auth-panel-close"
+                            :aria-label="t('publicReviewClose')"
+                            @click="closeAccountPanel">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div v-if="errorMessage" class="auth-panel-message" role="alert">{{ errorMessage }}</div>
                 <div v-if="currentUser" class="auth-session">
                     <div class="dashboard-stats" aria-label="World stats">
                         <div v-for="stat in dashboardStats"
@@ -141,6 +169,127 @@
                 </form>
             </section>
 
+            <button v-if="isWorldCodePanelOpen"
+                    type="button"
+                    class="lobby-sheet-backdrop"
+                    :aria-label="t('publicReviewClose')"
+                    @click="closeWorldCodePanel"></button>
+            <section v-if="isWorldCodePanelOpen"
+                     class="lobby-sheet-panel world-code-panel"
+                     role="dialog"
+                     aria-modal="true"
+                     :aria-label="t('worldCodePrompt')"
+                     @keydown.esc="closeWorldCodePanel">
+                <header class="lobby-sheet-header">
+                    <div class="lobby-sheet-icon" aria-hidden="true">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div>
+                        <span>{{ t('useGameId') }}</span>
+                        <h2>{{ t('worldCodePrompt') }}</h2>
+                    </div>
+                    <button type="button"
+                            class="lobby-sheet-close"
+                            :aria-label="t('publicReviewClose')"
+                            @click="closeWorldCodePanel">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="world-code-form">
+                    <input v-model="generatorId"
+                           :placeholder="t('generatorIdLabel')"
+                           class="generator-input"
+                           type="text"
+                           @input="selectedWorldId = ''">
+                    <button type="button"
+                            class="launch-btn"
+                            :disabled="!generatorId.trim()"
+                            @click="launchGame">
+                        <i class="fas fa-play"></i>
+                        <span>{{ t('startRun') }}</span>
+                    </button>
+                    <p v-if="errorMessage" class="lobby-sheet-message is-error" role="alert">
+                        {{ errorMessage }}
+                    </p>
+                </div>
+            </section>
+
+            <button v-if="activeWorldMenu"
+                    type="button"
+                    class="lobby-sheet-backdrop"
+                    :aria-label="t('publicReviewClose')"
+                    @click="closeWorldMenu"></button>
+            <section v-if="activeWorldMenu"
+                     class="lobby-sheet-panel world-menu-panel"
+                     role="dialog"
+                     aria-modal="true"
+                     :aria-label="t('worldDetails')"
+                     @keydown.esc="closeWorldMenu">
+                <header class="lobby-sheet-header">
+                    <div class="lobby-sheet-icon" aria-hidden="true">
+                        <i class="fas fa-map"></i>
+                    </div>
+                    <div>
+                        <span>{{ t('worldDetails') }}</span>
+                        <h2>{{ activeWorldMenu.title }}</h2>
+                    </div>
+                    <button type="button"
+                            class="lobby-sheet-close"
+                            :aria-label="t('publicReviewClose')"
+                            @click="closeWorldMenu">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="world-menu-content">
+                    <dl class="world-preview-facts">
+                        <div>
+                            <dt>{{ t('worldId') }}</dt>
+                            <dd>{{ activeWorldMenu.id }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ t('worldOriginalLanguage') }}</dt>
+                            <dd>{{ activeWorldMenu.language }}</dd>
+                        </div>
+                        <div>
+                            <dt>{{ t('worldContents') }}</dt>
+                            <dd>{{ formatWorldCounts(activeWorldMenu) }}</dd>
+                        </div>
+                    </dl>
+                    <p class="world-preview-theme">{{ activeWorldMenu.theme }}</p>
+                    <div class="world-actions">
+                        <button type="button"
+                                class="world-secondary-btn"
+                                @click="copyWorldLink(activeWorldMenu)">
+                            <i class="fas fa-link"></i>
+                            <span>{{ t('copyShareLink') }}</span>
+                        </button>
+                        <label v-if="isOwnedWorld(activeWorldMenu)" class="world-visibility-control">
+                            <span>{{ t('visibility') }}</span>
+                            <select :value="activeWorldMenu.visibility"
+                                    @change="updateWorldVisibility(activeWorldMenu, $event)">
+                                <option value="private">{{ t('visibilityPrivate') }}</option>
+                                <option value="unlisted">{{ t('visibilityUnlisted') }}</option>
+                                <option value="public">{{ t('visibilityRequestPublic') }}</option>
+                            </select>
+                        </label>
+                    </div>
+                    <p v-if="infoMessage" class="lobby-sheet-message" role="status">
+                        {{ infoMessage }}
+                    </p>
+                </div>
+            </section>
+
+            <section class="lobby-hero">
+                <div class="lobby-hero-icon" aria-hidden="true">
+                    <i class="fas fa-dice-d20"></i>
+                </div>
+                <div class="lobby-hero-copy">
+                    <span class="lobby-eyebrow">{{ t('lobbyEyebrow') }}</span>
+                    <h2>{{ t('lobbyTitle') }}</h2>
+                    <p>{{ t('lobbyBody') }}</p>
+                </div>
+            </section>
+
             <nav class="landing-mode-tabs" role="tablist" :aria-label="t('landingModes')">
                 <button type="button"
                         class="landing-mode-tab"
@@ -170,7 +319,10 @@
             <main class="landing-main">
                 <section class="landing-panel world-panel" v-if="selectedTheme === 'world'">
                     <div class="panel-heading">
-                        <h2>{{ t('playWorlds') }}</h2>
+                        <div>
+                            <span class="panel-eyebrow">{{ t('playWorlds') }}</span>
+                            <h2>{{ t('chooseWorld') }}</h2>
+                        </div>
                         <button v-if="isLocalDev && worlds.length"
                                 type="button"
                                 class="dev-shortcut-btn"
@@ -182,21 +334,6 @@
 
                     <div class="world-stage">
                         <div class="world-browser">
-                            <div class="world-id-row">
-                                <input v-model="generatorId"
-                                       :placeholder="t('generatorIdLabel')"
-                                       class="generator-input"
-                                       type="text"
-                                       @input="selectedWorldId = ''">
-                                <button type="button"
-                                        class="launch-btn"
-                                        :disabled="!generatorId.trim()"
-                                        @click="launchGame">
-                                    <i class="fas fa-play"></i>
-                                    <span>{{ t('startRun') }}</span>
-                                </button>
-                            </div>
-
                             <div v-if="availableWorldTabs.length > 1"
                                  class="world-tabs"
                                  role="tablist">
@@ -226,13 +363,27 @@
                                             {{ world.language }} · {{ worldVisibilityLabel(world) }} · {{ formatWorldCounts(world) }}
                                         </span>
                                     </span>
-                                    <button v-if="selectedWorldId === world.id"
-                                            type="button"
-                                            class="world-start-btn"
-                                            @click.stop.prevent="launchGame">
-                                        <i class="fas fa-play"></i>
-                                        <span>{{ t('startRun') }}</span>
-                                    </button>
+                                    <div v-if="selectedWorldId === world.id" class="world-launch-actions">
+                                        <button type="button"
+                                                class="world-start-btn"
+                                                @click.stop.prevent="launchGame">
+                                            <i class="fas fa-play"></i>
+                                            <span>{{ t('startRun') }}</span>
+                                        </button>
+                                        <button type="button"
+                                                class="world-card-icon-button"
+                                                :aria-label="t('copyShareLink')"
+                                                @click.stop.prevent="copyWorldLink(world)">
+                                            <i class="fas fa-link" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="world-card-icon-button"
+                                                :data-world-menu="world.id"
+                                                :aria-label="t('worldDetails')"
+                                                @click.stop.prevent="openWorldMenu(world.id)">
+                                            <i class="fas fa-ellipsis-h" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
                                     <div v-if="selectedWorldId === world.id" class="world-preview">
                                         <dl class="world-preview-facts">
                                             <div>
@@ -283,6 +434,14 @@
                                     <span>{{ t('signupToCreate') }}</span>
                                 </button>
                             </div>
+
+                            <button type="button"
+                                    class="world-code-trigger"
+                                    @click="openWorldCodePanel">
+                                <i class="fas fa-link" aria-hidden="true"></i>
+                                <span>{{ t('worldCodePrompt') }}</span>
+                                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                            </button>
                         </div>
 
                         <aside class="game-preview" aria-label="Roguelike run preview">
@@ -400,6 +559,7 @@
                     </div>
                 </section>
             </main>
+
         </div>
     </div>
     <!-- Load the landing.js script -->

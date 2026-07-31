@@ -155,68 +155,77 @@
                 {{ $t('notifications.gameCopied') }}
             </div>
 
-            <!-- Game Over Overlay -->
-            <div v-if="isGameInitialized && gameState && gameState.game_over" class="game-over">
-                <h2>{{ $t('gameOver.title') }}</h2>
-                <div class="game-over-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-star"></i>
-                        <span>{{ $t('gameOver.stats.xpGained', { xp: gameState.player_xp }) }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-skull"></i>
-                        <span>{{ $t('gameOver.stats.finalLevel', { level: Math.floor(gameState.player_xp / 100) + 1 })
-                            }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-map"></i>
-                        <span>{{ $t('gameOver.stats.tilesExplored', { tiles: countExploredTiles }) }}</span>
-                    </div>
-                </div>
-                <div class="buttons-container">
-                    <button @click="restartGame" class="restart-button">
-                        <i class="fas fa-redo"></i>
-                        {{ $t('gameOver.buttons.restart') }}
-                    </button>
-                    <button @click="goHome" class="new-game-button">
-                        <i class="fas fa-house"></i>
-                        {{ $t('gameOver.buttons.home') }}
-                    </button>
-                </div>
-            </div>
+            <!-- End-of-run report -->
+            <div v-if="isGameInitialized && gameState && (gameState.game_over || gameState.game_won)"
+                class="run-end" :class="gameState.game_won ? 'is-victory' : 'is-defeat'"
+                role="dialog" aria-modal="true" :aria-labelledby="gameState.game_won ? 'run-end-victory-title' : 'run-end-defeat-title'">
+                <article class="run-end-card">
+                    <header class="run-end-header">
+                        <div class="run-end-emblem" aria-hidden="true">
+                            <i :class="gameState.game_won ? 'fas fa-trophy' : 'fas fa-skull-crossbones'"></i>
+                        </div>
+                        <div class="run-end-heading">
+                            <span>{{ $t('runEnd.report') }}</span>
+                            <h2 :id="gameState.game_won ? 'run-end-victory-title' : 'run-end-defeat-title'">
+                                {{ $t(gameState.game_won ? 'runEnd.victoryTitle' : 'runEnd.defeatTitle') }}
+                            </h2>
+                            <strong>{{ gameState.game_title || gameTitle }}</strong>
+                        </div>
+                    </header>
 
-            <!-- Win Screen Overlay -->
-            <div v-if="isGameInitialized && gameState && gameState.game_won" class="game-win">
-                <h2>{{ $t('gameWin.title') }}</h2>
-                <div class="game-win-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-trophy"></i>
-                        <span>{{ $t('gameWin.stats.victory') }}</span>
+                    <p class="run-end-summary">
+                        {{ $t(gameState.game_won ? 'runEnd.victoryBody' : 'runEnd.defeatBody') }}
+                    </p>
+
+                    <section v-if="gameState.objective" class="run-end-objective">
+                        <div>
+                            <span>{{ $t('objectivePanel.eyebrow') }}</span>
+                            <strong>{{ gameState.objective.title }}</strong>
+                        </div>
+                        <b>{{ gameState.objective.current || 0 }}/{{ gameState.objective.target || 0 }}</b>
+                        <div class="run-end-progress" aria-hidden="true">
+                            <span :style="{ width: `${getObjectivePercentage}%` }"></span>
+                        </div>
+                    </section>
+
+                    <div class="run-end-stats">
+                        <div class="run-end-stat">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <span>{{ $t('gameOver.stats.xpGained', { xp: gameState.player_xp || 0 }) }}</span>
+                        </div>
+                        <div class="run-end-stat">
+                            <i class="fas fa-layer-group" aria-hidden="true"></i>
+                            <span>{{ $t('gameOver.stats.finalLevel', { level: gameState.player_level || Math.floor((gameState.player_xp || 0) / 100) + 1 }) }}</span>
+                        </div>
+                        <div class="run-end-stat">
+                            <i class="fas fa-map" aria-hidden="true"></i>
+                            <span>{{ $t('gameOver.stats.tilesExplored', { tiles: countExploredTiles || 0 }) }}</span>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <i class="fas fa-star"></i>
-                        <span>{{ $t('gameWin.stats.xpGained', { xp: gameState.player_xp || 0 }) }}</span>
+
+                    <section v-if="gameLogs.length" class="run-end-history">
+                        <h3>{{ $t('runEnd.finalMoments') }}</h3>
+                        <article v-for="(log, index) in gameLogs.slice(-3).reverse()"
+                            :key="`run-end-${index}`" class="run-end-history-entry">
+                            <i :class="getLogIcon(log)" aria-hidden="true"></i>
+                            <div>
+                                <strong>{{ getLogTitle(log) }}</strong>
+                                <p>{{ getLogText(log) }}</p>
+                            </div>
+                        </article>
+                    </section>
+
+                    <div class="run-end-actions">
+                        <button @click="restartGame" class="run-end-primary">
+                            <i class="fas fa-redo" aria-hidden="true"></i>
+                            {{ $t(gameState.game_won ? 'gameWin.buttons.playAgain' : 'gameOver.buttons.restart') }}
+                        </button>
+                        <button @click="goHome" class="run-end-secondary">
+                            <i class="fas fa-compass" aria-hidden="true"></i>
+                            {{ $t('runEnd.chooseWorld') }}
+                        </button>
                     </div>
-                    <div class="stat-item">
-                        <i class="fas fa-skull"></i>
-                        <span>{{ $t('gameWin.stats.finalLevel', { level: gameState.player_level ||
-                            Math.floor((gameState.player_xp || 0) / 100) + 1 }) }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-map"></i>
-                        <span>{{ $t('gameWin.stats.tilesExplored', { tiles: countExploredTiles || 0 }) }}</span>
-                    </div>
-                </div>
-                <div class="buttons-container">
-                    <button @click="restartGame" class="restart-button">
-                        <i class="fas fa-redo"></i>
-                        {{ $t('gameWin.buttons.playAgain') }}
-                    </button>
-                    <button @click="goHome" class="new-game-button">
-                        <i class="fas fa-house"></i>
-                        {{ $t('gameWin.buttons.home') }}
-                    </button>
-                </div>
+                </article>
             </div>
 
             <!-- Game Container -->

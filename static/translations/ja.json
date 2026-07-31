@@ -9,6 +9,7 @@
     "leaveWarning": "ゲームを終了してもよろしいですか？"
   },
   "// Theme Selection": "テーマ選択関連の翻訳",
+  "account": "アカウント",
   "selectTheme": "テーマを選択してください",
   "fantasyTheme": "ファンタジーテーマ",
   "customTheme": "カスタムテーマ",
@@ -17,6 +18,10 @@
   "// Game Setup": "ゲーム設定および構成の翻訳",
   "useGameId": "ワールドIDを使用する",
   "chooseWorld": "ワールドを選択",
+  "lobbyEyebrow": "AI生成アドベンチャー",
+  "lobbyTitle": "世界を選び、あなただけの物語を。",
+  "lobbyBody": "各ランには独自のマップ、登場人物、選択があります。世界を選ぶか、アイデアから新しく作成しましょう。",
+  "worldCodePrompt": "ワールドIDまたはリンクをお持ちですか？",
   "loadingWorlds": "ワールドを読み込み中...",
   "customThemeDescription": "カスタムテーマの説明を入力してください:",
   "generatorIdLabel": "ワールドIDを入力してください:",
@@ -28,6 +33,7 @@
   "worldId": "ワールドID",
   "worldOriginalLanguage": "元の言語",
   "worldContents": "内容",
+  "worldDetails": "ワールド詳細",
   "worldCounts": "敵 {enemies} · アイテム {items} · 地形 {terrain}",
   "quickStartPiedone": "クイック開始: Piedone",
   "// Game Interface": "ゲーム内インターフェースの翻訳",
@@ -72,6 +78,15 @@
       "home": "ホーム",
       "newGame": "新しいゲーム"
     }
+  },
+  "runEnd": {
+    "report": "ランレポート",
+    "victoryTitle": "ワールドクリア",
+    "victoryBody": "目標を達成し、この世界にあなたの足跡を残しました。",
+    "defeatTitle": "今回の旅はここまで",
+    "defeatBody": "世界はあなたの歩みを覚えています。別の道を試すか、新しい冒険を選びましょう。",
+    "finalMoments": "最後の出来事",
+    "chooseWorld": "別のワールドを選ぶ"
   },
   "combat": {
     "stats": {
@@ -171,8 +186,8 @@
     "effect.strength": "力",
     "effect.protection": "防護",
     "run.quit": "このランを終了しました。ホームに戻るか、準備ができたら再開してください。",
-    "run.game_over": "Game Over！もう一度遊ぶには再開を押してください。",
-    "run.game_won": "おめでとうございます！ゲームに勝利しました！もう一度遊ぶには再開を押してください。",
+    "run.game_over": "今回の旅は終わりました。この世界はあなたの歩みを覚えています。",
+    "run.game_won": "目標を達成しました。この世界はあなたのものです。",
     "run.all_enemies_defeated": "おめでとうございます！すべての敵を倒しました！",
     "tile.area": "エリア",
     "tile.clear": "安全",

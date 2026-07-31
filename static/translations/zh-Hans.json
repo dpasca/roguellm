@@ -9,6 +9,7 @@
     "leaveWarning": "确定要离开游戏吗？"
   },
   "// Theme Selection": "主题选择相关翻译",
+  "account": "账户",
   "selectTheme": "选择您的主题",
   "fantasyTheme": "奇幻主题",
   "customTheme": "自定义主题",
@@ -17,6 +18,10 @@
   "// Game Setup": "游戏设置和配置翻译",
   "useGameId": "使用世界 ID",
   "chooseWorld": "选择世界",
+  "lobbyEyebrow": "AI 生成冒险",
+  "lobbyTitle": "选择一个世界，书写你的故事。",
+  "lobbyBody": "每次冒险都有独特的地图、角色和抉择。选择下方的世界，或用一个创意生成新世界。",
+  "worldCodePrompt": "有世界 ID 或链接？",
   "loadingWorlds": "正在加载世界...",
   "customThemeDescription": "输入自定义主题的描述：",
   "generatorIdLabel": "输入世界 ID：",
@@ -28,6 +33,7 @@
   "worldId": "世界 ID",
   "worldOriginalLanguage": "原始语言",
   "worldContents": "内容",
+  "worldDetails": "世界详情",
   "worldCounts": "{enemies} 个敌人 · {items} 个物品 · {terrain} 种地形",
   "quickStartPiedone": "快速开始：Piedone",
   "// Game Interface": "游戏内界面翻译",
@@ -72,6 +78,15 @@
       "home": "主页",
       "newGame": "新游戏"
     }
+  },
+  "runEnd": {
+    "report": "冒险报告",
+    "victoryTitle": "世界已完成",
+    "victoryBody": "你完成了目标，并在这个世界留下了自己的印记。",
+    "defeatTitle": "本次冒险到此为止",
+    "defeatBody": "世界会记得你走了多远。尝试另一条路线，或选择新的冒险。",
+    "finalMoments": "最后时刻",
+    "chooseWorld": "选择另一个世界"
   },
   "combat": {
     "stats": {
@@ -171,8 +186,8 @@
     "effect.strength": "力量",
     "effect.protection": "防护",
     "run.quit": "你已放弃本局。可以返回主页，或准备好后重新开始。",
-    "run.game_over": "Game Over！按重新开始再次游玩。",
-    "run.game_won": "恭喜！你赢得了游戏！按重新开始再次游玩。",
+    "run.game_over": "本次冒险已经结束。这个世界会记得你走了多远。",
+    "run.game_won": "目标已经完成。这个世界属于你。",
     "run.all_enemies_defeated": "恭喜！你击败了所有敌人！",
     "tile.area": "区域",
     "tile.clear": "安全",

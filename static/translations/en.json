@@ -15,6 +15,7 @@
 
     "// Theme Selection": "Theme selection related translations",
     "login": "Log In",
+    "account": "Account",
     "logout": "Log Out",
     "signup": "Sign Up",
     "username": "Username",
@@ -49,6 +50,10 @@
     "enterGameDescription": "Describe the setting for your game. e.g. 'Programmers in the wild'",
     "generatorTheme": "Generator Theme",
     "chooseWorld": "Choose World",
+    "lobbyEyebrow": "AI-generated adventures",
+    "lobbyTitle": "Choose a world. Make the story yours.",
+    "lobbyBody": "Every run has its own map, cast, and decisions. Pick a world below or create one from a prompt.",
+    "worldCodePrompt": "Have a World ID or link?",
     "loadingWorlds": "Loading Worlds...",
     "noWorlds": "No Worlds available",
     "myWorldsEmptyTitle": "No saved Worlds yet",
@@ -71,6 +76,7 @@
     "worldId": "World ID",
     "worldOriginalLanguage": "Original Language",
     "worldContents": "Contents",
+    "worldDetails": "World details",
     "worldCounts": "{enemies} enemies · {items} items · {terrain} terrain",
     "quickStartPiedone": "Quick Start: Piedone",
     "myWorlds": "My Worlds",
@@ -145,6 +151,15 @@
             "home": "Home",
             "newGame": "New Game"
         }
+    },
+    "runEnd": {
+        "report": "Run report",
+        "victoryTitle": "World cleared",
+        "victoryBody": "You completed the objective and left your mark on this world.",
+        "defeatTitle": "The run ends here",
+        "defeatBody": "The world remembers how far you made it. Take another route or choose a new adventure.",
+        "finalMoments": "Final moments",
+        "chooseWorld": "Choose another world"
     },
     "combat": {
         "stats": {
@@ -244,8 +259,8 @@
         "effect.strength": "strength",
         "effect.protection": "protection",
         "run.quit": "You quit the run. Return Home or restart when ready.",
-        "run.game_over": "Game Over! Press Restart to play again.",
-        "run.game_won": "Congratulations! You have won the game! Press Restart to play again.",
+        "run.game_over": "The run is over. This World remembers how far you made it.",
+        "run.game_won": "The objective is complete. This World is yours.",
         "run.all_enemies_defeated": "Congratulations! You have defeated all enemies!",
         "tile.area": "Area",
         "tile.clear": "Clear",

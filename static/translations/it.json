@@ -9,6 +9,7 @@
     "leaveWarning": "Sei sicuro di voler uscire dal gioco?"
   },
   "// Theme Selection": "Traduzioni relative alla selezione del tema",
+  "account": "Account",
   "selectTheme": "Seleziona il tuo tema",
   "fantasyTheme": "Tema Fantasy",
   "customTheme": "Tema Personalizzato",
@@ -17,6 +18,10 @@
   "// Game Setup": "Traduzioni relative alla configurazione del gioco",
   "useGameId": "Usa ID Mondo",
   "chooseWorld": "Scegli Mondo",
+  "lobbyEyebrow": "Avventure generate dall'IA",
+  "lobbyTitle": "Scegli un mondo. Fai tua la storia.",
+  "lobbyBody": "Ogni partita ha una mappa, personaggi e decisioni unici. Scegli un mondo o creane uno a partire da un'idea.",
+  "worldCodePrompt": "Hai un ID o un link del mondo?",
   "loadingWorlds": "Caricamento Mondi...",
   "customThemeDescription": "Inserisci una descrizione per il tuo tema personalizzato:",
   "generatorIdLabel": "Inserisci ID Mondo:",
@@ -28,6 +33,7 @@
   "worldId": "ID Mondo",
   "worldOriginalLanguage": "Lingua Originale",
   "worldContents": "Contenuti",
+  "worldDetails": "Dettagli del mondo",
   "worldCounts": "{enemies} nemici · {items} oggetti · {terrain} terreni",
   "quickStartPiedone": "Avvio Rapido: Piedone",
   "// Game Interface": "Traduzioni dell'interfaccia di gioco",
@@ -72,6 +78,15 @@
       "home": "Home",
       "newGame": "Nuovo Gioco"
     }
+  },
+  "runEnd": {
+    "report": "Resoconto partita",
+    "victoryTitle": "Mondo completato",
+    "victoryBody": "Hai completato l'obiettivo e lasciato il segno in questo mondo.",
+    "defeatTitle": "La partita finisce qui",
+    "defeatBody": "Il mondo ricorda fin dove sei arrivato. Prova un'altra strada o scegli una nuova avventura.",
+    "finalMoments": "Ultimi momenti",
+    "chooseWorld": "Scegli un altro mondo"
   },
   "combat": {
     "stats": {
@@ -171,8 +186,8 @@
     "effect.strength": "forza",
     "effect.protection": "protezione",
     "run.quit": "Hai abbandonato la partita. Torna alla Home o riavvia quando vuoi.",
-    "run.game_over": "Game Over! Premi Riavvia per giocare di nuovo.",
-    "run.game_won": "Congratulazioni! Hai vinto la partita! Premi Riavvia per giocare di nuovo.",
+    "run.game_over": "La partita è finita. Questo mondo ricorda fin dove sei arrivato.",
+    "run.game_won": "L'obiettivo è completo. Questo mondo è tuo.",
     "run.all_enemies_defeated": "Congratulazioni! Hai sconfitto tutti i nemici!",
     "tile.area": "Area",
     "tile.clear": "Libero",
