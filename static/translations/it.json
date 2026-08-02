@@ -186,6 +186,7 @@
     "effect.strength": "forza",
     "effect.protection": "protezione",
     "run.quit": "Hai abbandonato la partita. Torna alla Home o riavvia quando vuoi.",
+    "run.started": "La partita inizia. Questo mondo è tutto da esplorare.",
     "run.game_over": "La partita è finita. Questo mondo ricorda fin dove sei arrivato.",
     "run.game_won": "L'obiettivo è completo. Questo mondo è tuo.",
     "run.all_enemies_defeated": "Congratulazioni! Hai sconfitto tutti i nemici!",

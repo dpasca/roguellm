@@ -107,8 +107,15 @@ every single run of a saved World regenerated them:
 | `gen_game_map_from_celltypes` | **every run**, including replays | no |
 | `gen_entity_placements` | **every run**, including replays | no |
 | `gen_tile_quick_info` | fresh forge only — *skipped* on replay | no |
-| `gen_adapt_sentence` | every event message | n/a |
+| `gen_adapt_sentence` | once per run, not per event — see below | n/a |
 | `gen_room_description` | rare fallback when a tile has no summary | n/a |
+
+`gen_adapt_sentence` was also not a per-event cost. `FAST_DESCRIPTION_ACTIONS`
+in `game_websocket_handler.py:8` already covers all six gameplay actions
+(`move`, `attack`, `run`, `use_item`, `equip_item`, `choose_story`), which take
+their raw text directly. Tracing every action showed the only remaining call was
+on `initialize` / `restart`, where `initialize_game` returned the bare string
+`"Game initialized!"` with no description and the handler adapted it.
 
 The skip on replay was the worst of it: `initialize_tile_info` guarded on
 `not loaded_from_generator`, so a replayed World paid for map and placement
@@ -121,10 +128,16 @@ of cell-type ids and placements as entity ids, both language-independent, so
 they sit outside the translation cache. Only `tile_info` holds generated prose,
 so it is keyed by language and reused only for a matching language.
 
-Remaining for Phase 1b: `gen_adapt_sentence` is still a per-event runtime call.
-Replace it with forge-time flavor pools — roughly 10 event types × 5 variants in
-the world's voice, one structured call — plus 3–4 combat lines per enemy folded
-into enemy generation. After that, **runtime LLM cost is zero** and play is DB
+**Phase 1b (done)** removed that last call without generating anything new. The
+opening line now reuses the summary portion of `theme_desc_better`, which is
+already generated, already translated with the rest of the world, and already
+reviewed as `generated_title_and_summary`. It is passed as both `description_raw`
+and `description` so the handler never adapts it, with a localized `run.started`
+fallback for worlds that have no summary.
+
+The planned flavor-pool system was dropped: it would have added forge cost,
+translation surface, and moderation surface to replace a call that fired once per
+run on a hardcoded English string. **Runtime LLM cost is now zero** — play is DB
 reads and bandwidth.
 
 Three benefits beyond cost:
@@ -289,14 +302,16 @@ and the world definition schema.
    run and persists it, instead of silently degrading forever.
 5. Covered by `tests/test_world_snapshot.py`.
 
-**Phase 1b — Pre-bake event flavor.** Removes the last runtime LLM call.
-1. Add `event_flavor` (per event type, N variants) to the world definition and
-   3–4 combat lines per enemy.
-2. Generate both at forge time in one structured call.
-3. Replace `gen_adapt_sentence` with deterministic selection from the pool.
-4. Bump `WORLD_TRANSLATION_CACHE_VERSION` so baked text is translated.
-5. Extend `collect_baked_prose` so the new pools reach the public reviewer.
-6. Confirm older worlds without pools still play via the existing path.
+**Phase 1b — Remove the last runtime call. Done.**
+1. `_opening_line` reuses the `theme_desc_better` summary, falling back to a
+   localized `run.started` added to all six locales.
+2. `initialize_game` passes it as both `description_raw` and `description`, so
+   `create_message_description` short-circuits before `gen_adapt_sentence`.
+3. `tests/test_world_snapshot.py` asserts every gameplay action stays in
+   `FAST_DESCRIPTION_ACTIONS`, so reintroducing a per-turn call fails the suite.
+
+No new generation was added. If a future change does bake new prose, it must
+extend `collect_baked_prose` — see the moderation note above.
 
 **Phase 2 — Art pipeline.** Backend only; the renderer already exists.
 1. Add an image-generation client with env-driven model config.
@@ -305,8 +320,14 @@ and the world definition schema.
 3. Generate the hero sheet first, then style-locked sheets and backdrops.
 4. Slice sheets, remove backgrounds, derive map tokens, validate.
 5. Persist assets and attach URLs to the world definition.
-6. Decide asset storage: local volume is fine for staging; object storage is
-   likely needed before public launch.
+6. Store assets on the shared VPS that already hosts the other app, following
+   its pattern: a bind-mounted host directory (it uses `./uploads:/app/...`)
+   served behind the shared reverse proxy, not object storage. Add an
+   equivalent assets volume to the RogueLLM compose files and keep the host
+   path in the server-side environment, not in this repo. Revisit object
+   storage only if disk or bandwidth actually become a problem.
+7. Include generated art in backups — `scripts/backup-production-sqlite.sh`
+   covers the database only, so art would not survive a host loss today.
 
 **Phase 3 — Front page.** Needs Phase 2 for real art.
 1. Rebuild `index.html` around prompt + gallery + thin header.
@@ -326,8 +347,6 @@ free-tier allowance.
 
 ## Open questions
 
-- Where do generated assets live in production — local volume, or object
-  storage? Object storage likely required before public launch.
 - Should the forge be synchronous with a live reveal, or a background job the
   user can navigate away from and return to?
 - Does the Journey path keep multiple levels (`llms-workspace.md`), or is one

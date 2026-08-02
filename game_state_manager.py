@@ -752,6 +752,19 @@ class GameStateManager:
         if objective.get("kind") == "stories" and objective["completed"]:
             self.state.game_won = True
 
+    def _opening_line(self) -> str:
+        """The line shown when a run starts, in the World's own voice.
+
+        `theme_desc_better` is title on the first line and summary after it. The
+        summary is already generated, already translated with the rest of the
+        world, and already reviewed as `generated_title_and_summary`, so reusing
+        it costs nothing and adds no moderation surface.
+        """
+        summary = "\n".join(
+            (getattr(self, "theme_desc_better", None) or "").split("\n")[1:]
+        ).strip()
+        return summary or self.msg("run.started")
+
     def _map_csv_from_cell_types(self) -> str:
         """Serialize the map as cell-type ids, which stay language-independent."""
         return "\n".join(
@@ -1219,7 +1232,11 @@ class GameStateManager:
         x, y = self.state.player_pos
         self.state.explored[y][x] = True
 
-        return await self.create_message("Game initialized!")
+        # Pass the opening line as both raw and description so the websocket
+        # handler does not send it through gen_adapt_sentence. This was the last
+        # model call left in a run.
+        opening = self._opening_line()
+        return await self.create_message(opening, opening)
 
     def events_reset(self):
         """Reset the event history."""

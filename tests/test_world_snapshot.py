@@ -268,6 +268,81 @@ class SnapshotReuseTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("en", manager._snapshot_tile_info_by_language)
 
 
+class OpeningLineTests(unittest.TestCase):
+    """The opening line was the last per-run model call: initialize_game
+    returned a bare string with no description, so the websocket handler sent
+    it through gen_adapt_sentence."""
+
+    def test_opening_line_uses_the_world_summary(self):
+        manager = make_manager()
+        manager.theme_desc_better = "Neon Harbour\nRain never stops here.\nThe docks keep secrets."
+
+        self.assertEqual(
+            manager._opening_line(),
+            "Rain never stops here.\nThe docks keep secrets.",
+        )
+
+    def test_opening_line_falls_back_to_localized_message(self):
+        manager = make_manager()
+        manager.theme_desc_better = "Neon Harbour"
+
+        self.assertEqual(
+            manager._opening_line(),
+            "The run begins. This World is yours to explore.",
+        )
+
+    def test_opening_line_fallback_is_localized(self):
+        manager = make_manager(language="it")
+        manager.theme_desc_better = None
+
+        self.assertEqual(
+            manager._opening_line(),
+            "La partita inizia. Questo mondo è tutto da esplorare.",
+        )
+
+    def test_opening_line_survives_missing_theme(self):
+        manager = make_manager()
+
+        self.assertEqual(
+            manager._opening_line(),
+            "The run begins. This World is yours to explore.",
+        )
+
+
+class RuntimeModelCallTests(unittest.IsolatedAsyncioTestCase):
+    """Play must not call a model at all. Anything reintroducing a per-turn
+    call should fail here."""
+
+    async def test_gameplay_actions_never_reach_the_adapter(self):
+        from game_websocket_handler import FAST_DESCRIPTION_ACTIONS
+
+        gameplay_actions = {
+            "move", "attack", "run", "use_item", "equip_item", "choose_story",
+        }
+
+        self.assertEqual(
+            gameplay_actions - FAST_DESCRIPTION_ACTIONS,
+            set(),
+            "every gameplay action must bypass gen_adapt_sentence",
+        )
+
+    async def test_initialized_run_message_needs_no_adaptation(self):
+        async def exploding_adapter(*args, **kwargs):
+            raise AssertionError("gen_adapt_sentence must not run during play")
+
+        manager = make_manager()
+        manager.theme_desc_better = "Neon Harbour\nRain never stops here."
+        manager.gen_ai = SimpleNamespace(gen_adapt_sentence=exploding_adapter)
+
+        opening = manager._opening_line()
+        message = {"description_raw": opening, "description": opening}
+
+        # Mirrors create_message_description: a filled description short-circuits.
+        result = await GameStateManager.create_message_description(manager, message)
+
+        self.assertEqual(result["description"], "Rain never stops here.")
+
+
 class BakedProseReviewTests(unittest.TestCase):
     """Baked prose is shown to players verbatim, so a public review that never
     sees it can approve a World containing unreviewed text."""

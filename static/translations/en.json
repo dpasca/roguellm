@@ -259,6 +259,7 @@
         "effect.strength": "strength",
         "effect.protection": "protection",
         "run.quit": "You quit the run. Return Home or restart when ready.",
+        "run.started": "The run begins. This World is yours to explore.",
         "run.game_over": "The run is over. This World remembers how far you made it.",
         "run.game_won": "The objective is complete. This World is yours.",
         "run.all_enemies_defeated": "Congratulations! You have defeated all enemies!",

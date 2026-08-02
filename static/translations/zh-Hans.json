@@ -186,6 +186,7 @@
     "effect.strength": "力量",
     "effect.protection": "防护",
     "run.quit": "你已放弃本局。可以返回主页，或准备好后重新开始。",
+    "run.started": "冒险开始了。这个世界等你探索。",
     "run.game_over": "本次冒险已经结束。这个世界会记得你走了多远。",
     "run.game_won": "目标已经完成。这个世界属于你。",
     "run.all_enemies_defeated": "恭喜！你击败了所有敌人！",
