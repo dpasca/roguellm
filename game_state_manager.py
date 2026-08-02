@@ -22,6 +22,10 @@ logger = logging.getLogger()
 USE_RANDOM_MAP = False
 WORLD_TRANSLATION_CACHE_VERSION = 5
 
+# Bump when the persisted playable snapshot shape changes so stale rows are
+# regenerated instead of loaded.
+WORLD_SNAPSHOT_VERSION = 1
+
 
 class GameStateManager:
     """Manages game state initialization, persistence, and message creation."""
@@ -65,6 +69,11 @@ class GameStateManager:
         self.do_web_search = do_web_search
         self.owner_id = owner_id
         self.visibility = visibility
+
+        # Raw tile summaries as returned by the model, kept so they can be
+        # persisted into the world snapshot alongside the map and placements.
+        self._generated_tile_info: List[dict] = []
+        self._snapshot_tile_info_by_language: Dict[str, List[dict]] = {}
 
     @classmethod
     async def create(cls, seed: int, theme_desc: str, do_web_search: bool = False,
@@ -402,8 +411,18 @@ class GameStateManager:
 
         return normalized
 
-    async def initialize_game_placements(self):
-        """Generate entity placements (both enemies and items)."""
+    async def initialize_game_placements(self, snapshot_placements: Optional[List[dict]] = None):
+        """Generate entity placements (both enemies and items).
+
+        Snapshot placements are used verbatim: they were already densified and
+        sanitized when the world was first built, and re-running that here would
+        drift the layout away from what the snapshot recorded.
+        """
+        if snapshot_placements:
+            self.entity_placements = list(snapshot_placements)
+            self.entity_manager.entity_placements = list(self.entity_placements)
+            return
+
         try:
             self.entity_placements = await self.entity_manager.generate_placements(
                 self.state.cell_types,
@@ -737,12 +756,112 @@ class GameStateManager:
         if objective.get("kind") == "stories" and objective["completed"]:
             self.state.game_won = True
 
-    async def initialize_tile_info(self):
+    def _map_csv_from_cell_types(self) -> str:
+        """Serialize the map as cell-type ids, which stay language-independent."""
+        return "\n".join(
+            ",".join(self._cell_id(cell) for cell in row)
+            for row in self.state.cell_types
+        )
+
+    def _cell_types_from_map_csv(self, map_csv: Optional[str]) -> Optional[List[List[dict]]]:
+        """Rehydrate a map from cell-type ids against the active definitions.
+
+        Returns None when the snapshot no longer matches the current
+        definitions or map dimensions, so the caller falls back to generation.
+        """
+        celltype_defs = getattr(self.definitions, "celltype_defs", None) or []
+        by_id = {
+            str(ct.get("id")): ct
+            for ct in celltype_defs
+            if isinstance(ct, dict) and ct.get("id") is not None
+        }
+        if not by_id:
+            return None
+
+        rows = [row.strip() for row in (map_csv or "").split("\n") if row.strip()]
+        if len(rows) != self.state.map_height:
+            logger.warning(
+                "Snapshot map height %s does not match %s; regenerating",
+                len(rows), self.state.map_height
+            )
+            return None
+
+        out_map = []
+        for row in rows:
+            cell_ids = [cell.strip() for cell in row.split(",")]
+            if len(cell_ids) != self.state.map_width:
+                logger.warning(
+                    "Snapshot map width %s does not match %s; regenerating",
+                    len(cell_ids), self.state.map_width
+                )
+                return None
+            rehydrated = [by_id.get(cell_id) for cell_id in cell_ids]
+            if any(cell is None for cell in rehydrated):
+                logger.warning("Snapshot map references unknown cell types; regenerating")
+                return None
+            out_map.append(rehydrated)
+
+        return out_map
+
+    def _load_world_snapshot(self) -> Optional[Dict[str, Any]]:
+        """Load the persisted playable snapshot for this world, when usable."""
+        generator_id = getattr(self, "generator_id", None)
+        if not generator_id:
+            return None
+
+        try:
+            snapshot = db.get_generator_world(generator_id, WORLD_SNAPSHOT_VERSION)
+        except Exception as exc:
+            logger.error("Failed to load world snapshot: %s", exc)
+            return None
+
+        if not snapshot:
+            return None
+
+        cell_types = self._cell_types_from_map_csv(snapshot.get("map_csv"))
+        if cell_types is None:
+            return None
+
+        tile_info_by_language = snapshot.get("tile_info_by_language") or {}
+        self._snapshot_tile_info_by_language = dict(tile_info_by_language)
+
+        return {
+            "cell_types": cell_types,
+            "entity_placements": snapshot.get("entity_placements") or [],
+            "tile_info": tile_info_by_language.get(getattr(self, "language", "en")) or [],
+        }
+
+    def _save_world_snapshot(self) -> None:
+        """Persist the playable snapshot so replays skip map/placement generation."""
+        generator_id = getattr(self, "generator_id", None)
+        if not generator_id or not self.state or not self.state.cell_types:
+            return
+
+        language = getattr(self, "language", "en")
+        tile_info_by_language = dict(getattr(self, "_snapshot_tile_info_by_language", {}))
+        generated_tile_info = getattr(self, "_generated_tile_info", None)
+        if generated_tile_info:
+            tile_info_by_language[language] = generated_tile_info
+
+        try:
+            db.save_generator_world(
+                generator_id=generator_id,
+                language=language,
+                map_csv=self._map_csv_from_cell_types(),
+                entity_placements=getattr(self, "entity_placements", []) or [],
+                tile_info_by_language=tile_info_by_language,
+                snapshot_version=WORLD_SNAPSHOT_VERSION,
+            )
+            self._snapshot_tile_info_by_language = tile_info_by_language
+        except Exception as exc:
+            logger.error("Failed to save world snapshot: %s", exc)
+
+    async def initialize_tile_info(self, snapshot_tiles: Optional[List[dict]] = None):
         """Prebuild fast tile summaries so movement never waits on narration."""
-        generated_tiles = []
+        generated_tiles = list(snapshot_tiles or [])
         generator = getattr(self.gen_ai, "gen_tile_quick_info", None)
 
-        if callable(generator) and not getattr(self, "loaded_from_generator", False):
+        if not generated_tiles and callable(generator):
             try:
                 generated_tiles = await generator(
                     self.state.cell_types,
@@ -755,6 +874,7 @@ class GameStateManager:
             except Exception as e:
                 logger.error(f"Failed to generate tile quick info: {str(e)}")
 
+        self._generated_tile_info = generated_tiles
         self.state.tile_info = self._normalize_tile_info(generated_tiles)
 
     def _normalize_tile_info(self, generated_tiles: List[dict]) -> List[List[Dict[str, Any]]]:
@@ -1039,9 +1159,17 @@ class GameStateManager:
             player=self.definitions.player_defs[0] if hasattr(self.definitions, 'player_defs') and self.definitions.player_defs else {}
         )
 
+        # Reuse the persisted playable snapshot when this world already has one,
+        # so replays skip map, placement, and tile-info generation entirely.
+        snapshot = self._load_world_snapshot()
+        if snapshot:
+            logger.info("Reusing persisted world snapshot for generator %s", self.generator_id)
+
         # Initialize cell types after state is created
         if USE_RANDOM_MAP:
             self.state.cell_types = self.make_random_map()
+        elif snapshot:
+            self.state.cell_types = snapshot["cell_types"]
         else:
             config_cell_types = config.get('cell_types', [])
             if config_cell_types and len(config_cell_types) == self.state.map_height:
@@ -1074,7 +1202,7 @@ class GameStateManager:
                     self.state.cell_types = self.make_random_map()
 
         # Generate entity placements
-        await self.initialize_game_placements()
+        await self.initialize_game_placements(snapshot["entity_placements"] if snapshot else None)
 
         # Process the entity placements to populate enemies and items
         self.entity_placements = self.entity_manager.process_placements(self.state)
@@ -1085,7 +1213,11 @@ class GameStateManager:
         self.initialize_objective()
 
         # Prebuild fast, tappable tile summaries after placements are sanitized.
-        await self.initialize_tile_info()
+        await self.initialize_tile_info(snapshot["tile_info"] if snapshot else None)
+
+        # Persist the snapshot whenever this run produced anything new, so the
+        # next run of this world reuses it instead of calling the model again.
+        self._save_world_snapshot()
 
         # Set initial position as explored
         x, y = self.state.player_pos

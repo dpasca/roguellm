@@ -89,25 +89,43 @@ Problems this plan addresses:
 
 ## Runtime cost: pre-bake narration at forge time
 
-Three LLM calls fire during play, none cached:
+The original version of this section was written from a partial reading and was
+wrong in two ways. Corrected after tracing the code:
 
-| Call site | Trigger |
-|---|---|
-| `game_state_manager.py:1129` → `gen_room_description` | every room entry |
-| `game_state_manager.py:1136` → `gen_adapt_sentence` | every event message |
-| `game_state_manager.py:743` → `gen_tile_quick_info` | tile info |
+`gen_tile_quick_info` was never a per-move runtime call — it runs once from
+`initialize_tile_info` and its docstring already says "Prebuild fast tile
+summaries so movement never waits on narration." `gen_room_description` is only
+a fallback for when a tile has no summary.
 
-Because a World is now a persistent artifact, all of this moves to forge time:
+The real cost was larger and elsewhere. **The `generators` table stores only
+`theme_desc`, `theme_desc_better`, `language`, and the four `*_defs` columns. The
+map, the entity placements, and the tile summaries were never persisted**, so
+every single run of a saved World regenerated them:
 
-| Runtime call today | Forge-time replacement |
-|---|---|
-| `gen_room_description` | ~5 cell types × ~4 variants = ~20 strings, one structured call |
-| `gen_adapt_sentence` | ~10 event types × ~5 variants in the world's voice, one call |
-| `gen_tile_quick_info` | already per-cell-type; persist it into the world definition |
-| combat flavor | 3–4 lines per enemy, folded into enemy generation |
+| Call | When | Persisted |
+|---|---|---|
+| `gen_game_map_from_celltypes` | **every run**, including replays | no |
+| `gen_entity_placements` | **every run**, including replays | no |
+| `gen_tile_quick_info` | fresh forge only — *skipped* on replay | no |
+| `gen_adapt_sentence` | every event message | n/a |
+| `gen_room_description` | rare fallback when a tile has no summary | n/a |
 
-Roughly three extra structured calls at forge time. **Runtime LLM cost goes to
-zero**; play becomes DB reads and bandwidth.
+The skip on replay was the worst of it: `initialize_tile_info` guarded on
+`not loaded_from_generator`, so a replayed World paid for map and placement
+generation anyway while *losing* its tile prose and falling back to generic
+template text. Replays were both expensive and lower quality than the original
+forge, and two players of the same "World" got different maps.
+
+**Phase 1a (done)** persists the playable snapshot. The map is stored as a grid
+of cell-type ids and placements as entity ids, both language-independent, so
+they sit outside the translation cache. Only `tile_info` holds generated prose,
+so it is keyed by language and reused only for a matching language.
+
+Remaining for Phase 1b: `gen_adapt_sentence` is still a per-event runtime call.
+Replace it with forge-time flavor pools — roughly 10 event types × 5 variants in
+the world's voice, one structured call — plus 3–4 combat lines per enemy folded
+into enemy generation. After that, **runtime LLM cost is zero** and play is DB
+reads and bandwidth.
 
 Three benefits beyond cost:
 
@@ -249,15 +267,31 @@ horizontal grid, no zooming.
 Phases 1 and 2 are independent and can run in parallel; both touch `gen_ai.py`
 and the world definition schema.
 
-**Phase 1 — Pre-bake narration.** Backend only, no UI change.
-1. Extend the world definition schema with `room_descriptions` (per cell type,
-   N variants), `event_flavor` (per event type, N variants), and per-enemy
-   combat lines.
-2. Add forge-time structured generation for each.
-3. Replace the three runtime call sites with deterministic selection from the
-   baked pools, keeping the LLM path behind a flag for comparison.
+**Phase 1a — Persist the playable snapshot. Done.** Backend only, no UI change.
+1. `generator_worlds` table holds `map_csv`, `entity_placements`, and
+   `tile_info` keyed by language, with `WORLD_SNAPSHOT_VERSION` for
+   invalidation. It is a separate table because `save_generator` uses
+   `INSERT OR REPLACE` (`db.py:446`), which would null extra columns on the
+   `generators` row.
+2. `_load_world_snapshot` / `_save_world_snapshot` in `game_state_manager.py`.
+   Loading validates dimensions and cell-type ids against the current
+   definitions and returns None on any mismatch, so a stale snapshot falls back
+   to generation rather than corrupting a run.
+3. `initialize_game_placements` takes snapshot placements verbatim — density and
+   sanitization already ran when the world was first built, and re-running them
+   would drift the layout away from what was recorded.
+4. The `not loaded_from_generator` guard in `initialize_tile_info` is removed.
+   A legacy world without a snapshot now generates tile info once on its next
+   run and persists it, instead of silently degrading forever.
+5. Covered by `tests/test_world_snapshot.py`.
+
+**Phase 1b — Pre-bake event flavor.** Removes the last runtime LLM call.
+1. Add `event_flavor` (per event type, N variants) to the world definition and
+   3–4 combat lines per enemy.
+2. Generate both at forge time in one structured call.
+3. Replace `gen_adapt_sentence` with deterministic selection from the pool.
 4. Bump `WORLD_TRANSLATION_CACHE_VERSION` so baked text is translated.
-5. Confirm older worlds without baked pools still play via the existing path.
+5. Confirm older worlds without pools still play via the existing path.
 
 **Phase 2 — Art pipeline.** Backend only; the renderer already exists.
 1. Add an image-generation client with env-driven model config.

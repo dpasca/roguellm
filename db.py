@@ -228,6 +228,19 @@ class DatabaseManager:
                 )
             """)
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS generator_worlds (
+                    generator_id TEXT PRIMARY KEY,
+                    snapshot_version INTEGER NOT NULL DEFAULT 1,
+                    language TEXT,
+                    map_csv TEXT,
+                    entity_placements TEXT,
+                    tile_info TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS generator_translations (
                     generator_id TEXT NOT NULL,
                     language TEXT NOT NULL,
@@ -562,6 +575,76 @@ class DatabaseManager:
             return None
 
         return generator
+
+    def get_generator_world(
+            self,
+            generator_id: str,
+            snapshot_version: int = 1
+    ) -> Optional[Dict]:
+        """Retrieve the persisted playable snapshot for a generated world.
+
+        The snapshot stores the map as cell-type ids and the placements as
+        entity ids, so both stay language-independent. Only `tile_info` holds
+        generated prose, which is why the source language is recorded with it.
+        """
+        def _get(conn, generator_id, snapshot_version):
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT language, map_csv, entity_placements, tile_info
+                FROM generator_worlds
+                WHERE generator_id = ? AND snapshot_version = ?
+            """, (generator_id, snapshot_version))
+
+            result = cur.fetchone()
+            if result is None:
+                return None
+
+            tile_info = json.loads(result[3]) if result[3] else {}
+            return {
+                'language': result[0],
+                'map_csv': result[1],
+                'entity_placements': json.loads(result[2]) if result[2] else [],
+                # Keyed by language: generated prose is not reusable across
+                # languages, but the map and placements are.
+                'tile_info_by_language': tile_info if isinstance(tile_info, dict) else {},
+            }
+
+        return self._execute_with_retry(_get, generator_id, snapshot_version)
+
+    def save_generator_world(
+            self,
+            generator_id: str,
+            language: str,
+            map_csv: str,
+            entity_placements: List[Dict],
+            tile_info_by_language: Dict[str, List[Dict]],
+            snapshot_version: int = 1
+    ) -> None:
+        """Persist the playable snapshot so replays reuse it instead of regenerating."""
+        def _save(conn, *args):
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO generator_worlds
+                (generator_id, snapshot_version, language, map_csv, entity_placements, tile_info)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(generator_id) DO UPDATE SET
+                    snapshot_version = excluded.snapshot_version,
+                    language = excluded.language,
+                    map_csv = excluded.map_csv,
+                    entity_placements = excluded.entity_placements,
+                    tile_info = excluded.tile_info,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (
+                generator_id,
+                snapshot_version,
+                language,
+                map_csv,
+                json.dumps(entity_placements),
+                json.dumps(tile_info_by_language)
+            ))
+            conn.commit()
+
+        self._execute_with_retry(_save)
 
     def get_generator_translation(
             self,
