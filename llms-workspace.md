@@ -3,6 +3,10 @@
 This is a workspace document for LLMs / AI agents to use as a reference for their work.
 Please, look into the TODO list below to see what's left to do.
 
+**Read [docs/game-direction.md](docs/game-direction.md) first.** It records the
+agreed product direction and the phased implementation order, and it supersedes
+the TODO items below.
+
 ## TODO
 - [ ] Support for multiple levels.
 - [ ] Add goals to beat for each level

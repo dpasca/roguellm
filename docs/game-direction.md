@@ -1,0 +1,306 @@
+# Game Direction Plan
+
+This document records the product direction agreed for the RogueLLM redesign and
+the implementation order that follows from it. It is written to be picked up by a
+fresh session with no prior context.
+
+Related plans: [visual-assets.md](visual-assets.md) defines the entity art
+contract, [story-encounters.md](story-encounters.md) defines the encounter
+contract, [world-ownership-plan.md](world-ownership-plan.md) and
+[production-publish-plan.md](production-publish-plan.md) cover ownership,
+moderation, and hosting. This document supersedes the open items in
+`llms-workspace.md`.
+
+## The core decision
+
+**Ship Worlds, not runs.**
+
+Today a World is a config row in `generators` and the run is the product. The
+direction inverts that: the World is the artifact — named, illustrated, ownable,
+shareable, and playable by a stranger in one tap. A run is how you experience
+someone's World.
+
+Everything else in this plan follows from that inversion:
+
+- Art stops being decoration and becomes what makes a World shareable.
+- A multi-minute build stops being a wait and becomes the forge ceremony.
+- Credits get an honest story: forging costs, playing is free.
+- The existing ownership, visibility, and moderation work moves to the center.
+
+## Chosen shape: Journey
+
+Three shapes were considered.
+
+- **A — Reskin.** Keep the tile grid, add art, rebuild the front page. Lowest
+  risk, but the grid stays the mobile problem and the least distinctive part.
+- **B — Journey.** Replace the 2D grid with a vertical path of nodes
+  (encounter / fight / find / boss). Tap a node, get a full-bleed illustrated
+  scene with 2–3 choices. Combat is its own screen: hero sprite left, enemy
+  sprite right, large touch targets. **Chosen.**
+- **C — Illustrated story.** Drop the tactical layer entirely. Fastest, but hard
+  to differentiate from generic AI fiction and discards the combat work.
+
+B was chosen because the grid is what forces the desktop layout, leaves art
+nowhere to live at full size, and makes the game read as a spreadsheet. B is a
+replacement of the play surface, not of the engine: combat, items, encounters,
+and the whole generation pipeline are reused. `game_state_manager` already
+tracks position and placements, and a linear path is a degenerate case of that.
+
+## Current state
+
+Assessed on the `spike/game-experience-redesign` branch.
+
+Working and worth keeping:
+
+- World generation: players, enemies, items, cell types, map CSV, entity
+  placements (`gen_ai.py`, `gen_ai_prompts.py`).
+- Story encounters with choices and bounded effects.
+- Combat, inventory, run report.
+- i18n across 6 locales with a DB-backed per-language world translation cache
+  (`db.py:572`, `db.py:607`, `WORLD_TRANSLATION_CACHE_VERSION` at
+  `game_state_manager.py:23`).
+- Auth, world ownership, visibility, LLM moderation for public worlds.
+- Docker, VPS, staging and production deploy, health endpoints.
+
+The sprite system is half-built, in a useful way. Commit `4038642` added the
+**consumption** side: `sprite_url` / `sprite_token_url` on entity models
+(`models.py:13-14`), protected from translation (`gen_ai.py:68-69`), consumed by
+`combat_manager.py:31` and `entity_placement_manager.py:73`, rendered through
+774 lines of `static/css/game_art.css` with a Font Awesome fallback. There is
+**no generation code anywhere**. The three Piedone sprites are hand-made files
+hardcoded in `tools/ensure_dev_worlds.py`. The contract and renderer exist; only
+the pipeline is missing.
+
+Problems this plan addresses:
+
+1. **The front page is a tool chooser, not a game.** `static/index.html` is 549
+   lines with eight UI regions: review modal, auth strip, world-code panel,
+   world-menu panel, lobby hero, mode tabs, world browser with its own sub-tabs,
+   create panel. Plus 1018 lines of `landing.js` and 1859 of `landing.css`. A
+   first-time visitor must make a taxonomy decision before seeing anything, and
+   the only visual is `preview-map` — 58 hardcoded `<span class="tile">`
+   elements faking a dungeon (`static/index.html:433-494`).
+2. **The play surface reads as a spreadsheet.** Flat colored squares with Font
+   Awesome glyphs, a stat table, an inventory row, a scrolling log.
+3. **The loop is thin.** No persistent artifact worth showing anyone.
+4. **Mobile is retrofitted.** `@media screen and (max-width: 180mm)` appears in
+   eight stylesheets — a print unit standing in for a phone breakpoint.
+5. **Play costs money on every move.** See below.
+
+## Runtime cost: pre-bake narration at forge time
+
+Three LLM calls fire during play, none cached:
+
+| Call site | Trigger |
+|---|---|
+| `game_state_manager.py:1129` → `gen_room_description` | every room entry |
+| `game_state_manager.py:1136` → `gen_adapt_sentence` | every event message |
+| `game_state_manager.py:743` → `gen_tile_quick_info` | tile info |
+
+Because a World is now a persistent artifact, all of this moves to forge time:
+
+| Runtime call today | Forge-time replacement |
+|---|---|
+| `gen_room_description` | ~5 cell types × ~4 variants = ~20 strings, one structured call |
+| `gen_adapt_sentence` | ~10 event types × ~5 variants in the world's voice, one call |
+| `gen_tile_quick_info` | already per-cell-type; persist it into the world definition |
+| combat flavor | 3–4 lines per enemy, folded into enemy generation |
+
+Roughly three extra structured calls at forge time. **Runtime LLM cost goes to
+zero**; play becomes DB reads and bandwidth.
+
+Three benefits beyond cost:
+
+- **Kills move latency.** `llms-workspace.md` lists "Fix lag when the player
+  moves, entering a new room type and waiting for the room description to be
+  generated" as previously fought. It is structural and cannot be won while
+  narration is live. Pre-baked text renders instantly.
+- **Closes a moderation hole.** `world_moderation.py` reviews the world
+  definition. With live narration, an adversarial theme can produce unreviewed
+  prose for strangers playing an approved public World. Pre-baking means the
+  reviewer sees everything a player will ever see.
+- **Translation stays coherent.** Pre-baked narration rides the existing
+  per-language world translation cache. Live narration would need per-call
+  translation forever.
+
+Accepted tradeoff: two runs through the same World see similar prose. Variation
+comes from node order, choice branching, which enemies are met, and which of N
+variants rolls. For the sharing loop this is arguably correct — a shared World
+should look roughly like the World the sharer saw.
+
+### Optional live narration
+
+If live narration is wanted later, it is a paid tier, not the default:
+
+- **Baked** (free, default): zero marginal cost, instant, fully moderated.
+- **Living** (creator-funded): live narration drawn from a per-World credit
+  budget the creator tops up. On exhaustion the World falls back to baked rather
+  than breaking.
+
+This makes each World's live cost funded by the person who wanted it live,
+instead of hoping creators subsidize players in aggregate. For reference, the
+aggregate model breaks exactly where it hurts most: a live run costs roughly
+$0.02–0.04 at gpt-4.1-mini rates against a $0.10–0.50 forge, which works for the
+long tail but fails on a World that goes viral.
+
+## Art pipeline
+
+### Model choice
+
+Use **`gpt-image-2` at `quality: "low"`**, `size: 1536x1024` for sheets and
+`1024x1024` for single portraits.
+
+| Model | Range / image | Status |
+|---|---|---|
+| gpt-image-2 | $0.005 – $0.211 | current flagship, use this |
+| gpt-image-1.5 | $0.009 – $0.20 | previous flagship |
+| gpt-image-1-mini | $0.005 – $0.052 | **removed from API Dec 1, 2026** |
+| gpt-image-1 | $0.011 – $0.25 | **deprecated Oct 23, 2026** |
+
+Do not build on `gpt-image-1-mini` despite the attractive price — it is removed
+in December 2026. `gpt-image-2` at low quality is the same ~$0.005 floor and is
+not scheduled for removal. DALL·E 2 and 3 were removed from the API on
+May 12, 2026. Batch mode is roughly 50% off if forge latency allows it.
+
+Model name and quality must be configurable via env
+(`IMAGE_MODEL_NAME`, `IMAGE_MODEL_QUALITY`, `IMAGE_MODEL_API_KEY`,
+`IMAGE_MODEL_BASE_URL`) following the existing `LOW_SPEC_MODEL_*` pattern.
+
+### Character frames
+
+Generate the frames as **one sprite sheet in a single call**: the same character
+in three poses side by side (neutral / attacking / defeated) on a flat
+background, then slice deterministically. Identity consistency is exact because
+it is literally one image, not three attempts at the same character. One
+generation instead of three: 1/3 cost, 1/3 wall-clock, no drift. At 1536 wide
+each frame is ~512px, more than a mobile sprite needs.
+
+Tiers:
+
+- **Motion stays CSS** — shake, flash, tint, knockback, fade. These are
+  animation, not expression.
+- **Expression comes from the sheet** — the default tier, one call per
+  character.
+- **Per-frame edits are premium** — hero and boss only, using the image *edit*
+  endpoint with the base sprite as input, at medium quality. ~6 extra calls.
+
+Degrade gracefully: if slicing yields a bad frame, fall back to the neutral pose
+plus CSS.
+
+### Style locking
+
+Generate the hero first, then pass that image as an **input reference** to every
+subsequent call ("match this art style, palette, line weight, and scale
+exactly"). Without this, twelve images look like twelve different games. This is
+the single highest-leverage step for cohesion.
+
+### Background removal
+
+Request `background: "transparent"` with PNG output. Keep a deterministic
+chroma-key fallback — flat magenta, flood-fill from the corners with tolerance —
+for when the model ignores it. Validate alpha coverage and safe padding before
+attaching URLs, as `visual-assets.md` already specifies.
+
+### Budget and timing
+
+Per world: 1 hero sheet + ~5 enemy sheets + ~5 location backdrops + 1 cover card
+≈ **12 calls ≈ $0.06 at low quality**, ~$0.35 at medium. At 10–25s each with
+concurrency 4, that is 60–90 seconds of art on top of text generation.
+
+**A 2–4 minute forge is the target.** Make the wait the reveal, not a spinner:
+title card lands, hero fades in, enemies appear one at a time, locations fill
+in. That is the share moment and the credit justification in one animation.
+
+## Credits and monetization
+
+- **Forging costs credits. Playing is always free.** Play must stay anonymous
+  and instant with no login — gating play behind signup kills the sharing loop
+  and wastes the moderation work.
+- Free tier: 1–2 forges to try.
+- **Remix** — fork a public World with a twist — costs credits. This is the
+  growth loop that converts a player into a creator.
+- Real API cost per forge is roughly $0.10–0.50 all-in, so there is honest
+  margin at any sane price point.
+
+## Front page
+
+Reduce eight regions to three:
+
+1. One sentence of what this is, the prompt box, and Forge. No tabs.
+2. A gallery of World cards showing actual generated art. Tap plays instantly.
+3. A thin header: logo, language, avatar.
+
+Everything else — My Worlds, world code entry, visibility controls, auth forms —
+moves behind the avatar or onto the World card itself. Delete `preview-map`; a
+real World card replaces it.
+
+## Mobile
+
+**PWA first, not native.** Installable, works from a shared link, no store
+review, and no 30% store cut on credit purchases — which would be severe on a
+low-margin virtual-currency product. Go native only after the loop is proven.
+
+Replace the `180mm` breakpoints with real portrait-first breakpoints. The
+Journey layout is portrait-native by construction: vertical path, one thumb, no
+horizontal grid, no zooming.
+
+## Implementation order
+
+Phases 1 and 2 are independent and can run in parallel; both touch `gen_ai.py`
+and the world definition schema.
+
+**Phase 1 — Pre-bake narration.** Backend only, no UI change.
+1. Extend the world definition schema with `room_descriptions` (per cell type,
+   N variants), `event_flavor` (per event type, N variants), and per-enemy
+   combat lines.
+2. Add forge-time structured generation for each.
+3. Replace the three runtime call sites with deterministic selection from the
+   baked pools, keeping the LLM path behind a flag for comparison.
+4. Bump `WORLD_TRANSLATION_CACHE_VERSION` so baked text is translated.
+5. Confirm older worlds without baked pools still play via the existing path.
+
+**Phase 2 — Art pipeline.** Backend only; the renderer already exists.
+1. Add an image-generation client with env-driven model config.
+2. Emit the visual-asset manifest from the completed world definition, per
+   `visual-assets.md` step 1.
+3. Generate the hero sheet first, then style-locked sheets and backdrops.
+4. Slice sheets, remove backgrounds, derive map tokens, validate.
+5. Persist assets and attach URLs to the world definition.
+6. Decide asset storage: local volume is fine for staging; object storage is
+   likely needed before public launch.
+
+**Phase 3 — Front page.** Needs Phase 2 for real art.
+1. Rebuild `index.html` around prompt + gallery + thin header.
+2. Move auth, world code, and visibility behind the avatar or the World card.
+3. Add the forge reveal animation.
+
+**Phase 4 — Journey play surface.** The largest chunk.
+1. Replace grid rendering and movement with a vertical node path.
+2. Full-bleed illustrated encounter scenes with 2–3 choices.
+3. Dedicated combat screen with hero and enemy sprites.
+4. Retire the map CSV rendering path; keep placement logic as path generation.
+
+**Phase 5 — Credits and payments.** Stripe, credit ledger, forge/remix pricing,
+free-tier allowance.
+
+**Phase 6 — PWA.** Manifest, service worker, install prompt, offline shell.
+
+## Open questions
+
+- Where do generated assets live in production — local volume, or object
+  storage? Object storage likely required before public launch.
+- Should the forge be synchronous with a live reveal, or a background job the
+  user can navigate away from and return to?
+- Does the Journey path keep multiple levels (`llms-workspace.md`), or is one
+  path per World with a boss at the end enough for the first version?
+- Should Remix inherit the parent's art, regenerate it, or offer both at
+  different credit prices?
+- Do runs get persisted per user, or only Worlds? (Carried over from
+  `world-ownership-plan.md`.)
+
+## Sources
+
+Image model pricing and deprecation dates verified August 2026 against
+[OpenAI API pricing](https://developers.openai.com/api/docs/pricing) and
+[OpenAI image API cost breakdown](https://costgoat.com/pricing/openai-images).
+Re-verify before implementation; these dates are close.
