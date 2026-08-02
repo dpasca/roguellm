@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from db import DatabaseManager
 from game_state_manager import GameStateManager, WORLD_SNAPSHOT_VERSION
+from world_moderation import build_world_review_payload, collect_baked_prose
 
 
 CELLTYPE_DEFS = [
@@ -265,6 +266,71 @@ class SnapshotReuseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(snapshot["tile_info"], [])
         # The English prose is retained so saving Japanese will not clobber it.
         self.assertIn("en", manager._snapshot_tile_info_by_language)
+
+
+class BakedProseReviewTests(unittest.TestCase):
+    """Baked prose is shown to players verbatim, so a public review that never
+    sees it can approve a World containing unreviewed text."""
+
+    def test_collect_baked_prose_extracts_player_visible_text(self):
+        prose = collect_baked_prose({
+            "tile_info_by_language": {
+                "en": [
+                    {
+                        "x": 0, "y": 0,
+                        "label": "Wet Street",
+                        "quick_desc": "Rain sheets off the awnings.",
+                        "inspect_desc": "A contact waits by the noodle stand.",
+                    },
+                    {"x": 1, "y": 0, "label": "Night Market"},
+                ],
+            },
+        })
+
+        self.assertEqual(prose["tile_text"]["en"], [
+            "Wet Street",
+            "Rain sheets off the awnings.",
+            "A contact waits by the noodle stand.",
+            "Night Market",
+        ])
+
+    def test_collect_baked_prose_keeps_languages_separate(self):
+        prose = collect_baked_prose({
+            "tile_info_by_language": {
+                "en": [{"label": "Wet Street"}],
+                "ja": [{"label": "濡れた通り"}],
+            },
+        })
+
+        self.assertEqual(prose["tile_text"]["en"], ["Wet Street"])
+        self.assertEqual(prose["tile_text"]["ja"], ["濡れた通り"])
+
+    def test_collect_baked_prose_drops_non_text_fields(self):
+        prose = collect_baked_prose({
+            "tile_info_by_language": {
+                "en": [{"x": 3, "y": 4, "terrain_icon": "fa-solid fa-road"}],
+            },
+        })
+
+        self.assertEqual(prose, {})
+
+    def test_collect_baked_prose_handles_missing_snapshot(self):
+        self.assertEqual(collect_baked_prose(None), {})
+        self.assertEqual(collect_baked_prose({}), {})
+
+    def test_payload_includes_baked_prose_when_present(self):
+        payload = build_world_review_payload({
+            "id": "world-1",
+            "theme_desc": "A wet city",
+            "baked_prose": {"tile_text": {"en": ["Wet Street"]}},
+        })
+
+        self.assertEqual(payload["generated_prose"]["tile_text"]["en"], ["Wet Street"])
+
+    def test_payload_omits_baked_prose_when_absent(self):
+        payload = build_world_review_payload({"id": "world-1", "theme_desc": "A wet city"})
+
+        self.assertNotIn("generated_prose", payload)
 
 
 if __name__ == "__main__":

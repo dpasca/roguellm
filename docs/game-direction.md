@@ -133,10 +133,14 @@ Three benefits beyond cost:
   moves, entering a new room type and waiting for the room description to be
   generated" as previously fought. It is structural and cannot be won while
   narration is live. Pre-baked text renders instantly.
-- **Closes a moderation hole.** `world_moderation.py` reviews the world
-  definition. With live narration, an adversarial theme can produce unreviewed
-  prose for strangers playing an approved public World. Pre-baking means the
-  reviewer sees everything a player will ever see.
+- **Closes a moderation hole, but only if the payload keeps up.** With live
+  narration, an adversarial theme can produce unreviewed prose for strangers
+  playing an approved public World. Pre-baking is necessary but not sufficient:
+  `build_world_review_payload` originally passed only the theme and the four
+  `*_defs`, so persisted tile prose was player-visible yet never reviewed.
+  `process_public_world_review` now attaches baked prose from the snapshot via
+  `collect_baked_prose`. **Every future pre-baking step must extend
+  `collect_baked_prose` too, or it reopens this hole.**
 - **Translation stays coherent.** Pre-baked narration rides the existing
   per-language world translation cache. Live narration would need per-call
   translation forever.
@@ -291,7 +295,8 @@ and the world definition schema.
 2. Generate both at forge time in one structured call.
 3. Replace `gen_adapt_sentence` with deterministic selection from the pool.
 4. Bump `WORLD_TRANSLATION_CACHE_VERSION` so baked text is translated.
-5. Confirm older worlds without pools still play via the existing path.
+5. Extend `collect_baked_prose` so the new pools reach the public reviewer.
+6. Confirm older worlds without pools still play via the existing path.
 
 **Phase 2 — Art pipeline.** Backend only; the renderer already exists.
 1. Add an image-generation client with env-driven model config.

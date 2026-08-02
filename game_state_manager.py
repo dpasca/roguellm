@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from gen_ai import GenAI, GenAIModel
 from models import GameState, Enemy, Item, Equipment
-from db import db
+from db import db, WORLD_SNAPSHOT_VERSION  # noqa: F401  (re-exported for callers/tests)
 from tools.fa_runtime import fa_runtime
 from game_definitions import GameDefinitionsManager
 from entity_placement_manager import EntityPlacementManager
@@ -21,10 +21,6 @@ logger = logging.getLogger()
 # Use random map (for testing)
 USE_RANDOM_MAP = False
 WORLD_TRANSLATION_CACHE_VERSION = 5
-
-# Bump when the persisted playable snapshot shape changes so stale rows are
-# regenerated instead of loaded.
-WORLD_SNAPSHOT_VERSION = 1
 
 
 class GameStateManager:

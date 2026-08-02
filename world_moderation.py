@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from openai import AsyncOpenAI
 
+from db import WORLD_SNAPSHOT_VERSION
 from gen_ai_utils import with_exponential_backoff
 from privacy_logging import describe_text
 
@@ -97,7 +98,7 @@ def get_world_public_review_api_key() -> Optional[str]:
 
 
 def build_world_review_payload(world: Dict) -> Dict:
-    return {
+    payload = {
         "world_id": world.get("id"),
         "language": world.get("language"),
         "original_prompt": world.get("theme_desc"),
@@ -107,6 +108,40 @@ def build_world_review_payload(world: Dict) -> Dict:
         "generated_enemies": world.get("enemy_defs", []),
         "generated_terrain": world.get("celltype_defs", {}),
     }
+
+    # Baked prose is shown to players verbatim, so it has to be reviewed too.
+    # Attached by process_public_world_review from the persisted snapshot.
+    baked_prose = world.get("baked_prose")
+    if baked_prose:
+        payload["generated_prose"] = baked_prose
+
+    return payload
+
+
+def collect_baked_prose(snapshot: Optional[Dict]) -> Dict:
+    """Pull player-visible generated prose out of a persisted world snapshot.
+
+    Only the text a player can actually read is included; coordinates, ids, and
+    icons carry no reviewable content and would only dilute the payload.
+    """
+    if not snapshot:
+        return {}
+
+    prose = {}
+    for language, tiles in (snapshot.get("tile_info_by_language") or {}).items():
+        lines = []
+        for tile in tiles or []:
+            if not isinstance(tile, dict):
+                continue
+            lines.extend(
+                str(tile[field])
+                for field in ("label", "quick_desc", "inspect_desc")
+                if tile.get(field)
+            )
+        if lines:
+            prose.setdefault("tile_text", {})[language] = lines
+
+    return prose
 
 
 def parse_world_review_result(raw_content: str) -> WorldPublicReviewResult:
@@ -235,6 +270,16 @@ async def process_public_world_review(
                 internal_notes=str(exc),
             )
             return True
+
+    # Attach persisted baked prose so the reviewer sees everything a player
+    # will read, not just the world definition.
+    try:
+        snapshot = db_manager.get_generator_world(world["id"], WORLD_SNAPSHOT_VERSION)
+        baked_prose = collect_baked_prose(snapshot)
+        if baked_prose:
+            world = {**world, "baked_prose": baked_prose}
+    except Exception as exc:
+        logger.error("Failed to attach baked prose for review of %s: %s", world.get("id"), exc)
 
     try:
         result = await reviewer.review_world(world)

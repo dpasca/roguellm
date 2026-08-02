@@ -13,6 +13,10 @@ import boto3
 from threading import Lock, Thread
 from datetime import datetime, timedelta, timezone
 
+# Bump when the persisted playable snapshot shape changes, so stale rows are
+# regenerated instead of loaded.
+WORLD_SNAPSHOT_VERSION = 1
+
 VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
 VALID_WORLD_MODERATION_STATUSES = {
     "not_requested",
