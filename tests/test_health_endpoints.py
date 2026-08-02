@@ -47,6 +47,7 @@ class HealthEndpointTests(unittest.TestCase):
             self.assertEqual(payload["status"], "ok")
             self.assertEqual(payload["service"], "roguellm")
             self.assertIn("env", payload)
+            self.assertIn("analytics_enabled", payload)
             self.assertIn("uptime_seconds", payload)
 
     def test_database_health_endpoint_reports_ok(self):

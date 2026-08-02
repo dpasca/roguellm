@@ -182,17 +182,19 @@ python tools/generate_icons.py square_icon.png wide-promotional-image.png
 
 ## Firebase Analytics Integration (Optional)
 
-The game includes optional Firebase Analytics integration to track basic usage statistics. This is completely optional and the game works perfectly without it.
+The game includes optional Firebase Analytics integration for daily visits and a
+small number of product events. The game works without it.
 
 ### Setup
 
 1. Create a project in [Firebase Console](https://console.firebase.google.com/)
 2. Add a web app to your project
 3. Get your Firebase configuration from the project settings
-4. Add the following variables to your `.env`:
+4. Add the following variables to your `.env` (or `.env.production` on the
+   production server):
 
 ```env
-# Firebase Configuration (Optional)
+ANALYTICS_ENABLED=1
 FIREBASE_API_KEY=
 FIREBASE_AUTH_DOMAIN=
 FIREBASE_PROJECT_ID=
@@ -202,14 +204,23 @@ FIREBASE_APP_ID=
 FIREBASE_MEASUREMENT_ID=
 ```
 
+All Firebase values are required when `ANALYTICS_ENABLED=1`. The application
+fails at startup if analytics is enabled with incomplete configuration, so a
+deployment cannot silently serve an untracked site.
+
 ### What's Being Tracked
 
-When Firebase Analytics is configured, the following events are tracked:
-- Page views (landing and game pages)
-- Game start events with selected theme and language
-- Combat events
-- Game completion events with basic stats
+When Firebase Analytics is configured:
+
+- Firebase records automatic page views and sessions on landing and game pages.
+- RogueLLM records `game_started` with the selected mode and language.
+- User-authored World descriptions and game content are not sent to Analytics.
+
+For a daily traffic count, use **Sessions** as the closest equivalent to visits,
+**Total users** for approximate distinct visitors, and **Views** for page loads.
 
 ### Development
 
-Firebase Analytics doesn't track events from localhost by default, but debug mode is automatically enabled in development environments. Check your browser's console to see if events are being tracked correctly.
+Analytics is disabled by default in development. Enable it explicitly with a
+complete Firebase configuration, then use Google Analytics Realtime or DebugView
+to verify collection. Normal reports can take longer to populate.

@@ -884,15 +884,6 @@ const app = Vue.createApp({
         // Show loading screen
         showLoading();
 
-        // Track game page view
-        if (window.analytics) {
-            analytics.logEvent('game_page_view', {
-                page_title: this.gameTitle,
-                page_location: window.location.href,
-                page_path: window.location.pathname
-            });
-        }
-
         // Initialize WebSocket connection
         this.initWebSocket();
 

@@ -5,6 +5,18 @@ from unittest.mock import patch
 import main
 
 
+TEST_FIREBASE_ENV = {
+    "ANALYTICS_ENABLED": "1",
+    "FIREBASE_API_KEY": "test-api-key",
+    "FIREBASE_AUTH_DOMAIN": "roguellm.test.firebaseapp.com",
+    "FIREBASE_PROJECT_ID": "roguellm-test",
+    "FIREBASE_STORAGE_BUCKET": "roguellm-test.firebasestorage.app",
+    "FIREBASE_MESSAGING_SENDER_ID": "123456789",
+    "FIREBASE_APP_ID": "1:123456789:web:test",
+    "FIREBASE_MEASUREMENT_ID": "G-TEST123",
+}
+
+
 class ProductionConfigTests(unittest.TestCase):
     def test_production_requires_session_secret(self):
         with patch.dict(os.environ, {"APP_ENV": "production"}, clear=True):
@@ -101,6 +113,31 @@ class ProductionConfigTests(unittest.TestCase):
 
         with patch.dict(os.environ, {"APP_ENV": "development"}, clear=True):
             self.assertFalse(main.is_world_public_review_worker_enabled())
+
+    def test_analytics_is_disabled_by_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(main.is_analytics_enabled())
+            main.validate_analytics_config()
+            self.assertEqual(
+                main.inject_analytics_head(main.ANALYTICS_HEAD_PLACEHOLDER),
+                "",
+            )
+
+    def test_enabled_analytics_requires_complete_firebase_config(self):
+        with patch.dict(os.environ, {"ANALYTICS_ENABLED": "1"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "FIREBASE_API_KEY"):
+                main.validate_analytics_config()
+
+    def test_enabled_analytics_renders_shared_initializer(self):
+        with patch.dict(os.environ, TEST_FIREBASE_ENV, clear=True):
+            main.validate_analytics_config()
+            analytics_head = main.get_analytics_head_html()
+
+        self.assertIn("firebase-app-compat.js", analytics_head)
+        self.assertIn("firebase-analytics-compat.js", analytics_head)
+        self.assertIn('/static/js/analytics.js', analytics_head)
+        self.assertIn('"measurementId":"G-TEST123"', analytics_head)
+        self.assertNotIn(main.ANALYTICS_HEAD_PLACEHOLDER, analytics_head)
 
 
 if __name__ == "__main__":

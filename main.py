@@ -292,6 +292,16 @@ WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS = 0
 WORLD_PUBLIC_REVIEW_DEFAULT_POLL_SECONDS = 30
 WORLD_PUBLIC_REVIEW_DEFAULT_MAX_PER_POLL = 3
 WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING = 10
+ANALYTICS_HEAD_PLACEHOLDER = "{{ analytics_head | safe }}"
+FIREBASE_CONFIG_ENV_VARS = {
+    "apiKey": "FIREBASE_API_KEY",
+    "authDomain": "FIREBASE_AUTH_DOMAIN",
+    "projectId": "FIREBASE_PROJECT_ID",
+    "storageBucket": "FIREBASE_STORAGE_BUCKET",
+    "messagingSenderId": "FIREBASE_MESSAGING_SENDER_ID",
+    "appId": "FIREBASE_APP_ID",
+    "measurementId": "FIREBASE_MEASUREMENT_ID",
+}
 
 
 def password_character_type_count(password: str) -> int:
@@ -411,6 +421,58 @@ def get_env_int(name: str, default: int, minimum: int = 1) -> int:
         return default
 
     return value
+
+
+def is_analytics_enabled() -> bool:
+    return get_env_bool("ANALYTICS_ENABLED", False)
+
+
+def get_firebase_config() -> Dict[str, str]:
+    return {
+        config_key: (os.getenv(env_name) or "").strip()
+        for config_key, env_name in FIREBASE_CONFIG_ENV_VARS.items()
+    }
+
+
+def validate_analytics_config() -> None:
+    if not is_analytics_enabled():
+        return
+
+    firebase_config = get_firebase_config()
+    missing_env_vars = [
+        env_name
+        for config_key, env_name in FIREBASE_CONFIG_ENV_VARS.items()
+        if not firebase_config[config_key]
+    ]
+    if missing_env_vars:
+        raise ValueError(
+            "ANALYTICS_ENABLED=1 requires Firebase configuration: "
+            + ", ".join(missing_env_vars)
+        )
+
+
+def get_analytics_head_html() -> str:
+    if not is_analytics_enabled():
+        return ""
+
+    validate_analytics_config()
+    firebase_config_json = json.dumps(
+        get_firebase_config(),
+        separators=(",", ":"),
+    ).replace("<", "\\u003c")
+    return "\n".join([
+        '<script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>',
+        '<script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>',
+        f"<script>window.ROGUELLM_FIREBASE_CONFIG = {firebase_config_json};</script>",
+        '<script defer src="/static/js/analytics.js"></script>',
+    ])
+
+
+def inject_analytics_head(html_content: str) -> str:
+    return html_content.replace(
+        ANALYTICS_HEAD_PLACEHOLDER,
+        get_analytics_head_html(),
+    )
 
 
 def make_rate_limiter(
@@ -652,6 +714,7 @@ def is_world_public_review_worker_enabled() -> bool:
 async def lifespan(app: FastAPI):
     # Startup
     app.state.start_time = time.time()
+    validate_analytics_config()
     # Initialize database
     db.init_db()
 
@@ -727,6 +790,7 @@ async def get_health():
         "service": "roguellm",
         "env": get_app_env(),
         "version": os.getenv("APP_VERSION", "dev"),
+        "analytics_enabled": is_analytics_enabled(),
         "uptime_seconds": round(uptime_seconds, 3),
     })
 
@@ -776,17 +840,6 @@ async def read_landing(request: Request):
         # Create new session
         request.session["game_session"] = str(uuid.uuid4())
 
-        # Get Firebase configuration from environment variables
-        firebase_config = {
-            "apiKey": os.getenv("FIREBASE_API_KEY"),
-            "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN"),
-            "projectId": os.getenv("FIREBASE_PROJECT_ID"),
-            "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
-            "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
-            "appId": os.getenv("FIREBASE_APP_ID"),
-            "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
-        }
-
         # Check if there's a generator ID in the query params
         generator_id = request.query_params.get("generator")
         if generator_id:
@@ -812,11 +865,7 @@ async def read_landing(request: Request):
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
 
-        # Replace Firebase configuration placeholder
-        html_content = html_content.replace(
-            "{{ firebase_config | safe }}",
-            json.dumps(firebase_config)
-        )
+        html_content = inject_analytics_head(html_content)
 
         return HTMLResponse(content=html_content)
     except Exception as e:
@@ -898,6 +947,7 @@ async def read_game_session(session_id: str, request: Request):
 
         # Pre-render content for social media crawlers
         html_content = await get_prerendered_content(request, html_content)
+        html_content = inject_analytics_head(html_content)
         return HTMLResponse(content=html_content)
 
     except Exception as e:

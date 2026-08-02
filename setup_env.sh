@@ -51,13 +51,15 @@ SEARCH_PROVIDER=duckduckgo
 # SERPAPI_KEY=your_serpapi_key_here
 
 # Firebase Configuration (Optional)
-# FIREBASE_API_KEY=
-# FIREBASE_AUTH_DOMAIN=
-# FIREBASE_PROJECT_ID=
-# FIREBASE_STORAGE_BUCKET=
-# FIREBASE_MESSAGING_SENDER_ID=
-# FIREBASE_APP_ID=
-# FIREBASE_MEASUREMENT_ID=
+# Set to 1 only after all Firebase values below are configured.
+ANALYTICS_ENABLED=0
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
 EOF
 
 echo "✅ .env file created successfully!"
@@ -94,4 +96,4 @@ if [[ $edit_now =~ ^[Yy]$ ]]; then
 fi
 
 echo
-echo "🎮 Setup complete! Don't forget to add your API key to the .env file." 
+echo "🎮 Setup complete! Don't forget to add your API key to the .env file."

@@ -14,6 +14,16 @@ from tools.ensure_dev_worlds import DEV_PIEDONE_THEME, ensure_dev_worlds
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+TEST_FIREBASE_ENV = {
+    "ANALYTICS_ENABLED": "1",
+    "FIREBASE_API_KEY": "test-api-key",
+    "FIREBASE_AUTH_DOMAIN": "roguellm.test.firebaseapp.com",
+    "FIREBASE_PROJECT_ID": "roguellm-test",
+    "FIREBASE_STORAGE_BUCKET": "roguellm-test.firebasestorage.app",
+    "FIREBASE_MESSAGING_SENDER_ID": "123456789",
+    "FIREBASE_APP_ID": "1:123456789:web:test",
+    "FIREBASE_MEASUREMENT_ID": "G-TEST123",
+}
 
 
 async def passthrough_prerender(request, html_content):
@@ -121,6 +131,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("requiresAuthForSelectedCreation", landing_js)
                     self.assertIn("launchButtonLabel", landing_js)
                     self.assertIn("do_web_search: true", landing_js)
+                    self.assertIn("window.trackAnalyticsEvent('game_started'", landing_js)
+                    self.assertNotIn("analytics.logEvent('page_view'", landing_js)
                     self.assertIn("body.landing-page", landing_css)
                     self.assertIn(".preview-map", landing_css)
                     self.assertIn(".public-review-modal", landing_css)
@@ -150,6 +162,7 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertNotIn("improveGameDescription", html)
                     self.assertNotIn('@click="quickStartPiedone"', html.replace('@click="quickStartPiedone()"', ""))
                     self.assertNotIn("selectedWorld()", landing_js)
+                    self.assertNotIn(main.ANALYTICS_HEAD_PLACEHOLDER, html)
 
                     world_label = html.index('class="world-option"')
                     inline_preview = html.index('class="world-preview"', world_label)
@@ -175,6 +188,29 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIsNone(
                         main.game_session_manager.sessions[session_id]["debug_seed"],
                     )
+
+    def test_analytics_is_injected_into_landing_and_game_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            with patch.dict(os.environ, TEST_FIREBASE_ENV, clear=False), \
+                    patch("main.db", manager), \
+                    patch("main.get_prerendered_content", passthrough_prerender):
+                main.game_session_manager.sessions.clear()
+                main.game_session_manager.sessions["analytics-test"] = {}
+
+                with TestClient(main.app) as client:
+                    landing_response = client.get("/")
+                    game_response = client.get("/game/analytics-test")
+
+            main.game_session_manager.sessions.clear()
+
+        self.assertEqual(landing_response.status_code, 200)
+        self.assertEqual(game_response.status_code, 200)
+        for html in (landing_response.text, game_response.text):
+            self.assertIn("firebase-analytics-compat.js", html)
+            self.assertIn('/static/js/analytics.js', html)
+            self.assertIn('"measurementId":"G-TEST123"', html)
+            self.assertNotIn(main.ANALYTICS_HEAD_PLACEHOLDER, html)
 
     def test_game_shell_promotes_home_restart_and_quit(self):
         game_html = (REPO_ROOT / "static/game.html").read_text(encoding="utf-8")
