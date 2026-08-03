@@ -1513,7 +1513,24 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             while True:
                 message = await websocket.receive_json()
-                response = await game_instance.handle_message(message)
+
+                # Contain per-action failures. Anything raised here used to
+                # escape to the outer handler, which closes the socket; the
+                # client reads that as code 1006 and redirects home, so one bad
+                # action ejected the player and lost the whole run.
+                try:
+                    response = await game_instance.handle_message(message)
+                except (WebSocketDisconnect, ConnectionResetError):
+                    raise
+                except Exception:
+                    logging.exception(
+                        "Error handling action '%s'",
+                        message.get('action') if isinstance(message, dict) else None,
+                    )
+                    response = {
+                        'type': 'error',
+                        'message': 'That action could not be completed.',
+                    }
 
                 # Add generator_id to response if available
                 if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
@@ -1622,7 +1639,24 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
 
             while True:
                 message = await websocket.receive_json()
-                response = await game_instance.handle_message(message)
+
+                # Contain per-action failures. Anything raised here used to
+                # escape to the outer handler, which closes the socket; the
+                # client reads that as code 1006 and redirects home, so one bad
+                # action ejected the player and lost the whole run.
+                try:
+                    response = await game_instance.handle_message(message)
+                except (WebSocketDisconnect, ConnectionResetError):
+                    raise
+                except Exception:
+                    logging.exception(
+                        "Error handling action '%s'",
+                        message.get('action') if isinstance(message, dict) else None,
+                    )
+                    response = {
+                        'type': 'error',
+                        'message': 'That action could not be completed.',
+                    }
 
                 # Add generator_id to response if available
                 if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
