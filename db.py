@@ -239,6 +239,7 @@ class DatabaseManager:
                     map_csv TEXT,
                     entity_placements TEXT,
                     tile_info TEXT,
+                    visual_manifest TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
@@ -260,6 +261,12 @@ class DatabaseManager:
                     FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
                 )
             """)
+            self._ensure_column(
+                conn,
+                "generator_worlds",
+                "visual_manifest",
+                "TEXT",
+            )
             self._ensure_column(
                 conn,
                 "generator_translations",
@@ -630,7 +637,7 @@ class DatabaseManager:
         def _get(conn, generator_id, snapshot_version):
             cur = conn.cursor()
             cur.execute("""
-                SELECT language, map_csv, entity_placements, tile_info
+                SELECT language, map_csv, entity_placements, tile_info, visual_manifest
                 FROM generator_worlds
                 WHERE generator_id = ? AND snapshot_version = ?
             """, (generator_id, snapshot_version))
@@ -647,9 +654,35 @@ class DatabaseManager:
                 # Keyed by language: generated prose is not reusable across
                 # languages, but the map and placements are.
                 'tile_info_by_language': tile_info if isinstance(tile_info, dict) else {},
+                'visual_manifest': json.loads(result[4]) if result[4] else None,
             }
 
         return self._execute_with_retry(_get, generator_id, snapshot_version)
+
+    def save_generator_visual_manifest(
+            self,
+            generator_id: str,
+            manifest: Dict,
+            snapshot_version: int = 1
+    ) -> None:
+        """Persist a World's art direction: its style, palette, and exclusions.
+
+        Written at forge time, whereas the rest of the snapshot is written when
+        a run first initializes. The two therefore touch deliberately disjoint
+        columns, so whichever lands second cannot blank the other.
+        """
+        def _save(conn, *args):
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO generator_worlds (generator_id, snapshot_version, visual_manifest)
+                VALUES (?, ?, ?)
+                ON CONFLICT(generator_id) DO UPDATE SET
+                    visual_manifest = excluded.visual_manifest,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (generator_id, snapshot_version, json.dumps(manifest)))
+            conn.commit()
+
+        self._execute_with_retry(_save)
 
     def save_generator_world(
             self,

@@ -89,6 +89,51 @@ class WorldSnapshotStorageTests(unittest.TestCase):
 
         self.assertEqual(snapshot["map_csv"], "market,market")
 
+    def test_manifest_and_snapshot_do_not_clobber_each_other(self):
+        """The manifest is written at forge time and the snapshot when a run
+        first initializes, so whichever lands second must leave the other."""
+        manifest = {"style": "Muted pixel art", "palette": ["#101018"]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            db = self.make_db(directory)
+
+            db.save_generator_visual_manifest("world-1", manifest, WORLD_SNAPSHOT_VERSION)
+            db.save_generator_world(
+                generator_id="world-1",
+                language="en",
+                map_csv="street,market",
+                entity_placements=[{"type": "enemy", "entity_id": "punk", "x": 1, "y": 0}],
+                tile_info_by_language={"en": [{"label": "Wet Street"}]},
+                snapshot_version=WORLD_SNAPSHOT_VERSION,
+            )
+
+            after_snapshot = db.get_generator_world("world-1", WORLD_SNAPSHOT_VERSION)
+
+            # And the reverse order, which happens when a World is re-forged.
+            db.save_generator_visual_manifest("world-1", manifest, WORLD_SNAPSHOT_VERSION)
+            after_manifest = db.get_generator_world("world-1", WORLD_SNAPSHOT_VERSION)
+
+        self.assertEqual(after_snapshot["visual_manifest"], manifest)
+        self.assertEqual(after_snapshot["map_csv"], "street,market")
+        self.assertEqual(after_manifest["map_csv"], "street,market")
+        self.assertEqual(after_manifest["entity_placements"][0]["entity_id"], "punk")
+
+    def test_manifest_is_absent_until_written(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = self.make_db(directory)
+            db.save_generator_world(
+                generator_id="world-1",
+                language="en",
+                map_csv="street,market",
+                entity_placements=[],
+                tile_info_by_language={},
+                snapshot_version=WORLD_SNAPSHOT_VERSION,
+            )
+
+            self.assertIsNone(
+                db.get_generator_world("world-1", WORLD_SNAPSHOT_VERSION)["visual_manifest"]
+            )
+
     def test_missing_snapshot_returns_none(self):
         with tempfile.TemporaryDirectory() as directory:
             db = self.make_db(directory)

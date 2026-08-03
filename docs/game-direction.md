@@ -313,13 +313,40 @@ and the world definition schema.
 No new generation was added. If a future change does bake new prose, it must
 extend `collect_baked_prose` — see the moderation note above.
 
-**Phase 2 — Art pipeline.** Backend only; the renderer already exists.
-1. Add an image-generation client with env-driven model config.
-2. Emit the visual-asset manifest from the completed world definition, per
-   `visual-assets.md` step 1.
-3. Generate the hero sheet first, then style-locked sheets and backdrops.
-4. Slice sheets, remove backgrounds, derive map tokens, validate.
-5. Persist assets and attach URLs to the world definition.
+**Phase 2 — Art pipeline. Characters done; backdrops and cover not.**
+1. `gen_image.py` holds the client, prompts, slicing, keying, and tokens, with
+   env-driven model config. Art is off unless `ENABLE_WORLD_ART=1`.
+2. `gen_visual_manifest` emits the manifest; `normalize_visual_manifest`
+   validates it against the World, dropping invented ids and filling omissions.
+   The manifest is persisted via `save_generator_visual_manifest`.
+3. Characters generate sequentially so the first anchors the style. Every prompt
+   repeats the manifest verbatim, which is what holds a World together.
+4. Sheets are sliced into equal frames, keyed, trimmed, and turned into tokens.
+5. Art attaches through the existing `sprite_url` / `sprite_token_url` contract,
+   written back with a targeted update so the World id does not change.
+
+Verified against real output; three assumptions were wrong and are now fixed:
+
+- **`gpt-image-2` rejects `background="transparent"` with a 400.** Chroma keying
+  is not a fallback for it, it is the only path. The generator detects that
+  specific rejection once and switches.
+- **The model returns hard-edged art with no alpha at all**, so key colour
+  bleeds into outlines as opaque tinted pixels. A de-spill pass on boundary
+  pixels handles it.
+- **Keying is a plain colour match, not a flood fill.** Connectivity stranded
+  background in gaps enclosed by the subject. The prompt now tells the model to
+  keep the key colour off the character instead.
+
+Still missing, and both matter for Phase 3:
+
+- **Location backdrops are never generated.** The manifest carries `locations`
+  and `normalize_visual_manifest` validates them, but `generate_world_art` only
+  loops over `characters`.
+- **There is no cover image**, which is what a gallery card needs.
+
+Cost note: the model generated 11 enemies from a 5-enemy sample, so a forge is
+roughly double the estimate above. Capping enemy count is a small change with a
+direct effect on unit economics, worth doing before credits exist.
 6. Store assets in a Docker volume owned by the RogueLLM stack, not object
    storage. Add an assets volume alongside the existing
    `roguellm-production-data` and keep any host path in the server-side
@@ -362,10 +389,15 @@ loopback port:
 Roll back by restoring the `networks` block if the proxy change cannot land in
 the same window.
 
-**Phase 3 — Front page.** Needs Phase 2 for real art.
-1. Rebuild `index.html` around prompt + gallery + thin header.
-2. Move auth, world code, and visibility behind the avatar or the World card.
-3. Add the forge reveal animation.
+**Phase 3 — Front page.** Needs a World card, which needs cover art.
+1. Give each World a cover image. Two options: compose one from the hero sprite
+   over a gradient built from the manifest palette, which costs nothing per
+   World and is always on-palette; or generate one landscape key art per World
+   for roughly one extra image. Compose first, upgrade later if it reads cheap.
+2. Rebuild `index.html` around prompt + gallery + thin header, replacing the
+   eight current regions and deleting the fake `preview-map`.
+3. Move auth, world code, and visibility behind the avatar or the World card.
+4. Add the forge reveal animation.
 
 **Phase 4 — Journey play surface.** The largest chunk.
 1. Replace grid rendering and movement with a vertical node path.

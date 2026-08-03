@@ -170,6 +170,16 @@ class GameStateManager:
                 logger.warning("No usable visual manifest; skipping art for %s", self.generator_id)
                 return
 
+            # Persist before generating. The manifest is this World's art
+            # direction, and it is needed later for cover cards, remixes, and
+            # any asset added after the forge, none of which could match the
+            # World without it.
+            db.save_generator_visual_manifest(
+                generator_id=self.generator_id,
+                manifest=manifest,
+                snapshot_version=WORLD_SNAPSHOT_VERSION,
+            )
+
             art = await generate_world_art(manifest, self.generator_id)
             if not art:
                 logger.warning("No art generated for %s", self.generator_id)
