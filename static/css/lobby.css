@@ -1,0 +1,472 @@
+/* Lobby: one prompt box and a gallery of Worlds.
+ *
+ * Replaces the eight-region landing page. Everything that is not "start
+ * something" lives behind the account button or a World card, so a first-time
+ * visitor sees the product rather than a set of choices about it.
+ */
+
+.lobby {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* --- thin bar ------------------------------------------------------------ */
+
+.lobby-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px clamp(16px, 4vw, 40px);
+    background: rgba(12, 13, 18, 0.82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lobby-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    color: #f4f5f8;
+    text-decoration: none;
+}
+
+.lobby-brand i {
+    color: #7c9cff;
+}
+
+.lobby-bar-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lobby-language {
+    appearance: none;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    color: #d8dbe4;
+    font-size: 0.85rem;
+    padding: 7px 12px;
+    cursor: pointer;
+}
+
+.lobby-account {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e8eaf0;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.lobby-account:hover {
+    background: rgba(255, 255, 255, 0.11);
+}
+
+.lobby-account.signed {
+    border-color: #7c9cff;
+    background: rgba(124, 156, 255, 0.18);
+}
+
+/* --- forge --------------------------------------------------------------- */
+
+.lobby-main {
+    flex: 1;
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 64px) clamp(16px, 4vw, 40px) 56px;
+}
+
+.forge {
+    text-align: center;
+    margin-bottom: clamp(32px, 6vw, 56px);
+}
+
+.forge h1 {
+    margin: 0 0 10px;
+    font-size: clamp(1.7rem, 4.4vw, 2.6rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #f6f7fa;
+}
+
+.forge-lede {
+    margin: 0 auto 24px;
+    max-width: 56ch;
+    color: #9aa1b2;
+    font-size: clamp(0.95rem, 2.2vw, 1.05rem);
+    line-height: 1.5;
+}
+
+.forge-box {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+    width: min(720px, 100%);
+    margin: 0 auto;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 16px;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.forge-box.active {
+    border-color: rgba(124, 156, 255, 0.55);
+    box-shadow: 0 0 0 4px rgba(124, 156, 255, 0.1);
+}
+
+.forge-input {
+    flex: 1;
+    min-width: 0;
+    resize: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #eceef4;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1.45;
+    padding: 10px 12px;
+}
+
+.forge-input::placeholder {
+    color: #6b7285;
+}
+
+.forge-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #6d8bff, #8f6dff);
+    color: #fff;
+    font-weight: 650;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.forge-btn:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.forge-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.forge-hint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    color: #7d8496;
+    font-size: 0.85rem;
+}
+
+.forge-hint-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #8fa6ff;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* --- gallery ------------------------------------------------------------- */
+
+.gallery-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.gallery-head h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 650;
+    color: #ced3e0;
+}
+
+.gallery-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+}
+
+.gallery-tab {
+    border: none;
+    background: transparent;
+    color: #9aa1b2;
+    font-size: 0.85rem;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.gallery-tab.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f2f4f8;
+}
+
+.world-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.world-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.world-card:hover,
+.world-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: rgba(124, 156, 255, 0.5);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    outline: none;
+}
+
+.card-art {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #10131c;
+    overflow: hidden;
+}
+
+.card-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Worlds forged before art existed, or whose art failed, still list. */
+.card-art-blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: linear-gradient(160deg, #171b28, #232838);
+    color: rgba(255, 255, 255, 0.16);
+    font-size: 2.6rem;
+}
+
+.card-play {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(10, 12, 18, 0.72);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 0.9rem;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.world-card:hover .card-play,
+.world-card:focus-visible .card-play {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.card-body {
+    padding: 14px 16px 16px;
+}
+
+.card-body h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 650;
+    color: #f1f3f8;
+}
+
+.card-theme {
+    margin: 0 0 10px;
+    color: #8b92a4;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: #666d80;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.card-menu {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(10, 12, 18, 0.66);
+    backdrop-filter: blur(6px);
+    color: #d5d9e4;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.world-card:hover .card-menu,
+.world-card:focus-within .card-menu {
+    opacity: 1;
+}
+
+.gallery-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 44px 20px;
+    text-align: center;
+    color: #868da0;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+}
+
+.gallery-empty strong {
+    color: #d7dbe6;
+    font-size: 1rem;
+}
+
+.world-code-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 18px;
+    padding: 13px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: #9aa1b2;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.world-code-trigger:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #dfe3ec;
+}
+
+.world-code-trigger span {
+    flex: 1;
+    text-align: left;
+}
+
+.lobby-message {
+    margin: 0 0 18px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    background: rgba(124, 156, 255, 0.12);
+    border: 1px solid rgba(124, 156, 255, 0.3);
+    color: #c7d2ff;
+}
+
+.lobby-message.is-error {
+    background: rgba(255, 96, 96, 0.11);
+    border-color: rgba(255, 96, 96, 0.32);
+    color: #ffb4b4;
+}
+
+.lobby-secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e5ee;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.lobby-foot {
+    padding: 22px 20px 30px;
+    text-align: center;
+    color: #5f6577;
+    font-size: 0.82rem;
+}
+
+.lobby-foot a {
+    color: #8894b5;
+}
+
+/* --- phones -------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+    .forge-box {
+        flex-direction: column;
+    }
+
+    .forge-btn {
+        justify-content: center;
+        padding: 12px 20px;
+    }
+
+    .world-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    /* No hover on touch, so the affordances stay visible. */
+    .card-menu,
+    .card-play {
+        opacity: 1;
+        transform: none;
+    }
+}

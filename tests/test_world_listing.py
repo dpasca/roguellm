@@ -58,6 +58,66 @@ class WorldListingTests(unittest.TestCase):
         self.assertEqual(worlds[0]["visibility"], "unlisted")
         self.assertIsNone(worlds[0]["owner_id"])
 
+    def test_listing_carries_the_cover_for_the_gallery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="A rain-soaked harbour",
+                theme_desc_better="Harbour of Thieves\nRain never stops.",
+                language="en",
+                player_defs=[{"name": "Runner"}],
+                item_defs=[],
+                enemy_defs=[{"enemy_id": "punk"}],
+                celltype_defs={"dock": {}},
+            )
+            manager.save_generator_visual_manifest(
+                world_id,
+                {"style": "noir", "cover_url": f"/assets/worlds/{world_id}/cover.png"},
+            )
+
+            worlds = manager.list_worlds(local_dev=True)
+
+        self.assertEqual(len(worlds), 1)
+        self.assertEqual(worlds[0]["cover_url"], f"/assets/worlds/{world_id}/cover.png")
+
+    def test_a_world_without_art_still_lists(self):
+        """Worlds forged before art existed must not vanish from the gallery."""
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            manager.save_generator(
+                theme_desc="An older world",
+                theme_desc_better="Old World\nNo art here.",
+                language="en",
+                player_defs=[{"name": "Runner"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+            )
+
+            worlds = manager.list_worlds(local_dev=True)
+
+        self.assertEqual(len(worlds), 1)
+        self.assertIsNone(worlds[0]["cover_url"])
+
+    def test_a_snapshot_without_a_cover_yields_none(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = self.make_db(directory)
+            world_id = manager.save_generator(
+                theme_desc="A world mid-forge",
+                theme_desc_better="Mid Forge\nArt still running.",
+                language="en",
+                player_defs=[{"name": "Runner"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+            )
+            # Manifest saved before art finished, so it has no cover yet.
+            manager.save_generator_visual_manifest(world_id, {"style": "noir"})
+
+            worlds = manager.list_worlds(local_dev=True)
+
+        self.assertIsNone(worlds[0]["cover_url"])
+
     def test_review_payload_uses_prompt_and_generated_world_data(self):
         with tempfile.TemporaryDirectory() as directory:
             manager = self.make_db(directory)

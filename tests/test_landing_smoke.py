@@ -76,31 +76,44 @@ class LandingSmokeTests(unittest.TestCase):
                     english_translations = (
                         REPO_ROOT / "static/translations/en.json"
                     ).read_text(encoding="utf-8")
-                    self.assertIn('static/css/landing.css', html)
+                    # The lobby is three regions: a thin bar, one prompt box,
+                    # and a gallery. Everything else lives behind the account
+                    # button or a World card.
+                    self.assertIn('static/css/lobby.css', html)
                     self.assertIn('<body class="landing-page">', html)
+                    self.assertIn('class="lobby-bar"', html)
+                    self.assertIn('class="lobby-account"', html)
+                    self.assertIn('class="forge-box"', html)
+                    self.assertIn('class="forge-input"', html)
+                    self.assertIn('@click="forgeWorld"', html)
+                    self.assertIn('class="world-grid"', html)
+                    self.assertIn('class="world-card"', html)
+                    self.assertIn('class="card-art"', html)
+                    self.assertIn('world.cover_url', html)
+                    self.assertIn('class="card-art-blank"', html)
+                    self.assertIn('@click="playWorld(world)"', html)
+
+                    # The old lobby's regions are gone, including the fake map
+                    # that stood in for a screenshot.
+                    self.assertNotIn('class="landing-mode-tabs"', html)
+                    self.assertNotIn('class="game-preview"', html)
+                    self.assertNotIn('class="preview-map"', html)
+                    self.assertNotIn('class="landing-panel world-panel"', html)
+                    self.assertNotIn('class="landing-panel create-panel"', html)
+
+                    # Dialogs are retained and still reachable.
+                    self.assertIn('static/css/landing.css', html)
                     self.assertIn('class="auth-strip"', html)
                     self.assertIn('class="auth-copy"', html)
-                    self.assertIn('class="account-trigger"', html)
-                    self.assertIn('class="account-backdrop"', html)
                     self.assertIn('class="auth-panel-header"', html)
                     self.assertIn('class="dashboard-avatar"', html)
                     self.assertIn('class="dashboard-stats"', html)
-                    self.assertIn('class="landing-mode-tabs"', html)
-                    self.assertIn('class="landing-panel world-panel"', html)
-                    self.assertIn('class="landing-panel create-panel"', html)
-                    self.assertIn('class="game-preview"', html)
-                    self.assertIn('class="preview-map"', html)
+                    self.assertIn('class="account-backdrop"', html)
                     self.assertIn('class="public-review-modal"', html)
-                    self.assertIn('class="save-hint"', html)
-                    self.assertIn('class="world-list-state world-empty-state"', html)
                     self.assertIn('@submit.prevent="submitAuth"', html)
                     self.assertIn('@click="logout"', html)
                     self.assertIn('role="alert"', html)
                     self.assertIn('v-text="errorMessage"', html)
-                    self.assertIn('@click="quickStartPiedone()"', html)
-                    self.assertIn('class="world-tabs"', html)
-                    self.assertIn('class="world-preview"', html)
-                    self.assertIn('class="world-launch-actions"', html)
                     self.assertIn('class="world-code-trigger"', html)
                     self.assertIn('class="lobby-sheet-panel world-code-panel"', html)
                     self.assertIn('class="lobby-sheet-panel world-menu-panel"', html)
@@ -109,6 +122,9 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("responseErrorMessage", landing_js)
                     self.assertIn("translationForKey", landing_js)
                     self.assertIn("refreshAuthWorldState", landing_js)
+                    self.assertIn("playWorld", landing_js)
+                    self.assertIn("forgeWorld", landing_js)
+                    self.assertIn('@click="quickStartPiedone()"', html)
                     self.assertIn("promptSignupForSave", landing_js)
                     self.assertIn("toggleAccountPanel", landing_js)
                     self.assertIn("closeAccountPanel", landing_js)
@@ -164,10 +180,13 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertNotIn("selectedWorld()", landing_js)
                     self.assertNotIn(main.ANALYTICS_HEAD_PLACEHOLDER, html)
 
-                    world_label = html.index('class="world-option"')
-                    inline_preview = html.index('class="world-preview"', world_label)
-                    first_label_close = html.index("</label>", world_label)
-                    self.assertLess(inline_preview, first_label_close)
+                    # The card's own menu button must sit inside the card, so
+                    # opening details does not also start a run.
+                    card = html.index('class="world-card"')
+                    card_menu = html.index('class="card-menu"', card)
+                    card_close = html.index("</article>", card)
+                    self.assertLess(card_menu, card_close)
+                    self.assertIn('@click.stop.prevent="openWorldMenu(world.id)"', html)
 
                     worlds_response = client.get("/api/worlds/recent?limit=12")
                     self.assertEqual(worlds_response.status_code, 200)

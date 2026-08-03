@@ -220,6 +220,7 @@ def serialize_world_summary(world: Dict, requester_user_id: Optional[str]) -> Di
         "public_requested_at": world.get("public_requested_at"),
         "public_review_after": world.get("public_review_after"),
         "public_reviewed_at": world.get("public_reviewed_at"),
+        "cover_url": world.get("cover_url"),
         "can_manage": can_manage_world(world, requester_user_id),
     }
 

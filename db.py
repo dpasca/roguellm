@@ -1108,82 +1108,102 @@ class DatabaseManager:
             has_public_review_after = "public_review_after" in columns
             has_public_reviewed_at = "public_reviewed_at" in columns
 
-            created_at_select = "created_at" if has_created_at else "NULL AS created_at"
-            updated_at_select = "updated_at" if has_updated_at else "NULL AS updated_at"
+            # Qualified with g., because generator_worlds carries columns of
+            # the same names and the join would otherwise be ambiguous.
+            created_at_select = "g.created_at" if has_created_at else "NULL AS created_at"
+            updated_at_select = "g.updated_at" if has_updated_at else "NULL AS updated_at"
             if has_updated_at and has_created_at:
-                order_by = "COALESCE(updated_at, created_at) DESC"
+                order_by = "COALESCE(g.updated_at, g.created_at) DESC"
             elif has_updated_at:
-                order_by = "updated_at DESC"
+                order_by = "g.updated_at DESC"
             elif has_created_at:
-                order_by = "created_at DESC"
+                order_by = "g.created_at DESC"
             else:
-                order_by = "rowid DESC"
+                order_by = "g.rowid DESC"
 
             if owner_id is not None:
                 if not has_owner_id:
                     return []
-                where_clause = "owner_id = ?"
+                where_clause = "g.owner_id = ?"
                 params = (owner_id,)
             elif local_dev or not has_visibility:
-                where_clause = "visibility != 'private'" if has_visibility else "1=1"
+                where_clause = "g.visibility != 'private'" if has_visibility else "1=1"
                 params = ()
             else:
-                where_clause = "visibility = 'public'"
+                where_clause = "g.visibility = 'public'"
                 params = ()
 
-            owner_id_select = "owner_id" if has_owner_id else "NULL AS owner_id"
-            visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
+            owner_id_select = "g.owner_id" if has_owner_id else "NULL AS owner_id"
+            visibility_select = "g.visibility" if "visibility" in columns else "'unlisted' AS visibility"
             moderation_status_select = (
-                "moderation_status"
+                "g.moderation_status"
                 if has_moderation_status
                 else "'not_requested' AS moderation_status"
             )
             moderation_reason_select = (
-                "moderation_reason"
+                "g.moderation_reason"
                 if has_moderation_reason
                 else "NULL AS moderation_reason"
             )
             moderation_model_select = (
-                "moderation_model"
+                "g.moderation_model"
                 if has_moderation_model
                 else "NULL AS moderation_model"
             )
             moderation_confidence_select = (
-                "moderation_confidence"
+                "g.moderation_confidence"
                 if has_moderation_confidence
                 else "NULL AS moderation_confidence"
             )
             moderation_categories_select = (
-                "moderation_categories"
+                "g.moderation_categories"
                 if has_moderation_categories
                 else "'[]' AS moderation_categories"
             )
             public_requested_at_select = (
-                "public_requested_at"
+                "g.public_requested_at"
                 if has_public_requested_at
                 else "NULL AS public_requested_at"
             )
             public_review_after_select = (
-                "public_review_after"
+                "g.public_review_after"
                 if has_public_review_after
                 else "NULL AS public_review_after"
             )
             public_reviewed_at_select = (
-                "public_reviewed_at"
+                "g.public_reviewed_at"
                 if has_public_reviewed_at
                 else "NULL AS public_reviewed_at"
             )
 
+            # Databases predating world snapshots have no generator_worlds
+            # table at all, so the join has to be conditional the same way every
+            # column check above is.
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_worlds'"
+            )
+            has_worlds_table = cur.fetchone() is not None
+            if has_worlds_table:
+                manifest_select = "w.visual_manifest"
+                manifest_join = "LEFT JOIN generator_worlds w ON w.generator_id = g.id"
+            else:
+                manifest_select = "NULL AS visual_manifest"
+                manifest_join = ""
+
+            # Left join so a World without art still lists; the gallery falls
+            # back to a text card for those.
             cur.execute(f"""
-                SELECT id, theme_desc, theme_desc_better, language,
-                       player_defs, item_defs, enemy_defs, celltype_defs,
+                SELECT g.id, g.theme_desc, g.theme_desc_better, g.language,
+                       g.player_defs, g.item_defs, g.enemy_defs, g.celltype_defs,
                        {created_at_select}, {updated_at_select},
                        {owner_id_select}, {visibility_select},
                        {moderation_status_select}, {moderation_reason_select},
                        {moderation_model_select}, {moderation_confidence_select},
                        {moderation_categories_select}, {public_requested_at_select},
-                       {public_review_after_select}, {public_reviewed_at_select}
-                FROM generators
+                       {public_review_after_select}, {public_reviewed_at_select},
+                       {manifest_select}
+                FROM generators g
+                {manifest_join}
                 WHERE {where_clause}
                 ORDER BY {order_by}
                 LIMIT ?
@@ -1217,11 +1237,33 @@ class DatabaseManager:
                     "public_requested_at": row[17],
                     "public_review_after": row[18],
                     "public_reviewed_at": row[19],
+                    "cover_url": self._cover_url_from_manifest(row[20]),
                 })
 
             return worlds
 
         return self._execute_with_retry(_list, limit, local_dev, owner_id)
+
+    @staticmethod
+    def _cover_url_from_manifest(raw_manifest: Optional[str]) -> Optional[str]:
+        """Pull the gallery card out of a stored visual manifest.
+
+        Worlds forged before art existed, or whose art failed, simply have no
+        cover; the gallery falls back to a text card for those.
+        """
+        if not raw_manifest:
+            return None
+
+        try:
+            manifest = json.loads(raw_manifest)
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+        if not isinstance(manifest, dict):
+            return None
+
+        cover_url = manifest.get("cover_url")
+        return cover_url if isinstance(cover_url, str) and cover_url else None
 
     def get_user_world_stats(self, owner_id: str) -> Dict:
         """Return lightweight dashboard stats for Worlds owned by a user."""

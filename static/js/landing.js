@@ -867,6 +867,20 @@ const app = Vue.createApp({
                 await this.quickStartPiedone(languageQuickStarts[devQuick]);
             }
         },
+        // The lobby no longer has a mode tab, so the two entry points set the
+        // mode themselves before handing off to the shared launcher.
+        async playWorld(world) {
+            if (!world || !world.id) return;
+            this.selectedTheme = 'world';
+            this.selectedWorldId = world.id;
+            this.generatorId = '';
+            await this.launchGame();
+        },
+        async forgeWorld() {
+            if (!this.customDescription.trim()) return;
+            this.selectedTheme = 'custom';
+            await this.launchGame();
+        },
         async launchGame() {
             this.clearError();
 
