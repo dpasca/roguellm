@@ -320,14 +320,42 @@ extend `collect_baked_prose` — see the moderation note above.
 3. Generate the hero sheet first, then style-locked sheets and backdrops.
 4. Slice sheets, remove backgrounds, derive map tokens, validate.
 5. Persist assets and attach URLs to the world definition.
-6. Store assets on the shared VPS that already hosts the other app, following
-   its pattern: a bind-mounted host directory (it uses `./uploads:/app/...`)
-   served behind the shared reverse proxy, not object storage. Add an
-   equivalent assets volume to the RogueLLM compose files and keep the host
-   path in the server-side environment, not in this repo. Revisit object
-   storage only if disk or bandwidth actually become a problem.
+6. Store assets in a Docker volume owned by the RogueLLM stack, not object
+   storage. Add an assets volume alongside the existing
+   `roguellm-production-data` and keep any host path in the server-side
+   environment, not in this repo. Revisit object storage only if disk or
+   bandwidth actually become a problem.
 7. Include generated art in backups — `scripts/backup-production-sqlite.sh`
    covers the database only, so art would not survive a host loss today.
+
+## Deployment isolation
+
+RogueLLM shares the VPS hardware with other apps and nothing else. Separate
+Docker project, separate env file, separate volumes, separate loopback port. The
+goal is that moving to a dedicated server is a DNS change plus the same compose
+file, with nothing to unpick.
+
+Current state against that goal:
+
+- `docker-compose.staging.yml` meets it. No external network; the app is reached
+  purely through `127.0.0.1:${ROGUELLM_HOST_PORT}`.
+- `docker-compose.production.yml` does not. It joins `chatnext3-network` as an
+  external network with a container alias, which is a hard dependency on another
+  app's Docker environment: if that stack is recreated, this ingress path breaks.
+
+Two ways to remove that coupling, both keeping one reverse proxy on `80`/`443`:
+
+1. **Loopback only**, matching staging. Drop the external network entirely and
+   point the proxy upstream at the published loopback port. A containerized
+   proxy reaches it via `host-gateway`. Zero Docker coupling; the compose file
+   becomes portable as-is.
+2. **Neutral shared network.** Keep container-alias DNS but rename the shared
+   network to something no app owns, such as `edge` or `web-ingress`, declared
+   outside any single app's stack.
+
+Option 1 is preferred: it is what staging already proves works, and it leaves
+nothing app-specific in the RogueLLM compose file. Do not share volumes,
+databases, sessions, or auth with any other app on the host.
 
 **Phase 3 — Front page.** Needs Phase 2 for real art.
 1. Rebuild `index.html` around prompt + gallery + thin header.

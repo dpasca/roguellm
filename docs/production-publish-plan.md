@@ -76,6 +76,12 @@ Completed publish-hardening slice:
 Use the underused AskMei VPS, but do not reuse the current SQLite object-storage
 sync pattern for accounts.
 
+RogueLLM shares the VPS hardware and nothing else: separate Docker project, env
+file, volumes, and port, so moving to a dedicated server stays a DNS change plus
+the same compose file. `docker-compose.production.yml` currently breaks this by
+joining `chatnext3-network` as an external network. See the deployment isolation
+section in [game-direction.md](game-direction.md) for the two ways to remove it.
+
 Recommended deployment shape:
 
 - Docker image for RogueLLM.
