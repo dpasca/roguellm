@@ -168,16 +168,22 @@ async def main():
 
     print(f"Generating art for {len(manifest['characters'])} characters\n")
     art = await generate_world_art(manifest, world_id, generator, get_world_assets_dir())
+    characters = art.get("characters") or {}
 
-    attach_art_to_definitions(art, world["player_defs"], world["enemy_defs"])
+    attach_art_to_definitions(characters, world["player_defs"], world["enemy_defs"])
     db.update_generator_definitions(
         generator_id=world_id,
         player_defs=world["player_defs"],
         enemy_defs=world["enemy_defs"],
     )
+    db.save_generator_visual_manifest(
+        generator_id=world_id,
+        manifest={**manifest, "cover_url": art.get("cover")},
+    )
 
-    for character_id, urls in art.items():
+    for character_id, urls in characters.items():
         print(f"  {character_id}: {len(urls)} files")
+    print(f"  cover: {art.get('cover') or 'not generated'}")
     print(f"\nRaw sheets: {debug_dir}")
     print(f"Assets:     {os.path.join(get_world_assets_dir(), world_id)}")
     print(f"\nPlay it at: /?generator_id={world_id}")

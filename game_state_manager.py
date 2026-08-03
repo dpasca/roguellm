@@ -181,12 +181,13 @@ class GameStateManager:
             )
 
             art = await generate_world_art(manifest, self.generator_id)
-            if not art:
+            characters = art.get("characters") or {}
+            if not characters:
                 logger.warning("No art generated for %s", self.generator_id)
                 return
 
             attach_art_to_definitions(
-                art,
+                characters,
                 self.definitions.player_defs,
                 self.definitions.enemy_defs,
             )
@@ -195,7 +196,17 @@ class GameStateManager:
                 player_defs=self.definitions.player_defs,
                 enemy_defs=self.definitions.enemy_defs,
             )
-            logger.info("Attached art for %s entities in %s", len(art), self.generator_id)
+
+            # Re-save the manifest carrying the cover, so the gallery can find
+            # a World's card without probing the filesystem.
+            if art.get("cover"):
+                db.save_generator_visual_manifest(
+                    generator_id=self.generator_id,
+                    manifest={**manifest, "cover_url": art["cover"]},
+                    snapshot_version=WORLD_SNAPSHOT_VERSION,
+                )
+
+            logger.info("Attached art for %s entities in %s", len(characters), self.generator_id)
         except Exception as exc:
             logger.error("World art generation failed for %s: %s", self.generator_id, exc)
 

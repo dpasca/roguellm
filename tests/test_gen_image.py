@@ -7,7 +7,11 @@ from PIL import Image
 
 from gen_image import (
     CHROMA_KEY,
+    COVER_SIZE,
     FRAME_NAMES,
+    build_backdrop_prompt,
+    compose_world_cover,
+    cover_palette,
     attach_art_to_definitions,
     build_portrait_prompt,
     build_sheet_prompt,
@@ -455,9 +459,17 @@ class StyleBlockTests(unittest.TestCase):
 
 
 class FakeArtGenerator:
-    def __init__(self, fail_ids=()):
+    def __init__(self, fail_ids=(), backdrop_fails=False):
         self.fail_ids = set(fail_ids)
+        self.backdrop_fails = backdrop_fails
         self.calls = []
+        self.backdrop_calls = []
+
+    async def generate_backdrop(self, identity, style):
+        self.backdrop_calls.append({"identity": identity, "style": style})
+        if self.backdrop_fails:
+            raise RuntimeError("backdrop failed")
+        return Image.new("RGBA", (128, 96), (20, 30, 50, 255))
 
     async def generate_character(self, identity, style):
         self.calls.append({"identity": identity, "style": style})
@@ -487,13 +499,14 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 assets_dir=directory,
             )
 
-            self.assertEqual(set(art), {"player", "punk", "boss"})
+            self.assertEqual(set(art["characters"]), {"player", "punk", "boss"})
             self.assertTrue(os.path.exists(
                 os.path.join(directory, "world-1", "punk-neutral.png")))
             self.assertTrue(os.path.exists(
                 os.path.join(directory, "world-1", "punk-token.png")))
 
-        self.assertEqual(art["punk"]["neutral"], "/assets/worlds/world-1/punk-neutral.png")
+        self.assertEqual(art["characters"]["punk"]["neutral"],
+                         "/assets/worlds/world-1/punk-neutral.png")
 
     async def test_every_character_receives_the_same_style_text(self):
         generator = FakeArtGenerator()
@@ -520,13 +533,106 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 assets_dir=directory,
             )
 
-        self.assertEqual(set(art), {"player", "boss"})
+        self.assertEqual(set(art["characters"]), {"player", "boss"})
 
     async def test_empty_manifest_generates_nothing(self):
         generator = FakeArtGenerator()
 
-        self.assertEqual(await generate_world_art(None, "world-1", generator=generator), {})
+        self.assertEqual(
+            await generate_world_art(None, "world-1", generator=generator),
+            {"characters": {}, "cover": None},
+        )
         self.assertEqual(generator.calls, [])
+
+
+class CoverTests(unittest.IsolatedAsyncioTestCase):
+    def hero(self):
+        image = Image.new("RGBA", (64, 128), (0, 0, 0, 0))
+        image.paste(Image.new("RGBA", (40, 100), (90, 110, 140, 255)), (12, 14))
+        return image
+
+    def test_palette_uses_the_two_darkest_not_the_median(self):
+        """A manifest palette carries accents as well as backdrop colours.
+        Picking by median grabs the signal red and turns the card into a
+        sunset."""
+        manifest = {"palette": ["#0F1B2B", "#1E2A47", "#F2E9E4", "#D72631", "#08BDBD"]}
+
+        self.assertEqual(cover_palette(manifest), [(15, 27, 43), (30, 42, 71)])
+
+    def test_palette_falls_back_to_the_hero_colours(self):
+        """Worlds forged before manifests were persisted still need a card that
+        matches their art."""
+        colours = cover_palette(None, fallback=self.hero())
+
+        self.assertEqual(len(colours), 2)
+        self.assertTrue(all(len(c) == 3 for c in colours))
+
+    def test_palette_survives_junk_entries(self):
+        manifest = {"palette": ["not-a-colour", "#0F1B2B", None, "#1E2A47", 42]}
+
+        self.assertEqual(cover_palette(manifest), [(15, 27, 43), (30, 42, 71)])
+
+    def test_cover_is_the_expected_card_size(self):
+        cover = compose_world_cover(self.hero(), {"palette": ["#0F1B2B", "#1E2A47"]})
+
+        self.assertEqual(cover.size, COVER_SIZE)
+
+    def test_backdrop_is_cropped_to_fill_without_distortion(self):
+        backdrop = Image.new("RGBA", (200, 200), (80, 20, 20, 255))
+
+        cover = compose_world_cover(self.hero(), None, backdrop=backdrop)
+
+        self.assertEqual(cover.size, COVER_SIZE)
+
+    def test_backdrop_prompt_excludes_people(self):
+        """Characters are composited in as sprites, so a populated backdrop
+        would double them up."""
+        prompt = build_backdrop_prompt("A rain-slick dock at night", "noir pixel art")
+
+        self.assertIn("No people", prompt)
+        self.assertIn("no characters", prompt)
+        self.assertIn("lower centre foreground", prompt)
+
+    async def test_cover_is_generated_and_saved(self):
+        generator = FakeArtGenerator()
+
+        with tempfile.TemporaryDirectory() as directory:
+            art = await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1", generator=generator, assets_dir=directory,
+            )
+
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.png")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "backdrop.png")))
+
+        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.png")
+        self.assertEqual(len(generator.backdrop_calls), 1,
+                         "one backdrop per World, not one per location")
+
+    async def test_a_failed_backdrop_still_yields_a_cover(self):
+        generator = FakeArtGenerator(backdrop_fails=True)
+
+        with tempfile.TemporaryDirectory() as directory:
+            art = await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1", generator=generator, assets_dir=directory,
+            )
+
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.png")))
+
+        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.png")
+
+    async def test_no_characters_means_no_cover(self):
+        generator = FakeArtGenerator(fail_ids=("courier", "thug", "heavy"))
+
+        with tempfile.TemporaryDirectory() as directory:
+            art = await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1", generator=generator, assets_dir=directory,
+            )
+
+        self.assertEqual(art["characters"], {})
+        self.assertIsNone(art["cover"])
 
 
 class AttachArtTests(unittest.TestCase):

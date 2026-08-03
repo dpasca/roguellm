@@ -20,7 +20,7 @@ from collections import Counter
 from typing import List, Optional, Sequence, Tuple
 
 from openai import AsyncOpenAI, BadRequestError
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 from gen_ai_utils import with_exponential_backoff
 
@@ -42,6 +42,10 @@ CHROMA_KEY = (255, 0, 255)
 CHROMA_TOLERANCE = 60
 
 TOKEN_SIZE = 256
+
+# 16:9 so the same asset works as a gallery card and a social preview.
+COVER_SIZE = (1200, 675)
+BACKDROP_SIZE = "1536x1024"
 
 
 def _despill_pixel(pixel: tuple, key: tuple) -> tuple:
@@ -264,6 +268,26 @@ def build_sheet_prompt(
         f"Art style: {style}\n{STYLE_RULES}\n\n"
         f"Frames, left to right:\n" + "\n".join(described) + "\n\n"
         f"Render on {background}."
+    )
+
+
+BACKDROP_RULES = (
+    "Wide establishing shot of an empty place. No people, no creatures, no "
+    "characters, no figures of any kind. No text, no logos, no UI, no frame or "
+    "border. Nothing in sharp focus in the lower centre foreground, which is "
+    "left open and uncluttered."
+)
+
+
+def build_backdrop_prompt(identity: str, style: str) -> str:
+    """A location with nothing in it, for characters to be composited onto.
+
+    The lower centre is kept deliberately empty because that is where the hero
+    sprite lands on a cover; anything detailed there fights the subject.
+    """
+    return (
+        f"Location: {identity}\n\n"
+        f"Art style: {style}\n{BACKDROP_RULES}"
     )
 
 
@@ -530,6 +554,12 @@ class WorldArtGenerator:
             "was_opaque": was_opaque,
         }
 
+    async def generate_backdrop(self, identity: str, style: str) -> Image.Image:
+        """Generate one empty location, kept opaque since it is a background."""
+        return await self._generate(
+            build_backdrop_prompt(identity, style), BACKDROP_SIZE, transparent=False
+        )
+
 
 async def generate_world_art(
         manifest: dict,
@@ -547,14 +577,17 @@ async def generate_world_art(
     A character that fails is skipped, not fatal. The renderer already falls
     back to Font Awesome icons per entity, so a partial bundle degrades to a
     mixed World rather than a broken one.
+
+    Returns {"characters": {id: {frame: url}}, "cover": url or None}.
     """
     if not manifest:
-        return {}
+        return {"characters": {}, "cover": None}
 
     generator = generator or WorldArtGenerator()
     style = build_style_block(manifest)
 
     art = {}
+    neutral_frames = {}
     for character in manifest.get("characters") or []:
         character_id = character["id"]
         try:
@@ -570,8 +603,55 @@ async def generate_world_art(
         }
         urls["token"] = save_asset(result["token"], world_id, f"{character_id}-token", assets_dir)
         art[character_id] = urls
+        neutral_frames[character_id] = frames.get("neutral")
 
-    return art
+    cover_url = await _generate_cover(
+        manifest, neutral_frames, world_id, generator, style, assets_dir
+    )
+
+    return {"characters": art, "cover": cover_url}
+
+
+async def _generate_cover(
+        manifest: dict,
+        neutral_frames: dict,
+        world_id: str,
+        generator: "WorldArtGenerator",
+        style: str,
+        assets_dir: Optional[str],
+) -> Optional[str]:
+    """Compose the gallery card from the sprites, over a generated backdrop.
+
+    The card is composited rather than generated whole so it can never show a
+    hero the game does not contain. The backdrop is one extra image, and its
+    failure is not fatal: the cover falls back to a palette gradient.
+    """
+    hero = neutral_frames.get("player") or next(
+        (frame for frame in neutral_frames.values() if frame is not None), None
+    )
+    if hero is None:
+        return None
+
+    backdrop = None
+    locations = manifest.get("locations") or []
+    if locations:
+        try:
+            backdrop = await generator.generate_backdrop(locations[0]["identity"], style)
+            save_asset(backdrop, world_id, "backdrop", assets_dir)
+        except Exception as exc:
+            logger.error("Backdrop generation failed for %s: %s", world_id, exc)
+
+    supporting = [
+        frame for character_id, frame in neutral_frames.items()
+        if character_id != "player" and frame is not None
+    ][:2]
+
+    try:
+        cover = compose_world_cover(hero, manifest, supporting, backdrop=backdrop)
+        return save_asset(cover, world_id, "cover", assets_dir)
+    except Exception as exc:
+        logger.error("Cover composition failed for %s: %s", world_id, exc)
+        return None
 
 
 def attach_art_to_definitions(
@@ -609,6 +689,158 @@ def attach_art_to_definitions(
         urls = art.get(str(enemy.get("enemy_id")))
         if urls:
             apply(enemy, urls)
+
+
+def parse_hex_colour(value: str) -> Optional[Tuple[int, int, int]]:
+    """Read one manifest palette entry, tolerating the shapes models emit."""
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip().lstrip("#")
+    if len(text) == 3:
+        text = "".join(c * 2 for c in text)
+    if len(text) != 6:
+        return None
+
+    try:
+        return tuple(int(text[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+
+def _relative_luminance(colour: Tuple[int, int, int]) -> float:
+    r, g, b = colour
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def cover_palette(manifest: Optional[dict], fallback: Optional[Image.Image] = None) -> List[tuple]:
+    """Pick the two backdrop colours for a cover, darkest first.
+
+    Prefers the manifest palette, which is what every sprite in the World was
+    drawn against. Falls back to the hero's own colours so a World forged before
+    manifests were persisted still gets a card that matches its art.
+    """
+    colours = [
+        parsed for parsed in
+        (parse_hex_colour(entry) for entry in ((manifest or {}).get("palette") or []))
+        if parsed
+    ]
+
+    if len(colours) < 2 and fallback is not None:
+        rgb = fallback.convert("RGBA")
+        sampled = [
+            pixel[:3] for pixel in _flat_pixels(rgb)[::7]
+            if pixel[3] > 200
+        ]
+        if sampled:
+            sampled.sort(key=_relative_luminance)
+            colours = [sampled[len(sampled) // 6], sampled[len(sampled) // 2]]
+
+    if len(colours) < 2:
+        return [(16, 18, 26), (38, 42, 58)]
+
+    colours.sort(key=_relative_luminance)
+    # The two darkest only. A manifest palette carries accent colours as well as
+    # backdrop ones, and picking by median grabs the accent: a noir harbour
+    # palette has a signal red in it, which turns the card into a sunset.
+    return [colours[0], colours[1]]
+
+
+def _fit_backdrop(backdrop: Image.Image, size: Tuple[int, int]) -> Image.Image:
+    """Cover the card without distorting the generated art."""
+    width, height = size
+    scale = max(width / backdrop.width, height / backdrop.height)
+    resized = backdrop.convert("RGBA").resize(
+        (max(1, int(backdrop.width * scale)), max(1, int(backdrop.height * scale))),
+        Image.LANCZOS,
+    )
+    left = (resized.width - width) // 2
+    top = (resized.height - height) // 2
+    return resized.crop((left, top, left + width, top + height))
+
+
+def compose_world_cover(
+        hero: Image.Image,
+        manifest: Optional[dict] = None,
+        supporting: Optional[Sequence[Image.Image]] = None,
+        size: Tuple[int, int] = COVER_SIZE,
+        backdrop: Optional[Image.Image] = None,
+) -> Image.Image:
+    """Build a World's gallery card from art that already exists.
+
+    Compositing the real sprites means the card cannot drift from the game it
+    advertises, which a separately generated piece of key art would. Supporting
+    characters sit behind and dimmed so it reads as a cast rather than a
+    character-select line-up.
+
+    With a backdrop it is a scene; without one it falls back to a palette
+    gradient, so a World whose backdrop generation failed still gets a card.
+    """
+    width, height = size
+    dark, mid = cover_palette(manifest, fallback=hero)
+
+    if backdrop is not None:
+        canvas = _fit_backdrop(backdrop, size)
+        # Sink the backdrop so the sprites, which are lit flat, still read
+        # against it. Generated scenes come back far busier than a gradient.
+        canvas = Image.blend(
+            canvas.convert("RGB"),
+            Image.new("RGB", size, dark),
+            0.35,
+        ).convert("RGBA")
+    else:
+        # Vertical gradient, dark at the top so the subject reads against it.
+        canvas = Image.new("RGB", (1, height))
+        for y in range(height):
+            t = y / max(height - 1, 1)
+            canvas.putpixel((0, y), tuple(
+                int(dark[i] + (mid[i] - dark[i]) * t) for i in range(3)
+            ))
+        canvas = canvas.resize(size, Image.BILINEAR).convert("RGBA")
+
+    # Ground glow, so the figures are standing on something.
+    glow = Image.new("RGBA", size, (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse(
+        (int(width * 0.10), int(height * 0.72), int(width * 0.90), int(height * 1.08)),
+        fill=(*mid, 90),
+    )
+    canvas = Image.alpha_composite(canvas, glow.filter(ImageFilter.GaussianBlur(width // 24)))
+
+    def place(sprite, target_height, centre_x, baseline, shade=0.0, opacity=255):
+        art = trim_to_content(sprite, padding=0)
+        if art.height < 1:
+            return
+
+        scale = target_height / art.height
+        art = art.resize((max(1, int(art.width * scale)), target_height), Image.LANCZOS)
+
+        if shade or opacity < 255:
+            # Blend RGB toward the backdrop while carrying alpha across
+            # untouched. Blending RGBA directly would drag the transparent
+            # regions toward opaque and box the sprite in.
+            alpha = art.getchannel("A")
+            solid = Image.new("RGB", art.size, dark)
+            art = Image.blend(art.convert("RGB"), solid, shade).convert("RGBA")
+            art.putalpha(alpha.point(lambda v: v * opacity // 255))
+
+        canvas.alpha_composite(art, (int(centre_x - art.width / 2), baseline - art.height))
+
+    # Supporting cast first and pushed inward, so the hero overlaps them and the
+    # card reads as a group rather than as a character-select line-up.
+    for index, sprite in enumerate((supporting or [])[:2]):
+        side = -1 if index % 2 == 0 else 1
+        place(
+            sprite,
+            target_height=int(height * 0.56),
+            centre_x=width / 2 + side * width * 0.17,
+            baseline=int(height * 0.93),
+            shade=0.55,
+            opacity=190,
+        )
+
+    place(hero, target_height=int(height * 0.78), centre_x=width / 2,
+          baseline=int(height * 0.97))
+    return canvas.convert("RGBA")
 
 
 def save_asset(image: Image.Image, world_id: str, name: str, assets_dir: Optional[str] = None) -> str:

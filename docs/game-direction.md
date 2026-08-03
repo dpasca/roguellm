@@ -337,12 +337,24 @@ Verified against real output; three assumptions were wrong and are now fixed:
   background in gaps enclosed by the subject. The prompt now tells the model to
   keep the key colour off the character instead.
 
-Still missing, and both matter for Phase 3:
+6. Each World gets a cover card, composited rather than generated whole. One
+   backdrop is generated from the manifest's first location, and the real hero
+   and two supporting sprites are composited over it. Compositing means the card
+   can never advertise a hero the game does not contain, which separately
+   generated key art could. Costs one extra image per World.
 
-- **Location backdrops are never generated.** The manifest carries `locations`
-  and `normalize_visual_manifest` validates them, but `generate_world_art` only
-  loops over `characters`.
-- **There is no cover image**, which is what a gallery card needs.
+Two details that decide whether a cover reads as art or as a sprite sheet:
+
+- **The backdrop prompt forbids people and keeps the lower centre foreground
+  clear**, because that is where the hero lands. Anything detailed there fights
+  the subject.
+- **The gradient uses the two darkest palette entries, not the median.** A
+  manifest palette carries accent colours too; a noir harbour palette has a
+  signal red in it, and picking by median turned the card into a sunset.
+
+Still missing: backdrops for the remaining locations. Only the first is
+generated, for the cover. The rest wait for Phase 4, which is what would
+actually display them.
 
 Cost note: the model generated 11 enemies from a 5-enemy sample, so a forge is
 roughly double the estimate above. Capping enemy count is a small change with a
@@ -389,11 +401,9 @@ loopback port:
 Roll back by restoring the `networks` block if the proxy change cannot land in
 the same window.
 
-**Phase 3 — Front page.** Needs a World card, which needs cover art.
-1. Give each World a cover image. Two options: compose one from the hero sprite
-   over a gradient built from the manifest palette, which costs nothing per
-   World and is always on-palette; or generate one landscape key art per World
-   for roughly one extra image. Compose first, upgrade later if it reads cheap.
+**Phase 3 — Front page.** Cover art exists; the page itself does not.
+1. Expose `cover_url` from the world listing API. It is stored on the persisted
+   manifest, which `list_worlds` does not currently join against.
 2. Rebuild `index.html` around prompt + gallery + thin header, replacing the
    eight current regions and deleting the fake `preview-map`.
 3. Move auth, world code, and visibility behind the avatar or the World card.
