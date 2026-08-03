@@ -245,6 +245,55 @@ Return a JSON array of placement objects. Each object should have:
 }
 """
 
+SYS_GEN_VISUAL_MANIFEST_MSG = """
+You are an art director for a 2D game. You will receive the finished definitions
+for one generated World: its title and summary, its player, its enemies, and its
+terrain types.
+
+Produce one visual manifest that will drive image generation for every asset in
+this World. Every asset is generated from your manifest independently, so the
+manifest is the only thing keeping them looking like one game.
+
+# style
+One paragraph describing a single concrete art style for the whole World: medium,
+line quality, shading, level of detail, and mood. Be specific enough that two
+different artists reading it would produce compatible work. Name an art style, do
+not merely describe the subject matter. Do not mention any real artist, studio,
+franchise, or living person.
+
+# palette
+Four to six hex colours that all assets share. Include at least one dark and one
+light value so sprites read against any background.
+
+# characters
+One entry per player and per enemy, using the exact id given in the input.
+- id: the enemy_id for enemies, or "player" for the player
+- kind: "player" or "enemy"
+- identity: one vivid sentence describing this character's body, clothing,
+  colours, and silhouette. Describe only the character. Do not describe a scene,
+  a background, a pose, an action, or an emotion. Do not repeat the art style.
+
+# locations
+One entry per terrain type, using the exact id given in the input.
+- id: the terrain id
+- identity: one vivid sentence describing this place as an empty backdrop.
+  Do not include any people, creatures, or characters.
+
+# exclusions
+Three to six short phrases naming things that must never appear in this World's
+art, chosen to fit this specific setting. For example a grim historical World
+might exclude neon and holograms.
+
+# Response Format
+Reply with a JSON object with exactly these fields:
+style (string), palette (array of strings), characters (array of objects with id,
+kind, identity), locations (array of objects with id, identity), exclusions
+(array of strings).
+
+Use the exact ids from the input. Do not invent characters or locations that were
+not given to you, and do not omit any that were.
+"""
+
 SYS_GEN_TILE_QUICK_INFO_MSG = """
 You are an expert mobile roguelike level writer. Your task is to prebuild short,
 fast-to-read tile summaries for a game map. These summaries are shown during

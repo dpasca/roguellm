@@ -44,6 +44,87 @@ CHROMA_TOLERANCE = 60
 TOKEN_SIZE = 256
 
 
+def normalize_visual_manifest(manifest: dict, world: dict) -> Optional[dict]:
+    """Validate a generated manifest against the World it must describe.
+
+    The model can hallucinate ids, drop entries, or return the wrong shape. Ids
+    are the join key between the manifest and the world definition, so entries
+    whose ids do not exist are dropped rather than trusted, and entries the
+    model forgot fall back to their own name and description. Returns None when
+    there is nothing usable, so the caller skips art instead of generating a
+    mess.
+    """
+    if not isinstance(manifest, dict):
+        return None
+
+    style = str(manifest.get("style") or "").strip()
+    if not style:
+        return None
+
+    palette = [
+        str(color).strip()
+        for color in (manifest.get("palette") or [])
+        if str(color).strip()
+    ]
+    exclusions = [
+        str(item).strip()
+        for item in (manifest.get("exclusions") or [])
+        if str(item).strip()
+    ]
+
+    def index_by_id(entries):
+        return {
+            str(entry.get("id")): entry
+            for entry in (entries or [])
+            if isinstance(entry, dict) and entry.get("id")
+        }
+
+    def fallback_identity(source: dict) -> str:
+        parts = [source.get("name"), source.get("description")]
+        return ". ".join(str(part).strip() for part in parts if part) or str(source.get("id"))
+
+    generated_characters = index_by_id(manifest.get("characters"))
+    generated_locations = index_by_id(manifest.get("locations"))
+
+    characters = []
+    for kind, sources in (("player", world.get("player")), ("enemy", world.get("enemies"))):
+        for source in sources or []:
+            source_id = str(source.get("id"))
+            generated = generated_characters.get(source_id)
+            identity = str((generated or {}).get("identity") or "").strip()
+            if not identity:
+                logger.warning("Visual manifest missing character '%s'; using its own text", source_id)
+                identity = fallback_identity(source)
+            characters.append({"id": source_id, "kind": kind, "identity": identity})
+
+    locations = []
+    for source in world.get("terrain") or []:
+        source_id = str(source.get("id"))
+        generated = generated_locations.get(source_id)
+        identity = str((generated or {}).get("identity") or "").strip()
+        if not identity:
+            logger.warning("Visual manifest missing location '%s'; using its own text", source_id)
+            identity = fallback_identity(source)
+        locations.append({"id": source_id, "identity": identity})
+
+    invented = (set(generated_characters) | set(generated_locations)) - (
+        {c["id"] for c in characters} | {location["id"] for location in locations}
+    )
+    if invented:
+        logger.warning("Visual manifest invented unknown ids, dropped: %s", sorted(invented))
+
+    if not characters and not locations:
+        return None
+
+    return {
+        "style": style,
+        "palette": palette,
+        "characters": characters,
+        "locations": locations,
+        "exclusions": exclusions,
+    }
+
+
 def _flat_pixels(image: Image.Image) -> list:
     """Pillow 12 renamed getdata(); requirements.txt does not pin a floor, so
     support both spellings until it does."""
@@ -84,6 +165,25 @@ STYLE_RULES = (
     "no ground plane, no scenery, no text, no logos, no frame or border, no "
     "drop shadow. Consistent scale across frames."
 )
+
+
+def build_style_block(manifest: dict) -> str:
+    """The shared art direction, repeated verbatim in every prompt.
+
+    Repetition is the point: each image is a separate call with no memory of the
+    others, so identical wording is what makes them belong together.
+    """
+    parts = [str(manifest.get("style") or "").strip()]
+
+    palette = manifest.get("palette") or []
+    if palette:
+        parts.append(f"Use only this colour palette: {', '.join(palette)}.")
+
+    exclusions = manifest.get("exclusions") or []
+    if exclusions:
+        parts.append(f"Never include: {', '.join(exclusions)}.")
+
+    return "\n".join(part for part in parts if part)
 
 
 def build_sheet_prompt(
@@ -340,6 +440,86 @@ class WorldArtGenerator:
             frames.setdefault(name, neutral)
 
         return {"frames": frames, "token": make_token(neutral)}
+
+
+async def generate_world_art(
+        manifest: dict,
+        world_id: str,
+        generator: Optional["WorldArtGenerator"] = None,
+        assets_dir: Optional[str] = None,
+) -> dict:
+    """Generate and persist a World's character art, returning URLs by id.
+
+    Characters are generated one at a time rather than concurrently. The first
+    result becomes the style reference for the rest, and that sequencing is what
+    holds the World together visually; running them in parallel would give every
+    character an independent interpretation of the manifest.
+
+    A character that fails is skipped, not fatal. The renderer already falls
+    back to Font Awesome icons per entity, so a partial bundle degrades to a
+    mixed World rather than a broken one.
+    """
+    if not manifest:
+        return {}
+
+    generator = generator or WorldArtGenerator()
+    style = build_style_block(manifest)
+
+    art = {}
+    for character in manifest.get("characters") or []:
+        character_id = character["id"]
+        try:
+            result = await generator.generate_character(character["identity"], style)
+        except Exception as exc:
+            logger.error("Art generation failed for '%s': %s", character_id, exc)
+            continue
+
+        frames = result["frames"]
+        urls = {
+            name: save_asset(frame, world_id, f"{character_id}-{name}", assets_dir)
+            for name, frame in frames.items()
+        }
+        urls["token"] = save_asset(result["token"], world_id, f"{character_id}-token", assets_dir)
+        art[character_id] = urls
+
+    return art
+
+
+def attach_art_to_definitions(
+        art: dict,
+        player_defs: Optional[List[dict]] = None,
+        enemy_defs: Optional[List[dict]] = None,
+) -> None:
+    """Write art URLs onto the existing entity definitions, in place.
+
+    Uses the `sprite_url` / `sprite_token_url` contract the renderer already
+    consumes, so no frontend change is needed for art to appear. Extra frames
+    ride along as `sprite_frames` for renderers that want them.
+    """
+    def apply(entity: dict, urls: dict) -> None:
+        neutral = urls.get("neutral")
+        if neutral:
+            entity["sprite_url"] = neutral
+        if urls.get("token"):
+            entity["sprite_token_url"] = urls["token"]
+        frames = {
+            name: url
+            for name, url in urls.items()
+            if name in FRAME_NAMES
+        }
+        if frames:
+            entity["sprite_frames"] = frames
+
+    for player in (player_defs or [])[:1]:
+        if isinstance(player, dict) and "player" in art:
+            apply(player, art["player"])
+
+    for enemy in enemy_defs or []:
+        if not isinstance(enemy, dict):
+            continue
+        urls = art.get(str(enemy.get("enemy_id")))
+        if urls:
+            apply(enemy, urls)
 
 
 def save_asset(image: Image.Image, world_id: str, name: str, assets_dir: Optional[str] = None) -> str:

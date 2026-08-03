@@ -580,6 +580,42 @@ class DatabaseManager:
 
         return generator
 
+    def update_generator_definitions(
+            self,
+            generator_id: str,
+            player_defs: Optional[List[Dict]] = None,
+            enemy_defs: Optional[List[Dict]] = None,
+    ) -> None:
+        """Update stored definitions in place, keeping the same generator id.
+
+        `save_generator` derives the id from a hash of the definitions, so
+        re-saving after attaching art URLs would mint a different id and orphan
+        the art written under the original one. This is a targeted UPDATE for
+        that case.
+        """
+        assignments = []
+        values = []
+        if player_defs is not None:
+            assignments.append("player_defs = ?")
+            values.append(json.dumps(player_defs))
+        if enemy_defs is not None:
+            assignments.append("enemy_defs = ?")
+            values.append(json.dumps(enemy_defs))
+
+        if not assignments:
+            return
+
+        def _update(conn, *args):
+            cur = conn.cursor()
+            cur.execute(
+                f"UPDATE generators SET {', '.join(assignments)}, "
+                "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (*values, generator_id),
+            )
+            conn.commit()
+
+        self._execute_with_retry(_update)
+
     def get_generator_world(
             self,
             generator_id: str,

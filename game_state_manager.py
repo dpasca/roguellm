@@ -15,6 +15,11 @@ from game_definitions import GameDefinitionsManager
 from entity_placement_manager import EntityPlacementManager
 from privacy_logging import describe_collection, describe_text
 from game_messages import msg as localized_msg
+from gen_image import (
+    attach_art_to_definitions,
+    generate_world_art,
+    is_world_art_enabled,
+)
 
 logger = logging.getLogger()
 
@@ -137,7 +142,52 @@ class GameStateManager:
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
+            await manager.generate_and_attach_world_art()
+
         return manager
+
+    async def generate_and_attach_world_art(self) -> None:
+        """Generate this World's art bundle and attach it to the definitions.
+
+        Runs after the generator is saved because assets are stored under the
+        World id. The updated definitions are written back with a targeted
+        update rather than `save_generator`, whose id is a hash of the
+        definitions and would therefore change once art URLs are attached.
+
+        Any failure leaves the World fully playable on its icon fallback, so
+        this never blocks a forge.
+        """
+        if not is_world_art_enabled() or not self.generator_id:
+            return
+
+        try:
+            manifest = await self.gen_ai.gen_visual_manifest(
+                self.definitions.player_defs,
+                self.definitions.enemy_defs,
+                self.definitions.celltype_defs,
+            )
+            if not manifest:
+                logger.warning("No usable visual manifest; skipping art for %s", self.generator_id)
+                return
+
+            art = await generate_world_art(manifest, self.generator_id)
+            if not art:
+                logger.warning("No art generated for %s", self.generator_id)
+                return
+
+            attach_art_to_definitions(
+                art,
+                self.definitions.player_defs,
+                self.definitions.enemy_defs,
+            )
+            db.update_generator_definitions(
+                generator_id=self.generator_id,
+                player_defs=self.definitions.player_defs,
+                enemy_defs=self.definitions.enemy_defs,
+            )
+            logger.info("Attached art for %s entities in %s", len(art), self.generator_id)
+        except Exception as exc:
+            logger.error("World art generation failed for %s: %s", self.generator_id, exc)
 
     async def load_generator_world(self, generator_id: str, generator_data: Dict, language: str):
         logger.info(f"Loaded generator with ID: {generator_id}")

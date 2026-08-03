@@ -1,6 +1,6 @@
 from openai import AsyncOpenAI
 import random
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from models import GameState
 import json
 from openai._types import NOT_GIVEN, NotGiven
@@ -18,6 +18,7 @@ from gen_ai_prompts import (
     SYS_GEN_MAP_CSV_MSG,
     SYS_GEN_ENTITY_PLACEMENT_MSG,
     SYS_GEN_TILE_QUICK_INFO_MSG,
+    SYS_GEN_VISUAL_MANIFEST_MSG,
     ADAPT_SENTENCE_SYSTEM_MSG,
     ROOM_DESC_SYSTEM_MSG,
     DUMMY_PLACEMENTS,
@@ -25,6 +26,7 @@ from gen_ai_prompts import (
     append_desc_to_prompt
 )
 from gen_ai_utils import extract_clean_data, make_query_and_web_search, get_language_name, with_exponential_backoff
+from gen_image import normalize_visual_manifest
 from privacy_logging import (
     describe_collection,
     describe_text,
@@ -67,6 +69,7 @@ PRESERVED_WORLD_FIELD_NAMES = {
     "map_color",
     "sprite_url",
     "sprite_token_url",
+    "sprite_frames",
 }
 TRANSLATABLE_STRING_LIST_FIELD_NAMES = {"weapons"}
 
@@ -670,6 +673,67 @@ Each placement should indicate whether it's an enemy or an item.
                 f"Line: {e.lineno}, Column: {e.colno}\n" +
                 f"JSON content: {describe_text(placements_json)}")
             return []
+
+    async def gen_visual_manifest(
+            self,
+            player_defs: List[dict],
+            enemy_defs: List[dict],
+            celltype_defs: Any,
+    ) -> Optional[dict]:
+        """Emit the shared art direction that keeps a World's assets coherent.
+
+        Every image is generated in a separate call, so without one manifest
+        describing a single style, palette, and cast, the assets read as a dozen
+        different games. Returns None when the model gives back something
+        unusable; the caller then skips art rather than generating a mess.
+        """
+        if DO_BYPASS_WORLD_GEN:
+            return None
+
+        celltype_list = (
+            list(celltype_defs.values()) if isinstance(celltype_defs, dict)
+            else (celltype_defs or [])
+        )
+
+        world = {
+            "title_and_summary": self.theme_desc_better,
+            "player": [
+                {"id": "player", "name": p.get("name"), "class": p.get("class"),
+                 "description": p.get("description")}
+                for p in (player_defs or [])[:1]
+                if isinstance(p, dict)
+            ],
+            "enemies": [
+                {"id": e.get("enemy_id"), "name": e.get("name"),
+                 "description": e.get("description")}
+                for e in (enemy_defs or [])
+                if isinstance(e, dict) and e.get("enemy_id")
+            ],
+            "terrain": [
+                {"id": c.get("id"), "name": c.get("name"),
+                 "description": c.get("description")}
+                for c in celltype_list
+                if isinstance(c, dict) and c.get("id")
+            ],
+        }
+
+        response = await self._quick_completion(
+            system_msg=append_desc_to_prompt(
+                SYS_GEN_VISUAL_MANIFEST_MSG + SYS_GENERAL_JSON_RULES_MSG,
+                self.theme_desc_better
+            ),
+            user_msg=json.dumps(world, ensure_ascii=False),
+            quality=MODEL_QUALITY_FOR_JSON,
+            temp=0.7
+        )
+
+        try:
+            manifest = json.loads(extract_clean_data(response))
+        except json.JSONDecodeError:
+            logger.error("Invalid visual manifest JSON (%s)", describe_text(response))
+            return None
+
+        return normalize_visual_manifest(manifest, world)
 
     async def gen_tile_quick_info(
             self,
