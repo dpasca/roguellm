@@ -26,6 +26,7 @@ import zlib
 import base64
 import secrets
 from social_crawler import get_prerendered_content
+from gen_image import get_world_assets_dir
 import asyncio
 import aiofiles
 
@@ -766,6 +767,13 @@ app.add_middleware(
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Generated World art lives in the data volume, not in the repo, so it needs its
+# own mount. Created on demand because a fresh deployment has no art yet and
+# StaticFiles refuses to mount a missing directory.
+_world_assets_dir = get_world_assets_dir()
+os.makedirs(_world_assets_dir, exist_ok=True)
+app.mount("/assets/worlds", StaticFiles(directory=_world_assets_dir), name="world_assets")
 
 # Create custom middleware for headers
 class AddHeadersMiddleware(BaseHTTPMiddleware):

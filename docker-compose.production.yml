@@ -17,11 +17,6 @@ services:
       - "127.0.0.1:${ROGUELLM_HOST_PORT:-18081}:8000"
     volumes:
       - roguellm-production-data:/app/_data
-    networks:
-      default:
-      chatnext3-network:
-        aliases:
-          - roguellm-production
     healthcheck:
       test:
         - CMD
@@ -35,7 +30,3 @@ services:
 
 volumes:
   roguellm-production-data:
-
-networks:
-  chatnext3-network:
-    external: true

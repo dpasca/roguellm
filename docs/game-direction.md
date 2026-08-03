@@ -335,27 +335,32 @@ Docker project, separate env file, separate volumes, separate loopback port. The
 goal is that moving to a dedicated server is a DNS change plus the same compose
 file, with nothing to unpick.
 
-Current state against that goal:
+Both compose files now meet this. Production previously joined
+`chatnext3-network` as an external network with a container alias, which was a
+hard dependency on another app's Docker environment. That is removed: production
+and staging are now the same shape, reached purely through
+`127.0.0.1:${ROGUELLM_HOST_PORT}`.
 
-- `docker-compose.staging.yml` meets it. No external network; the app is reached
-  purely through `127.0.0.1:${ROGUELLM_HOST_PORT}`.
-- `docker-compose.production.yml` does not. It joins `chatnext3-network` as an
-  external network with a container alias, which is a hard dependency on another
-  app's Docker environment: if that stack is recreated, this ingress path breaks.
+Do not share volumes, databases, sessions, or auth with any other app on the
+host. Generated assets live under `_data/assets`, inside the existing
+`roguellm-production-data` volume, so there is one volume to move or snapshot.
 
-Two ways to remove that coupling, both keeping one reverse proxy on `80`/`443`:
+### Required proxy cutover
 
-1. **Loopback only**, matching staging. Drop the external network entirely and
-   point the proxy upstream at the published loopback port. A containerized
-   proxy reaches it via `host-gateway`. Zero Docker coupling; the compose file
-   becomes portable as-is.
-2. **Neutral shared network.** Keep container-alias DNS but rename the shared
-   network to something no app owns, such as `edge` or `web-ingress`, declared
-   outside any single app's stack.
+**The compose change alone will break production ingress on next deploy.** The
+shared reverse proxy still resolves RogueLLM by container alias over the removed
+network. Before or with that deploy, repoint its upstream at the published
+loopback port:
 
-Option 1 is preferred: it is what staging already proves works, and it leaves
-nothing app-specific in the RogueLLM compose file. Do not share volumes,
-databases, sessions, or auth with any other app on the host.
+- Upstream becomes `127.0.0.1:${ROGUELLM_HOST_PORT}` on the host.
+- A containerized proxy cannot reach host loopback directly. Give it
+  `extra_hosts: ["host.docker.internal:host-gateway"]` and use that name, or
+  address the Docker bridge gateway.
+- Keep the WebSocket upgrade headers for `/ws/*`.
+- Verify `/health`, `/health/db`, login, and a WebSocket run before and after.
+
+Roll back by restoring the `networks` block if the proxy change cannot land in
+the same window.
 
 **Phase 3 — Front page.** Needs Phase 2 for real art.
 1. Rebuild `index.html` around prompt + gallery + thin header.
