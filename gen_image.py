@@ -40,8 +40,6 @@ FRAME_NAMES: Tuple[str, ...] = ("neutral", "attack", "defeat")
 # implausible in character art so the corner fill does not eat the subject.
 CHROMA_KEY = (255, 0, 255)
 CHROMA_TOLERANCE = 60
-# Applied without the protection of connectivity, so deliberately tighter.
-CHROMA_POCKET_TOLERANCE = 40
 
 TOKEN_SIZE = 256
 
@@ -251,7 +249,11 @@ def build_sheet_prompt(
     background = (
         "a fully transparent background"
         if transparent
-        else f"a solid flat rgb{CHROMA_KEY} magenta background, the exact same colour everywhere"
+        else (
+            f"a solid flat rgb{CHROMA_KEY} magenta background, the exact same "
+            f"colour everywhere. This magenta is a chroma key and is removed "
+            f"afterwards, so it must not appear anywhere on the subject itself"
+        )
     )
 
     return (
@@ -270,7 +272,11 @@ def build_portrait_prompt(identity: str, style: str, transparent: bool = True) -
     background = (
         "a fully transparent background"
         if transparent
-        else f"a solid flat rgb{CHROMA_KEY} magenta background, the exact same colour everywhere"
+        else (
+            f"a solid flat rgb{CHROMA_KEY} magenta background, the exact same "
+            f"colour everywhere. This magenta is a chroma key and is removed "
+            f"afterwards, so it must not appear anywhere on the subject itself"
+        )
     )
     return (
         f"Subject: {identity}\n\n"
@@ -304,80 +310,42 @@ def slice_sprite_sheet(sheet: Image.Image, frame_count: int = len(FRAME_NAMES)) 
 def remove_flat_background(
         image: Image.Image,
         tolerance: int = CHROMA_TOLERANCE,
-        pocket_tolerance: int = CHROMA_POCKET_TOLERANCE,
         despill: bool = True,
 ) -> Image.Image:
-    """Make a flat background transparent, in three passes.
+    """Make the key colour transparent everywhere, then de-spill the outline.
 
-    1. Flood inward from the corners. Connectivity matters here: a plain colour
-       match would punch holes anywhere the subject uses the key colour.
-    2. Clear near-key pixels the flood could not reach. Gaps enclosed by the
-       subject — between an arm and a torso, say — are background too, but they
-       are unreachable from any edge. This pass uses a tighter tolerance
-       because it is not protected by connectivity.
-    3. De-spill the remaining edge pixels. The model returns hard-edged art with
-       no alpha, so key colour bleeds into the outline as fully opaque tinted
-       pixels that no alpha threshold can catch.
+    This deliberately does not care about connectivity. An earlier version
+    flooded inward from the corners so that subject pixels sharing the key
+    colour would survive, but that protection cost more than it was worth:
+    it stranded background in every gap enclosed by the subject, and the
+    prompt already tells the model to keep the key colour off the character.
+    A plain colour match catches every spot and is far faster.
+
+    De-spill is still restricted to pixels touching transparency, so interior
+    art keeps its intended colours. It is needed because the model returns
+    hard-edged art with no alpha, which leaves key colour bleeding into
+    outlines as fully opaque tinted pixels that no alpha threshold can catch.
     """
     rgba = image.convert("RGBA")
     width, height = rgba.size
     pixels = _flat_pixels(rgba)
 
     corners = [0, width - 1, (height - 1) * width, width * height - 1]
-    corner_colors = [pixels[index][:3] for index in corners]
-    key = Counter(corner_colors).most_common(1)[0][0]
+    key = Counter(pixels[index][:3] for index in corners).most_common(1)[0][0]
 
     threshold = tolerance * tolerance
-
-    def matches(index: int) -> bool:
-        r, g, b = pixels[index][:3]
-        dr, dg, db = r - key[0], g - key[1], b - key[2]
-        return dr * dr + dg * dg + db * db <= threshold
-
     is_background = bytearray(width * height)
-    stack = [index for index in corners if matches(index)]
-    for index in stack:
-        is_background[index] = 1
-
-    while stack:
-        index = stack.pop()
-        x = index % width
-        y = index // width
-
-        neighbours = []
-        if x > 0:
-            neighbours.append(index - 1)
-        if x < width - 1:
-            neighbours.append(index + 1)
-        if y > 0:
-            neighbours.append(index - width)
-        if y < height - 1:
-            neighbours.append(index + width)
-
-        for neighbour in neighbours:
-            if not is_background[neighbour] and matches(neighbour):
-                is_background[neighbour] = 1
-                stack.append(neighbour)
-
-    # Pass 2: pockets the flood could not reach, such as the gap between an arm
-    # and a torso. Tighter tolerance, since connectivity is not protecting us.
-    pocket_threshold = pocket_tolerance * pocket_tolerance
+    cleared = []
     for index, pixel in enumerate(pixels):
-        if is_background[index]:
-            continue
         dr, dg, db = pixel[0] - key[0], pixel[1] - key[1], pixel[2] - key[2]
-        if dr * dr + dg * dg + db * db <= pocket_threshold:
+        if dr * dr + dg * dg + db * db <= threshold:
             is_background[index] = 1
+            cleared.append((pixel[0], pixel[1], pixel[2], 0))
+        else:
+            cleared.append(pixel)
 
-    cleared = [
-        (pixel[0], pixel[1], pixel[2], 0) if is_background[index] else pixel
-        for index, pixel in enumerate(pixels)
-    ]
-
-    # Pass 3: de-spill the outline. Restricted to pixels touching transparency
-    # so interior art keeps its intended colours.
     if despill:
-        for index, pixel in enumerate(cleared):
+        for index in range(width * height):
             if is_background[index]:
                 continue
 
@@ -390,7 +358,7 @@ def remove_flat_background(
                 or (y < height - 1 and is_background[index + width])
             )
             if touches_background:
-                cleared[index] = _despill_pixel(pixel, key)
+                cleared[index] = _despill_pixel(cleared[index], key)
 
     result = Image.new("RGBA", rgba.size)
     result.putdata(cleared)

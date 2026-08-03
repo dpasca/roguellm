@@ -34,14 +34,17 @@ if _fallback:
     for name in ("LOW_SPEC_MODEL_API_KEY", "HIGH_SPEC_MODEL_API_KEY", "IMAGE_MODEL_API_KEY"):
         os.environ.setdefault(name, _fallback)
 
+from db import db  # noqa: E402
 from gen_ai import GenAI, GenAIModel  # noqa: E402
 from gen_image import (  # noqa: E402
     FRAME_NAMES,
     WorldArtGenerator,
+    attach_art_to_definitions,
     build_style_block,
     generate_world_art,
     get_image_model_name,
     get_image_model_quality,
+    get_world_assets_dir,
     save_asset,
 )
 
@@ -80,8 +83,9 @@ async def build_world(theme, language):
         with open(os.path.join(here, filename), encoding="utf-8") as f:
             return json.dumps(json.load(f)[key])
 
-    players, enemies, celltypes = await asyncio.gather(
+    players, items, enemies, celltypes = await asyncio.gather(
         gen_ai.gen_players_from_json_sample(sample("game_players.json", "player_defs")),
+        gen_ai.gen_game_items_from_json_sample(sample("game_items.json", "item_defs")),
         gen_ai.gen_game_enemies_from_json_sample(sample("game_enemies.json", "enemy_defs")),
         gen_ai.gen_game_celltypes_from_json_sample(sample("game_celltypes.json", "celltype_defs")),
     )
@@ -91,7 +95,14 @@ async def build_world(theme, language):
     if not manifest:
         raise SystemExit("No usable visual manifest was produced")
 
-    return manifest
+    return {
+        "gen_ai": gen_ai,
+        "manifest": manifest,
+        "player_defs": players,
+        "item_defs": items,
+        "enemy_defs": enemies,
+        "celltype_defs": celltypes,
+    }
 
 
 async def main():
@@ -109,7 +120,8 @@ async def main():
 
     print(f"Image model: {get_image_model_name()} at {get_image_model_quality()} quality")
 
-    manifest = await build_world(args.theme, args.language)
+    world = await build_world(args.theme, args.language)
+    manifest = world["manifest"]
 
     print("=== visual manifest ===")
     print(f"style: {manifest['style']}")
@@ -140,13 +152,35 @@ async def main():
         print(f"Sliced:    {os.path.join(args.out, args.world_id)}")
         return
 
+    # Save first: assets are stored under the World id, and that id is a hash
+    # of the definitions, so it has to exist before any art is written.
+    world_id = db.save_generator(
+        theme_desc=args.theme,
+        theme_desc_better=world["gen_ai"].theme_desc_better,
+        language=args.language,
+        player_defs=world["player_defs"],
+        item_defs=world["item_defs"],
+        enemy_defs=world["enemy_defs"],
+        celltype_defs=world["celltype_defs"],
+        visibility="unlisted",
+    )
+    print(f"Saved World {world_id}")
+
     print(f"Generating art for {len(manifest['characters'])} characters\n")
-    art = await generate_world_art(manifest, args.world_id, generator, args.out)
+    art = await generate_world_art(manifest, world_id, generator, get_world_assets_dir())
+
+    attach_art_to_definitions(art, world["player_defs"], world["enemy_defs"])
+    db.update_generator_definitions(
+        generator_id=world_id,
+        player_defs=world["player_defs"],
+        enemy_defs=world["enemy_defs"],
+    )
 
     for character_id, urls in art.items():
         print(f"  {character_id}: {len(urls)} files")
     print(f"\nRaw sheets: {debug_dir}")
-    print(f"Sliced:     {os.path.join(args.out, args.world_id)}")
+    print(f"Assets:     {os.path.join(get_world_assets_dir(), world_id)}")
+    print(f"\nPlay it at: /?generator_id={world_id}")
 
 
 if __name__ == "__main__":
