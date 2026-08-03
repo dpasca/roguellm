@@ -19,7 +19,7 @@ import os
 from collections import Counter
 from typing import List, Optional, Sequence, Tuple
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 from PIL import Image
 
 from gen_ai_utils import with_exponential_backoff
@@ -40,8 +40,48 @@ FRAME_NAMES: Tuple[str, ...] = ("neutral", "attack", "defeat")
 # implausible in character art so the corner fill does not eat the subject.
 CHROMA_KEY = (255, 0, 255)
 CHROMA_TOLERANCE = 60
+# Applied without the protection of connectivity, so deliberately tighter.
+CHROMA_POCKET_TOLERANCE = 40
 
 TOKEN_SIZE = 256
+
+
+def _despill_pixel(pixel: tuple, key: tuple) -> tuple:
+    """Pull key-colour contamination out of one outline pixel.
+
+    A magenta key bleeds into edges as pixels whose red and blue both sit well
+    above green. The excess over green is the spill, so removing it neutralises
+    the cast while leaving genuinely red or blue art alone: those have only one
+    channel elevated, not both.
+    """
+    r, g, b, a = pixel
+
+    # Only the two channels the key is strong in can carry its spill.
+    high = [index for index, value in enumerate(key[:3]) if value >= 128]
+    if len(high) != 2:
+        return pixel
+
+    low = next(index for index in range(3) if index not in high)
+    channels = [r, g, b]
+    floor = channels[low]
+
+    excess = min(channels[high[0]] - floor, channels[high[1]] - floor)
+    if excess <= 0:
+        return pixel
+
+    for index in high:
+        channels[index] = max(floor, channels[index] - excess)
+
+    return (channels[0], channels[1], channels[2], a)
+
+
+def _is_background_unsupported(exc: BadRequestError) -> bool:
+    """Tell 'this model has no transparent output' apart from other 400s."""
+    body = getattr(exc, "body", None)
+    error = body.get("error") if isinstance(body, dict) else None
+    if isinstance(error, dict) and error.get("param") == "background":
+        return True
+    return "transparent background is not supported" in str(exc).lower()
 
 
 def normalize_visual_manifest(manifest: dict, world: dict) -> Optional[dict]:
@@ -264,12 +304,20 @@ def slice_sprite_sheet(sheet: Image.Image, frame_count: int = len(FRAME_NAMES)) 
 def remove_flat_background(
         image: Image.Image,
         tolerance: int = CHROMA_TOLERANCE,
+        pocket_tolerance: int = CHROMA_POCKET_TOLERANCE,
+        despill: bool = True,
 ) -> Image.Image:
-    """Make a flat background transparent by filling inward from the corners.
+    """Make a flat background transparent, in three passes.
 
-    Connectivity matters: a plain colour match would punch holes anywhere the
-    subject happens to use the key colour. Only background reachable from an
-    edge is removed.
+    1. Flood inward from the corners. Connectivity matters here: a plain colour
+       match would punch holes anywhere the subject uses the key colour.
+    2. Clear near-key pixels the flood could not reach. Gaps enclosed by the
+       subject — between an arm and a torso, say — are background too, but they
+       are unreachable from any edge. This pass uses a tighter tolerance
+       because it is not protected by connectivity.
+    3. De-spill the remaining edge pixels. The model returns hard-edged art with
+       no alpha, so key colour bleeds into the outline as fully opaque tinted
+       pixels that no alpha threshold can catch.
     """
     rgba = image.convert("RGBA")
     width, height = rgba.size
@@ -311,10 +359,39 @@ def remove_flat_background(
                 is_background[neighbour] = 1
                 stack.append(neighbour)
 
+    # Pass 2: pockets the flood could not reach, such as the gap between an arm
+    # and a torso. Tighter tolerance, since connectivity is not protecting us.
+    pocket_threshold = pocket_tolerance * pocket_tolerance
+    for index, pixel in enumerate(pixels):
+        if is_background[index]:
+            continue
+        dr, dg, db = pixel[0] - key[0], pixel[1] - key[1], pixel[2] - key[2]
+        if dr * dr + dg * dg + db * db <= pocket_threshold:
+            is_background[index] = 1
+
     cleared = [
         (pixel[0], pixel[1], pixel[2], 0) if is_background[index] else pixel
         for index, pixel in enumerate(pixels)
     ]
+
+    # Pass 3: de-spill the outline. Restricted to pixels touching transparency
+    # so interior art keeps its intended colours.
+    if despill:
+        for index, pixel in enumerate(cleared):
+            if is_background[index]:
+                continue
+
+            x = index % width
+            y = index // width
+            touches_background = (
+                (x > 0 and is_background[index - 1])
+                or (x < width - 1 and is_background[index + 1])
+                or (y > 0 and is_background[index - width])
+                or (y < height - 1 and is_background[index + width])
+            )
+            if touches_background:
+                cleared[index] = _despill_pixel(pixel, key)
+
     result = Image.new("RGBA", rgba.size)
     result.putdata(cleared)
     return result
@@ -371,11 +448,15 @@ class WorldArtGenerator:
             quality: Optional[str] = None,
             api_key: Optional[str] = None,
             base_url: Optional[str] = None,
+            debug_dir: Optional[str] = None,
     ):
         self.model_name = model_name or get_image_model_name()
         self.quality = quality or get_image_model_quality()
         self.api_key = api_key or get_image_model_api_key()
         self.base_url = base_url or get_image_model_base_url()
+        # When set, the untouched model output is written here before slicing
+        # or keying, so a bad bundle can be diagnosed without paying again.
+        self.debug_dir = debug_dir
 
         if not self.api_key:
             raise ValueError(
@@ -384,19 +465,21 @@ class WorldArtGenerator:
 
         self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
-        # Set from the first generated asset and reused to hold the style.
-        self.style_reference: Optional[bytes] = None
+        # Latches to False the first time the model rejects transparent output.
+        self.supports_transparent = True
 
-    async def _generate(self, prompt: str, size: str) -> Image.Image:
+    async def _generate(self, prompt: str, size: str, transparent: bool) -> Image.Image:
         async def call():
-            return await self.client.images.generate(
-                model=self.model_name,
-                prompt=prompt,
-                size=size,
-                quality=self.quality,
-                background="transparent",
-                output_format="png",
-            )
+            kwargs = {
+                "model": self.model_name,
+                "prompt": prompt,
+                "size": size,
+                "quality": self.quality,
+                "output_format": "png",
+            }
+            if transparent:
+                kwargs["background"] = "transparent"
+            return await self.client.images.generate(**kwargs)
 
         response = await with_exponential_backoff(call)
         payload = response.data[0].b64_json
@@ -404,6 +487,29 @@ class WorldArtGenerator:
             raise ValueError("Image response contained no image data")
 
         return Image.open(io.BytesIO(base64.b64decode(payload))).convert("RGBA")
+
+    async def _generate_with_background_fallback(self, build_prompt, size: str) -> Image.Image:
+        """Ask for transparent output, falling back to a keyed background.
+
+        gpt-image-2 rejects `background="transparent"` outright, so the chroma
+        path is not a nicety for it, it is the only path. The prompt has to
+        change with the parameter, hence the builder. Rejections happen before
+        generation and are not billed, and the flag latches so the wasted
+        attempt happens at most once per World.
+        """
+        if self.supports_transparent:
+            try:
+                return await self._generate(build_prompt(True), size, True)
+            except BadRequestError as exc:
+                if not _is_background_unsupported(exc):
+                    raise
+                logger.info(
+                    "Model %s does not support transparent output; keying instead",
+                    self.model_name,
+                )
+                self.supports_transparent = False
+
+        return await self._generate(build_prompt(False), size, False)
 
     async def generate_character(
             self,
@@ -416,12 +522,23 @@ class WorldArtGenerator:
         Falls back to the neutral pose for any frame that comes back empty, so a
         partial sheet still yields a usable character.
         """
-        prompt = build_sheet_prompt(identity, style, frame_names)
-        sheet = await self._generate(prompt, SHEET_SIZE)
+        sheet = await self._generate_with_background_fallback(
+            lambda transparent: build_sheet_prompt(
+                identity, style, frame_names, transparent=transparent
+            ),
+            SHEET_SIZE,
+        )
+
+        if self.debug_dir:
+            os.makedirs(self.debug_dir, exist_ok=True)
+            slug = "".join(c if c.isalnum() else "-" for c in identity)[:40]
+            sheet.save(os.path.join(self.debug_dir, f"raw-{slug}.png"))
 
         # Transparent output is requested but not guaranteed; if the model
         # returned an opaque image, key it out from the corners instead.
-        if sheet.getchannel("A").getextrema()[0] == 255:
+        was_opaque = sheet.getchannel("A").getextrema()[0] == 255
+        if was_opaque:
+            logger.info("Model returned an opaque sheet; keying background from corners")
             sheet = remove_flat_background(sheet)
 
         frames = {}
@@ -439,7 +556,11 @@ class WorldArtGenerator:
         for name in frame_names:
             frames.setdefault(name, neutral)
 
-        return {"frames": frames, "token": make_token(neutral)}
+        return {
+            "frames": frames,
+            "token": make_token(neutral),
+            "was_opaque": was_opaque,
+        }
 
 
 async def generate_world_art(

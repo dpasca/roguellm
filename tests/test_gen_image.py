@@ -141,15 +141,22 @@ class BackgroundRemovalTests(unittest.TestCase):
         self.assertEqual(result.getpixel((0, 0))[3], 0)
         self.assertEqual(result.getpixel((10, 10))[3], 255)
 
-    def test_subject_colour_matching_the_key_is_kept(self):
-        """A plain colour match would punch a hole here; corner connectivity
-        is what protects the subject."""
+    def test_subject_colour_near_the_key_is_kept(self):
+        """Connectivity is what lets the flood pass use a loose tolerance
+        without eating the subject.
+
+        Note the deliberate limit: subject colour that is *near-pure* key gets
+        removed by the pocket pass regardless of connectivity. That is the
+        accepted price of clearing gaps enclosed by the subject, which real
+        sprites have between an arm and a torso. Anything meaningfully distinct
+        from the key survives, as here.
+        """
         image = Image.new("RGB", (20, 20), CHROMA_KEY)
         image.paste(Image.new("RGB", (10, 10), (10, 120, 200)), (5, 5))
-        # A key-coloured pixel fully enclosed by the subject.
-        image.putpixel((10, 10), CHROMA_KEY)
+        # Purple: within the flood tolerance of magenta, but not near-pure key.
+        image.putpixel((10, 10), (170, 40, 170))
 
-        result = remove_flat_background(image)
+        result = remove_flat_background(image, despill=False)
 
         self.assertEqual(result.getpixel((10, 10))[3], 255)
         self.assertEqual(result.getpixel((0, 0))[3], 0)
@@ -171,6 +178,83 @@ class BackgroundRemovalTests(unittest.TestCase):
         self.assertEqual(result.getpixel((0, 0))[3], 0)
         self.assertEqual(result.getpixel((0, 19))[3], 0)
         self.assertEqual(result.getpixel((10, 9))[3], 255)
+
+
+class EnclosedPocketTests(unittest.TestCase):
+    """Background enclosed by the subject — the gap between an arm and a torso
+    — is unreachable from any corner, so the flood pass alone leaves it."""
+
+    def test_enclosed_key_pocket_is_removed(self):
+        image = Image.new("RGB", (30, 30), CHROMA_KEY)
+        image.paste(Image.new("RGB", (20, 20), (10, 60, 120)), (5, 5))
+        # A ring of subject fully encloses this pocket of background.
+        image.paste(Image.new("RGB", (6, 6), CHROMA_KEY), (12, 12))
+
+        result = remove_flat_background(image)
+
+        self.assertEqual(result.getpixel((14, 14))[3], 0, "enclosed pocket should clear")
+        self.assertEqual(result.getpixel((0, 0))[3], 0, "outer background should clear")
+        self.assertEqual(result.getpixel((7, 7))[3], 255, "subject should survive")
+
+    def test_subject_colour_outside_the_tight_tolerance_survives(self):
+        """The pocket pass has no connectivity protection, so it must not eat
+        colours that are merely warm."""
+        image = Image.new("RGB", (30, 30), CHROMA_KEY)
+        image.paste(Image.new("RGB", (20, 20), (10, 60, 120)), (5, 5))
+        # Deep red: red is high but blue is not, so it is far from the key.
+        image.paste(Image.new("RGB", (6, 6), (200, 30, 30)), (12, 12))
+
+        result = remove_flat_background(image)
+
+        self.assertEqual(result.getpixel((14, 14))[3], 255)
+
+
+class DespillTests(unittest.TestCase):
+    """The model returns hard-edged art with no alpha, so key colour bleeds
+    into outlines as fully opaque tinted pixels."""
+
+    def test_magenta_fringe_on_the_outline_is_neutralised(self):
+        image = Image.new("RGB", (20, 20), CHROMA_KEY)
+        image.paste(Image.new("RGB", (10, 10), (60, 60, 60)), (5, 5))
+        # A contaminated outline pixel: grey lifted toward magenta.
+        image.putpixel((5, 5), (180, 60, 180))
+
+        result = remove_flat_background(image)
+        r, g, b, a = result.getpixel((5, 5))
+
+        self.assertEqual(a, 255)
+        self.assertLess(r, 100, "red spill should be pulled down")
+        self.assertLess(b, 100, "blue spill should be pulled down")
+
+    def test_red_art_touching_the_edge_is_not_desaturated(self):
+        """Red has only one channel elevated, so it carries no magenta spill."""
+        image = Image.new("RGB", (20, 20), CHROMA_KEY)
+        image.paste(Image.new("RGB", (10, 10), (200, 30, 30)), (5, 5))
+
+        result = remove_flat_background(image)
+        r, g, b, _ = result.getpixel((5, 5))
+
+        self.assertEqual((r, g, b), (200, 30, 30))
+
+    def test_interior_pixels_are_left_alone(self):
+        """Despill only applies at the boundary, so interior art keeps its
+        intended colours even if they are magenta-ish."""
+        image = Image.new("RGB", (30, 30), CHROMA_KEY)
+        image.paste(Image.new("RGB", (20, 20), (60, 60, 60)), (5, 5))
+        image.putpixel((15, 15), (180, 60, 180))
+
+        result = remove_flat_background(image)
+
+        self.assertEqual(result.getpixel((15, 15))[:3], (180, 60, 180))
+
+    def test_despill_can_be_disabled(self):
+        image = Image.new("RGB", (20, 20), CHROMA_KEY)
+        image.paste(Image.new("RGB", (10, 10), (60, 60, 60)), (5, 5))
+        image.putpixel((5, 5), (180, 60, 180))
+
+        result = remove_flat_background(image, despill=False)
+
+        self.assertEqual(result.getpixel((5, 5))[:3], (180, 60, 180))
 
 
 class TrimAndTokenTests(unittest.TestCase):
