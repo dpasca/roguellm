@@ -158,10 +158,10 @@ const app = Vue.createApp({
             showShareNotification: false,
             selectedTile: null,
             hasRequestedInitialState: false,
-            // Design spike: ?layout=scene promotes the location to the primary
-            // surface and demotes the map to a minimap. Off by default so the
-            // shipped layout is unaffected while the two are compared.
-            sceneLayout: new URLSearchParams(window.location.search).get('layout') === 'scene'
+            // The location is the primary surface on phones, with the map as a
+            // minimap beneath it. ?layout=grid returns to the old arrangement,
+            // which is also what desktop still uses.
+            sceneLayout: new URLSearchParams(window.location.search).get('layout') !== 'grid'
         }
     },
     computed: {

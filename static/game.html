@@ -234,7 +234,8 @@
                 <div v-if="hasActiveInteraction" class="interaction-backdrop" aria-hidden="true"></div>
                 <!-- Replace previous containers with .game-content -->
                 <div class="game-content">
-                    <div class="game-left-column">
+                    <div class="game-left-column"
+                         :class="{ 'has-stage': sceneLayout && currentBackdrop && !gameState.in_combat }">
                         <section class="mobile-player-hud" :aria-label="$t('mobileHud.character')">
                             <button type="button" class="mobile-hud-identity"
                                 @click="toggleMobilePanel('character')"
