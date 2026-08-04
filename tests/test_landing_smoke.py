@@ -91,6 +91,10 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn('class="card-art"', html)
                     self.assertIn('world.cover_url', html)
                     self.assertIn('class="card-art-blank"', html)
+                    # The cover is decorative: the title is right below it in
+                    # the same card, so alt text here reads the title twice.
+                    self.assertIn('alt=""', html)
+                    self.assertNotIn(':alt="world.title"', html)
                     self.assertIn('@click="playWorld(world)"', html)
 
                     # The old lobby's regions are gone, including the fake map

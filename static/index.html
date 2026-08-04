@@ -149,9 +149,12 @@
                                  @keydown.enter.prevent="playWorld(world)"
                                  @keydown.space.prevent="playWorld(world)">
                             <div class="card-art">
+                                <!-- Decorative: the title sits right below in
+                                     the same card, so alt text here just makes
+                                     a screen reader say it twice. -->
                                 <img v-if="world.cover_url"
                                      :src="world.cover_url"
-                                     :alt="world.title"
+                                     alt=""
                                      loading="lazy">
                                 <div v-else class="card-art-blank" aria-hidden="true">
                                     <i class="fas fa-dice-d20"></i>
