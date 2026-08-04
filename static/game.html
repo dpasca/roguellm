@@ -361,11 +361,43 @@
                             </div>
                         </section>
 
+                        <!-- Location stage: the place you are standing in as
+                             the primary surface, with the map demoted to a
+                             minimap. Switchable via ?layout=scene so the two
+                             can be compared before committing to either. -->
+                        <section v-if="sceneLayout && !gameState.in_combat"
+                                 class="location-stage"
+                                 :class="{ 'has-art': currentBackdrop }"
+                                 :style="currentBackdrop ? { backgroundImage: `url(${currentBackdrop})` } : {}">
+                            <div class="stage-shade" aria-hidden="true"></div>
+
+                            <div class="stage-caption">
+                                <!-- terrain_name and label are usually the same
+                                     string, so showing both just says the place
+                                     name twice. -->
+                                <span v-if="stageEyebrow">{{ stageEyebrow }}</span>
+                                <h2>{{ currentTile && currentTile.label || '' }}</h2>
+                                <p>{{ currentTile && currentTile.quick_desc || '' }}</p>
+                            </div>
+
+                            <div class="stage-cast">
+                                <img v-if="getEntitySprite(gameState.player)"
+                                     :src="getEntitySprite(gameState.player)"
+                                     :alt="gameState.player.name || 'Player'"
+                                     class="stage-hero">
+                                <img v-if="currentEnemySprite"
+                                     :src="currentEnemySprite"
+                                     alt=""
+                                     class="stage-enemy">
+                            </div>
+                        </section>
+
                         <!-- Game Map -->
                         <div class="game-map" :class="{
                             'in-combat': gameState.in_combat,
                             'in-story': hasActiveInteraction,
-                            'panel-open': mobilePanel
+                            'panel-open': mobilePanel,
+                            'as-minimap': sceneLayout
                         }" :style="{
                             '--map-cols': gameState.map_width || 1,
                             '--map-rows': gameState.map_height || 1

@@ -186,3 +186,174 @@
         transition: none;
     }
 }
+
+/* --- location stage (design spike, ?layout=scene) -------------------------
+ *
+ * The place you are standing in as the primary surface, with the map demoted
+ * to a minimap beneath it. The combat screen already works this way, and it is
+ * the best-looking screen in the game; this asks whether exploration should
+ * match it.
+ *
+ * Mobile only for now. On desktop the map lives in a 300-400px sidebar beside
+ * the player card, and a wide scene does not fit that shape: dropping one in
+ * pushes the HUD out of view. Adopting this would need its own desktop
+ * arrangement, with the scene across the top and the minimap beside the stats.
+ */
+
+.location-stage {
+    display: none;
+}
+
+@media screen and (max-width: 900px) {
+
+.location-stage.has-art {
+    display: block;
+}
+
+.location-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 46vh;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    overflow: hidden;
+    background-color: #10131c;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-image 0.45s ease;
+}
+
+/* Without art the stage would be an empty box, so it collapses out of the way
+ * and the minimap goes back to full size. */
+.location-stage:not(.has-art) {
+    display: none;
+}
+
+.stage-shade {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(6, 8, 13, 0.72) 0%, rgba(6, 8, 13, 0.12) 38%, rgba(6, 8, 13, 0.85) 100%);
+}
+
+.stage-caption {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 16px;
+    text-align: left;
+}
+
+.stage-caption span {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.stage-caption h2 {
+    margin: 2px 0 4px;
+    font-size: 1.15rem;
+    font-weight: 650;
+    color: #f2f4fa;
+    text-transform: none;
+    background: none;
+    -webkit-text-fill-color: #f2f4fa;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+    letter-spacing: 0;
+}
+
+.stage-caption h2::after {
+    content: none;
+}
+
+.stage-caption p {
+    margin: 0;
+    max-width: 42ch;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: rgba(226, 231, 240, 0.82);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Cast stands on the lower third, which the backdrop prompt keeps clear. */
+.stage-cast {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(24px, 12vw, 90px);
+    padding-bottom: 4%;
+}
+
+.stage-hero,
+.stage-enemy {
+    height: 62%;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.6));
+}
+
+.stage-enemy {
+    height: 54%;
+    animation: stage-loom 3.4s ease-in-out infinite;
+}
+
+@keyframes stage-loom {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-5px); }
+}
+
+/* Minimap: still readable, still tappable, no longer the main event. */
+.game-map.as-minimap {
+    max-width: 320px;
+    /* margin-inline alone left it riding up over the stage's bottom edge. */
+    margin: 4px auto 0;
+    opacity: 0.9;
+}
+
+.game-map.as-minimap .map-backdrop {
+    display: none;
+}
+
+.game-map.as-minimap .cell {
+    width: 18px;
+    height: 18px;
+}
+
+.game-map.as-minimap .cell i {
+    font-size: 9px;
+}
+
+/* Entity tokens are unreadable at minimap scale and just add noise, since the
+ * stage above already shows what is here. */
+.game-map.as-minimap .cell img {
+    display: none;
+}
+
+@media (max-width: 560px) {
+    .location-stage {
+        max-height: 38vh;
+        border-radius: 12px;
+    }
+
+    .game-map.as-minimap .cell {
+        width: 15px;
+        height: 15px;
+    }
+}
+
+} /* end mobile-only location stage */
+
+@media (prefers-reduced-motion: reduce) {
+    .location-stage,
+    .stage-enemy {
+        transition: none;
+        animation: none;
+    }
+}

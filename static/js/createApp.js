@@ -157,7 +157,11 @@ const app = Vue.createApp({
             generatorId: null,
             showShareNotification: false,
             selectedTile: null,
-            hasRequestedInitialState: false
+            hasRequestedInitialState: false,
+            // Design spike: ?layout=scene promotes the location to the primary
+            // surface and demotes the map to a minimap. Off by default so the
+            // shipped layout is unaffected while the two are compared.
+            sceneLayout: new URLSearchParams(window.location.search).get('layout') === 'scene'
         }
     },
     computed: {
@@ -177,6 +181,29 @@ const app = Vue.createApp({
             }
             if (this.forge.title) return this.$t('forge.castingCall');
             return this.$t('forge.imagining');
+        },
+        currentTile() {
+            const state = this.gameState;
+            if (!state || !state.tile_info || !state.player_pos) return null;
+            const [x, y] = state.player_pos;
+            const row = state.tile_info[y];
+            return (row && row[x]) || null;
+        },
+        stageEyebrow() {
+            const tile = this.currentTile;
+            if (!tile) return '';
+            const terrain = (tile.terrain_name || '').trim();
+            const label = (tile.label || '').trim();
+            return terrain && terrain.toLowerCase() !== label.toLowerCase() ? terrain : '';
+        },
+        currentEnemySprite() {
+            // Whatever is standing here with you, shown at scene scale rather
+            // than as a token, so the stage reads as a place with something in
+            // it instead of a grid square.
+            if (!this.gameState || !this.gameState.player_pos) return '';
+            const [x, y] = this.gameState.player_pos;
+            const enemy = this.getEnemyAt(x, y);
+            return enemy ? this.getEntitySprite(enemy) : '';
         },
         currentBackdrop() {
             // Worlds forged before backdrops existed, or whose art failed, have
