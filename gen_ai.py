@@ -70,6 +70,7 @@ PRESERVED_WORLD_FIELD_NAMES = {
     "sprite_url",
     "sprite_token_url",
     "sprite_frames",
+    "backdrop_url",
 }
 TRANSLATABLE_STRING_LIST_FIELD_NAMES = {"weapons"}
 

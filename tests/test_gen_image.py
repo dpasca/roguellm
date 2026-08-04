@@ -603,11 +603,37 @@ class CoverTests(unittest.IsolatedAsyncioTestCase):
             )
 
             self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.png")))
-            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "backdrop.png")))
+            self.assertTrue(os.path.exists(
+                os.path.join(directory, "world-1", "location-street.png")))
 
         self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.png")
+
+    async def test_every_location_gets_a_backdrop(self):
+        """Exploration shows where you are, so each terrain needs its own."""
+        generator = FakeArtGenerator()
+
+        with tempfile.TemporaryDirectory() as directory:
+            art = await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1", generator=generator, assets_dir=directory,
+            )
+
+        self.assertEqual(set(art["locations"]), {"street"})
+        self.assertEqual(art["locations"]["street"],
+                         "/assets/worlds/world-1/location-street.png")
+
+    async def test_the_cover_reuses_a_backdrop_rather_than_making_its_own(self):
+        """Generating a scene only the card would ever see is a wasted image."""
+        generator = FakeArtGenerator()
+
+        with tempfile.TemporaryDirectory() as directory:
+            await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1", generator=generator, assets_dir=directory,
+            )
+
         self.assertEqual(len(generator.backdrop_calls), 1,
-                         "one backdrop per World, not one per location")
+                         "one call per location, none extra for the cover")
 
     async def test_a_failed_backdrop_still_yields_a_cover(self):
         generator = FakeArtGenerator(backdrop_fails=True)
@@ -670,6 +696,33 @@ class AttachArtTests(unittest.TestCase):
             {"neutral": "/a/n.png", "attack": "/a/a.png", "defeat": "/a/d.png"},
         )
         self.assertNotIn("token", player_defs[0]["sprite_frames"])
+
+    def test_backdrops_land_on_cell_types(self):
+        celltype_defs = [{"id": "street", "name": "Street"}, {"id": "roof", "name": "Roof"}]
+
+        attach_art_to_definitions(
+            {"characters": {}, "locations": {"street": "/a/location-street.png"}},
+            [], [], celltype_defs,
+        )
+
+        self.assertEqual(celltype_defs[0]["backdrop_url"], "/a/location-street.png")
+        self.assertNotIn("backdrop_url", celltype_defs[1])
+
+    def test_cell_types_may_be_a_dict(self):
+        """Some worlds store terrain keyed by id rather than as a list."""
+        celltype_defs = {"street": {"id": "street", "name": "Street"}}
+
+        attach_art_to_definitions(
+            {"characters": {}, "locations": {"street": "/a/location-street.png"}},
+            [], [], celltype_defs,
+        )
+
+        self.assertEqual(celltype_defs["street"]["backdrop_url"], "/a/location-street.png")
+
+    def test_backdrop_url_is_protected_from_translation(self):
+        from gen_ai import PRESERVED_WORLD_FIELD_NAMES
+
+        self.assertIn("backdrop_url", PRESERVED_WORLD_FIELD_NAMES)
 
     def test_entities_without_art_keep_their_icon_fallback(self):
         enemy_defs = [

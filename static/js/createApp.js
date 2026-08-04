@@ -5,9 +5,12 @@ function getRGBFromHashHex(hhex) {
     const b = parseInt(hex.substr(4, 2), 16);
     return [r, g, b];
 }
-function scaleColor(hhex, scale) {
+function scaleColor(hhex, scale, alpha = 1) {
     const [r, g, b] = getRGBFromHashHex(hhex);
-    return `rgb(${Math.floor(r * scale)}, ${Math.floor(g * scale)}, ${Math.floor(b * scale)})`;
+    const [sr, sg, sb] = [r, g, b].map(c => Math.floor(c * scale));
+    return alpha >= 1
+        ? `rgb(${sr}, ${sg}, ${sb})`
+        : `rgba(${sr}, ${sg}, ${sb}, ${alpha})`;
 }
 
 function updatePlayerPosition(x, y, force = false) {
@@ -175,6 +178,16 @@ const app = Vue.createApp({
             if (this.forge.title) return this.$t('forge.castingCall');
             return this.$t('forge.imagining');
         },
+        currentBackdrop() {
+            // Worlds forged before backdrops existed, or whose art failed, have
+            // none; the map then simply renders as it always did.
+            const state = this.gameState;
+            if (!state || !state.cell_types || !state.player_pos) return null;
+            const [x, y] = state.player_pos;
+            const row = state.cell_types[y];
+            const cell = row && row[x];
+            return (cell && cell.backdrop_url) || null;
+        },
         getPlayerHealthPercentage() {
             return (this.gameState.player_hp / this.gameState.player_max_hp) * 100;
         },
@@ -298,9 +311,14 @@ const app = Vue.createApp({
             const scaleBg = isExplored ? 0.6 : 0.5; // Unexplored cells are darker
             const scaleFg = isExplored ? 0.9 : 0.8; // Unexplored cells are darker
 
+            // With a location behind the grid, opaque tiles would hide it
+            // entirely. Explored ground thins out so the place shows through;
+            // unexplored stays mostly solid, which is the fog of war.
+            const alpha = this.currentBackdrop ? (isExplored ? 0.42 : 0.82) : 1;
+
             return {
                 '--tile-color': cellType.map_color,
-                backgroundColor: scaleColor(cellType.map_color, scaleBg),
+                backgroundColor: scaleColor(cellType.map_color, scaleBg, alpha),
                 color: scaleColor(cellType.map_color, scaleFg)
             };
         },

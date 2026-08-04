@@ -194,10 +194,13 @@ Do not add any other effect fields. At least one choice should involve a real
 tradeoff rather than being an obviously superior option.
 
 # Response Format
-Reply with a new JSON object that contains up to 9 item definitions.
-The new item definitions must follow the same format as the sample item definitions,
-but they must use a new theme description. For example, replace a "grass" item
-with "desert" for a desert theme.
+Reply with a new JSON object containing between 4 and 6 cell type definitions.
+Each cell type is illustrated as its own backdrop, so a handful of strongly
+distinct places serves the World far better than many similar ones, and each
+extra entry costs real generation time and money.
+The new cell type definitions must follow the same format as the sample
+definitions, but they must use a new theme description. For example, replace a
+"grass" cell type with "desert" for a desert theme.
 """
 
 # NOTE: Should append theme desc at the bottom

@@ -370,6 +370,13 @@
                             '--map-cols': gameState.map_width || 1,
                             '--map-rows': gameState.map_height || 1
                         }">
+                            <!-- The location you are standing in, behind the
+                                 grid, so exploring shows a place rather than
+                                 only a board. -->
+                            <div v-if="currentBackdrop"
+                                 class="map-backdrop"
+                                 aria-hidden="true"
+                                 :style="{ backgroundImage: `url(${currentBackdrop})` }"></div>
                             <div class="map-surface">
                                 <div v-if="gameState && gameState.explored" class="map">
                                     <div v-for="(row, y) in gameState.explored" :key="y" class="row">

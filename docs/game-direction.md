@@ -409,11 +409,34 @@ the same window.
 3. Move auth, world code, and visibility behind the avatar or the World card.
 4. Add the forge reveal animation.
 
-**Phase 4 — Journey play surface.** The largest chunk.
-1. Replace grid rendering and movement with a vertical node path.
-2. Full-bleed illustrated encounter scenes with 2–3 choices.
-3. Dedicated combat screen with hero and enemy sprites.
-4. Retire the map CSV rendering path; keep placement logic as path generation.
+**Phase 4 — Make exploration look like combat.** Revised after seeing the game
+rendered with real art. The original plan was to replace the grid with a
+vertical node path; three of its four steps turned out to be either already
+done or based on a wrong reading:
+
+- The combat screen already shows hero and enemy sprites full size, on both
+  desktop and phone, and it is the best-looking screen in the game.
+- Encounters already render as a mobile-native bottom sheet with numbered
+  choices.
+- The map only looked unreadable because of hand-written test data. A forged
+  World picks vivid, distinct terrain colours and reads fine.
+
+So the gap was narrower than "replace the play surface": exploration was the one
+screen showing a board rather than a place. Rather than a new state model,
+generation path, and migration, the current location is now drawn behind the
+grid.
+
+1. **Backdrops per location. Done.** Every terrain gets one, drawn concurrently
+   and attached as `backdrop_url` on its cell type. Cell types are capped at
+   4–6 for the same reason enemies are: each is now illustrated.
+2. **Location behind the grid. Done.** Explored tiles thin to 42% alpha so the
+   place shows through; unexplored stay near-opaque, which is the fog of war.
+   Worlds without backdrops render exactly as before.
+3. Still open: the grid could shrink toward a minimap, with the location scene
+   as the primary surface. Worth judging on a played World before committing.
+
+The cover now reuses a location backdrop instead of generating a scene only the
+gallery card would ever see.
 
 **Phase 5 — Credits and payments.** Stripe, credit ledger, forge/remix pricing,
 free-tier allowance.

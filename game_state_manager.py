@@ -231,14 +231,16 @@ class GameStateManager:
                 return
 
             attach_art_to_definitions(
-                characters,
+                art,
                 self.definitions.player_defs,
                 self.definitions.enemy_defs,
+                self.definitions.celltype_defs,
             )
             db.update_generator_definitions(
                 generator_id=self.generator_id,
                 player_defs=self.definitions.player_defs,
                 enemy_defs=self.definitions.enemy_defs,
+                celltype_defs=self.definitions.celltype_defs,
             )
 
             # Re-save the manifest carrying the cover, so the gallery can find

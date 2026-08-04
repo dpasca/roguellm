@@ -142,3 +142,47 @@
         width: 100%;
     }
 }
+
+/* --- location backdrop ----------------------------------------------------
+ *
+ * The place the player is standing in, rendered behind the grid. Exploration
+ * was the one screen that showed only a board; combat already showed a scene,
+ * and that is the part of the game that reads well.
+ */
+
+.game-map {
+    position: relative;
+    isolation: isolate;
+}
+
+.map-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    border-radius: inherit;
+    /* Sunk hard: the grid and its tokens have to stay legible on top, and a
+     * generated scene is far busier than the flat colour it replaces. */
+    opacity: 0.62;
+    filter: saturate(0.9) brightness(0.7);
+    transition: background-image 0.45s ease;
+}
+
+.map-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8, 10, 16, 0.2), rgba(8, 10, 16, 0.62));
+}
+
+.game-map .map-surface {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-backdrop {
+        transition: none;
+    }
+}

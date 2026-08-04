@@ -592,6 +592,7 @@ class DatabaseManager:
             generator_id: str,
             player_defs: Optional[List[Dict]] = None,
             enemy_defs: Optional[List[Dict]] = None,
+            celltype_defs: Optional[Union[List[Dict], Dict]] = None,
     ) -> None:
         """Update stored definitions in place, keeping the same generator id.
 
@@ -608,6 +609,9 @@ class DatabaseManager:
         if enemy_defs is not None:
             assignments.append("enemy_defs = ?")
             values.append(json.dumps(enemy_defs))
+        if celltype_defs is not None:
+            assignments.append("celltype_defs = ?")
+            values.append(json.dumps(celltype_defs))
 
         if not assignments:
             return

@@ -19,7 +19,7 @@ import io
 import logging
 import os
 from collections import Counter
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 from openai import AsyncOpenAI, BadRequestError
 from PIL import Image, ImageDraw, ImageFilter
@@ -646,28 +646,81 @@ async def generate_world_art(
 
     await asyncio.gather(*(draw(character) for character in characters))
 
+    locations = await _generate_backdrops(
+        manifest, world_id, generator, style, assets_dir, report
+    )
+
     cover_url = await _generate_cover(
-        manifest, neutral_frames, world_id, generator, style, assets_dir
+        manifest, neutral_frames, world_id, locations, assets_dir
     )
     if cover_url:
         await report(stage="cover", cover_url=cover_url)
 
-    return {"characters": art, "cover": cover_url}
+    return {"characters": art, "locations": locations, "cover": cover_url}
+
+
+async def _generate_backdrops(
+        manifest: dict,
+        world_id: str,
+        generator: "WorldArtGenerator",
+        style: str,
+        assets_dir: Optional[str],
+        report,
+) -> dict:
+    """Draw every location, so exploration can show where you are.
+
+    Concurrent for the same reason characters are: cohesion comes from the
+    shared manifest text, not from ordering. A location that fails is skipped,
+    and the game falls back to that terrain's colour and icon.
+    """
+    locations = manifest.get("locations") or []
+    if not locations:
+        return {}
+
+    results = {}
+    limit = asyncio.Semaphore(ART_CONCURRENCY)
+    done = 0
+
+    async def draw(location):
+        nonlocal done
+        location_id = location["id"]
+        async with limit:
+            try:
+                backdrop = await generator.generate_backdrop(location["identity"], style)
+            except Exception as exc:
+                logger.error("Backdrop failed for '%s': %s", location_id, exc)
+                done += 1
+                return
+
+        results[location_id] = save_asset(
+            backdrop, world_id, f"location-{location_id}", assets_dir
+        )
+        done += 1
+        await report(
+            stage="location",
+            location_id=location_id,
+            backdrop_url=results[location_id],
+            index=done,
+            total=len(locations),
+        )
+
+    await asyncio.gather(*(draw(location) for location in locations))
+    return results
 
 
 async def _generate_cover(
         manifest: dict,
         neutral_frames: dict,
         world_id: str,
-        generator: "WorldArtGenerator",
-        style: str,
+        location_urls: dict,
         assets_dir: Optional[str],
 ) -> Optional[str]:
-    """Compose the gallery card from the sprites, over a generated backdrop.
+    """Compose the gallery card from the sprites, over a location backdrop.
 
     The card is composited rather than generated whole so it can never show a
-    hero the game does not contain. The backdrop is one extra image, and its
-    failure is not fatal: the cover falls back to a palette gradient.
+    hero the game does not contain. It reuses a backdrop the game already needs
+    rather than generating one only the card would ever see, and falls back to a
+    palette gradient if none were produced.
     """
     hero = neutral_frames.get("player") or next(
         (frame for frame in neutral_frames.values() if frame is not None), None
@@ -676,13 +729,19 @@ async def _generate_cover(
         return None
 
     backdrop = None
-    locations = manifest.get("locations") or []
-    if locations:
+    first_location = next(
+        (location["id"] for location in (manifest.get("locations") or [])
+         if location["id"] in location_urls),
+        None,
+    )
+    if first_location:
+        path = os.path.join(
+            assets_dir or get_world_assets_dir(), world_id, f"location-{first_location}.png"
+        )
         try:
-            backdrop = await generator.generate_backdrop(locations[0]["identity"], style)
-            save_asset(backdrop, world_id, "backdrop", assets_dir)
+            backdrop = Image.open(path).convert("RGBA")
         except Exception as exc:
-            logger.error("Backdrop generation failed for %s: %s", world_id, exc)
+            logger.error("Could not reuse backdrop for the cover of %s: %s", world_id, exc)
 
     supporting = [
         frame for character_id, frame in neutral_frames.items()
@@ -701,13 +760,23 @@ def attach_art_to_definitions(
         art: dict,
         player_defs: Optional[List[dict]] = None,
         enemy_defs: Optional[List[dict]] = None,
+        celltype_defs: Optional[Any] = None,
 ) -> None:
-    """Write art URLs onto the existing entity definitions, in place.
+    """Write art URLs onto the existing definitions, in place.
 
     Uses the `sprite_url` / `sprite_token_url` contract the renderer already
     consumes, so no frontend change is needed for art to appear. Extra frames
-    ride along as `sprite_frames` for renderers that want them.
+    ride along as `sprite_frames` for renderers that want them, and cell types
+    gain `backdrop_url` for the location a player is standing in.
+
+    Accepts either the character map or the full art dict, since callers
+    holding one or the other is otherwise an easy thing to get wrong.
     """
+    if "characters" in art or "locations" in art:
+        locations = art.get("locations") or {}
+        art = art.get("characters") or {}
+    else:
+        locations = {}
     def apply(entity: dict, urls: dict) -> None:
         neutral = urls.get("neutral")
         if neutral:
@@ -732,6 +801,16 @@ def attach_art_to_definitions(
         urls = art.get(str(enemy.get("enemy_id")))
         if urls:
             apply(enemy, urls)
+
+    # celltype_defs is a list in some worlds and a dict in others, so normalise
+    # before walking it.
+    cells = celltype_defs.values() if isinstance(celltype_defs, dict) else (celltype_defs or [])
+    for cell in cells:
+        if not isinstance(cell, dict):
+            continue
+        backdrop = locations.get(str(cell.get("id")))
+        if backdrop:
+            cell["backdrop_url"] = backdrop
 
 
 def parse_hex_colour(value: str) -> Optional[Tuple[int, int, int]]:
