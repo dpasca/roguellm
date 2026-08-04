@@ -230,6 +230,14 @@
         "failedToStart": "Failed to start game. Please try again.",
         "failedToCreate": "Failed to create game"
     },
+    "forge": {
+        "imagining": "Imagining your world...",
+        "castingCall": "Assembling the cast...",
+        "drawing": "Drawing {done} of {total}...",
+        "finishing": "Framing the cover...",
+        "eyebrow": "Forging",
+        "patience": "This takes a few minutes. Your World is being made once, and kept."
+    },
     "gameplayLog": {
         "action.no_direction": "No direction specified!",
         "action.game_over": "Game is over! Press Restart to play again.",

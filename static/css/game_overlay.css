@@ -650,3 +650,188 @@
         min-height: 46px;
     }
 }
+
+/* --- forge reveal --------------------------------------------------------
+ *
+ * Shown while a new World is generated. With art on that is minutes, not
+ * seconds, so the wait shows the World being built: the title lands, empty
+ * slots appear for the cast, and each fills as its sprite is drawn.
+ */
+
+.forge-reveal {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(120% 90% at 50% 0%, #1b2133 0%, #0b0d14 62%);
+    overflow-y: auto;
+}
+
+.forge-reveal-inner {
+    width: min(760px, 100%);
+    text-align: center;
+}
+
+.forge-eyebrow {
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(124, 156, 255, 0.14);
+    border: 1px solid rgba(124, 156, 255, 0.3);
+    color: #a8bcff;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+}
+
+.forge-title {
+    margin: 0 0 10px;
+    min-height: 1.2em;
+    font-size: clamp(1.6rem, 5vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #f4f6fb;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.forge-title.landed {
+    opacity: 1;
+    transform: none;
+}
+
+.forge-summary {
+    margin: 0 auto 30px;
+    max-width: 54ch;
+    color: #99a1b6;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.15s;
+}
+
+.forge-summary.landed {
+    opacity: 1;
+}
+
+.forge-cast {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    min-height: 96px;
+}
+
+.forge-slot {
+    position: relative;
+    width: 68px;
+    height: 92px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+    transition: border-color 0.4s ease, background 0.4s ease, transform 0.4s ease;
+}
+
+.forge-slot.filled {
+    background: rgba(124, 156, 255, 0.07);
+    border-color: rgba(124, 156, 255, 0.32);
+}
+
+.forge-slot.failed {
+    color: rgba(255, 255, 255, 0.2);
+    border-style: dashed;
+}
+
+.forge-slot img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    animation: forge-slot-in 0.55s cubic-bezier(0.16, 0.9, 0.3, 1);
+}
+
+@keyframes forge-slot-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.9); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Pending slots breathe so a slow character does not look like a stall. */
+.forge-slot-wait {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: forge-wait 1.5s ease-in-out infinite;
+}
+
+.forge-slot:nth-child(2n) .forge-slot-wait { animation-delay: 0.2s; }
+.forge-slot:nth-child(3n) .forge-slot-wait { animation-delay: 0.4s; }
+
+@keyframes forge-wait {
+    0%, 100% { opacity: 0.25; transform: scale(0.85); }
+    50%      { opacity: 0.6;  transform: scale(1); }
+}
+
+.forge-bar {
+    width: min(420px, 100%);
+    height: 4px;
+    margin: 0 auto 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.forge-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #6d8bff, #8f6dff);
+    transition: width 0.7s cubic-bezier(0.3, 0.8, 0.4, 1);
+}
+
+.forge-caption {
+    margin: 0 0 6px;
+    color: #c3c9da;
+    font-size: 0.92rem;
+}
+
+.forge-patience {
+    margin: 0;
+    color: #6a7188;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 560px) {
+    .forge-slot {
+        width: 54px;
+        height: 74px;
+    }
+
+    .forge-cast {
+        min-height: 78px;
+        gap: 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .forge-title,
+    .forge-summary,
+    .forge-slot img,
+    .forge-slot-wait,
+    .forge-bar-fill {
+        animation: none;
+        transition: none;
+        opacity: 1;
+        transform: none;
+    }
+}

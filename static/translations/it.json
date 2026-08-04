@@ -157,6 +157,14 @@
     "failedToStart": "Impossibile avviare il gioco. Riprova.",
     "failedToCreate": "Impossibile creare il gioco"
   },
+  "forge": {
+    "imagining": "Sto immaginando il tuo mondo...",
+    "castingCall": "Sto radunando i personaggi...",
+    "drawing": "Sto disegnando {done} di {total}...",
+    "finishing": "Sto componendo la copertina...",
+    "eyebrow": "Forgiatura",
+    "patience": "Ci vogliono alcuni minuti. Il tuo mondo viene creato una volta sola, e conservato."
+  },
   "gameplayLog": {
     "action.no_direction": "Nessuna direzione specificata!",
     "action.game_over": "La partita è finita! Premi Riavvia per giocare di nuovo.",

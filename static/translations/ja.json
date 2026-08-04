@@ -157,6 +157,14 @@
     "failedToStart": "ゲームの開始に失敗しました。もう一度お試しください。",
     "failedToCreate": "ゲームの作成に失敗しました"
   },
+  "forge": {
+    "imagining": "世界を思い描いています...",
+    "castingCall": "登場人物を集めています...",
+    "drawing": "{total}体中{done}体を描いています...",
+    "finishing": "カバーを仕上げています...",
+    "eyebrow": "生成中",
+    "patience": "数分かかります。あなたの世界は一度だけ作られ、保存されます。"
+  },
   "gameplayLog": {
     "action.no_direction": "方向が指定されていません！",
     "action.game_over": "ゲームは終了しています。もう一度遊ぶには再開を押してください。",

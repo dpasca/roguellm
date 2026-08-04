@@ -68,14 +68,20 @@ class Game:
             language : str = "en",
             generator_id: Optional[str] = None,
             owner_id: Optional[str] = None,
-            visibility: Optional[str] = None
+            visibility: Optional[str] = None,
+            on_progress=None
     ):
-        """Factory method to create and initialize a Game instance."""
+        """Factory method to create and initialize a Game instance.
+
+        on_progress, when given, is awaited with one dict per forge milestone so
+        the client can show the World being built instead of a spinner.
+        """
         game = cls(seed, theme_desc, do_web_search, language, generator_id, owner_id, visibility)
 
         # Create the state manager
         game.state_manager = await GameStateManager.create(
-            seed, theme_desc, do_web_search, language, generator_id, owner_id, visibility
+            seed, theme_desc, do_web_search, language, generator_id, owner_id, visibility,
+            on_progress=on_progress
         )
 
         # Create the combat manager (reuse existing one from state manager)

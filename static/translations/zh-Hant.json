@@ -157,6 +157,14 @@
     "failedToStart": "無法開始遊戲。請再試一次。",
     "failedToCreate": "無法創建遊戲"
   },
+  "forge": {
+    "imagining": "正在構思你的世界...",
+    "castingCall": "正在召集角色...",
+    "drawing": "正在繪製第 {done} 個，共 {total} 個...",
+    "finishing": "正在製作封面...",
+    "eyebrow": "鑄造中",
+    "patience": "這需要幾分鐘。你的世界只建立一次，並會被保存。"
+  },
   "gameplayLog": {
     "action.no_direction": "未指定方向！",
     "action.game_over": "遊戲已結束！按重新開始再次遊玩。",

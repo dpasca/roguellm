@@ -68,7 +68,18 @@ class GameSessionSmokeTests(unittest.TestCase):
                     with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
                         self.assertEqual(websocket.receive_json()["status"], "creating")
                         self.assertEqual(websocket.receive_json()["status"], "creating")
-                        self.assertEqual(websocket.receive_json()["status"], "ready")
+
+                        # The forge now narrates itself so the wait can show the
+                        # World being built. Progress events are interleaved
+                        # with status ones and must not be assumed absent.
+                        forge_stages = []
+                        message = websocket.receive_json()
+                        while message.get("type") == "forge_progress":
+                            forge_stages.append(message["stage"])
+                            message = websocket.receive_json()
+
+                        self.assertEqual(message["status"], "ready")
+                        self.assertIn("theme", forge_stages)
 
                         connection = websocket.receive_json()
                         self.assertEqual(connection["type"], "connection_established")

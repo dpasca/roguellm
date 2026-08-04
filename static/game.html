@@ -870,6 +870,41 @@
                 {{ errorMessage }}
             </div>
         </div>
+    <!-- Forge reveal: replaces the spinner while a new World is generated,
+         showing it being built. Sits inside #app but outside .container,
+         so it can cover the page before any game state exists. -->
+    <div v-if="forge.active" class="forge-reveal" role="status" aria-live="polite">
+        <div class="forge-reveal-inner">
+            <span class="forge-eyebrow">{{ $t('forge.eyebrow') }}</span>
+
+            <h1 class="forge-title" :class="{ landed: forge.title }">
+                {{ forge.title || ' ' }}
+            </h1>
+            <p class="forge-summary" :class="{ landed: forge.summary }">
+                {{ forge.summary }}
+            </p>
+
+            <div v-if="forge.cast.length" class="forge-cast">
+                <div v-for="member in forge.cast"
+                     :key="member.id"
+                     class="forge-slot"
+                     :class="{ filled: member.sprite_url, failed: member.failed }"
+                     :title="member.name">
+                    <img v-if="member.sprite_url"
+                         :src="member.sprite_url"
+                         :alt="member.name">
+                    <i v-else-if="member.failed" class="fas fa-question" aria-hidden="true"></i>
+                    <span v-else class="forge-slot-wait" aria-hidden="true"></span>
+                </div>
+            </div>
+
+            <div class="forge-bar" aria-hidden="true">
+                <div class="forge-bar-fill" :style="{ width: forgePercent + '%' }"></div>
+            </div>
+            <p class="forge-caption">{{ forgeCaption }}</p>
+            <p class="forge-patience">{{ $t('forge.patience') }}</p>
+        </div>
+    </div>
     </div>
     <!-- Load Vue first, then our app -->
     <script src="/static/js/createApp.js"></script>
@@ -885,6 +920,7 @@
             </div>
         </div>
     </div>
+
 </body>
 
 </html>

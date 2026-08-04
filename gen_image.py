@@ -8,10 +8,12 @@ Two decisions shape this module:
 - Character frames come from a single sprite sheet, not one call per frame.
   Identity is then exact rather than approximate, because every frame is
   literally the same generated image, and it costs a third as much.
-- The first generated character becomes the style reference for every later
-  call in the same World. Without that, each asset reads as a different game.
+- Every prompt repeats the same manifest verbatim. Each image is a separate
+  call with no memory of the others, so identical wording is what makes them
+  read as one game.
 """
 
+import asyncio
 import base64
 import io
 import logging
@@ -45,6 +47,11 @@ TOKEN_SIZE = 256
 
 # 16:9 so the same asset works as a gallery card and a social preview.
 COVER_SIZE = (1200, 675)
+
+# Characters draw concurrently. Style cohesion comes from repeating the manifest
+# text in every prompt, not from ordering, so serialising them bought nothing
+# and cost minutes: a World with 11 characters took over nine of them.
+ART_CONCURRENCY = 4
 BACKDROP_SIZE = "1536x1024"
 
 
@@ -566,13 +573,13 @@ async def generate_world_art(
         world_id: str,
         generator: Optional["WorldArtGenerator"] = None,
         assets_dir: Optional[str] = None,
+        on_progress=None,
 ) -> dict:
     """Generate and persist a World's character art, returning URLs by id.
 
-    Characters are generated one at a time rather than concurrently. The first
-    result becomes the style reference for the rest, and that sequencing is what
-    holds the World together visually; running them in parallel would give every
-    character an independent interpretation of the manifest.
+    Characters draw concurrently, bounded by ART_CONCURRENCY. What holds a
+    World together is every prompt repeating the same manifest text, not the
+    order they run in, so there is nothing to gain by serialising them.
 
     A character that fails is skipped, not fatal. The renderer already falls
     back to Font Awesome icons per entity, so a partial bundle degrades to a
@@ -586,15 +593,33 @@ async def generate_world_art(
     generator = generator or WorldArtGenerator()
     style = build_style_block(manifest)
 
+    async def report(**fields):
+        if on_progress:
+            try:
+                await on_progress(fields)
+            except Exception as exc:
+                logger.debug("Art progress callback failed: %s", exc)
+
+    characters = manifest.get("characters") or []
+    total = len(characters)
     art = {}
     neutral_frames = {}
-    for character in manifest.get("characters") or []:
+    completed = 0
+    limit = asyncio.Semaphore(ART_CONCURRENCY)
+
+    async def draw(character):
+        nonlocal completed
         character_id = character["id"]
-        try:
-            result = await generator.generate_character(character["identity"], style)
-        except Exception as exc:
-            logger.error("Art generation failed for '%s': %s", character_id, exc)
-            continue
+
+        async with limit:
+            try:
+                result = await generator.generate_character(character["identity"], style)
+            except Exception as exc:
+                logger.error("Art generation failed for '%s': %s", character_id, exc)
+                completed += 1
+                await report(stage="art_failed", character_id=character_id,
+                             index=completed, total=total)
+                return
 
         frames = result["frames"]
         urls = {
@@ -605,9 +630,27 @@ async def generate_world_art(
         art[character_id] = urls
         neutral_frames[character_id] = frames.get("neutral")
 
+        # Emitted per character rather than at the end, so the reveal fills in
+        # as the World is drawn instead of arriving all at once. The client
+        # matches on character_id, so completion order does not matter.
+        completed += 1
+        await report(
+            stage="art",
+            character_id=character_id,
+            kind=character.get("kind"),
+            sprite_url=urls.get("neutral"),
+            token_url=urls.get("token"),
+            index=completed,
+            total=total,
+        )
+
+    await asyncio.gather(*(draw(character) for character in characters))
+
     cover_url = await _generate_cover(
         manifest, neutral_frames, world_id, generator, style, assets_dir
     )
+    if cover_url:
+        await report(stage="cover", cover_url=cover_url)
 
     return {"characters": art, "cover": cover_url}
 

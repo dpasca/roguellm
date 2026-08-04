@@ -161,10 +161,13 @@ Unleash your creativity. We want to impress and stimulate the imagination of the
 game player.
 
 # Response Format
-Reply with a new JSON object that contains up to 10 item definitions.
-The new item definitions must follow the same format as the sample item definitions,
-but they must use a new theme description. For example, replace a "Orc" item
-with "tank" for a modern combat theme.
+Reply with a new JSON object containing between 4 and 6 enemy definitions.
+Prefer a small, distinct cast over a long one: every enemy is illustrated
+separately, so each extra entry costs real generation time and money, and near
+-duplicates dilute the World rather than enriching it.
+The new enemy definitions must follow the same format as the sample enemy
+definitions, but they must use a new theme description. For example, replace an
+"Orc" enemy with a "tank" for a modern combat theme.
 """
 
 # NOTE: Should append language req and theme desc at the bottom

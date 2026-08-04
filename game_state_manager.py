@@ -76,12 +76,17 @@ class GameStateManager:
         self._generated_tile_info: List[dict] = []
         self._snapshot_tile_info_by_language: Dict[str, List[dict]] = {}
 
+        # Awaited once per forge milestone when set; see report_progress.
+        self.on_progress = None
+
     @classmethod
     async def create(cls, seed: int, theme_desc: str, do_web_search: bool = False,
                     language: str = "en", generator_id: Optional[str] = None,
-                    owner_id: Optional[str] = None, visibility: Optional[str] = None):
+                    owner_id: Optional[str] = None, visibility: Optional[str] = None,
+                    on_progress=None):
         """Factory method to create and initialize a GameStateManager."""
         manager = cls(seed, theme_desc, do_web_search, language, generator_id, owner_id, visibility)
+        manager.on_progress = on_progress
 
         if generator_id:
             generator_data = db.get_generator(generator_id)
@@ -100,6 +105,13 @@ class GameStateManager:
             theme_desc_better=manager.theme_desc_better,
             do_web_search=do_web_search,
             language=language
+        )
+
+        summary = "\n".join((manager.theme_desc_better or "").split("\n")[1:]).strip()
+        await manager.report_progress(
+            "theme",
+            title=manager.gen_ai.game_title or "",
+            summary=summary,
         )
 
         # Initialize these after setting the theme description
@@ -142,9 +154,37 @@ class GameStateManager:
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
+            await manager.report_progress(
+                "cast",
+                world_id=manager.generator_id,
+                enemies=[
+                    {"id": enemy.get("enemy_id"), "name": enemy.get("name")}
+                    for enemy in (manager.definitions.enemy_defs or [])
+                    if isinstance(enemy, dict)
+                ],
+                player={"id": "player", "name": (manager.definitions.player_defs or [{}])[0].get("name")},
+                item_count=len(manager.definitions.item_defs or []),
+                terrain_count=len(manager.definitions.celltype_defs or []),
+            )
+
             await manager.generate_and_attach_world_art()
 
         return manager
+
+    async def report_progress(self, stage: str, **fields) -> None:
+        """Emit one forge milestone, never letting it break the forge.
+
+        The reveal is decoration; a client that has disconnected or a serializer
+        that chokes must not cost someone the World they are paying for.
+        """
+        callback = getattr(self, "on_progress", None)
+        if not callback:
+            return
+
+        try:
+            await callback({"stage": stage, **fields})
+        except Exception as exc:
+            logger.debug("Progress callback failed at stage '%s': %s", stage, exc)
 
     async def generate_and_attach_world_art(self) -> None:
         """Generate this World's art bundle and attach it to the definitions.
@@ -180,7 +220,11 @@ class GameStateManager:
                 snapshot_version=WORLD_SNAPSHOT_VERSION,
             )
 
-            art = await generate_world_art(manifest, self.generator_id)
+            art = await generate_world_art(
+                manifest,
+                self.generator_id,
+                on_progress=lambda fields: self.report_progress(**fields),
+            )
             characters = art.get("characters") or {}
             if not characters:
                 logger.warning("No art generated for %s", self.generator_id)

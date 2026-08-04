@@ -26,7 +26,7 @@ import zlib
 import base64
 import secrets
 from social_crawler import get_prerendered_content
-from gen_image import get_world_assets_dir
+from gen_image import get_world_assets_dir, is_world_art_enabled
 import asyncio
 import aiofiles
 
@@ -129,6 +129,24 @@ class GameCreationRequest(BaseModel):
 
 class AdminPasswordResetRequest(BaseModel):
     password_reset_required: bool
+
+def get_world_creation_timeout_seconds() -> float:
+    """How long a forge may take before it is abandoned.
+
+    A text-only forge finishes well inside a minute, but generating art adds
+    roughly a dozen image calls at 10-25s each, so the old flat 60s ceiling
+    would have failed every art-enabled forge. Scales with the feature rather
+    than being one number that has to suit both.
+    """
+    override = os.getenv("WORLD_CREATION_TIMEOUT_SECONDS")
+    if override:
+        try:
+            return max(30.0, float(override))
+        except ValueError:
+            logging.warning("Invalid WORLD_CREATION_TIMEOUT_SECONDS: %s", override)
+
+    return 600.0 if is_world_art_enabled() else 60.0
+
 
 def is_local_dev_request(request: Request) -> bool:
     client_host = request.client.host if request.client else ""
@@ -1442,6 +1460,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 # Determine ownership and visibility for newly generated worlds.
                 world_visibility = get_default_new_world_visibility()
 
+                async def send_forge_progress(event):
+                    await websocket.send_json({"type": "forge_progress", **event})
+
                 # Create new game instance with timeout
                 try:
                     game_instance = await asyncio.wait_for(
@@ -1452,9 +1473,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                             do_web_search=do_web_search,
                             generator_id=request.generator_id,
                             owner_id=user_id,
-                            visibility=world_visibility
+                            visibility=world_visibility,
+                            on_progress=send_forge_progress
                         ),
-                        timeout=60.0  # 1 minute timeout
+                        timeout=get_world_creation_timeout_seconds()
                     )
                 except asyncio.TimeoutError:
                     await websocket.send_json({

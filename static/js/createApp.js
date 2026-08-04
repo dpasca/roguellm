@@ -97,6 +97,18 @@ const app = Vue.createApp({
             isGameInitialized: false,
             isLoading: true,
             isMoveInProgress: false,
+            // Forging a World takes minutes once art is on, so the wait shows
+            // the World being built rather than a spinner.
+            forge: {
+                active: false,
+                title: '',
+                summary: '',
+                cast: [],
+                coverUrl: null,
+                message: '',
+                done: 0,
+                total: 0
+            },
             gameState: {
                 player: {
                     name: 'Player',
@@ -145,6 +157,19 @@ const app = Vue.createApp({
         }
     },
     computed: {
+        forgePercent() {
+            if (!this.forge.total) return this.forge.title ? 12 : 4;
+            // Leave headroom: the cast is most of the wait but not all of it.
+            return Math.min(96, 12 + (this.forge.done / this.forge.total) * 84);
+        },
+        forgeCaption() {
+            if (this.forge.coverUrl) return this.$t('forge.finishing');
+            if (this.forge.total) {
+                return this.$t('forge.drawing', { done: this.forge.done, total: this.forge.total });
+            }
+            if (this.forge.title) return this.$t('forge.castingCall');
+            return this.$t('forge.imagining');
+        },
         getPlayerHealthPercentage() {
             return (this.gameState.player_hp / this.gameState.player_max_hp) * 100;
         },
@@ -452,6 +477,11 @@ const app = Vue.createApp({
                     console.log("Received message:", response);
 
                     // Handle different message types
+                    if (response.type === 'forge_progress') {
+                        this.handleForgeProgress(response);
+                        return;
+                    }
+
                     if (response.type === 'status') {
                         // Update loading message during game creation
                         const loadingMessage = document.querySelector('#loading-message');
@@ -459,7 +489,13 @@ const app = Vue.createApp({
                             loadingMessage.textContent = response.message;
                         }
 
+                        if (response.status === 'creating') {
+                            this.forge.active = true;
+                            this.forge.message = response.message || '';
+                        }
+
                         if (response.status === 'ready') {
+                            this.forge.active = false;
                             // Game is ready, request initial state
                             this.requestInitialState();
                         }
@@ -503,6 +539,52 @@ const app = Vue.createApp({
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
             };
+        },
+        handleForgeProgress(event) {
+            this.forge.active = true;
+
+            switch (event.stage) {
+                case 'theme':
+                    this.forge.title = event.title || '';
+                    this.forge.summary = event.summary || '';
+                    break;
+
+                case 'cast': {
+                    // Lay out empty slots up front so the reveal fills in
+                    // rather than growing, which reads as progress.
+                    const cast = [];
+                    if (event.player) {
+                        cast.push({ id: 'player', name: event.player.name, sprite_url: null, failed: false });
+                    }
+                    (event.enemies || []).forEach(enemy => {
+                        cast.push({ id: enemy.id, name: enemy.name, sprite_url: null, failed: false });
+                    });
+                    this.forge.cast = cast;
+                    this.forge.total = cast.length;
+                    break;
+                }
+
+                case 'art': {
+                    const slot = this.forge.cast.find(entry => entry.id === event.character_id);
+                    if (slot) {
+                        slot.sprite_url = event.sprite_url;
+                    }
+                    this.forge.done = event.index || this.forge.done + 1;
+                    if (event.total) this.forge.total = event.total;
+                    break;
+                }
+
+                case 'art_failed': {
+                    const slot = this.forge.cast.find(entry => entry.id === event.character_id);
+                    if (slot) slot.failed = true;
+                    this.forge.done = (event.index || this.forge.done) + 1;
+                    break;
+                }
+
+                case 'cover':
+                    this.forge.coverUrl = event.cover_url;
+                    break;
+            }
         },
         requestInitialState() {
             if (this.hasRequestedInitialState) return;
