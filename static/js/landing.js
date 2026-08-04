@@ -174,6 +174,14 @@ const app = Vue.createApp({
             }
 
             return this.selectedTheme === 'world' ? this.t('startRun') : this.t('createWorld');
+        },
+        // The forge button is always a create action, so it must not inherit
+        // selectedTheme, which defaults to 'world' and made it read "Start Run".
+        forgeButtonLabel() {
+            if (this.requiresAuthForSelectedCreation) {
+                return this.t('signupToCreate');
+            }
+            return this.t('createWorld');
         }
     },
     watch: {

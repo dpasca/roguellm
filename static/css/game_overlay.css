@@ -688,16 +688,27 @@
     letter-spacing: 0.14em;
 }
 
-.forge-title {
+/* base.css gives every h1 a green gradient fill, uppercase, and an ::after
+ * underline. -webkit-text-fill-color beats plain colour whatever the
+ * specificity, so each of those has to be undone explicitly. */
+.forge-reveal .forge-title {
     margin: 0 0 10px;
     min-height: 1.2em;
     font-size: clamp(1.6rem, 5vw, 2.5rem);
     line-height: 1.15;
     letter-spacing: -0.02em;
+    text-transform: none;
+    background: none;
     color: #f4f6fb;
+    -webkit-text-fill-color: #f4f6fb;
+    text-shadow: none;
     opacity: 0;
     transform: translateY(10px);
     transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.forge-reveal .forge-title::after {
+    content: none;
 }
 
 .forge-title.landed {

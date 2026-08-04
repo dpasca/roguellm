@@ -5,11 +5,22 @@
  * visitor sees the product rather than a set of choices about it.
  */
 
+/* The lobby no longer loads style.css, which is where the global border-box
+ * rule lived. Without this, padded full-width elements overflow the viewport:
+ * .lobby-main measured 422px inside a 390px phone. */
+.lobby,
+.lobby *,
+.lobby *::before,
+.lobby *::after {
+    box-sizing: border-box;
+}
+
 .lobby {
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
     gap: 0;
+    overflow-x: hidden;
 }
 
 /* --- thin bar ------------------------------------------------------------ */
@@ -206,9 +217,31 @@
 
 .gallery-head h2 {
     margin: 0;
+    /* Takes the slack so the tabs stay right-aligned and the local-dev
+     * shortcut sits beside them instead of centred by space-between. */
+    margin-right: auto;
     font-size: 1.1rem;
     font-weight: 650;
     color: #ced3e0;
+}
+
+.dev-shortcut-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    background: transparent;
+    color: #98a0b4;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dev-shortcut-btn:hover {
+    color: #dfe3ec;
+    border-color: rgba(255, 255, 255, 0.32);
 }
 
 .gallery-tabs {
