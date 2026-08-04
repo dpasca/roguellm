@@ -1288,6 +1288,10 @@ class GameStateManager:
         snapshot = self._load_world_snapshot()
         if snapshot:
             logger.info("Reusing persisted world snapshot for generator %s", self.generator_id)
+        else:
+            # Without a snapshot this is several model calls, and the client
+            # would otherwise sit on "Game ready!" for a minute or more.
+            await self.report_progress("building")
 
         # Initialize cell types after state is created
         if USE_RANDOM_MAP:
@@ -1335,6 +1339,9 @@ class GameStateManager:
         # placement so sparse maps still offer meaningful decisions.
         self.initialize_story_placements()
         self.initialize_objective()
+
+        if not snapshot:
+            await self.report_progress("populating")
 
         # Prebuild fast, tappable tile summaries after placements are sanitized.
         await self.initialize_tile_info(snapshot["tile_info"] if snapshot else None)

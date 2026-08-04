@@ -162,6 +162,8 @@
     "castingCall": "正在召集角色...",
     "drawing": "正在繪製第 {done} 個，共 {total} 個...",
     "finishing": "正在製作封面...",
+    "building": "正在繪製地圖...",
+    "populating": "正在安置這裡的居民...",
     "eyebrow": "鑄造中",
     "patience": "這需要幾分鐘。你的世界只建立一次，並會被保存。"
   },

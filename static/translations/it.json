@@ -162,6 +162,8 @@
     "castingCall": "Sto radunando i personaggi...",
     "drawing": "Sto disegnando {done} di {total}...",
     "finishing": "Sto componendo la copertina...",
+    "building": "Sto tracciando la mappa...",
+    "populating": "Sto popolando il mondo...",
     "eyebrow": "Forgiatura",
     "patience": "Ci vogliono alcuni minuti. Il tuo mondo viene creato una volta sola, e conservato."
   },

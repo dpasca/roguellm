@@ -162,6 +162,8 @@
     "castingCall": "Reuniendo al reparto...",
     "drawing": "Dibujando {done} de {total}...",
     "finishing": "Componiendo la portada...",
+    "building": "Trazando el mapa...",
+    "populating": "Colocando a sus habitantes...",
     "eyebrow": "Forjando",
     "patience": "Esto tarda unos minutos. Tu mundo se crea una sola vez, y se conserva."
   },

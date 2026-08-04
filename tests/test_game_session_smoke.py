@@ -86,7 +86,15 @@ class GameSessionSmokeTests(unittest.TestCase):
                         self.assertEqual(connection["generator_id"], piedone["id"])
 
                         websocket.send_json({"action": "get_initial_state"})
+                        # A World with no snapshot builds its map on first play,
+                        # which reports progress so the client is not left on
+                        # "Game ready!" while several model calls run.
                         initial = websocket.receive_json()
+                        build_stages = []
+                        while initial.get("type") == "forge_progress":
+                            build_stages.append(initial["stage"])
+                            initial = websocket.receive_json()
+                        self.assertIn("building", build_stages)
 
             translate_world.assert_not_called()
             self.assertEqual(initial["type"], "update")

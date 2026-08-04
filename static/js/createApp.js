@@ -105,6 +105,7 @@ const app = Vue.createApp({
                 summary: '',
                 cast: [],
                 coverUrl: null,
+                stage: '',
                 message: '',
                 done: 0,
                 total: 0
@@ -158,11 +159,15 @@ const app = Vue.createApp({
     },
     computed: {
         forgePercent() {
+            if (this.forge.stage === 'populating') return 97;
+            if (this.forge.stage === 'building') return 92;
             if (!this.forge.total) return this.forge.title ? 12 : 4;
             // Leave headroom: the cast is most of the wait but not all of it.
             return Math.min(96, 12 + (this.forge.done / this.forge.total) * 84);
         },
         forgeCaption() {
+            if (this.forge.stage === 'populating') return this.$t('forge.populating');
+            if (this.forge.stage === 'building') return this.$t('forge.building');
             if (this.forge.coverUrl) return this.$t('forge.finishing');
             if (this.forge.total) {
                 return this.$t('forge.drawing', { done: this.forge.done, total: this.forge.total });
@@ -492,11 +497,13 @@ const app = Vue.createApp({
                         if (response.status === 'creating') {
                             this.forge.active = true;
                             this.forge.message = response.message || '';
+                            hideLoading();
                         }
 
                         if (response.status === 'ready') {
-                            this.forge.active = false;
-                            // Game is ready, request initial state
+                            // The World may still need its map built, which is
+                            // reported separately. The reveal is dismissed by
+                            // the first state update, not by this message.
                             this.requestInitialState();
                         }
                         return;
@@ -542,6 +549,10 @@ const app = Vue.createApp({
         },
         handleForgeProgress(event) {
             this.forge.active = true;
+            // The legacy overlay sits above the reveal and would otherwise
+            // cover it with a dimmed "Game ready!" while the map is still
+            // being built.
+            hideLoading();
 
             switch (event.stage) {
                 case 'theme':
@@ -583,6 +594,17 @@ const app = Vue.createApp({
 
                 case 'cover':
                     this.forge.coverUrl = event.cover_url;
+                    break;
+
+                // Building the map happens after 'ready', so without these the
+                // client sat on "Game ready!" for a minute or more on the first
+                // play of any World that has no snapshot yet.
+                case 'building':
+                    this.forge.stage = 'building';
+                    break;
+
+                case 'populating':
+                    this.forge.stage = 'populating';
                     break;
             }
         },
@@ -918,6 +940,8 @@ const app = Vue.createApp({
 
                 // Hide loading screen when we receive any game state update
                 hideLoading();
+                // Real state has arrived, so the World is genuinely playable.
+                this.forge.active = false;
 
                 if (!this.isGameInitialized) {
                     console.log('Initial game state received:', this.gameState);

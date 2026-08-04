@@ -716,12 +716,19 @@
     transform: none;
 }
 
+/* theme_desc_better carries the model's full setting write-up, which runs to
+ * several hundred words and filled an entire phone screen. The reveal wants a
+ * taste of the World, not its design document. */
 .forge-summary {
     margin: 0 auto 30px;
     max-width: 54ch;
     color: #99a1b6;
     font-size: 0.98rem;
     line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     opacity: 0;
     transition: opacity 0.6s ease 0.15s;
 }

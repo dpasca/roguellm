@@ -235,6 +235,8 @@
         "castingCall": "Assembling the cast...",
         "drawing": "Drawing {done} of {total}...",
         "finishing": "Framing the cover...",
+        "building": "Laying out the map...",
+        "populating": "Placing what lives here...",
         "eyebrow": "Forging",
         "patience": "This takes a few minutes. Your World is being made once, and kept."
     },
