@@ -187,47 +187,24 @@
     }
 }
 
-/* --- location stage (design spike, ?layout=scene) -------------------------
+/* --- location stage -------------------------------------------------------
  *
  * The place you are standing in as the primary surface, with the map demoted
- * to a minimap beneath it. The combat screen already works this way, and it is
- * the best-looking screen in the game; this asks whether exploration should
- * match it.
+ * to a minimap. Combat already worked this way and is the best-looking screen
+ * in the game; exploration now matches it.
  *
- * Mobile only. On desktop the map lives in a 300-400px sidebar beside the
- * player card, and a wide scene does not fit that shape: dropping one in pushes
- * the HUD out of view. Desktop still uses the grid arrangement and needs its
- * own pass, with the scene across the top and the minimap beside the stats.
+ * Shared appearance lives here, outside any breakpoint. Only the sizing is
+ * per-breakpoint: an earlier version had the whole ruleset inside the mobile
+ * query, so desktop got display:block and nothing else, losing overflow
+ * clipping and background-size and letting the hero spill down the page.
  */
 
 .location-stage {
     display: none;
-}
-
-@media screen and (max-width: 900px) {
-
-/* The mobile column is a grid of `auto auto minmax(0, 1fr)`, sized for the HUD,
- * the objective, and the map. The stage is a fourth child, so without its own
- * row it landed in the 1fr leftover, overflowed it, and covered the hero. */
-.game-page .game-left-column.has-stage {
-    grid-template-rows: auto auto auto minmax(0, 1fr);
-}
-
-.location-stage.has-art {
-    display: block;
-}
-
-.location-stage {
     position: relative;
     width: 100%;
-    /* 16:9 rather than taller: the minimap and the movement controls both
-     * have to stay above the fold, and the scene is the most compressible of
-     * the three. */
-    aspect-ratio: 16 / 9;
-    max-height: 34vh;
-    margin-bottom: 14px;
-    border-radius: 16px;
     overflow: hidden;
+    border-radius: 16px;
     background-color: #10131c;
     background-size: cover;
     background-position: center;
@@ -235,17 +212,16 @@
     transition: background-image 0.45s ease;
 }
 
-/* Without art the stage would be an empty box, so it collapses out of the way
- * and the minimap goes back to full size. */
-.location-stage:not(.has-art) {
-    display: none;
+/* Without art the stage would be an empty box, so it stays hidden and the map
+ * goes back to full size. */
+.location-stage.has-art {
+    display: block;
 }
 
 .stage-shade {
     position: absolute;
     inset: 0;
-    background:
-        linear-gradient(180deg, rgba(6, 8, 13, 0.72) 0%, rgba(6, 8, 13, 0.12) 38%, rgba(6, 8, 13, 0.85) 100%);
+    background: linear-gradient(180deg, rgba(6, 8, 13, 0.72) 0%, rgba(6, 8, 13, 0.12) 38%, rgba(6, 8, 13, 0.85) 100%);
 }
 
 .stage-caption {
@@ -265,16 +241,17 @@
     color: rgba(255, 255, 255, 0.55);
 }
 
+/* base.css gives every h1/h2 a green gradient fill and an ::after underline. */
 .stage-caption h2 {
     margin: 2px 0 4px;
     font-size: 1.15rem;
     font-weight: 650;
-    color: #f2f4fa;
+    letter-spacing: 0;
     text-transform: none;
     background: none;
+    color: #f2f4fa;
     -webkit-text-fill-color: #f2f4fa;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
-    letter-spacing: 0;
 }
 
 .stage-caption h2::after {
@@ -323,14 +300,11 @@
  * it keeps enough size to read a tile rather than only your position.
  *
  * Qualified with .game-page to outrank the mobile rule that gives the map
- * height:100%. That rule had it claiming the whole column and riding up over
- * the stage, covering the hero. Cell size goes through --cell-size for the same
- * reason: that rule computes it, so setting cell width directly loses. */
+ * height:100%; that had it claiming the whole column and riding up over the
+ * stage. Cell size goes through --cell-size for the same reason: that rule
+ * computes it, so setting cell width directly loses. */
 .game-page .game-map.as-minimap {
-    --cell-size: 26px;
-    max-width: 440px;
     height: auto;
-    margin: 6px auto 0;
     opacity: 0.95;
 }
 
@@ -343,14 +317,39 @@
 }
 
 /* Tokens are square crops rather than full sprites, so at this size they read
- * well enough to plan a route by. The objective is to clear the enemies on the
- * map, which needs seeing where they are. */
+ * well enough to plan a route by, and the objective is to clear the enemies on
+ * the map, which needs seeing where they are. */
 .game-map.as-minimap .cell img {
     max-width: 88%;
     max-height: 88%;
 }
 
-@media (max-width: 560px) {
+/* --- sizing: phones ------------------------------------------------------ */
+@media screen and (max-width: 900px) {
+    /* The mobile column is a grid of "auto auto minmax(0, 1fr)", sized for the
+     * HUD, the objective and the map. The stage is a fourth child, so without
+     * its own row it landed in the 1fr leftover, overflowed it, and covered
+     * the hero. */
+    .game-page .game-left-column.has-stage {
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+    }
+
+    /* 16:9 rather than taller: the minimap and the movement controls both have
+     * to stay above the fold, and the scene is the most compressible. */
+    .location-stage {
+        aspect-ratio: 16 / 9;
+        max-height: 34vh;
+        margin-bottom: 0;
+    }
+
+    .game-page .game-map.as-minimap {
+        --cell-size: 26px;
+        max-width: 440px;
+        margin: 6px auto 0;
+    }
+}
+
+@media screen and (max-width: 560px) {
     .location-stage {
         max-height: 30vh;
         border-radius: 12px;
@@ -361,7 +360,44 @@
     }
 }
 
-} /* end mobile-only location stage */
+/* --- sizing: desktop ----------------------------------------------------- */
+@media screen and (min-width: 901px) {
+    /* The left column is a 300-400px sidebar sized for the map alone, so a
+     * scene dropped into it is either tiny or pushes the stats card off
+     * screen. With a stage it takes the free width instead. */
+    .game-page .game-left-column.has-stage {
+        flex: 1 1 auto;
+        min-width: 420px;
+        max-width: 860px;
+    }
+
+    .game-left-column.has-stage .location-stage {
+        aspect-ratio: 16 / 9;
+        max-height: 46vh;
+        margin-bottom: 16px;
+    }
+
+    .game-left-column.has-stage .stage-caption {
+        padding: 18px 22px;
+    }
+
+    .game-left-column.has-stage .stage-caption h2 {
+        font-size: 1.45rem;
+    }
+
+    .game-left-column.has-stage .stage-caption p {
+        font-size: 0.95rem;
+    }
+
+    /* The map keeps its own width rule on desktop, so minimap size is set here
+     * rather than inherited from the phone block. */
+    .game-page .game-left-column.has-stage .game-map.as-minimap {
+        --cell-size: 30px;
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .location-stage,
