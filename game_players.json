@@ -1,16 +1,14 @@
 {
-    "player_defs": [
+  "player_defs": [
     {
-        "name": "Alric",
-        "age": 25,
-        "class": "warrior",
-        "height_cm": 180,
-        "weight_kg": 80,
-        "font_awesome_icon": "fa-solid fa-user",
-        "objective": {
-            "title": "Break the warlord's hold",
-            "description": "Track down and defeat every hostile guarding this region."
-        }
+      "name": "Protagonist",
+      "class": "Newcomer",
+      "hp": 100,
+      "attack": 15,
+      "defense": 5,
+      "description": "Someone with a reason to be here and not much else yet.",
+      "objective": "Deal with whatever is making this place dangerous.",
+      "font_awesome_icon": "fa-solid fa-user"
     }
-    ]
+  ]
 }

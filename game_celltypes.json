@@ -1,104 +1,178 @@
 {
-    "celltype_defs": [
+  "celltype_defs": [
     {
-        "id": "0",
-        "name": "Desert",
-        "description": "A desert",
-        "map_color": "#FFD700",
-        "font_awesome_icon": "fa-solid fa-desert",
-        "encounters": [
+      "id": "0",
+      "name": "Open Ground",
+      "description": "Exposed, with nowhere to stand out of sight.",
+      "map_color": "#C8A46A",
+      "font_awesome_icon": "fa-solid fa-map",
+      "encounters": [
+        {
+          "id": "crossing",
+          "title": "The Crossing",
+          "description": "Someone left in a hurry, and left something behind.",
+          "resolved_description": "Only tracks remain here now.",
+          "font_awesome_icon": "fa-solid fa-compass",
+          "choices": [
             {
-                "id": "mirage_caravan",
-                "title": "Mirage Caravan",
-                "description": "Fresh tracks vanish beneath an abandoned caravan.",
-                "resolved_description": "Only cooling sand remains around the caravan.",
-                "font_awesome_icon": "fa-solid fa-compass",
-                "choices": [
-                    {"id": "follow_tracks", "label": "Follow the tracks", "result": "The trail reveals a useful shortcut, but the heat bites hard.", "effect": {"health": -4, "xp": 8}},
-                    {"id": "search_wagon", "label": "Search the wagon", "result": "A careful search uncovers an old traveler's clue.", "effect": {"xp": 4}}
-                ]
+              "id": "follow",
+              "label": "Follow them",
+              "result": "You learn where they went, and lose time doing it.",
+              "effect": {
+                "health": -4,
+                "xp": 8
+              }
+            },
+            {
+              "id": "take",
+              "label": "Take what they left",
+              "result": "It is useful, and someone will want it back.",
+              "effect": {
+                "xp": 4
+              }
             }
-        ]
+          ]
+        }
+      ]
     },
     {
-        "id": "1",
-        "name": "Forest",
-        "description": "A forest",
-        "map_color": "#228B22",
-        "font_awesome_icon": "fa-solid fa-tree",
-        "encounters": [
+      "id": "1",
+      "name": "Shelter",
+      "description": "Walls, a roof, and no clear view out.",
+      "map_color": "#8A6F4E",
+      "font_awesome_icon": "fa-solid fa-home",
+      "encounters": [
+        {
+          "id": "occupied",
+          "title": "Already Occupied",
+          "description": "The lights are on and the door is unlocked.",
+          "resolved_description": "The room sits empty and quiet.",
+          "font_awesome_icon": "fa-solid fa-door-open",
+          "choices": [
             {
-                "id": "whispering_cairn",
-                "title": "Whispering Cairn",
-                "description": "A mossy stone pile repeats fragments of your thoughts.",
-                "resolved_description": "The cairn has fallen silent.",
-                "font_awesome_icon": "fa-solid fa-ear-listen",
-                "choices": [
-                    {"id": "answer_whisper", "label": "Answer the whisper", "result": "The forest tests your nerve and yields a hidden truth.", "effect": {"health": -3, "xp": 9}},
-                    {"id": "study_marks", "label": "Study the markings", "result": "The old trail marks reveal who passed this way.", "effect": {"xp": 5}}
-                ]
+              "id": "knock",
+              "label": "Announce yourself",
+              "result": "You are let in warily, and told something useful.",
+              "effect": {
+                "xp": 6
+              }
+            },
+            {
+              "id": "slip_in",
+              "label": "Slip in quietly",
+              "result": "You find what you need, and are noticed leaving.",
+              "effect": {
+                "health": -3,
+                "xp": 10
+              }
             }
-        ]
+          ]
+        }
+      ]
     },
     {
-        "id": "2",
-        "name": "Mountain Base",
-        "description": "Base of a mountain",
-        "map_color": "#8B4513",
-        "font_awesome_icon": "fa-solid fa-mountain",
-        "encounters": [
+      "id": "2",
+      "name": "Passage",
+      "description": "A route through, too narrow to turn back in.",
+      "map_color": "#5F6B78",
+      "font_awesome_icon": "fa-solid fa-road",
+      "encounters": [
+        {
+          "id": "blocked",
+          "title": "Blocked Passage",
+          "description": "Something has come down across the way ahead.",
+          "resolved_description": "The way ahead is clear again.",
+          "font_awesome_icon": "fa-solid fa-triangle-exclamation",
+          "choices": [
             {
-                "id": "broken_lift",
-                "title": "Broken Supply Lift",
-                "description": "A loaded platform hangs from one badly frayed rope.",
-                "resolved_description": "The lift's rope hangs loose against the rock.",
-                "font_awesome_icon": "fa-solid fa-person-hiking",
-                "choices": [
-                    {"id": "climb_platform", "label": "Climb onto it", "result": "The risky ascent gives you a commanding view of the route.", "effect": {"health": -5, "xp": 10}},
-                    {"id": "inspect_cargo", "label": "Inspect the cargo", "result": "The manifests expose the enemy's supply route.", "effect": {"xp": 5}}
-                ]
+              "id": "clear_it",
+              "label": "Force a way through",
+              "result": "You get through, and it costs you.",
+              "effect": {
+                "health": -6,
+                "xp": 12
+              }
+            },
+            {
+              "id": "go_around",
+              "label": "Find another way",
+              "result": "The detour is long but uneventful.",
+              "effect": {
+                "xp": 3
+              }
             }
-        ]
+          ]
+        }
+      ]
     },
     {
-        "id": "3",
-        "name": "Mountain",
-        "description": "A mountain",
-        "map_color": "#8B4513",
-        "font_awesome_icon": "fa-solid fa-mountain",
-        "encounters": [
+      "id": "3",
+      "name": "High Ground",
+      "description": "Above everything else, and visible from all of it.",
+      "map_color": "#7C8BA1",
+      "font_awesome_icon": "fa-solid fa-mountain",
+      "encounters": [
+        {
+          "id": "vantage",
+          "title": "The Vantage",
+          "description": "From here you can see how much of this place is left.",
+          "resolved_description": "You have already read this view.",
+          "font_awesome_icon": "fa-solid fa-binoculars",
+          "choices": [
             {
-                "id": "storm_ledge",
-                "title": "Storm Ledge",
-                "description": "Lightning exposes two routes across a narrow ledge.",
-                "resolved_description": "The worst of the storm has passed.",
-                "font_awesome_icon": "fa-solid fa-bolt",
-                "choices": [
-                    {"id": "cross_now", "label": "Cross immediately", "result": "You beat the storm and memorize the high route.", "effect": {"health": -6, "xp": 11}},
-                    {"id": "find_cover", "label": "Find cover", "result": "Patience reveals a safer path through the rocks.", "effect": {"xp": 4}}
-                ]
+              "id": "study",
+              "label": "Study it carefully",
+              "result": "You understand the layout, and lose the light doing it.",
+              "effect": {
+                "xp": 10
+              }
+            },
+            {
+              "id": "move_on",
+              "label": "Move on quickly",
+              "result": "You keep your pace and learn little.",
+              "effect": {
+                "xp": 2
+              }
             }
-        ]
+          ]
+        }
+      ]
     },
     {
-        "id": "4",
-        "name": "Cave",
-        "description": "A dark cave",
-        "map_color": "#191900",
-        "font_awesome_icon": "fa-solid fa-cave",
-        "encounters": [
+      "id": "4",
+      "name": "Landmark",
+      "description": "The thing everyone here navigates by.",
+      "map_color": "#A87C5F",
+      "font_awesome_icon": "fa-solid fa-monument",
+      "encounters": [
+        {
+          "id": "marked",
+          "title": "Someone Was Here",
+          "description": "A mark has been left deliberately, and recently.",
+          "resolved_description": "The mark has been wiped away.",
+          "font_awesome_icon": "fa-solid fa-pen",
+          "choices": [
             {
-                "id": "cold_campfire",
-                "title": "Cold Campfire",
-                "description": "A recently abandoned camp hides signs of a hurried escape.",
-                "resolved_description": "The searched camp offers no further clues.",
-                "font_awesome_icon": "fa-solid fa-fire",
-                "choices": [
-                    {"id": "read_journal", "label": "Read the journal", "result": "The final entry names a danger waiting deeper inside.", "effect": {"xp": 7}},
-                    {"id": "follow_drag_marks", "label": "Follow the drag marks", "result": "The trail teaches you plenty, painfully.", "effect": {"health": -4, "xp": 10}}
-                ]
+              "id": "read_it",
+              "label": "Work out what it means",
+              "result": "It is a warning, and it is about you.",
+              "effect": {
+                "health": -2,
+                "xp": 12
+              }
+            },
+            {
+              "id": "erase_it",
+              "label": "Erase it",
+              "result": "Whoever it was meant for will never see it.",
+              "effect": {
+                "xp": 5
+              }
             }
-        ]
+          ]
+        }
+      ]
     }
-    ]
+  ]
 }

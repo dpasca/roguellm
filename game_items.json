@@ -1,53 +1,74 @@
 {
-    "item_defs": [
+  "item_defs": [
     {
-        "id": "rusty_sword",
-        "name": "Rusty Sword",
-        "type": "weapon",
-        "effect": {"attack": 3},
-        "description": "A basic sword with some rust spots."
+      "id": "basic_weapon",
+      "name": "Basic Weapon",
+      "type": "weapon",
+      "effect": {
+        "attack": 3
+      },
+      "description": "Better than nothing, and not by much.",
+      "font_awesome_icon": "fa-solid fa-hammer"
     },
     {
-        "id": "steel_sword",
-        "name": "Steel Sword",
-        "type": "weapon",
-        "effect": {"attack": 5},
-        "description": "A well-crafted steel sword."
+      "id": "good_weapon",
+      "name": "Good Weapon",
+      "type": "weapon",
+      "effect": {
+        "attack": 6
+      },
+      "description": "Well made, and clearly used before.",
+      "font_awesome_icon": "fa-solid fa-hammer"
     },
     {
-        "id": "leather_armor",
-        "name": "Leather Armor",
-        "type": "armor",
-        "effect": {"defense": 2},
-        "description": "Basic leather armor."
+      "id": "light_protection",
+      "name": "Light Protection",
+      "type": "armor",
+      "effect": {
+        "defense": 2
+      },
+      "description": "Takes the edge off a bad hit.",
+      "font_awesome_icon": "fa-solid fa-vest"
     },
     {
-        "id": "chain_mail",
-        "name": "Chain Mail",
-        "type": "armor",
-        "effect": {"defense": 4},
-        "description": "Protective chain mail armor."
+      "id": "heavy_protection",
+      "name": "Heavy Protection",
+      "type": "armor",
+      "effect": {
+        "defense": 5
+      },
+      "description": "Slows you down, keeps you alive.",
+      "font_awesome_icon": "fa-solid fa-shield-alt"
     },
     {
-        "id": "health_potion",
-        "name": "Health Potion",
-        "type": "consumable",
-        "effect": {"health": 30},
-        "description": "Restores 30 HP when used."
+      "id": "remedy",
+      "name": "Remedy",
+      "type": "consumable",
+      "effect": {
+        "health": 30
+      },
+      "description": "Buys back some of what this place took.",
+      "font_awesome_icon": "fa-solid fa-medkit"
     },
     {
-        "id": "strength_potion",
-        "name": "Strength Potion",
-        "type": "consumable",
-        "effect": {"attack": 5, "duration": 3},
-        "description": "Temporarily increases attack by 5."
+      "id": "stimulant",
+      "name": "Stimulant",
+      "type": "consumable",
+      "effect": {
+        "attack": 8
+      },
+      "description": "Hits harder for a while. You will feel it later.",
+      "font_awesome_icon": "fa-solid fa-bolt"
     },
     {
-        "id": "defense_potion",
-        "name": "Defense Potion",
-        "type": "consumable",
-        "effect": {"defense": 5, "duration": 3},
-        "description": "Temporarily increases defense by 5."
+      "id": "safeguard",
+      "name": "Safeguard",
+      "type": "consumable",
+      "effect": {
+        "defense": 7
+      },
+      "description": "Holds up briefly against the next thing.",
+      "font_awesome_icon": "fa-solid fa-shield-alt"
     }
-    ]
+  ]
 }

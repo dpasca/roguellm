@@ -113,8 +113,9 @@ Include only free font awesome icons, do not use any pro icons.
 # Response Format
 Reply with a new JSON object that contains player definition.
 The new player definition must follow the same format as the sample definition,
-but adapt it to match the game theme. For example, replace a "warrior" class
-with "space marine" for a sci-fi theme.
+but adapt it to match the game theme. The sample uses deliberately generic
+role names; replace them with someone who belongs in this specific setting,
+whether that is a courier, a pilot, a night-shift technician, or a duellist.
 Include only free font-awesome icons, do not use any pro icons.
 
 The objective field must give the player one concise, theme-specific mission.
@@ -166,8 +167,11 @@ Prefer a small, distinct cast over a long one: every enemy is illustrated
 separately, so each extra entry costs real generation time and money, and near
 -duplicates dilute the World rather than enriching it.
 The new enemy definitions must follow the same format as the sample enemy
-definitions, but they must use a new theme description. For example, replace an
-"Orc" enemy with a "tank" for a modern combat theme.
+definitions, but they must use a new theme description. The sample names them by
+role rather than by species on purpose: replace each with something that
+genuinely belongs in this setting. Not every World is a fantasy one, and an
+opponent can as easily be a rival, an official, a machine, or a person with
+authority as it can be a monster.
 """
 
 # NOTE: Should append language req and theme desc at the bottom
@@ -199,8 +203,10 @@ Each cell type is illustrated as its own backdrop, so a handful of strongly
 distinct places serves the World far better than many similar ones, and each
 extra entry costs real generation time and money.
 The new cell type definitions must follow the same format as the sample
-definitions, but they must use a new theme description. For example, replace a
-"grass" cell type with "desert" for a desert theme.
+definitions, but they must use a new theme description. The sample names places
+by what they do - open ground, shelter, a way through - so replace each with a
+specific place from this setting, whether that is a server room, a rooftop, a
+loading bay, or a shrine.
 """
 
 # NOTE: Should append theme desc at the bottom
