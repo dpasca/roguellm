@@ -1,79 +1,337 @@
-# Deployment Handoff
+# Technical Handoff
 
-Written for whoever takes deployment forward separately from feature work.
+Written for whoever takes the technical and deployment side forward separately
+from feature work. It aims to be self-contained: architecture, the client
+contract, data model, costs, deployment, and the traps that are not visible from
+reading the code.
 
-This is **what changed and what blocks**, not a full runbook. The existing
-[production-publish-plan.md](production-publish-plan.md) already covers hosting
-direction, DNS and reverse proxy, the database plan, auth hardening, the staging
-Docker runbook, and the SQLite backup runbook. Read that for the detail; read
-this for what is different now and what is outstanding.
+The product reasoning lives in [game-direction.md](game-direction.md). The older
+[production-publish-plan.md](production-publish-plan.md) still holds useful
+detail on DNS, auth hardening, and the staging runbook, though its PWA and
+hosting assumptions have been superseded — see Mobile below.
 
-## Current shape
+---
 
-- **App**: FastAPI + uvicorn, `main:app`, port 8000 inside the container.
-- **Image**: `python:3.11-slim`, non-root user `app` (uid 10001), `HEALTHCHECK`
-  built in. `--proxy-headers --forwarded-allow-ips *` are already set, so the
-  app trusts a reverse proxy in front of it.
-- **Stacks**: `docker-compose.staging.yml` (project `roguellm-staging`, port
-  18080) and `docker-compose.production.yml` (project `roguellm-production`,
-  port 18081). Both publish on `127.0.0.1` only.
-- **State**: one named volume per stack mounted at `/app/_data`, holding both the
-  SQLite database and all generated art.
-- **Health**: `GET /health` and `GET /health/db`.
+## 1. What this is
 
-Both compose files are now the same shape. RogueLLM shares the VPS hardware with
-other apps and nothing else: separate project, env file, volume, and port.
+A FastAPI service that generates a complete playable game World from one
+sentence, then serves runs of it over a websocket.
 
-## Blocking: the reverse proxy cutover
+The central idea, and the thing most of the architecture follows from: **a World
+is an artifact, not a session.** It is generated once, illustrated, persisted,
+and then played many times by many people. Generation is expensive; play is
+free.
 
-`docker-compose.production.yml` **no longer joins `chatnext3-network`**. Until
-the proxy is repointed, deploying that change breaks production ingress, because
-the proxy still resolves RogueLLM by container alias over a network the app is
-no longer on.
+### Modules
 
-Before or with that deploy:
+| File | Lines | Role |
+|---|---|---|
+| `main.py` | 1768 | HTTP + websocket endpoints, sessions, auth, static mounts |
+| `db.py` | 1529 | SQLite access, schema, migrations, optional S3 sync |
+| `game_state_manager.py` | 1434 | World construction, snapshot, run state |
+| `gen_image.py` | 976 | All art generation, keying, compositing |
+| `gen_ai.py` | 906 | All text generation |
+| `player_action_handler.py` | 601 | Move, items, encounters |
+| `gen_ai_prompts.py` | 378 | Every system prompt |
+| `world_moderation.py` | 315 | LLM review before a World goes public |
+| `websocket_schemas.py` | 216 | Inbound message validation |
+| `combat_manager.py` | 195 | Combat resolution |
+| `game_websocket_handler.py` | 187 | Action routing |
+| `entity_placement_manager.py` | 182 | Where enemies and items go |
+| `game.py` | 163 | Composition root for a run |
 
-1. Point the proxy upstream at `127.0.0.1:${ROGUELLM_HOST_PORT}` (18081) on the
-   host, instead of the `roguellm-production` container alias.
-2. A containerized proxy cannot reach host loopback directly. Give it
-   `extra_hosts: ["host.docker.internal:host-gateway"]` and use that name, or
-   address the Docker bridge gateway.
-3. Keep the WebSocket upgrade headers for `/ws/*`. The game is entirely
-   websocket-driven; HTTP alone will look like it works and then hang.
-4. Verify `/health`, `/health/db`, login, and one full websocket run.
+Frontend is Vue 3 from a CDN, no build step: `static/index.html` (lobby),
+`static/game.html` (run), `static/js/landing.js`, `static/js/createApp.js`.
 
-Rollback is to restore the `networks:` block in the compose file.
+---
 
-Staging already runs this way and needs no change, which is the evidence the
-pattern works on that host.
+## 2. Client contract
 
-## New environment variables
+This is what a mobile client has to speak. There is no REST game API; play is
+entirely websocket.
 
-Everything below is additive; existing deployments keep working with none of it
-set.
+### Lifecycle
+
+1. `POST /api/create_game_session` with `{generator_id}` or `{theme}` → `{session_id}`
+2. Connect `WS /ws/game/{session_id}`
+3. Server pushes `connection_established`, then `status` and `forge_progress`
+   while the World is built
+4. Client sends `{"action": "get_initial_state"}`
+5. Server pushes `update` messages; client sends actions
+
+`WS /ws/game` (no session id) is a legacy endpoint kept for compatibility.
+
+### Client → server actions
+
+`get_initial_state`, `initialize`, `restart`, `quit`, `move` (with `direction`),
+`attack`, `run`, `use_item` (with `item_id`), `equip_item` (with `item_id`),
+`choose_story` (with `choice_id`).
+
+Validated in `websocket_schemas.py`. Unknown actions return an error rather than
+closing the socket.
+
+### Server → client messages
+
+| `type` | Meaning |
+|---|---|
+| `connection_established` | Socket ready; carries `generator_id` |
+| `status` | `creating` / `ready` during World construction |
+| `forge_progress` | The build narrating itself; see below |
+| `update` | Full game state; `{state, description_raw, description}` |
+| `error` | Something failed. **The session stays open.** |
+
+`update` carries the entire `GameState` (see `models.py`), not a diff. It is the
+only state message; the client re-renders from it.
+
+`forge_progress` stages, in order: `theme` (title, summary), `cast` (the roster
+about to be drawn), `art` (one per character as it completes, with `index` and
+`total`), `art_failed`, `location`, `cover`, then `building` and `populating`
+while the map is laid out. Completion order for `art` is **not** guaranteed —
+characters are drawn concurrently, so match on `character_id`.
+
+### HTTP endpoints
+
+Worlds: `GET /api/worlds/recent`, `GET /api/worlds/{id}`, `GET /api/my/worlds`,
+`GET /api/my/stats`.
+Auth: `POST /api/signup`, `POST /api/login`, `POST /api/logout`, `GET /api/me`.
+Health: `GET /health`, `GET /health/db`.
+Pages: `/`, `/game/{session_id}`, `/admin`.
+
+**Auth is a signed session cookie today.** A native client needs a token
+instead; see Mobile.
+
+---
+
+## 3. How a World is built
+
+Roughly 20 API calls, 2-4 minutes with art on.
+
+1. `set_theme_description` — expands one sentence into a themed brief.
+   First line is the title, the rest is the summary.
+2. In parallel: players, items, enemies, cell types. Each is generated by
+   showing the model a **sample JSON** (`game_*.json` in the repo root) and
+   asking it to match the shape while replacing the content. Those samples are
+   deliberately genre-neutral; naming them Goblin and Orc used to pull every
+   World toward monsters-and-loot.
+3. `save_generator` → the World id. **The id is a content hash of the
+   definitions.**
+4. `gen_visual_manifest` — one art direction for the whole World: style,
+   palette, per-character and per-location descriptions, exclusions. Validated
+   against the World it describes, so hallucinated ids are dropped and omissions
+   fall back to the entity's own text.
+5. Art: one sprite sheet per character, one backdrop per location, 4 at a time.
+6. Cover card composited from the real sprites over a real backdrop.
+7. On first play only: map CSV, entity placements, tile prose — then persisted
+   as the snapshot. Every later run reads them back.
+
+### Why sprite sheets
+
+Each character is generated as **one image containing three poses**, then
+sliced. Identity is exact rather than approximate, because the frames are
+literally the same image, and it costs a third of three separate calls.
+
+### Why every prompt repeats the manifest
+
+Each image is a separate API call with no memory of the others. Identical style
+wording in every prompt is the only thing making them read as one game. Order
+does not matter, which is why they run concurrently.
+
+---
+
+## 4. Art pipeline specifics
+
+- Model `gpt-image-2`. **`gpt-image-1-mini` is removed from the API on
+  2026-12-01 and `gpt-image-1` deprecates 2026-10-23** — do not build on either.
+- **`gpt-image-2` rejects `background="transparent"` with a 400.** Chroma keying
+  is not a fallback for it, it is the only path. The generator tries transparent,
+  detects that specific rejection once, and switches for the rest of the World.
+- Keying is a plain colour match against flat magenta, not a flood fill.
+  Connectivity stranded background in gaps enclosed by the subject — between an
+  arm and a torso. The prompt tells the model to keep the key colour off the
+  subject instead.
+- The model returns **hard-edged art with no alpha**, so key colour bleeds into
+  outlines as fully opaque tinted pixels. A de-spill pass on boundary pixels
+  removes it, leaving single-channel colours such as red gloves alone.
+- Sheets and backdrops are 1536x1024; covers 1200x675 (16:9, doubles as a social
+  preview); map tokens 256px, derived from the sprite rather than generated so
+  they cannot drift into a different character.
+- Failure is never fatal. Art off, no manifest, one character failing, or the
+  image API being down all leave the World playable on its Font Awesome icons.
+
+Weak spot worth knowing: characters whose description is "blurs at the edges" or
+"blends into mist" keep a little key colour, because their edges genuinely are
+the background. Measured at under 0.05% of pixels.
+
+---
+
+## 5. Data model
+
+SQLite at `_data/rllm_game_data.db`. Five tables: `users`, `generators`,
+`generator_translations`, `generator_worlds`, `world_moderation_reviews`.
+
+- **`generators`** — a World: theme, generated title/summary, language, and the
+  four `*_defs` JSON columns. Art URLs live on those definitions.
+- **`generator_worlds`** — the playable snapshot: `map_csv` (cell-type ids),
+  `entity_placements` (entity ids), `tile_info` keyed by language, and
+  `visual_manifest` (art direction plus `cover_url`).
+- **`generator_translations`** — per-language cache of a World's definitions,
+  versioned by `WORLD_TRANSLATION_CACHE_VERSION`.
+
+Schema changes are additive and applied by `init_db()` on startup via
+`_ensure_column`. No manual migration step; verified against a database
+predating both new structures.
+
+### Traps
+
+These are the ones that cost time to find. All are real, all are load-bearing.
+
+- **The World id is a content hash of its definitions.** Anything mutating a
+  World after save must use `update_generator_definitions`, never
+  `save_generator` — re-saving mints a *different* id and orphans the art
+  written under the original one.
+- **`save_generator` uses `INSERT OR REPLACE`**, which deletes and reinserts the
+  row. That is why the snapshot lives in its own table rather than extra
+  `generators` columns; those would be silently nulled on every re-save.
+- **Deleting a `generator_worlds` row to force a map rebuild also drops that
+  World's art manifest**, including `cover_url`. Snapshot and manifest are
+  deliberately disjoint *columns* written at different times, but a whole-row
+  delete ignores that.
+- **The map is stored as cell-type ids and placements as entity ids**, which
+  keeps them language-independent and outside the translation cache. Only tile
+  prose is language-scoped.
+- **Art fields must stay in `PRESERVED_WORLD_FIELD_NAMES`** in `gen_ai.py`, or
+  translation will rewrite URLs. Currently `sprite_url`, `sprite_token_url`,
+  `sprite_frames`, `backdrop_url`.
+
+---
+
+## 6. Cost and runtime
+
+Measured, not estimated.
+
+| | Per forge |
+|---|---|
+| Images — 11 at 1536x1024 medium | **$0.45** |
+| Text — 9 calls, 10.2k in / 8.5k out on `gpt-4.1-mini` | **$0.018** |
+| Total | **~$0.47** |
+
+Images are 96% of it. **Play makes no model calls at all**, so cost scales with
+Worlds forged, not Worlds played.
+
+Available savings:
+
+- **Backdrops are generated at medium and then displayed at 40% opacity behind
+  a shade gradient.** Dropping only those to low quality takes a forge to about
+  $0.29 with nothing visible lost. One config change.
+- Cast size is capped at 4-6 enemies and 4-6 terrain types. Before that cap a
+  World could be 11 characters and 9 terrains, and a forge took over 9 minutes.
+
+Concurrency is 4 (`ART_CONCURRENCY`). `WORLD_CREATION_TIMEOUT_SECONDS` defaults
+to 60, or 600 when art is on — a flat 60s ceiling failed every art-enabled forge.
+
+---
+
+## 7. Moderation
+
+Public listing runs an LLM review (`world_moderation.py`) over the World's
+definitions plus its baked prose, checking for personal information, secrets,
+harmful content, and prompt injection.
+
+**Standing constraint:** the reviewer must see everything a player will read.
+`build_world_review_payload` originally passed only the theme and the four
+`*_defs`, so persisted tile prose was player-visible yet never reviewed.
+`collect_baked_prose` now supplies it. **Any future pre-generated prose must be
+added there too, or it reopens the hole.**
+
+The sample Worlds are currently `unlisted` and have not been through review.
+
+---
+
+## 8. Internationalisation
+
+Six locales: `en`, `es`, `it`, `ja`, `zh-Hans`, `zh-Hant`.
+
+- UI strings live in `static/translations/*.json`.
+- A World's generated content is translated on first play in a new language and
+  cached in `generator_translations`, keyed by
+  `WORLD_TRANSLATION_CACHE_VERSION`. Bump it when baked text changes shape.
+- `en.json` uses 4-space indent and comment keys; the others use 2-space. Tools
+  that reserialise it produce a whole-file diff.
+- Nested keys repeat across blocks — `eyebrow` exists under both `forge` and
+  `objectivePanel` — so anchor edits inside the right object.
+
+---
+
+## 9. Configuration
+
+Existing: `SESSION_SECRET_KEY`, `SESSION_COOKIE_SAMESITE`, `APP_ENV`,
+`APP_VERSION`, `LOW_SPEC_MODEL_*`, `HIGH_SPEC_MODEL_*`,
+`WORLD_PUBLIC_REVIEW_MODEL_*`, `SEARCH_PROVIDER`, `SERPAPI_KEY`,
+`ADMIN_USERNAMES`, `ENABLE_WORLD_LIBRARY`, `ENABLE_DEBUG_SEED`,
+`ENABLE_LLM_CONTENT_LOGGING`, `DEFAULT_NEW_WORLD_VISIBILITY`,
+`REQUIRE_LOGIN_TO_CREATE_WORLD`, `DO_STORAGE_*` / `DO_SPACES_*`.
+
+Added this cycle, all additive:
 
 | Variable | Default | Notes |
 |---|---|---|
 | `ENABLE_WORLD_ART` | `0` | Off. Every forge costs real money when on. |
-| `IMAGE_MODEL_NAME` | `gpt-image-2` | Do not use `gpt-image-1-mini`: removed from the API 2026-12-01. `gpt-image-1` deprecates 2026-10-23. |
-| `IMAGE_MODEL_QUALITY` | `medium` | See the WebP and quality notes below. |
+| `IMAGE_MODEL_NAME` | `gpt-image-2` | See deprecation dates above. |
+| `IMAGE_MODEL_QUALITY` | `medium` | `low` for backdrops is the saving. |
 | `IMAGE_MODEL_API_KEY` | falls back to `LOW_SPEC_MODEL_API_KEY` | |
-| `IMAGE_MODEL_BASE_URL` | unset | For OpenAI-compatible endpoints. |
-| `WORLD_ASSETS_DIR` | `_data/assets` | Inside the existing data volume on purpose. |
-| `WORLD_CREATION_TIMEOUT_SECONDS` | `60`, or `600` when art is on | A flat 60s ceiling failed every art-enabled forge. |
+| `IMAGE_MODEL_BASE_URL` | unset | OpenAI-compatible endpoints. |
+| `WORLD_ASSETS_DIR` | `_data/assets` | Inside the data volume on purpose. |
+| `WORLD_CREATION_TIMEOUT_SECONDS` | `60`, or `600` with art | |
 
-## Storage
+`ENABLE_LLM_CONTENT_LOGGING` writes prompts and completions to logs. It is off
+by default and should stay off in production; it is a privacy surface.
 
-Generated art lives in `_data/assets/<world_id>/`, inside the same volume as the
-database, so there is one thing to back up and one thing to move.
+---
 
-Measured, per World: **30 files, about 20-25 MB**. The database itself is
-negligible by comparison — 364 KB for ten Worlds.
+## 10. Deployment
 
-That scales badly. A thousand Worlds is roughly 25 GB.
+- **App**: FastAPI + uvicorn, `main:app`, port 8000 in the container.
+- **Image**: `python:3.11-slim`, non-root `app` (uid 10001), `HEALTHCHECK` built
+  in, `--proxy-headers --forwarded-allow-ips *` so it trusts a proxy.
+- **Stacks**: `docker-compose.staging.yml` (`roguellm-staging`, 18080) and
+  `docker-compose.production.yml` (`roguellm-production`, 18081). Both publish
+  on `127.0.0.1` only.
+- **State**: one named volume per stack at `/app/_data`, holding the database
+  and all art.
 
-**The single highest-value fix is serving WebP instead of PNG.** Measured on a
-real World at quality 85:
+RogueLLM shares the VPS hardware with other apps and **nothing else**: separate
+project, env file, volume, port. The goal is that moving to a dedicated server
+is a DNS change plus the same compose file.
+
+### Blocking: the reverse proxy cutover
+
+`docker-compose.production.yml` **no longer joins `chatnext3-network`**.
+Deploying that before the proxy is repointed breaks ingress, because the proxy
+still resolves RogueLLM by container alias over a network the app has left.
+
+1. Point the proxy upstream at `127.0.0.1:${ROGUELLM_HOST_PORT}` (18081).
+2. A containerized proxy cannot reach host loopback directly — give it
+   `extra_hosts: ["host.docker.internal:host-gateway"]`, or use the bridge
+   gateway.
+3. **Keep the WebSocket upgrade headers for `/ws/*`.** Play is entirely
+   websocket; HTTP alone will look like it works and then hang.
+4. Verify `/health`, `/health/db`, login, and one full websocket run.
+
+Rollback is restoring the `networks:` block. Staging already runs this way,
+which is the evidence the pattern works on that host.
+
+---
+
+## 11. Storage
+
+Art lives in `_data/assets/<world_id>/`, in the same volume as the database.
+
+Measured per World: **30 files, 20-25 MB**. The database is 364 KB for ten
+Worlds, so art is effectively all of the state. A thousand Worlds is ~25 GB.
+
+### WebP is the single biggest win
+
+Measured on a real World at quality 85:
 
 | Asset | PNG | WebP | Saving |
 |---|---|---|---|
@@ -83,116 +341,118 @@ real World at quality 85:
 | map token | 74 KB | 14 KB | 81% |
 | **World total** | **20.1 MB** | **~2.1 MB** | **~89%** |
 
-That is a tenfold cut in disk, bandwidth, and mobile download size for no
-visible quality loss. Sprites and tokens need the alpha channel, which WebP
-supports; backdrops and covers are opaque and could drop alpha for a little
-more. The generator writes PNG today (`save_asset` in `gen_image.py`).
+Tenfold cut in disk, bandwidth, and mobile download for no visible loss.
+Sprites and tokens need alpha, which WebP supports; backdrops and covers are
+opaque and could drop it for a little more. `save_asset` in `gen_image.py`
+writes PNG today.
 
-## Object storage
+Under the mobile plan this stops being a saving and becomes a prerequisite:
+20 MB per World over a phone connection is not shippable.
 
-Art currently sits on the box, in the same volume as the database. That is fine
-while it is small and keeps the "one thing to move" property, but it does not
-survive the mobile plan: every player fetching a World's art is egress, and the
-VPS pays for all of it.
+### Object storage
 
-**The deciding cost here is egress, not storage.** A World is stored once and
-downloaded many times, which inverts the usual instinct to shop on price per
-stored GB.
+**Egress decides this, not storage.** A World is stored once and downloaded many
+times, which inverts the usual instinct to shop on price per stored GB.
 
-Modelled at 1,000 Worlds, 100 plays each, WebP assets — so about 210 GB served
-against 2.1 GB stored:
+Modelled at 1,000 Worlds, 100 plays each, WebP — about 210 GB served against
+2.1 GB stored:
 
 | | Storage | Egress | Total / month |
 |---|---|---|---|
 | **Cloudflare R2** | $0.03 | **$0** | **~$0.03** |
-| Backblaze B2 | $0.01 | $2.04, or $0 through the Cloudflare CDN | ~$2 |
+| Backblaze B2 | $0.01 | $2.04, or $0 via the Cloudflare CDN | ~$2 |
 | AWS S3 | $0.05 | $18.90 | ~$19 |
 
-B2 has the cheapest raw storage, roughly 2.5x cheaper than R2, but that barely
-registers when the bill is made of traffic. **R2 is the recommendation**, on
-zero egress.
+**R2 is the recommendation**, on zero egress. B2's cheaper raw storage barely
+registers when the bill is made of traffic. Note the compounding: at 20 MB per
+World instead of 2 MB, the same traffic on S3 is about $190/month.
 
-Note how this compounds with the WebP conversion above: at 20 MB per World
-rather than 2 MB, the same traffic on S3 would be about $190/month. Under the
-mobile plan that egress is also the player's mobile data, so the two decisions
-push the same way.
+- **The plumbing exists.** `db.py` builds a boto3 client with a configurable
+  `endpoint_url` for DigitalOcean Spaces. R2 is S3-compatible, so this is an
+  endpoint and a credential rather than a rewrite.
+- **R2 charges for operations** even though egress is free: Class B reads about
+  $0.36/million, roughly $1/month in the model above. That argues for something
+  worth doing anyway — **ship a World's art as one bundle rather than 30
+  files.** One request instead of thirty is faster on a phone and survives a bad
+  connection. Decide it before the client is built.
 
-Two practical notes:
+Order: local volume while small → WebP → R2 when art leaves the box, which the
+mobile client forces.
 
-- **The plumbing already exists.** `db.py` builds a boto3 client with a
-  configurable `endpoint_url`, currently pointed at DigitalOcean Spaces for the
-  SQLite file. R2 is S3-compatible, so adopting it is an endpoint and a
-  credential rather than a rewrite.
-- **R2 charges for operations even though egress is free**: Class B reads are
-  about $0.36 per million. At 30 files per World that is roughly $1/month in the
-  model above. Small, but it argues for something worth doing regardless:
-  **ship a World's art as one bundle rather than 30 files.** One request instead
-  of thirty is faster on a phone, more reliable on a bad connection, easier to
-  cache, and collapses the operation cost. That is a client-architecture
-  decision worth making before the app is built.
+### Backups
 
-Suggested order: keep art on the local volume while it is small, convert to
-WebP, and move to R2 when art leaves the box — which the mobile client forces.
+`scripts/backup-production-sqlite.sh` takes the **database only**. A host loss
+keeps the Worlds and loses every image in them. Either extend it to archive
+`_data/assets`, or decide explicitly that art is regenerable and record that.
 
-Related: **backups do not cover art.** `scripts/backup-production-sqlite.sh`
-takes the database only, so a host loss keeps the Worlds and loses every image
-in them. Either extend it to archive `_data/assets`, or accept art as
-regenerable and record that decision.
+---
 
-## Database
+## 12. Mobile
 
-SQLite at `_data/rllm_game_data.db`. Schema changes this cycle are additive and
-applied automatically by `init_db()` on startup:
+The product is now **mobile only, shipped through the App Store and Play
+Store**. PWA is dropped. This reverses the earlier recommendation in
+`game-direction.md`, which argued PWA first specifically to avoid store review
+and the store cut.
 
-- new table `generator_worlds` — the persisted playable snapshot (map as
-  cell-type ids, entity placements, tile prose keyed by language) plus the
-  `visual_manifest` holding a World's art direction and `cover_url`;
-- new column `generator_worlds.visual_manifest`, added through the existing
-  `_ensure_column` helper for databases created before it existed.
+Consequences to carry:
 
-No manual migration step. Verified against a database predating both.
+- **Credits sold in-app go through StoreKit and Play Billing at 15-30%.**
+  Against a marginal cost of ~$0.47 per forge, that comes off the margin
+  directly. Selling credits on the web to spend in-app is against both stores'
+  rules for digital goods consumed in-app.
+- **Capacitor rather than native.** The frontend is already portrait-first, and
+  ChatNext3 already ships an iOS build on Capacitor 7 with a multi-instance
+  config. Wrapping keeps one codebase; Android is the same toolchain.
+- **Auth needs a token, not a session cookie.** Sign in with Apple is
+  effectively mandatory on iOS if any other social sign-in is offered.
+- **Asset size becomes a client problem.** See WebP and bundling above.
+- The server becomes an API and content host. It largely already is: play is
+  websocket, art is static files.
 
-One trap worth knowing: `save_generator` uses `INSERT OR REPLACE`, which deletes
-and reinserts the row. That is why the snapshot lives in its own table rather
-than in extra `generators` columns. Anything that mutates a World after save
-must use `update_generator_definitions`, not `save_generator` — the World id is
-a content hash of the definitions, so re-saving mints a *different* id and
-orphans the art written under the original one.
+---
 
-Also: deleting a `generator_worlds` row to force a map rebuild also drops that
-World's art manifest, including `cover_url`. They are deliberately disjoint
-*columns*, but a whole-row delete ignores that.
+## 13. Testing
 
-`production-publish-plan.md` still proposes Postgres for production. Nothing
-here blocks that; the snapshot and manifest are plain JSON columns.
+226 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
+`HIGH_SPEC_MODEL_API_KEY` to be set to anything, and `SESSION_SECRET_KEY` — some
+construct the app and fail on a missing key even though they make no model
+calls. No test spends money.
 
-## Runtime characteristics
+Notable guards, each protecting something that actually broke:
 
-- A forge with art takes **2-4 minutes** and issues about 20 API calls: 9 text
-  on `gpt-4.1-mini`, 11 images on `gpt-image-2`.
-- Image generation runs 4 at a time (`ART_CONCURRENCY` in `gen_image.py`).
-  Serialised, the same World took over nine minutes.
-- **Play makes no model calls at all.** A World's map, placements, and tile
-  prose are generated once and persisted; every later run reads them back.
-  Expect cost to scale with Worlds forged, not with Worlds played.
-- Measured cost per forge: **$0.45 images, $0.018 text**. Images are 96% of it.
-  Backdrops are generated at medium quality and then displayed at 40% opacity
-  behind a shade gradient; dropping only those to low quality takes a forge to
-  about $0.29 with nothing visible lost.
+- Every gameplay action stays in `FAST_DESCRIPTION_ACTIONS`, so no per-turn
+  model call can be reintroduced.
+- A failing action does not close the websocket. It used to, which ejected the
+  player mid-run to the landing page.
+- Replaying a World never regenerates its map or placements.
+- Chroma keying does not punch holes in subjects, and de-spill leaves
+  single-channel colours alone.
 
-## Open items
+**Frontend has no automated coverage.** Playwright is installed in the venv and
+was used throughout for screenshots and layout measurement; the scripts were
+ad-hoc and are not committed. Several real bugs this cycle were invisible from
+the code and only appeared on screen — a 422px element in a 390px viewport, a
+stage overflowing its grid row, CSS that never applied because the value was set
+inline in JavaScript. Worth making permanent.
 
-- The proxy cutover above. Blocking.
-- WebP conversion. Biggest single infrastructure win available, and a
-  prerequisite for the mobile client rather than just a saving.
-- Object storage on R2 when art leaves the box, reusing the existing boto3
-  client. Bundle a World's art into one artifact while doing it.
-- Art in backups, or an explicit decision that art is regenerable.
-- The sample Worlds are `unlisted`, so they do not appear on a public front
-  page. Making them public runs the LLM moderation review in
-  `world_moderation.py`. They are the first Worlds whose baked prose the
-  reviewer will see, via `collect_baked_prose`.
-- `_data/assets/efea0944/` holds orphaned art from a deleted test World.
-- Rate limiting and abuse controls for forging are not implemented. Forging is
-  the expensive operation and is currently ungated beyond
-  `REQUIRE_LOGIN_TO_CREATE_WORLD`.
+---
+
+## 14. Open items
+
+Ordered by what blocks what.
+
+1. **The reverse proxy cutover.** Blocking any production deploy.
+2. **WebP conversion.** Biggest infrastructure win, and a prerequisite for the
+   mobile client.
+3. **Art in backups**, or an explicit decision that art is regenerable.
+4. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
+   public runs the moderation review — worth doing deliberately, since they are
+   the first Worlds whose baked prose the reviewer will see.
+5. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
+6. **Rate limiting on forging.** It is the expensive operation and is ungated
+   beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
+   much more after.
+7. Token auth for the mobile client.
+8. Smaller: the local-dev Quick Start button points at a retired World; the
+   location name can appear three times on one screen; `_data/assets/efea0944/`
+   holds orphaned art from a deleted test World.

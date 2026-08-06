@@ -510,8 +510,9 @@ Open, roughly in order of how much they block anything:
 - `_data/assets/efea0944/` holds orphaned art from a deleted test World.
 
 Phases 5 and 6 below have not been started. Deployment is being taken forward
-separately; see [deployment-handoff.md](deployment-handoff.md), which carries
-the proxy cutover, the WebP saving, and the backup gap.
+separately; see [deployment-handoff.md](deployment-handoff.md), the technical
+handoff: architecture, the client contract, data model, costs, deployment, and
+the traps that are not visible from reading the code.
 
 ## Open questions
 
