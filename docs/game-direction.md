@@ -271,13 +271,41 @@ real World card replaces it.
 
 ## Mobile
 
-**PWA first, not native.** Installable, works from a shared link, no store
-review, and no 30% store cut on credit purchases — which would be severe on a
-low-margin virtual-currency product. Go native only after the loop is proven.
+**Decided: mobile only, shipped through the App Store and Play Store.** The PWA
+route is dropped. The product is a phone game with a server behind it, and web
+is no longer a shipping target — it stays as the development surface and, if
+useful later, a marketing or desktop companion.
 
-Replace the `180mm` breakpoints with real portrait-first breakpoints. The
-Journey layout is portrait-native by construction: vertical path, one thumb, no
-horizontal grid, no zooming.
+This reverses the earlier recommendation in this document, which argued PWA
+first to avoid store review and the store cut. That trade is now accepted
+deliberately, and it has one consequence worth carrying into Phase 5: **credits
+sold in-app go through StoreKit and Play Billing, which take 15-30%.** On a
+product whose marginal cost is roughly $0.45 of image generation per forge, that
+comes off the margin directly, so credit pack pricing has to be set against the
+net rather than the list price. Selling credits on the web and consuming them in
+the app is the usual way around it and is against both stores' rules for digital
+goods consumed in-app; do not plan on it.
+
+**Use Capacitor rather than building native.** The frontend is already a
+mobile-first Vue app with the location stage, combat screen, and encounter sheet
+all designed portrait-first, and ChatNext3 already ships an iOS build on
+Capacitor 7 with a multi-instance config. Wrapping is a fraction of the cost of
+a rewrite and keeps one codebase. Android would be new but is the same toolchain.
+
+What this changes technically:
+
+- The server becomes an API and content host rather than a web app. It already
+  is, in practice: play is entirely websocket-driven and art is served as static
+  files.
+- **Asset size becomes a client concern, not just a server one.** A World is
+  currently about 20-25 MB of PNG. Converting to WebP takes that to roughly
+  2 MB, measured — see [deployment-handoff.md](deployment-handoff.md). Over a
+  mobile connection that is the difference between a usable download and a
+  hostile one.
+- Auth needs to work without a browser session cookie. Sign in with Apple is
+  effectively mandatory on iOS if any other social sign-in is offered.
+- The `180mm` breakpoints should still be replaced with real portrait
+  breakpoints; that work is unaffected.
 
 ## Implementation order
 
@@ -444,7 +472,15 @@ gallery card would ever see.
 **Phase 5 — Credits and payments.** Stripe, credit ledger, forge/remix pricing,
 free-tier allowance.
 
-**Phase 6 — PWA.** Manifest, service worker, install prompt, offline shell.
+**Phase 6 — Mobile app.** Replaces the PWA plan.
+1. Wrap the existing frontend with Capacitor, following the ChatNext3 setup.
+2. Convert generated art to WebP before this matters: ~20 MB per World over a
+   mobile connection is not shippable, and it is a tenfold cut for no visible
+   loss.
+3. Replace cookie-session auth with a token the app can hold, and add Sign in
+   with Apple.
+4. Store listings, review, and IAP products for credits. Budget the 15-30% cut
+   into pricing rather than discovering it afterwards.
 
 ## Status
 
@@ -473,7 +509,9 @@ Open, roughly in order of how much they block anything:
   matches, so "Abandoned Control Tower" and "Control Tower" both show.
 - `_data/assets/efea0944/` holds orphaned art from a deleted test World.
 
-Phases 5 and 6 below have not been started.
+Phases 5 and 6 below have not been started. Deployment is being taken forward
+separately; see [deployment-handoff.md](deployment-handoff.md), which carries
+the proxy cutover, the WebP saving, and the backup gap.
 
 ## Open questions
 
