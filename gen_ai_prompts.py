@@ -203,26 +203,18 @@ Each cell type is illustrated as its own backdrop, so a handful of strongly
 distinct places serves the World far better than many similar ones, and each
 extra entry costs real generation time and money.
 The new cell type definitions must follow the same format as the sample
-definitions, but they must use a new theme description. The sample names places
-by what they do - open ground, shelter, a way through - so replace each with a
-specific place from this setting, whether that is a server room, a rooftop, a
-loading bay, or a shrine.
-"""
+definitions, but they must use a new theme description.
 
-# NOTE: Should append theme desc at the bottom
-SYS_GEN_MAP_CSV_MSG = """
-You are an expert game map generator. Your task is to generate a CSV map
-describing the game map. The user will provide a set of cell types, each with an "id",
-"name", "description".
+Each cell type covers a whole contiguous area of the map, never a single spot,
+so name a kind of place that can plausibly extend over ground: a district, a
+stretch of terrain, a class of space. "Storage racks", "flooded street level",
+and "open dust flats" all work, because a World can hold a lot of each.
 
-Your job is to respond with a CSV map, where each cell is described by the "id" of
-the cell type. Generate a map that is coherent with the game theme.
-Only use half of the cell types available so that a coherent map is still possible, and
-so that other cell types can be used in other levels.
-
-# Response Format
-Return ONLY the CSV map, with no additional text or explanations.
-Do not include any markdown formatting, including the triple backticks.
+A one-of-a-kind named building does not work. A World holds exactly one control
+tower, so "Control Tower" cannot describe an area, and repeating it across the
+map reads as broken. The sample names places by what they do - open ground,
+shelter, a way through - so replace each with a kind of place from this setting
+that works the same way.
 """
 
 SYS_GEN_ENTITY_PLACEMENT_MSG = """

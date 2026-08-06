@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from openai import AsyncOpenAI
 
 from db import WORLD_SNAPSHOT_VERSION
-from gen_ai import DEFAULT_LOW_SPEC_MODEL, resolve_reasoning_effort
+from gen_ai import DEFAULT_LOW_SPEC_EFFORT, DEFAULT_LOW_SPEC_MODEL, resolve_reasoning_effort
 from gen_ai_utils import with_exponential_backoff
 from privacy_logging import describe_text
 
@@ -103,7 +103,7 @@ def get_world_public_review_reasoning_effort() -> str:
     return (
         os.getenv("WORLD_PUBLIC_REVIEW_MODEL_REASONING_EFFORT")
         or os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT")
-        or "none"
+        or DEFAULT_LOW_SPEC_EFFORT
     )
 
 

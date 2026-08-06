@@ -14,13 +14,6 @@ async def passthrough_prerender(request, html_content):
     return html_content
 
 
-def make_test_map(celltype_defs, width=10, height=10):
-    return [
-        [celltype_defs[(x + y) % len(celltype_defs)] for x in range(width)]
-        for y in range(height)
-    ]
-
-
 class GameSessionSmokeTests(unittest.TestCase):
     def make_db(self, directory):
         with patch.dict(os.environ, {
@@ -40,7 +33,6 @@ class GameSessionSmokeTests(unittest.TestCase):
             seeded_worlds = ensure_dev_worlds(manager)
             piedone = next(world for world in seeded_worlds if world["key"] == "piedone")
             piedone_data = manager.get_generator(piedone["id"])
-            test_map = make_test_map(piedone_data["celltype_defs"])
             test_placements = [
                 {"type": "item", "entity_id": "espresso", "x": 1, "y": 0},
                 {"type": "enemy", "entity_id": "street_punk", "x": 2, "y": 0},
@@ -51,7 +43,6 @@ class GameSessionSmokeTests(unittest.TestCase):
                     patch("game_state_manager.db", manager), \
                     patch("main.get_prerendered_content", passthrough_prerender), \
                     patch("gen_ai.GenAI.translate_world_definition") as translate_world, \
-                    patch("gen_ai.GenAI.gen_game_map_from_celltypes", return_value=test_map), \
                     patch("gen_ai.GenAI.gen_entity_placements", return_value=test_placements), \
                     patch("gen_ai.GenAI.gen_adapt_sentence", side_effect=lambda state, events, text: text), \
                     patch("gen_ai.GenAI.gen_room_description", return_value="A quiet test room."):

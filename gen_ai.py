@@ -15,7 +15,6 @@ from gen_ai_prompts import (
     SYS_GEN_GAME_ENEMIES_JSON_MSG,
     SYS_GEN_GAME_CELLTYPES_JSON_MSG,
     SYS_TRANSLATE_WORLD_JSON_MSG,
-    SYS_GEN_MAP_CSV_MSG,
     SYS_GEN_ENTITY_PLACEMENT_MSG,
     SYS_GEN_TILE_QUICK_INFO_MSG,
     SYS_GEN_VISUAL_MANIFEST_MSG,
@@ -46,19 +45,21 @@ MODEL_QUALITY_HIGH = "high"
 # Model quality settings for different tasks
 MODEL_QUALITY_FOR_JSON = MODEL_QUALITY_LOW
 MODEL_QUALITY_FOR_THEME_DESC = MODEL_QUALITY_LOW
-MODEL_QUALITY_FOR_MAP = MODEL_QUALITY_LOW
 
-# Reasoning effort replaces temperature as the generation-control knob: these
-# models reject any temperature but the default, and reasoning is the better
-# lever anyway. Only the reasoning families accept the parameter, so it is
-# stripped for anything older, which would 400 on it.
+# Reasoning effort is the generation-control knob. Only the reasoning families
+# accept the parameter, so it is stripped for anything older, which would 400.
 REASONING_MODEL_PREFIXES = ("gpt-5.", "gpt-5-", "o1", "o3", "o4")
 
 # gpt-4.1-mini, the previous default, deprecates 2026-11-04 and costs more than
 # Luna does. Luna is the cheap bulk tier; Terra is the real high tier, which the
 # old defaults never provided because both tiers named the same model.
+#
+# Luna runs at high effort rather than none: it is cheap enough per token that
+# reasoning is worth buying, and worldgen quality is the whole product.
 DEFAULT_LOW_SPEC_MODEL = "gpt-5.6-luna"
 DEFAULT_HIGH_SPEC_MODEL = "gpt-5.6-terra"
+DEFAULT_LOW_SPEC_EFFORT = "high"
+DEFAULT_HIGH_SPEC_EFFORT = "low"
 
 
 def model_takes_reasoning_effort(model_name: str) -> bool:
@@ -563,70 +564,6 @@ A universe where you can become the master of the universe by defeating other ma
 
     async def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
         return await self._gen_game_elems_from_json_sample(celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
-
-    async def gen_game_map_from_celltypes(
-            self,
-            celltype_defs: List[dict],
-            map_width: int,
-            map_height: int
-    ) -> List[List[dict]]:
-        # Prepare message
-        use_msg = "Here are the cell types:\n"
-        for ct in celltype_defs:
-            id = ct['id']
-            name = ct['name']
-            desc = ct['description']
-            use_msg += f'- id:{id}, name:"{name}", desc:"{desc}"\n'
-        use_msg += f"\nGenerate map with dimensions width:{map_width} and height:{map_height} using the above cell types."
-
-        logger.info(
-            "Generating game map from cell types (%s, %sx%s)",
-            describe_collection(celltype_defs),
-            map_width,
-            map_height,
-        )
-        if is_sensitive_content_logging_enabled():
-            logger.info("gen_game_map_from_celltypes user message: %s", use_msg)
-
-        # Get CSV response
-        result_csv = await self._quick_completion(
-            system_msg=append_desc_to_prompt(
-                SYS_GEN_MAP_CSV_MSG,
-                self.theme_desc_better
-            ),
-            user_msg=use_msg,
-            quality=MODEL_QUALITY_FOR_MAP
-        )
-        logger.info("Generated map CSV (%s)", describe_text(result_csv))
-        if is_sensitive_content_logging_enabled():
-            logger.info("Result CSV: %s", result_csv)
-        # Clean the response to remove any markdown formatting (just in case)
-        result_csv = extract_clean_data(result_csv)
-
-        # Process CSV into map
-        out_map = []
-        rows = [row.strip() for row in result_csv.split("\n") if row.strip()]
-
-        if len(rows) != map_height:
-            logger.error(f"Generated map height {len(rows)} doesn't match requested height {map_height}")
-            raise ValueError("Generated map has incorrect dimensions")
-
-        for row in rows:
-            cells = [cell.strip() for cell in row.split(",")]
-            if len(cells) != map_width:
-                logger.error(f"Generated map width {len(cells)} doesn't match requested width {map_width}")
-                raise ValueError("Generated map has incorrect dimensions")
-
-            map_row = []
-            for cell_id in cells:
-                matching_cells = [ct for ct in celltype_defs if str(ct['id']) == cell_id]
-                if not matching_cells:
-                    logger.error(f"Unknown cell type ID: {cell_id}")
-                    raise ValueError(f"Generated map contains unknown cell type: {cell_id}")
-                map_row.append(matching_cells[0])
-            out_map.append(map_row)
-
-        return out_map
 
     # Generate strategic entity placements (both enemies and items)
     async def gen_entity_placements(

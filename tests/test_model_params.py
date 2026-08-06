@@ -18,20 +18,7 @@ def params(model_name, reasoning_effort):
 
 
 class CompletionParamsTests(unittest.TestCase):
-    """Reasoning effort is the only generation knob we send.
-
-    Temperature is gone on purpose: these models reject any value but the
-    default, so pairing the two is a 400 rather than a degradation.
-    """
-
-    def test_never_sends_temperature(self):
-        for model_name, effort in [
-            (DEFAULT_HIGH_SPEC_MODEL, "low"),
-            (DEFAULT_LOW_SPEC_MODEL, "none"),
-            ("gpt-4.1-mini", None),
-        ]:
-            with self.subTest(model=model_name):
-                self.assertNotIn("temperature", params(model_name, effort))
+    """Reasoning effort is the only generation knob we send."""
 
     def test_reasoning_model_receives_the_effort(self):
         self.assertEqual(

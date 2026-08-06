@@ -35,7 +35,12 @@ if _fallback:
         os.environ.setdefault(name, _fallback)
 
 from db import db  # noqa: E402
-from gen_ai import GenAI, GenAIModel, DEFAULT_LOW_SPEC_MODEL  # noqa: E402
+from gen_ai import (  # noqa: E402
+    GenAI,
+    GenAIModel,
+    DEFAULT_LOW_SPEC_EFFORT,
+    DEFAULT_LOW_SPEC_MODEL,
+)
 from gen_image import (  # noqa: E402
     FRAME_NAMES,
     WorldArtGenerator,
@@ -67,7 +72,7 @@ async def build_world(theme, language):
         model_name=os.getenv("LOW_SPEC_MODEL_NAME", DEFAULT_LOW_SPEC_MODEL),
         base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
         api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
-        reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", "none"),
+        reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", DEFAULT_LOW_SPEC_EFFORT),
     )
     gen_ai = GenAI(lo_model=model, hi_model=model)
     gen_ai.language = language

@@ -27,6 +27,8 @@ class Equipment(BaseModel):
 
 class GameState(BaseModel):
     cell_types: List[List[dict]] = []
+    # Contiguous same-terrain areas of the map, nearest the spawn first.
+    regions: List[Dict[str, Any]] = Field(default_factory=list)
     tile_info: List[List[Dict[str, Any]]] = Field(default_factory=list)
     map_width: int
     map_height: int

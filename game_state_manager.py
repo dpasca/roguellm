@@ -5,9 +5,17 @@ import os
 import logging
 import asyncio
 import aiofiles
+from collections import deque
 from typing import Any, Dict, List, Optional, Union
 
-from gen_ai import GenAI, GenAIModel, DEFAULT_HIGH_SPEC_MODEL, DEFAULT_LOW_SPEC_MODEL
+from gen_ai import (
+    GenAI,
+    GenAIModel,
+    DEFAULT_HIGH_SPEC_EFFORT,
+    DEFAULT_HIGH_SPEC_MODEL,
+    DEFAULT_LOW_SPEC_EFFORT,
+    DEFAULT_LOW_SPEC_MODEL,
+)
 from models import GameState, Enemy, Item, Equipment
 from db import db, WORLD_SNAPSHOT_VERSION  # noqa: F401  (re-exported for callers/tests)
 from tools.fa_runtime import fa_runtime
@@ -25,6 +33,11 @@ logger = logging.getLogger()
 
 # Use random map (for testing)
 USE_RANDOM_MAP = False
+# One region per terrain, so every backdrop the forge paid for is actually used
+# and the World's own variety decides how many areas it has. The cell-type
+# prompt asks for 4-6, which over a 10x8 grid is 13-20 cells each. The cap only
+# guards a World that somehow defines many more.
+MAX_REGIONS = 6
 WORLD_TRANSLATION_CACHE_VERSION = 5
 
 
@@ -42,19 +55,18 @@ class GameStateManager:
         self.language = language
         self.last_described_ct = None
 
-        # Model definitions. The low tier runs bulk generation and stays at
-        # reasoning effort "none" for speed and cost; the high tier reasons.
+        # Model definitions
         lo_model = GenAIModel(
             model_name=os.getenv("LOW_SPEC_MODEL_NAME", DEFAULT_LOW_SPEC_MODEL),
             base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
-            reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", "none"),
+            reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", DEFAULT_LOW_SPEC_EFFORT),
         )
         hi_model = GenAIModel(
             model_name=os.getenv("HIGH_SPEC_MODEL_NAME", DEFAULT_HIGH_SPEC_MODEL),
             base_url=os.getenv("HIGH_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("HIGH_SPEC_MODEL_API_KEY"),
-            reasoning_effort=os.getenv("HIGH_SPEC_MODEL_REASONING_EFFORT", "low"),
+            reasoning_effort=os.getenv("HIGH_SPEC_MODEL_REASONING_EFFORT", DEFAULT_HIGH_SPEC_EFFORT),
         )
 
         # GenAI instance, with low and high spec models
@@ -365,8 +377,8 @@ class GameStateManager:
         )
         self.definitions.celltype_defs = result["celltype_defs"]
 
-    def make_random_map(self):
-        """Generate a playable map from either list- or mapping-based definitions."""
+    def available_cell_types(self) -> List[dict]:
+        """Normalize the terrain definitions, which arrive as a list or a mapping."""
         raw_defs = self.definitions.celltype_defs
         cell_types = []
 
@@ -412,9 +424,188 @@ class GameStateManager:
                 },
             ]
 
+        return cell_types
+
+    def make_random_map(self):
+        """Scatter terrain per cell. Kept only for USE_RANDOM_MAP debugging.
+
+        This is what the game used to ship: independent draws per cell, so
+        adjacent cells are unrelated and the World reads as noise. Real maps go
+        through build_region_map.
+        """
+        cell_types = self.available_cell_types()
         return [[self.random.choice(cell_types)
                 for _ in range(self.state.map_width)]
                for _ in range(self.state.map_height)]
+
+    def _neighbours(self, x: int, y: int):
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.state.map_width and 0 <= ny < self.state.map_height:
+                yield nx, ny
+
+    def _pick_region_seeds(self, count: int) -> List[tuple]:
+        """Place seeds far apart, so the regions grown from them come out even.
+
+        Farthest-point sampling: each new seed goes wherever is furthest from
+        every seed already placed. Ties are broken with the run's seeded RNG so
+        a given World always lays out the same way.
+        """
+        cells = [
+            (x, y)
+            for y in range(self.state.map_height)
+            for x in range(self.state.map_width)
+        ]
+        seeds = [self.random.choice(cells)]
+
+        while len(seeds) < count:
+            def spread(cell):
+                return min(abs(cell[0] - sx) + abs(cell[1] - sy) for sx, sy in seeds)
+
+            furthest = max(spread(cell) for cell in cells)
+            if furthest == 0:  # more regions requested than cells available
+                break
+            seeds.append(self.random.choice([c for c in cells if spread(c) == furthest]))
+
+        return seeds
+
+    def partition_into_regions(self, count: int) -> List[List[int]]:
+        """Grow contiguous regions outward from the seeds by breadth-first steps.
+
+        Every cell is claimed from an already-claimed neighbour, so each region
+        is connected by construction. That is the whole point of doing this in
+        code: contiguity is a property of the algorithm, not something a model
+        is asked for and might not deliver.
+        """
+        seeds = self._pick_region_seeds(count)
+        region_of = [
+            [None] * self.state.map_width
+            for _ in range(self.state.map_height)
+        ]
+
+        frontiers = []
+        for index, (x, y) in enumerate(seeds):
+            region_of[y][x] = index
+            frontiers.append(deque([(x, y)]))
+
+        # One cell per region per round, so regions grow at the same rate and
+        # come out similar sizes. Claiming all of a region's frontier at once
+        # instead would hand most of the map to whichever seed had more room.
+        remaining = self.state.map_width * self.state.map_height - len(seeds)
+        while remaining > 0:
+            progressed = False
+            for index, frontier in enumerate(frontiers):
+                while frontier:
+                    x, y = frontier[0]
+                    open_neighbours = [
+                        (nx, ny) for nx, ny in self._neighbours(x, y)
+                        if region_of[ny][nx] is None
+                    ]
+                    if not open_neighbours:
+                        frontier.popleft()
+                        continue
+                    # Shuffled so borders wander instead of coming out as diamonds.
+                    nx, ny = self.random.choice(open_neighbours)
+                    region_of[ny][nx] = index
+                    frontier.append((nx, ny))
+                    remaining -= 1
+                    progressed = True
+                    break
+            if not progressed:  # every frontier is walled in
+                break
+
+        # A rectangular grid is fully connected, so this should not trigger.
+        # Claiming leftovers from a neighbour keeps regions contiguous if it does.
+        for y in range(self.state.map_height):
+            for x in range(self.state.map_width):
+                if region_of[y][x] is None:
+                    claimed = [
+                        region_of[ny][nx] for nx, ny in self._neighbours(x, y)
+                        if region_of[ny][nx] is not None
+                    ]
+                    region_of[y][x] = claimed[0] if claimed else 0
+
+        return region_of
+
+    def build_region_map(self) -> List[List[dict]]:
+        """Lay the map out as a few large areas instead of per-cell noise.
+
+        One terrain per region, so walking around inside an area keeps the same
+        backdrop and crossing into the next changes it once. Deterministic and
+        model-free, which also means the old failure mode - a model error
+        dropping the whole map back to noise - no longer exists.
+        """
+        cell_types = self.available_cell_types()
+        region_count = max(1, min(MAX_REGIONS, len(cell_types)))
+        region_of = self.partition_into_regions(region_count)
+
+        # Order regions by how far they start from the spawn, so terrain is
+        # assigned outward and the ordering means something to what comes next.
+        start_x, start_y = self.state.player_pos
+        nearest = {}
+        for y in range(self.state.map_height):
+            for x in range(self.state.map_width):
+                index = region_of[y][x]
+                distance = abs(x - start_x) + abs(y - start_y)
+                if index not in nearest or distance < nearest[index]:
+                    nearest[index] = distance
+        order = sorted(nearest, key=lambda index: (nearest[index], index))
+
+        # Distinct terrain per region, so no two areas can read as the same
+        # place. region_count is capped at the number of terrains for this.
+        chosen = self.random.sample(cell_types, region_count)
+        terrain_of = {index: chosen[position] for position, index in enumerate(order)}
+
+        return [
+            [terrain_of[region_of[y][x]] for x in range(self.state.map_width)]
+            for y in range(self.state.map_height)
+        ]
+
+    def derive_regions(self) -> List[Dict[str, Any]]:
+        """Describe the finished map as contiguous areas of one terrain.
+
+        Read back off the grid rather than tracked during generation, so a
+        freshly partitioned map, a persisted snapshot, and a hand-authored
+        config map all describe themselves the same way.
+        """
+        width, height = self.state.map_width, self.state.map_height
+        grid = self.state.cell_types
+        if not grid:
+            return []
+
+        seen = [[False] * width for _ in range(height)]
+        start_x, start_y = self.state.player_pos
+        regions = []
+
+        for y in range(height):
+            for x in range(width):
+                if seen[y][x]:
+                    continue
+                terrain = grid[y][x]
+                terrain_id = self._cell_id(terrain)
+                cells = []
+                stack = [(x, y)]
+                seen[y][x] = True
+                while stack:
+                    cx, cy = stack.pop()
+                    cells.append((cx, cy))
+                    for nx, ny in self._neighbours(cx, cy):
+                        if not seen[ny][nx] and self._cell_id(grid[ny][nx]) == terrain_id:
+                            seen[ny][nx] = True
+                            stack.append((nx, ny))
+                regions.append({
+                    "terrain_id": terrain_id,
+                    "name": (terrain or {}).get("name", "") if isinstance(terrain, dict) else "",
+                    "cell_count": len(cells),
+                    "distance_from_start": min(
+                        abs(cx - start_x) + abs(cy - start_y) for cx, cy in cells
+                    ),
+                })
+
+        regions.sort(key=lambda region: (region["distance_from_start"], region["terrain_id"]))
+        for index, region in enumerate(regions):
+            region["id"] = f"region-{index}"
+        return regions
 
     def make_fallback_placements(self):
         """Place saved-world entities deterministically when model placement is unavailable."""
@@ -1316,23 +1507,22 @@ class GameStateManager:
                 if valid_map:
                     self.state.cell_types = config_cell_types
                 else:
-                    logger.warning("Invalid cell_types in config, generating random map")
-                    self.state.cell_types = self.make_random_map()
+                    logger.warning("Invalid cell_types in config, laying out regions instead")
+                    self.state.cell_types = self.build_region_map()
             else:
-                # Generate AI map or fallback to random
-                try:
-                    if self.definitions.celltype_defs:
-                        self.state.cell_types = await self.gen_ai.gen_game_map_from_celltypes(
-                            self.definitions.celltype_defs,
-                            self.state.map_width,
-                            self.state.map_height
-                        )
-                    else:
-                        logger.warning("No celltype definitions available, using random map")
-                        self.state.cell_types = self.make_random_map()
-                except Exception as e:
-                    logger.error(f"Failed to generate AI map: {str(e)}. Falling back to random map.")
-                    self.state.cell_types = self.make_random_map()
+                self.state.cell_types = self.build_region_map()
+
+        # Every path ends here, so a snapshot and a fresh map describe their
+        # areas the same way.
+        self.state.regions = self.derive_regions()
+        logger.info(
+            "Map laid out as %s regions: %s",
+            len(self.state.regions),
+            ", ".join(
+                f"{region['name'] or region['terrain_id']}x{region['cell_count']}"
+                for region in self.state.regions
+            ),
+        )
 
         # Generate entity placements
         await self.initialize_game_placements(snapshot["entity_placements"] if snapshot else None)

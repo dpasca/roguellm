@@ -62,12 +62,11 @@ HIGH_SPEC_MODEL_NAME=gpt-5.6-terra
 LOW_SPEC_MODEL_API_KEY=your_openai_api_key_here
 HIGH_SPEC_MODEL_API_KEY=your_openai_api_key_here
 
-# Reasoning effort: none, low, medium, high, xhigh, max. This is the only
-# generation knob we send - temperature is not, since these models reject any
-# value but the default. The low tier runs bulk generation, so it stays at
-# "none" for speed and cost. The setting is ignored for models that predate
-# reasoning, so pinning gpt-4.1-mini here still works.
-LOW_SPEC_MODEL_REASONING_EFFORT=none
+# Reasoning effort: none, low, medium, high, xhigh, max. Luna is cheap enough
+# per token to be worth running at high effort, since worldgen quality is the
+# product. The setting is ignored for models that predate reasoning, so pinning
+# gpt-4.1-mini here still works.
+LOW_SPEC_MODEL_REASONING_EFFORT=high
 HIGH_SPEC_MODEL_REASONING_EFFORT=low
 
 # Alternative: gpt-5.6-sol is the deepest tier; gpt-4.1-mini is the previous
