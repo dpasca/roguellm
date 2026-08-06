@@ -89,7 +89,7 @@ async def with_exponential_backoff(func, max_retries=5, base_delay=2):
 # Given a theme description, generate a web search query and return the results
 async def make_query_and_web_search(
         oai_client: AsyncOpenAI,
-        model_name: str,
+        completion_params: dict,
         subject_input: str,
         language: str) -> str:
     user_msg = f"""
@@ -109,12 +109,11 @@ The language of the response must be: {get_language_name(language)}
 
     async def get_completion():
         return await oai_client.chat.completions.create(
-            model=model_name,
             messages=[
                 {"role": "system", "content": "You are an expert web search query generator."},
                 {"role": "user", "content": user_msg}
             ],
-            temperature=0.7
+            **completion_params
         )
 
     response = await with_exponential_backoff(get_completion)

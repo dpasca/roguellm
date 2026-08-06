@@ -46,22 +46,34 @@ WORLD_PUBLIC_REVIEW_IMMEDIATE_MAX_PENDING=10
 WORLD_PUBLIC_REVIEW_POLL_SECONDS=30
 WORLD_PUBLIC_REVIEW_MAX_PER_POLL=3
 WORLD_PUBLIC_REVIEW_WORKER_ENABLED=1
-# WORLD_PUBLIC_REVIEW_MODEL_NAME=gpt-4.1-mini
+# WORLD_PUBLIC_REVIEW_MODEL_NAME=gpt-5.6-luna
 # WORLD_PUBLIC_REVIEW_MODEL_BASE_URL=https://api.openai.com/v1
 # WORLD_PUBLIC_REVIEW_MODEL_API_KEY=your_review_model_api_key_here
+# Review is the one call whose mistakes get published, so gpt-5.6-terra with
+# effort "low" is worth considering here.
+# WORLD_PUBLIC_REVIEW_MODEL_REASONING_EFFORT=none
 
 # OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
 
 # For OpenAI models (default configuration)
-LOW_SPEC_MODEL_NAME=gpt-4.1-mini
-HIGH_SPEC_MODEL_NAME=gpt-4.1-mini
+LOW_SPEC_MODEL_NAME=gpt-5.6-luna
+HIGH_SPEC_MODEL_NAME=gpt-5.6-terra
 LOW_SPEC_MODEL_API_KEY=your_openai_api_key_here
 HIGH_SPEC_MODEL_API_KEY=your_openai_api_key_here
 
-# Alternative: Use different models for low and high spec
-# LOW_SPEC_MODEL_NAME=gpt-4.1-mini
-# HIGH_SPEC_MODEL_NAME=gpt-4.1
+# Reasoning effort: none, low, medium, high, xhigh, max. This is the only
+# generation knob we send - temperature is not, since these models reject any
+# value but the default. The low tier runs bulk generation, so it stays at
+# "none" for speed and cost. The setting is ignored for models that predate
+# reasoning, so pinning gpt-4.1-mini here still works.
+LOW_SPEC_MODEL_REASONING_EFFORT=none
+HIGH_SPEC_MODEL_REASONING_EFFORT=low
+
+# Alternative: gpt-5.6-sol is the deepest tier; gpt-4.1-mini is the previous
+# default and deprecates 2026-11-04.
+# LOW_SPEC_MODEL_NAME=gpt-5.6-luna
+# HIGH_SPEC_MODEL_NAME=gpt-5.6-sol
 
 # For custom OpenAI-compatible endpoints (optional)
 # LOW_SPEC_MODEL_BASE_URL=https://api.openai.com/v1

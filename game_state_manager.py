@@ -7,7 +7,7 @@ import asyncio
 import aiofiles
 from typing import Any, Dict, List, Optional, Union
 
-from gen_ai import GenAI, GenAIModel
+from gen_ai import GenAI, GenAIModel, DEFAULT_HIGH_SPEC_MODEL, DEFAULT_LOW_SPEC_MODEL
 from models import GameState, Enemy, Item, Equipment
 from db import db, WORLD_SNAPSHOT_VERSION  # noqa: F401  (re-exported for callers/tests)
 from tools.fa_runtime import fa_runtime
@@ -42,16 +42,19 @@ class GameStateManager:
         self.language = language
         self.last_described_ct = None
 
-        # Model definitions
+        # Model definitions. The low tier runs bulk generation and stays at
+        # reasoning effort "none" for speed and cost; the high tier reasons.
         lo_model = GenAIModel(
-            model_name=os.getenv("LOW_SPEC_MODEL_NAME", "gpt-4.1-mini"),
+            model_name=os.getenv("LOW_SPEC_MODEL_NAME", DEFAULT_LOW_SPEC_MODEL),
             base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
+            reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", "none"),
         )
         hi_model = GenAIModel(
-            model_name=os.getenv("HIGH_SPEC_MODEL_NAME", "gpt-4.1-mini"),
+            model_name=os.getenv("HIGH_SPEC_MODEL_NAME", DEFAULT_HIGH_SPEC_MODEL),
             base_url=os.getenv("HIGH_SPEC_MODEL_BASE_URL"),
             api_key=os.getenv("HIGH_SPEC_MODEL_API_KEY"),
+            reasoning_effort=os.getenv("HIGH_SPEC_MODEL_REASONING_EFFORT", "low"),
         )
 
         # GenAI instance, with low and high spec models

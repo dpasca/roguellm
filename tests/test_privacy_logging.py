@@ -23,7 +23,11 @@ class PrivacyLoggingTests(unittest.TestCase):
         fake_client = SimpleNamespace(
             chat=SimpleNamespace(completions=FakeCompletions())
         )
-        fake_model = SimpleNamespace(model_name="fake-model", client=fake_client)
+        fake_model = SimpleNamespace(
+            model_name="fake-model",
+            client=fake_client,
+            completion_params=lambda: {"model": "fake-model"},
+        )
         gen_ai = GenAI(lo_model=fake_model, hi_model=fake_model)
 
         with patch.dict(os.environ, {"ENABLE_LLM_CONTENT_LOGGING": ""}):

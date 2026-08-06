@@ -35,7 +35,7 @@ if _fallback:
         os.environ.setdefault(name, _fallback)
 
 from db import db  # noqa: E402
-from gen_ai import GenAI, GenAIModel  # noqa: E402
+from gen_ai import GenAI, GenAIModel, DEFAULT_LOW_SPEC_MODEL  # noqa: E402
 from gen_image import (  # noqa: E402
     FRAME_NAMES,
     WorldArtGenerator,
@@ -64,9 +64,10 @@ def describe_frame(name, image):
 async def build_world(theme, language):
     """Generate just the definitions and manifest, without a playable run."""
     model = GenAIModel(
-        model_name=os.getenv("LOW_SPEC_MODEL_NAME", "gpt-4.1-mini"),
+        model_name=os.getenv("LOW_SPEC_MODEL_NAME", DEFAULT_LOW_SPEC_MODEL),
         base_url=os.getenv("LOW_SPEC_MODEL_BASE_URL"),
         api_key=os.getenv("LOW_SPEC_MODEL_API_KEY"),
+        reasoning_effort=os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT", "none"),
     )
     gen_ai = GenAI(lo_model=model, hi_model=model)
     gen_ai.language = language

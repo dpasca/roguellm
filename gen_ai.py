@@ -38,7 +38,6 @@ logger = logging.getLogger()
 
 # Constants
 DO_BYPASS_WORLD_GEN = False
-DEF_TEMP = 0.7
 
 # Model quality levels
 MODEL_QUALITY_LOW = "low"
@@ -48,6 +47,40 @@ MODEL_QUALITY_HIGH = "high"
 MODEL_QUALITY_FOR_JSON = MODEL_QUALITY_LOW
 MODEL_QUALITY_FOR_THEME_DESC = MODEL_QUALITY_LOW
 MODEL_QUALITY_FOR_MAP = MODEL_QUALITY_LOW
+
+# Reasoning effort replaces temperature as the generation-control knob: these
+# models reject any temperature but the default, and reasoning is the better
+# lever anyway. Only the reasoning families accept the parameter, so it is
+# stripped for anything older, which would 400 on it.
+REASONING_MODEL_PREFIXES = ("gpt-5.", "gpt-5-", "o1", "o3", "o4")
+
+# gpt-4.1-mini, the previous default, deprecates 2026-11-04 and costs more than
+# Luna does. Luna is the cheap bulk tier; Terra is the real high tier, which the
+# old defaults never provided because both tiers named the same model.
+DEFAULT_LOW_SPEC_MODEL = "gpt-5.6-luna"
+DEFAULT_HIGH_SPEC_MODEL = "gpt-5.6-terra"
+
+
+def model_takes_reasoning_effort(model_name: str) -> bool:
+    return bool(model_name) and model_name.startswith(REASONING_MODEL_PREFIXES)
+
+
+def resolve_reasoning_effort(model_name: str, requested: Optional[str]) -> Optional[str]:
+    """Drop the effort setting for models that would reject the parameter.
+
+    The tier defaults live in the caller, so a deployment that still pins
+    gpt-4.1-mini in its .env keeps working untouched after the gpt-5.6 swap.
+    """
+    if not requested:
+        return None
+    if not model_takes_reasoning_effort(model_name):
+        logger.info(
+            "Ignoring reasoning effort %r: model %s does not accept it",
+            requested,
+            model_name,
+        )
+        return None
+    return requested
 
 WORLD_TRANSLATION_FIELDS = (
     "theme_desc_better",
@@ -78,10 +111,11 @@ TRANSLATABLE_STRING_LIST_FIELD_NAMES = {"weapons"}
 # GenAI
 #==================================================================
 class GenAIModel:
-    def __init__(self, model_name=None, base_url=None, api_key=None):
+    def __init__(self, model_name=None, base_url=None, api_key=None, reasoning_effort=None):
         self.model_name = model_name
         self.base_url = base_url
         self.api_key = api_key
+        self.reasoning_effort = resolve_reasoning_effort(model_name, reasoning_effort)
 
         # Validate API key
         if not self.api_key:
@@ -109,6 +143,13 @@ class GenAIModel:
             #timeout=timeout
         )
 
+    def completion_params(self) -> Dict[str, Any]:
+        """Build the per-model half of a chat completion request."""
+        params: Dict[str, Any] = {"model": self.model_name}
+        if self.reasoning_effort:
+            params["reasoning_effort"] = self.reasoning_effort
+        return params
+
 # GenAI
 class GenAI:
 
@@ -135,7 +176,6 @@ class GenAI:
             system_msg: str,
             user_msg: str,
             quality: str,
-            temp: float = DEF_TEMP
     ):
         use_model = self.hi_model if quality == MODEL_QUALITY_HIGH else self.lo_model
         logger.info(
@@ -151,12 +191,11 @@ class GenAI:
         try:
             async def get_completion():
                 return await use_model.client.chat.completions.create(
-                    model=use_model.model_name,
                     messages=[
                         {"role": "system", "content": system_msg},
                         {"role": "user", "content": user_msg}
                     ],
-                    temperature=temp
+                    **use_model.completion_params()
                 )
 
             response = await with_exponential_backoff(get_completion)
@@ -217,7 +256,6 @@ class GenAI:
             ),
             user_msg=json.dumps(world_definition, ensure_ascii=False),
             quality=MODEL_QUALITY_FOR_JSON,
-            temp=0.2,
         )
 
         try:
@@ -372,7 +410,7 @@ A universe where you can become the master of the universe by defeating other ma
             if self.do_web_search:
                 research_result = await make_query_and_web_search(
                     self.lo_model.client,
-                    self.lo_model.model_name,
+                    self.lo_model.completion_params(),
                     self.theme_desc,
                     self.language
                 )
@@ -725,7 +763,6 @@ Each placement should indicate whether it's an enemy or an item.
             ),
             user_msg=json.dumps(world, ensure_ascii=False),
             quality=MODEL_QUALITY_FOR_JSON,
-            temp=0.7
         )
 
         try:
@@ -802,7 +839,6 @@ Each placement should indicate whether it's an enemy or an item.
             ),
             user_msg=json.dumps({"tiles": tiles}, ensure_ascii=False),
             quality=MODEL_QUALITY_FOR_JSON,
-            temp=0.4
         )
 
         try:
@@ -840,7 +876,6 @@ Each placement should indicate whether it's an enemy or an item.
         try:
             async def get_completion():
                 return await self.lo_model.client.chat.completions.create(
-                    model=self.lo_model.model_name,
                     messages=[
                         {"role": "system", "content":
                             append_language_and_desc_to_prompt(
@@ -851,7 +886,7 @@ Each placement should indicate whether it's an enemy or an item.
                         },
                         {"role": "user", "content": user_msg}
                     ],
-                    temperature=DEF_TEMP,
+                    **self.lo_model.completion_params(),
                 )
 
             response = await with_exponential_backoff(get_completion)
@@ -880,7 +915,6 @@ Each placement should indicate whether it's an enemy or an item.
         try:
             async def get_completion():
                 return await self.lo_model.client.chat.completions.create(
-                    model=self.lo_model.model_name,
                     messages=[
                         {"role": "system", "content":
                             append_language_and_desc_to_prompt(
@@ -891,7 +925,7 @@ Each placement should indicate whether it's an enemy or an item.
                         },
                         {"role": "user", "content": user_msg}
                     ],
-                    temperature=DEF_TEMP
+                    **self.lo_model.completion_params()
                 )
 
             response = await with_exponential_backoff(get_completion)

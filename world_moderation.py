@@ -7,12 +7,13 @@ from typing import Dict, List, Optional
 from openai import AsyncOpenAI
 
 from db import WORLD_SNAPSHOT_VERSION
+from gen_ai import DEFAULT_LOW_SPEC_MODEL, resolve_reasoning_effort
 from gen_ai_utils import with_exponential_backoff
 from privacy_logging import describe_text
 
 logger = logging.getLogger()
 
-DEFAULT_PUBLIC_REVIEW_MODEL = "gpt-4.1-mini"
+DEFAULT_PUBLIC_REVIEW_MODEL = DEFAULT_LOW_SPEC_MODEL
 PUBLIC_REVIEW_UNAVAILABLE_MESSAGE = "Public review could not be completed. Please try again later."
 PUBLIC_REVIEW_APPROVED_MESSAGE = "Approved for public listing."
 PUBLIC_REVIEW_REJECTED_MESSAGE = "This World cannot be published publicly in its current form."
@@ -95,6 +96,15 @@ def get_world_public_review_base_url() -> Optional[str]:
 
 def get_world_public_review_api_key() -> Optional[str]:
     return os.getenv("WORLD_PUBLIC_REVIEW_MODEL_API_KEY") or os.getenv("LOW_SPEC_MODEL_API_KEY")
+
+
+def get_world_public_review_reasoning_effort() -> str:
+    """Review inherits the low tier unless given its own effort setting."""
+    return (
+        os.getenv("WORLD_PUBLIC_REVIEW_MODEL_REASONING_EFFORT")
+        or os.getenv("LOW_SPEC_MODEL_REASONING_EFFORT")
+        or "none"
+    )
 
 
 def build_world_review_payload(world: Dict) -> Dict:
@@ -191,6 +201,7 @@ class WorldPublicReviewer:
             api_key: str,
             base_url: Optional[str] = None,
             use_json_response_format: bool = True,
+            reasoning_effort: Optional[str] = None,
     ):
         if not api_key:
             raise ValueError("WORLD_PUBLIC_REVIEW_MODEL_API_KEY or LOW_SPEC_MODEL_API_KEY is required")
@@ -198,6 +209,7 @@ class WorldPublicReviewer:
         self.model_name = model_name
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.use_json_response_format = use_json_response_format
+        self.reasoning_effort = resolve_reasoning_effort(model_name, reasoning_effort)
 
     @classmethod
     def from_env(cls):
@@ -209,6 +221,7 @@ class WorldPublicReviewer:
                 os.getenv("WORLD_PUBLIC_REVIEW_JSON_RESPONSE_FORMAT", "1").strip().lower()
                 not in {"0", "false", "no", "off"}
             ),
+            reasoning_effort=get_world_public_review_reasoning_effort(),
         )
 
     async def review_world(self, world: Dict) -> WorldPublicReviewResult:
@@ -228,8 +241,9 @@ class WorldPublicReviewer:
                     {"role": "system", "content": WORLD_PUBLIC_REVIEW_SYSTEM_PROMPT},
                     {"role": "user", "content": user_message},
                 ],
-                "temperature": 0,
             }
+            if self.reasoning_effort:
+                kwargs["reasoning_effort"] = self.reasoning_effort
             if with_json_response_format:
                 kwargs["response_format"] = {"type": "json_object"}
 
