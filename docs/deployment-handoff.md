@@ -88,6 +88,52 @@ visible quality loss. Sprites and tokens need the alpha channel, which WebP
 supports; backdrops and covers are opaque and could drop alpha for a little
 more. The generator writes PNG today (`save_asset` in `gen_image.py`).
 
+## Object storage
+
+Art currently sits on the box, in the same volume as the database. That is fine
+while it is small and keeps the "one thing to move" property, but it does not
+survive the mobile plan: every player fetching a World's art is egress, and the
+VPS pays for all of it.
+
+**The deciding cost here is egress, not storage.** A World is stored once and
+downloaded many times, which inverts the usual instinct to shop on price per
+stored GB.
+
+Modelled at 1,000 Worlds, 100 plays each, WebP assets — so about 210 GB served
+against 2.1 GB stored:
+
+| | Storage | Egress | Total / month |
+|---|---|---|---|
+| **Cloudflare R2** | $0.03 | **$0** | **~$0.03** |
+| Backblaze B2 | $0.01 | $2.04, or $0 through the Cloudflare CDN | ~$2 |
+| AWS S3 | $0.05 | $18.90 | ~$19 |
+
+B2 has the cheapest raw storage, roughly 2.5x cheaper than R2, but that barely
+registers when the bill is made of traffic. **R2 is the recommendation**, on
+zero egress.
+
+Note how this compounds with the WebP conversion above: at 20 MB per World
+rather than 2 MB, the same traffic on S3 would be about $190/month. Under the
+mobile plan that egress is also the player's mobile data, so the two decisions
+push the same way.
+
+Two practical notes:
+
+- **The plumbing already exists.** `db.py` builds a boto3 client with a
+  configurable `endpoint_url`, currently pointed at DigitalOcean Spaces for the
+  SQLite file. R2 is S3-compatible, so adopting it is an endpoint and a
+  credential rather than a rewrite.
+- **R2 charges for operations even though egress is free**: Class B reads are
+  about $0.36 per million. At 30 files per World that is roughly $1/month in the
+  model above. Small, but it argues for something worth doing regardless:
+  **ship a World's art as one bundle rather than 30 files.** One request instead
+  of thirty is faster on a phone, more reliable on a bad connection, easier to
+  cache, and collapses the operation cost. That is a client-architecture
+  decision worth making before the app is built.
+
+Suggested order: keep art on the local volume while it is small, convert to
+WebP, and move to R2 when art leaves the box — which the mobile client forces.
+
 Related: **backups do not cover art.** `scripts/backup-production-sqlite.sh`
 takes the database only, so a host loss keeps the Worlds and loses every image
 in them. Either extend it to archive `_data/assets`, or accept art as
@@ -137,7 +183,10 @@ here blocks that; the snapshot and manifest are plain JSON columns.
 ## Open items
 
 - The proxy cutover above. Blocking.
-- WebP conversion. Biggest single infrastructure win available.
+- WebP conversion. Biggest single infrastructure win available, and a
+  prerequisite for the mobile client rather than just a saving.
+- Object storage on R2 when art leaves the box, reusing the existing boto3
+  client. Bundle a World's art into one artifact while doing it.
 - Art in backups, or an explicit decision that art is regenerable.
 - The sample Worlds are `unlisted`, so they do not appear on a public front
   page. Making them public runs the LLM moderation review in
