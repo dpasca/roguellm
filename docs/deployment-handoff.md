@@ -428,12 +428,23 @@ Notable guards, each protecting something that actually broke:
 - Chroma keying does not punch holes in subjects, and de-spill leaves
   single-channel colours alone.
 
-**Frontend has no automated coverage.** Playwright is installed in the venv and
-was used throughout for screenshots and layout measurement; the scripts were
-ad-hoc and are not committed. Several real bugs this cycle were invisible from
-the code and only appeared on screen — a 422px element in a 390px viewport, a
-stage overflowing its grid row, CSS that never applied because the value was set
-inline in JavaScript. Worth making permanent.
+**Frontend has no automated coverage**, and it should. Several real bugs this
+cycle were invisible from the code and only appeared in a browser: a 422px
+element in a 390px viewport, a stage overflowing its grid row, CSS that never
+applied because the value was set inline in JavaScript, and a favicon 404 on
+every page load.
+
+Driving a browser is the way to catch those. A Playwright MCP server is
+available in the working environment and is the easiest route — its
+accessibility snapshot is often better than a screenshot for structural checks,
+since it shows the semantic tree directly and makes duplicated or missing labels
+obvious. Playwright is also installed in the project venv as a fallback, which
+is how the layout measurements in this document were taken.
+
+Neither is wired into CI. The useful checks to make permanent are the ones that
+already caught something: no horizontal overflow at 390px and 360px, the
+movement controls above the fold, one accessible name per World card, and no
+4xx on a page load.
 
 ---
 
