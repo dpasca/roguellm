@@ -313,7 +313,7 @@ and the world definition schema.
 No new generation was added. If a future change does bake new prose, it must
 extend `collect_baked_prose` — see the moderation note above.
 
-**Phase 2 — Art pipeline. Characters done; backdrops and cover not.**
+**Phase 2 — Art pipeline. Done.**
 1. `gen_image.py` holds the client, prompts, slicing, keying, and tokens, with
    env-driven model config. Art is off unless `ENABLE_WORLD_ART=1`.
 2. `gen_visual_manifest` emits the manifest; `normalize_visual_manifest`
@@ -352,9 +352,9 @@ Two details that decide whether a cover reads as art or as a sprite sheet:
   manifest palette carries accent colours too; a noir harbour palette has a
   signal red in it, and picking by median turned the card into a sunset.
 
-Still missing: backdrops for the remaining locations. Only the first is
-generated, for the cover. The rest wait for Phase 4, which is what would
-actually display them.
+Every location gets a backdrop, drawn concurrently and attached as
+`backdrop_url` on its cell type. The cover reuses one rather than generating a
+scene only the gallery card would see.
 
 Cost note: the model generated 11 enemies from a 5-enemy sample, so a forge is
 roughly double the estimate above. Capping enemy count is a small change with a
@@ -401,13 +401,14 @@ loopback port:
 Roll back by restoring the `networks` block if the proxy change cannot land in
 the same window.
 
-**Phase 3 — Front page.** Cover art exists; the page itself does not.
-1. Expose `cover_url` from the world listing API. It is stored on the persisted
-   manifest, which `list_worlds` does not currently join against.
-2. Rebuild `index.html` around prompt + gallery + thin header, replacing the
-   eight current regions and deleting the fake `preview-map`.
-3. Move auth, world code, and visibility behind the avatar or the World card.
-4. Add the forge reveal animation.
+**Phase 3 — Front page. Done.**
+1. `list_worlds` left joins `generator_worlds` for `cover_url`, conditionally,
+   since databases predating snapshots have no such table.
+2. `index.html` is three regions: thin bar, one prompt box, gallery. The eight
+   old regions and the fake `preview-map` are gone.
+3. Auth, world code, and visibility live behind the avatar or the card's menu.
+4. The forge reveal narrates the wait: title lands, cast slots fill as each
+   sprite is drawn, then the map build reports itself.
 
 **Phase 4 — Make exploration look like combat.** Revised after seeing the game
 rendered with real art. The original plan was to replace the grid with a
@@ -432,8 +433,10 @@ grid.
 2. **Location behind the grid. Done.** Explored tiles thin to 42% alpha so the
    place shows through; unexplored stay near-opaque, which is the fog of war.
    Worlds without backdrops render exactly as before.
-3. Still open: the grid could shrink toward a minimap, with the location scene
-   as the primary surface. Worth judging on a played World before committing.
+3. **The location is now the primary surface on both phone and desktop**, with
+   the map as a minimap beneath it. `?layout=grid` returns to the previous
+   arrangement. Desktop widens the left column rather than restructuring, since
+   the map otherwise lives in a 300-400px sidebar.
 
 The cover now reuses a location backdrop instead of generating a scene only the
 gallery card would ever see.
@@ -442,6 +445,35 @@ gallery card would ever see.
 free-tier allowance.
 
 **Phase 6 — PWA.** Manifest, service worker, install prompt, offline shell.
+
+## Status
+
+Phases 1 through 4 are complete: runtime model cost during play is zero, Worlds
+persist and are shareable, art generates end to end, the front page is a prompt
+and a gallery, and exploration shows the place you are standing in.
+
+Open, roughly in order of how much they block anything:
+
+- **The proxy cutover has not happened.** `docker-compose.production.yml` no
+  longer joins `chatnext3-network`, so the reverse proxy must be repointed at
+  the loopback port before that change deploys, or production ingress breaks.
+  See the deployment isolation section above.
+- **The sample Worlds are `unlisted`, not `public`**, so they do not appear on
+  the public front page. Making them public runs the moderation review, which
+  is worth doing deliberately: they are the first Worlds whose baked prose the
+  reviewer will see.
+- **Backdrops are generated at medium quality but displayed sunk** behind a
+  shade gradient at 40% opacity. Dropping just those to low quality cuts a
+  forge from about $0.47 to $0.29, measured, with nothing visible lost.
+- **Backups do not cover generated art.** `scripts/backup-production-sqlite.sh`
+  takes the database only, so art would not survive a host loss.
+- The local-dev "Quick Start: Piedone" button points at a retired World.
+- The location name can still appear three times on one screen: stage eyebrow,
+  stage heading, and the stats card. The eyebrow dedupe only catches exact
+  matches, so "Abandoned Control Tower" and "Control Tower" both show.
+- `_data/assets/efea0944/` holds orphaned art from a deleted test World.
+
+Phases 5 and 6 below have not been started.
 
 ## Open questions
 
