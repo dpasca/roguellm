@@ -36,6 +36,10 @@ def make_manager(map_width=3, map_height=2, language="en", generator_id="world-1
         map_height=map_height,
         cell_types=[],
         tile_info=[],
+        # Present on the real GameState; tile generation reads both to give the
+        # prompt its area context.
+        regions=[],
+        region_ids=[],
     )
     return manager
 

@@ -49,9 +49,16 @@ class PlayerActionHandler:
 
         if moved:
             was_new_tile = not self.game_state_manager.state.explored[y][x]
+            # Read before the position moves, so this is the crossing just made.
+            crossing = self._border_line(self.game_state_manager.state.player_pos, (x, y))
             self.game_state_manager.state.player_pos = (x, y)
             self.game_state_manager.state.explored[y][x] = True
             encounter_result = await self._check_encounters(was_new_tile=was_new_tile)
+
+            # Leading the tile text, so the change of scenery is explained
+            # before it is described.
+            if crossing:
+                encounter_result['description_raw'] = crossing + "\n" + encounter_result['description_raw']
 
             # Process temporary effects
             effects_log = await self._process_temporary_effects()
@@ -61,6 +68,16 @@ class PlayerActionHandler:
             return encounter_result
         else:
             return await self.game_state_manager.create_message(self.msg("action.cant_move"))
+
+    def _border_line(self, from_pos, to_pos) -> str:
+        """Crossing text for this step, empty when it stays inside one area."""
+        lookup = getattr(self.game_state_manager, 'border_line', None)
+        if not callable(lookup):
+            return ""
+        try:
+            return lookup(from_pos, to_pos) or ""
+        except Exception:
+            return ""
 
     async def handle_use_item(self, item_id: str) -> dict:
         """Handle using an item from inventory."""

@@ -239,6 +239,7 @@ class DatabaseManager:
                     map_csv TEXT,
                     entity_placements TEXT,
                     tile_info TEXT,
+                    regions TEXT,
                     visual_manifest TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -284,6 +285,10 @@ class DatabaseManager:
             self._ensure_column(conn, "generators", "public_review_after", "TIMESTAMP NULL")
             self._ensure_column(conn, "generators", "public_reviewed_at", "TIMESTAMP NULL")
             self._ensure_column(conn, "generators", "updated_at", "TIMESTAMP")
+            # Databases predating area crossings have the snapshot but not this.
+            # Adding it nullable avoids invalidating every existing snapshot;
+            # a world without regions regenerates just its crossings.
+            self._ensure_column(conn, "generator_worlds", "regions", "TEXT NULL")
             self._backfill_generator_ownership_shape(conn)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -641,7 +646,7 @@ class DatabaseManager:
         def _get(conn, generator_id, snapshot_version):
             cur = conn.cursor()
             cur.execute("""
-                SELECT language, map_csv, entity_placements, tile_info, visual_manifest
+                SELECT language, map_csv, entity_placements, tile_info, visual_manifest, regions
                 FROM generator_worlds
                 WHERE generator_id = ? AND snapshot_version = ?
             """, (generator_id, snapshot_version))
@@ -659,6 +664,9 @@ class DatabaseManager:
                 # languages, but the map and placements are.
                 'tile_info_by_language': tile_info if isinstance(tile_info, dict) else {},
                 'visual_manifest': json.loads(result[4]) if result[4] else None,
+                # Absent on worlds saved before area crossings existed; the
+                # caller regenerates them rather than failing the snapshot.
+                'regions': json.loads(result[5]) if result[5] else [],
             }
 
         return self._execute_with_retry(_get, generator_id, snapshot_version)
@@ -695,21 +703,23 @@ class DatabaseManager:
             map_csv: str,
             entity_placements: List[Dict],
             tile_info_by_language: Dict[str, List[Dict]],
-            snapshot_version: int = 1
+            snapshot_version: int = 1,
+            regions: Optional[List[Dict]] = None,
     ) -> None:
         """Persist the playable snapshot so replays reuse it instead of regenerating."""
         def _save(conn, *args):
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO generator_worlds
-                (generator_id, snapshot_version, language, map_csv, entity_placements, tile_info)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (generator_id, snapshot_version, language, map_csv, entity_placements, tile_info, regions)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(generator_id) DO UPDATE SET
                     snapshot_version = excluded.snapshot_version,
                     language = excluded.language,
                     map_csv = excluded.map_csv,
                     entity_placements = excluded.entity_placements,
                     tile_info = excluded.tile_info,
+                    regions = excluded.regions,
                     updated_at = CURRENT_TIMESTAMP
             """, (
                 generator_id,
@@ -717,7 +727,8 @@ class DatabaseManager:
                 language,
                 map_csv,
                 json.dumps(entity_placements),
-                json.dumps(tile_info_by_language)
+                json.dumps(tile_info_by_language),
+                json.dumps(regions or [])
             ))
             conn.commit()
 

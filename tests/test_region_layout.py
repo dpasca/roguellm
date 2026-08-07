@@ -97,3 +97,54 @@ class RegionLayoutTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegionAdjacencyTests(unittest.TestCase):
+    """Crossings are only coherent if the geography handed to the model is real."""
+
+    def test_every_region_touches_at_least_one_other(self):
+        for seed in range(15):
+            with self.subTest(seed=seed):
+                for region in build_map(seed).state.regions:
+                    self.assertTrue(region["neighbours"])
+
+    def test_adjacency_is_symmetric(self):
+        # An asymmetric pair would produce a crossing in one direction only,
+        # so walking back would silently say nothing.
+        for seed in range(15):
+            with self.subTest(seed=seed):
+                regions = {r["id"]: r for r in build_map(seed).state.regions}
+                for region in regions.values():
+                    for other in region["neighbours"]:
+                        self.assertIn(region["id"], regions[other]["neighbours"])
+
+    def test_region_ids_grid_matches_the_map(self):
+        manager = build_map(9)
+        grid = manager.state.region_ids
+        by_id = {r["id"]: r for r in manager.state.regions}
+        self.assertEqual(len(grid), manager.state.map_height)
+        for y, row in enumerate(grid):
+            self.assertEqual(len(row), manager.state.map_width)
+            for x, region_id in enumerate(row):
+                self.assertEqual(
+                    by_id[region_id]["terrain_id"],
+                    manager._cell_id(manager.state.cell_types[y][x]),
+                )
+
+    def test_border_line_only_fires_on_a_crossing(self):
+        manager = build_map(9)
+        grid = manager.state.region_ids
+        for region in manager.state.regions:
+            region["borders"] = {other: f"into {other}" for other in region["neighbours"]}
+
+        inside = crossing = None
+        for y in range(manager.state.map_height):
+            for x in range(manager.state.map_width - 1):
+                pair = ((x, y), (x + 1, y))
+                if grid[y][x] == grid[y][x + 1]:
+                    inside = inside or pair
+                else:
+                    crossing = crossing or pair
+
+        self.assertEqual(manager.border_line(*inside), "")
+        self.assertTrue(manager.border_line(*crossing).startswith("into "))

@@ -16,6 +16,7 @@ from gen_ai_prompts import (
     SYS_GEN_GAME_CELLTYPES_JSON_MSG,
     SYS_TRANSLATE_WORLD_JSON_MSG,
     SYS_GEN_ENTITY_PLACEMENT_MSG,
+    SYS_GEN_REGION_BORDERS_MSG,
     SYS_GEN_TILE_QUICK_INFO_MSG,
     SYS_GEN_VISUAL_MANIFEST_MSG,
     ADAPT_SENTENCE_SYSTEM_MSG,
@@ -82,6 +83,40 @@ def resolve_reasoning_effort(model_name: str, requested: Optional[str]) -> Optio
         )
         return None
     return requested
+
+def normalize_generated_defs(data: Any) -> List[dict]:
+    """Coerce one generation response into the list every caller expects.
+
+    The model returns the right content in the wrong container often enough to
+    matter, and not on every call, so it slips through a single manual test. All
+    three wrong shapes seen in practice are handled here rather than at each
+    consumer, since only some of them defended against it: gen_visual_manifest
+    sliced a bare object and raised KeyError mid-forge.
+    """
+    if isinstance(data, list):
+        return [entry for entry in data if isinstance(entry, dict)]
+    if not isinstance(data, dict):
+        return []
+
+    # {"player_defs": [...]} - the array wrapped under one key
+    if len(data) == 1:
+        only = next(iter(data.values()))
+        if isinstance(only, list):
+            return [entry for entry in only if isinstance(entry, dict)]
+
+    # {"0": {...}, "1": {...}} - keyed by id, so the key carries it
+    values = list(data.values())
+    if values and all(isinstance(value, dict) for value in values):
+        normalized = []
+        for key, value in data.items():
+            entry = dict(value)
+            entry.setdefault("id", str(key))
+            normalized.append(entry)
+        return normalized
+
+    # A bare entity, which is what a one-element sample tends to produce
+    return [data]
+
 
 WORLD_TRANSLATION_FIELDS = (
     "theme_desc_better",
@@ -544,7 +579,7 @@ A universe where you can become the master of the universe by defeating other ma
         )
         # Convert the response to a list of dictionaries
         try:
-            data = json.loads(extract_clean_data(response))
+            data = normalize_generated_defs(json.loads(extract_clean_data(response)))
             # Validate any font-awesome icons in the data
             data = self._validate_icons(data)
             return data
@@ -666,30 +701,30 @@ Each placement should indicate whether it's an enemy or an item.
         if DO_BYPASS_WORLD_GEN:
             return None
 
-        celltype_list = (
-            list(celltype_defs.values()) if isinstance(celltype_defs, dict)
-            else (celltype_defs or [])
-        )
+        # Saved worlds predate the normalization above and still hold either
+        # shape, so every list is coerced here too rather than only at forge time.
+        celltype_list = normalize_generated_defs(celltype_defs)
+        player_list = normalize_generated_defs(player_defs)
+        enemy_list = normalize_generated_defs(enemy_defs)
 
         world = {
             "title_and_summary": self.theme_desc_better,
             "player": [
                 {"id": "player", "name": p.get("name"), "class": p.get("class"),
                  "description": p.get("description")}
-                for p in (player_defs or [])[:1]
-                if isinstance(p, dict)
+                for p in player_list[:1]
             ],
             "enemies": [
                 {"id": e.get("enemy_id"), "name": e.get("name"),
                  "description": e.get("description")}
-                for e in (enemy_defs or [])
-                if isinstance(e, dict) and e.get("enemy_id")
+                for e in enemy_list
+                if e.get("enemy_id")
             ],
             "terrain": [
                 {"id": c.get("id"), "name": c.get("name"),
                  "description": c.get("description")}
                 for c in celltype_list
-                if isinstance(c, dict) and c.get("id")
+                if c.get("id")
             ],
         }
 
@@ -710,6 +745,65 @@ Each placement should indicate whether it's an enemy or an item.
 
         return normalize_visual_manifest(manifest, world)
 
+    async def gen_region_borders(self, regions: List[dict]) -> Dict[str, Dict[str, str]]:
+        """Describe each crossing between two areas, in both directions.
+
+        The adjacency is computed from the finished map, so the model is told the
+        geography rather than asked to invent one. Returns {from: {to: line}};
+        an empty result costs only the crossing text, not the run.
+        """
+        if DO_BYPASS_WORLD_GEN or len(regions) < 2:
+            return {}
+
+        by_id = {region["id"]: region for region in regions}
+        pairs = [
+            {"from": region["id"], "to": neighbour}
+            for region in regions
+            for neighbour in region.get("neighbours") or []
+            if neighbour in by_id
+        ]
+        if not pairs:
+            return {}
+
+        user_msg = json.dumps({
+            "areas": [
+                {"id": r["id"], "name": r.get("name"), "description": r.get("description")}
+                for r in regions
+            ],
+            "crossings": pairs,
+        }, ensure_ascii=False)
+
+        logger.info("Generating %s area crossings for %s areas", len(pairs), len(regions))
+        response = await self._quick_completion(
+            system_msg=append_language_and_desc_to_prompt(
+                SYS_GEN_REGION_BORDERS_MSG + SYS_GENERAL_JSON_RULES_MSG,
+                self.language,
+                self.theme_desc_better
+            ),
+            user_msg=user_msg,
+            quality=MODEL_QUALITY_FOR_JSON,
+        )
+
+        try:
+            data = json.loads(extract_clean_data(response))
+        except json.JSONDecodeError:
+            logger.error("Invalid area crossing JSON (%s)", describe_text(response))
+            return {}
+
+        borders: Dict[str, Dict[str, str]] = {}
+        for entry in (data.get("borders") if isinstance(data, dict) else None) or []:
+            if not isinstance(entry, dict):
+                continue
+            source, target = entry.get("from"), entry.get("to")
+            line = (entry.get("line") or "").strip()
+            # Ids are invented often enough to be worth checking; a made-up
+            # crossing would sit in the data and never be shown.
+            if line and source in by_id and target in by_id:
+                borders.setdefault(str(source), {})[str(target)] = line
+
+        logger.info("Obtained %s of %s area crossings", sum(len(v) for v in borders.values()), len(pairs))
+        return borders
+
     async def gen_tile_quick_info(
             self,
             cell_types: List[List[dict]],
@@ -717,7 +811,9 @@ Each placement should indicate whether it's an enemy or an item.
             enemy_defs: List[dict],
             item_defs: List[dict],
             map_width: int,
-            map_height: int
+            map_height: int,
+            region_ids: Optional[List[List[str]]] = None,
+            regions: Optional[List[dict]] = None,
     ) -> List[dict]:
         """Generate prebuilt tile summaries for fast, model-free gameplay turns."""
         if DO_BYPASS_WORLD_GEN:
@@ -739,6 +835,14 @@ Each placement should indicate whether it's an enemy or an item.
             if isinstance(item, dict)
         }
 
+        # Naming the area on every tile is what lets the prompt ask for variety
+        # within it: without this the model sees identical tiles and repeats.
+        region_names = {
+            region.get("id"): region.get("name")
+            for region in (regions or [])
+            if isinstance(region, dict)
+        }
+
         tiles = []
         for y in range(map_height):
             for x in range(map_width):
@@ -751,6 +855,11 @@ Each placement should indicate whether it's an enemy or an item.
                     "terrain_name": terrain_name,
                     "terrain_description": terrain_description,
                 }
+                region_id = None
+                if region_ids and y < len(region_ids) and x < len(region_ids[y]):
+                    region_id = region_ids[y][x]
+                if region_id:
+                    tile["area"] = region_names.get(region_id) or region_id
                 placement = placements_by_pos.get((x, y))
                 if placement:
                     entity_id = placement.get("entity_id")

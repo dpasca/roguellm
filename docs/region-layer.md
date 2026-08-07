@@ -150,9 +150,9 @@ small change that makes the prose stop contradicting the picture.
 
 1. **Cell-type prompt. Done.** Terrain kinds, not unique buildings.
 2. **Partition. Done.** Contiguous areas grown in code, one terrain each.
-3. **Region manifest call.** Named areas and border lines.
-4. **Transition beat.** A short reveal when the player crosses a border, reusing
-   the encounter bottom sheet rather than adding a new surface.
+3. **Area crossings. Done.** One line per adjacency, shown on the step that
+   crosses it, plus prose that varies inside an area.
+4. **Transition beat.** A visual reveal on crossing, beyond the line of text.
 
 ### What steps 1 and 2 actually built
 
@@ -191,6 +191,34 @@ is no longer a failure path that produces an incoherent map.
 Covered by `tests/test_region_layout.py`, which asserts contiguity, coverage,
 even sizing, distinct terrain per region, spawn-outward ordering, and
 determinism across 25 seeds each.
+
+### What step 3 built
+
+**No separate area names.** The plan called for generated region names. Skipped:
+the terrain name already is the area name, and `game-direction.md:509` already
+records the location name appearing three times on one screen. A fourth name
+would have made that worse for no gain.
+
+**Crossings, both directions.** `gen_region_borders` gets the adjacency computed
+from the finished map and returns one line per ordered pair. Asking per
+direction rather than per pair matters - arriving reads differently from
+leaving, and the model uses it: one direction descends a gate toward the water,
+the reverse climbs a ramp past fuel pipes. Ids are validated against the real
+adjacency, since invented ones would sit in the data and never be shown.
+`player_action_handler.handle_move` prepends the line on the step that crosses,
+and only that step.
+
+**The prose regression is fixed.** Feeding the area name per tile plus an
+explicit instruction to vary within it took one area from 1 distinct sentence
+across its tiles to 12 of 12. Labels vary with it: Receipt Glow, Umbrella Rack,
+Hot Food Case, Payment Kiosk.
+
+**Still no snapshot version bump.** `generator_worlds` gained a nullable
+`regions` column through the existing `_ensure_column` path. A world saved
+before crossings existed keeps its map and placements and generates only its
+crossings on the next run.
+
+Cost: one extra model call per world, at forge time, never during play.
 
 ## Open questions
 

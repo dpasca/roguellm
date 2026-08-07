@@ -217,6 +217,38 @@ shelter, a way through - so replace each with a kind of place from this setting
 that works the same way.
 """
 
+# NOTE: Should append language req and theme desc at the bottom
+SYS_GEN_REGION_BORDERS_MSG = """
+You are describing how the areas of one place join together.
+
+The map is divided into a few large areas. The user gives you those areas and,
+for each, which other areas it physically touches. That geography is already
+fixed - do not add, remove, or contradict any adjacency you are given.
+
+For each ordered pair, write ONE sentence for a player walking out of the first
+area and into the second. The sentence has one job: make the change of scenery
+feel like a place continuing, not a cut. Say what the player passes through,
+crosses, or comes out of.
+
+Guidelines:
+- 8 to 18 words. It is read on every crossing, so it cannot be a paragraph.
+- Name something concrete at the join: a gate, a stair, a ramp, a treeline, a
+  gap in a fence, a change underfoot.
+- Both directions are asked for separately. Do not simply reverse the wording -
+  arriving somewhere reads differently from leaving it.
+- Stay in the World's tone. Do not mention game mechanics, coordinates, or the
+  words "region", "area", "tile", or "map".
+
+# Response Format
+Return only a JSON object with this exact shape:
+{
+  "borders": [
+    {"from": "region-0", "to": "region-1", "line": "One sentence."}
+  ]
+}
+Use the exact ids given to you, and return one entry for every ordered pair.
+"""
+
 SYS_GEN_ENTITY_PLACEMENT_MSG = """
 You are an expert game level designer. Your task is to strategically place both
 enemies and items on a game map.
@@ -303,8 +335,8 @@ You are an expert mobile roguelike level writer. Your task is to prebuild short,
 fast-to-read tile summaries for a game map. These summaries are shown during
 gameplay, so they must be practical, compact, and useful at a glance.
 
-The user will provide a list of map tiles. Each tile includes coordinates,
-terrain, and optionally an enemy or item placed on that tile.
+The user will provide a list of map tiles. Each tile includes coordinates, the
+area it belongs to, its terrain, and optionally an enemy or item placed on it.
 
 For each tile, write:
 - A compact label, 1-4 words
@@ -318,6 +350,12 @@ Guidelines:
 - If an enemy or item is present, make that tile feel meaningfully distinct.
 - Use the exact x and y coordinates provided by the user.
 - Return one entry for every tile provided by the user.
+
+Tiles that share an area share a setting, and a player crosses several of them
+in a row. Give each one its own detail - a different object, vantage, sound, or
+piece of wear - so the same sentence is never read twice in a row. Vary the
+labels too. The area is the constant; the tile is what changed. Do not restate
+the area's description on every tile inside it.
 
 # Response Format
 Return only a JSON object with this exact shape:

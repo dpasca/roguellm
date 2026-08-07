@@ -600,11 +600,33 @@ class GameStateManager:
                     "distance_from_start": min(
                         abs(cx - start_x) + abs(cy - start_y) for cx, cy in cells
                     ),
+                    "cells": cells,
                 })
 
         regions.sort(key=lambda region: (region["distance_from_start"], region["terrain_id"]))
+
+        # The grid is what movement consults to notice a crossing, so it is built
+        # here rather than recomputed per step.
+        region_ids = [[""] * width for _ in range(height)]
         for index, region in enumerate(regions):
             region["id"] = f"region-{index}"
+            for cx, cy in region.pop("cells"):
+                region_ids[cy][cx] = region["id"]
+        self.state.region_ids = region_ids
+
+        # Which areas touch which. Known before any model call, so the border
+        # prompt can be told the geography instead of inventing one.
+        touching = {region["id"]: set() for region in regions}
+        for y in range(height):
+            for x in range(width):
+                for nx, ny in self._neighbours(x, y):
+                    here, there = region_ids[y][x], region_ids[ny][nx]
+                    if here and there and here != there:
+                        touching[here].add(there)
+        for region in regions:
+            region["neighbours"] = sorted(touching[region["id"]])
+            region.setdefault("borders", {})
+
         return regions
 
     def make_fallback_placements(self):
@@ -1149,6 +1171,7 @@ class GameStateManager:
             "cell_types": cell_types,
             "entity_placements": snapshot.get("entity_placements") or [],
             "tile_info": tile_info_by_language.get(getattr(self, "language", "en")) or [],
+            "regions": snapshot.get("regions") or [],
         }
 
     def _save_world_snapshot(self) -> None:
@@ -1171,10 +1194,57 @@ class GameStateManager:
                 entity_placements=getattr(self, "entity_placements", []) or [],
                 tile_info_by_language=tile_info_by_language,
                 snapshot_version=WORLD_SNAPSHOT_VERSION,
+                regions=self.state.regions or [],
             )
             self._snapshot_tile_info_by_language = tile_info_by_language
         except Exception as exc:
             logger.error("Failed to save world snapshot: %s", exc)
+
+    async def initialize_region_borders(self, snapshot_regions: Optional[List[dict]] = None):
+        """Attach the crossing text for each pair of touching areas.
+
+        Reuses the snapshot when it has them. A world saved before crossings
+        existed simply generates them once on its next run, which is why this
+        needed no snapshot version bump.
+        """
+        saved = {
+            region.get("id"): region.get("borders") or {}
+            for region in (snapshot_regions or [])
+            if isinstance(region, dict)
+        }
+        if saved and any(saved.values()):
+            for region in self.state.regions:
+                region["borders"] = saved.get(region["id"]) or {}
+            return
+
+        generator = getattr(self.gen_ai, "gen_region_borders", None)
+        if not callable(generator):
+            return
+        try:
+            borders = await generator(self.state.regions)
+        except Exception as exc:
+            # Crossing text is a flourish; losing it must not lose the run.
+            logger.error("Failed to generate area crossings: %s", exc)
+            return
+
+        for region in self.state.regions:
+            region["borders"] = borders.get(region["id"]) or {}
+
+    def region_at(self, x: int, y: int) -> Optional[Dict[str, Any]]:
+        """The area a cell belongs to, or None before the map is laid out."""
+        grid = self.state.region_ids
+        if not grid or y >= len(grid) or x >= len(grid[y]):
+            return None
+        region_id = grid[y][x]
+        return next((r for r in self.state.regions if r.get("id") == region_id), None)
+
+    def border_line(self, from_pos, to_pos) -> str:
+        """The sentence for walking out of one area into another, if any."""
+        origin = self.region_at(*from_pos)
+        target = self.region_at(*to_pos)
+        if not origin or not target or origin.get("id") == target.get("id"):
+            return ""
+        return (origin.get("borders") or {}).get(target.get("id"), "")
 
     async def initialize_tile_info(self, snapshot_tiles: Optional[List[dict]] = None):
         """Prebuild fast tile summaries so movement never waits on narration."""
@@ -1189,7 +1259,9 @@ class GameStateManager:
                     getattr(self.definitions, "enemy_defs", []),
                     getattr(self.definitions, "item_defs", []),
                     self.state.map_width,
-                    self.state.map_height
+                    self.state.map_height,
+                    region_ids=self.state.region_ids,
+                    regions=self.state.regions,
                 )
             except Exception as e:
                 logger.error(f"Failed to generate tile quick info: {str(e)}")
@@ -1523,6 +1595,7 @@ class GameStateManager:
                 for region in self.state.regions
             ),
         )
+        await self.initialize_region_borders(snapshot.get("regions") if snapshot else None)
 
         # Generate entity placements
         await self.initialize_game_placements(snapshot["entity_placements"] if snapshot else None)
