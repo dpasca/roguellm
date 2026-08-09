@@ -212,8 +212,17 @@ Measured, not estimated.
 | | Per forge |
 |---|---|
 | Images — 11 at 1536x1024 medium | **$0.45** |
-| Text — 9 calls, 10.2k in / 8.5k out on `gpt-4.1-mini` | **$0.018** |
+| Text — 9 calls, 12.6k in / 15.1k out on `gpt-5.6-luna` | **$0.021** |
 | Total | **~$0.47** |
+
+The text row was remeasured after the move to `gpt-5.6-luna` at reasoning effort
+`high`. It barely moved: 5.6k of those output tokens are reasoning, which is
+billed as output, but Luna costs half as much per input token and 25% less per
+output token than the `gpt-4.1-mini` it replaced. The map CSV call was deleted
+and an area-crossings call added, so the count is unchanged at 9. To remeasure,
+grep a forge's logs for `Token usage`: every completion logs its own counts,
+including reasoning tokens, and it is not gated behind the sensitive-content
+logging flag because token counts are not content.
 
 Images are 96% of it. **Play makes no model calls at all**, so cost scales with
 Worlds forged, not Worlds played.

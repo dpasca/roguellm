@@ -384,9 +384,10 @@ Every location gets a backdrop, drawn concurrently and attached as
 `backdrop_url` on its cell type. The cover reuses one rather than generating a
 scene only the gallery card would see.
 
-Cost note: the model generated 11 enemies from a 5-enemy sample, so a forge is
-roughly double the estimate above. Capping enemy count is a small change with a
-direct effect on unit economics, worth doing before credits exist.
+Cost note: this originally read that the model generated 11 enemies from a
+5-enemy sample, doubling a forge. The cast cap fixed that - a forge remeasured
+on `gpt-5.6-luna` produced exactly 5 enemies, 5 terrain, and 7 items, so the
+image count is back to the ~12 estimated here.
 6. Store assets in a Docker volume owned by the RogueLLM stack, not object
    storage. Add an assets volume alongside the existing
    `roguellm-production-data` and keep any host path in the server-side

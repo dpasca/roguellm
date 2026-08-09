@@ -84,6 +84,27 @@ def resolve_reasoning_effort(model_name: str, requested: Optional[str]) -> Optio
         return None
     return requested
 
+def log_token_usage(model_name: str, usage: Any) -> None:
+    """Record what one call actually cost in tokens.
+
+    Reasoning tokens are billed as output but are not in the visible response,
+    so prompt and completion lengths alone understate a forge. Credits pricing
+    depends on knowing the real number.
+    """
+    if usage is None:
+        return
+    details = getattr(usage, "completion_tokens_details", None)
+    reasoning = getattr(details, "reasoning_tokens", None) if details else None
+    logger.info(
+        "Token usage model=%s prompt=%s completion=%s reasoning=%s total=%s",
+        model_name,
+        getattr(usage, "prompt_tokens", "?"),
+        getattr(usage, "completion_tokens", "?"),
+        reasoning if reasoning is not None else "n/a",
+        getattr(usage, "total_tokens", "?"),
+    )
+
+
 def normalize_generated_defs(data: Any) -> List[dict]:
     """Coerce one generation response into the list every caller expects.
 
@@ -237,6 +258,7 @@ class GenAI:
             response = await with_exponential_backoff(get_completion)
             result = response.choices[0].message.content
             logger.info("Obtained completion (%s)", describe_text(result))
+            log_token_usage(use_model.model_name, getattr(response, "usage", None))
             if is_sensitive_content_logging_enabled():
                 logger.info("Obtained completion content: %s", result)
             return result
