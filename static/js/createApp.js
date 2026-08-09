@@ -100,6 +100,10 @@ const app = Vue.createApp({
             isGameInitialized: false,
             isLoading: true,
             isMoveInProgress: false,
+            // Shown for a beat when the player walks into a new area. Not a
+            // dialog on purpose: crossings happen several times a run, and
+            // anything needing a tap would tax the one thing you do constantly.
+            areaReveal: null,
             // Forging a World takes minutes once art is on, so the wait shows
             // the World being built rather than a spinner.
             forge: {
@@ -215,6 +219,15 @@ const app = Vue.createApp({
             const cell = row && row[x];
             return (cell && cell.backdrop_url) || null;
         },
+        currentRegion() {
+            const state = this.gameState;
+            if (!state || !state.region_ids || !state.regions || !state.player_pos) return null;
+            const [x, y] = state.player_pos;
+            const row = state.region_ids[y];
+            const regionId = row && row[x];
+            if (!regionId) return null;
+            return state.regions.find(region => region.id === regionId) || null;
+        },
         getPlayerHealthPercentage() {
             return (this.gameState.player_hp / this.gameState.player_max_hp) * 100;
         },
@@ -263,6 +276,37 @@ const app = Vue.createApp({
         }
     },
     methods: {
+        regionAt(pos) {
+            const state = this.gameState;
+            if (!state || !state.region_ids || !state.regions || !pos) return null;
+            const row = state.region_ids[pos[1]];
+            const regionId = row && row[pos[0]];
+            if (!regionId) return null;
+            return state.regions.find(region => region.id === regionId) || null;
+        },
+        checkAreaCrossing(newPos, oldPos) {
+            // Worlds without regions, and the first position of a run, are not
+            // crossings; the reveal is for walking out of one area into another.
+            const to = this.regionAt(newPos);
+            const from = oldPos ? this.regionAt(oldPos) : null;
+            if (!to || !from || to.id === from.id) return;
+
+            // Only the crossing line. The area name is already on screen twice,
+            // as the stage eyebrow and the Location stat, and a third copy is
+            // the duplication this layer was supposed to stop causing.
+            const line = (from.borders && from.borders[to.id]) || '';
+            if (!line) return;
+
+            if (this.areaRevealTimer) clearTimeout(this.areaRevealTimer);
+            // The id keys the element so a crossing that follows another before
+            // the first has faded restarts the animation instead of rendering
+            // into a node the previous run already left at opacity 0.
+            this.areaRevealSeq = (this.areaRevealSeq || 0) + 1;
+            this.areaReveal = { line, id: this.areaRevealSeq };
+            // Long enough to read a sentence, short enough that a fast player
+            // is never waiting on it. It never blocks input either way.
+            this.areaRevealTimer = setTimeout(() => { this.areaReveal = null; }, 4200);
+        },
         getTileInfo(x, y) {
             if (!this.gameState) return null;
 
@@ -1059,6 +1103,10 @@ const app = Vue.createApp({
         if (loadingInterval) {
             clearInterval(loadingInterval);
         }
+
+        if (this.areaRevealTimer) {
+            clearTimeout(this.areaRevealTimer);
+        }
     },
     watch: {
         // Watch for changes in player position
@@ -1069,6 +1117,7 @@ const app = Vue.createApp({
                     const [x, y] = newVal;
                     updatePlayerPosition(x, y);
                 });
+                this.checkAreaCrossing(newVal, oldVal);
             }
         },
         // Watch for changes in combat state

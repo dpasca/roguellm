@@ -406,3 +406,71 @@
         animation: none;
     }
 }
+
+/* Arrival in a new area. Sits over the stage and fades on its own: crossings
+ * happen several times a run, so anything needing a dismiss would tax the one
+ * action the player takes constantly. */
+/* Wraps the stage so the arrival line can be laid over it when there is art,
+ * without being hidden along with it when there is not. */
+.stage-frame {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Default: a banner where the stage would be. Worlds without art hide the
+ * stage entirely, and the crossing line still has to land somewhere. */
+.stage-arrival {
+    position: static;
+    margin: 8px 0 0;
+    border-radius: 12px;
+    background: rgba(6, 8, 13, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 24px 18px 14px;
+    pointer-events: none;
+    animation: stage-arrival-in 4.2s ease forwards;
+}
+
+/* With art it becomes a subtitle over the lower part of the scene. */
+.stage-arrival.over-art {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(0deg, rgba(6, 8, 13, 0.92) 0%, rgba(6, 8, 13, 0) 100%);
+}
+
+/* Reads as a subtitle over the scene, which is why it sits low and centred
+ * rather than competing with the caption at the top. */
+.stage-arrival p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    text-align: center;
+    text-wrap: balance;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* Holds steady while it is read, then leaves. The percentages are the 4.2s
+ * total: in by 6%, out over the last 14%. */
+@keyframes stage-arrival-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    6% { opacity: 1; transform: translateY(0); }
+    86% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0); }
+}
+
+/* Respect a reduced-motion preference: still announced, just not animated. */
+@media (prefers-reduced-motion: reduce) {
+    .stage-arrival {
+        animation: none;
+    }
+}

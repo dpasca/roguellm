@@ -152,7 +152,7 @@ small change that makes the prose stop contradicting the picture.
 2. **Partition. Done.** Contiguous areas grown in code, one terrain each.
 3. **Area crossings. Done.** One line per adjacency, shown on the step that
    crosses it, plus prose that varies inside an area.
-4. **Transition beat.** A visual reveal on crossing, beyond the line of text.
+4. **Transition beat. Done.** The crossing line as a subtitle over the stage.
 
 ### What steps 1 and 2 actually built
 
@@ -219,6 +219,26 @@ before crossings existed keeps its map and placements and generates only its
 crossings on the next run.
 
 Cost: one extra model call per world, at forge time, never during play.
+
+### What step 4 built
+
+**A subtitle, not a sheet.** The plan said reuse the encounter bottom sheet.
+Rejected on reflection: a sheet needs a tap to dismiss, and crossings happen
+several times a run, so it would tax the one action a player takes constantly.
+The crossing line instead fades in over the stage, holds, and fades out on its
+own in 4.2s, blocking nothing. `role="status"` with `aria-live="polite"`
+announces it without taking focus, which suits something that needs no input.
+
+**It shows the line only, never the area name.** The name is already on screen
+as the stage eyebrow and the Location stat. A third copy is exactly the
+duplication `game-direction.md:509` already complains about.
+
+**Detected client-side.** `regions`, `region_ids`, and `player_pos_prev` are all
+in the state the client already receives, so the crossing needs no new server
+data - `checkAreaCrossing` compares the region under the old and new positions.
+
+Worlds without crossing text simply never show it, which is also what happens to
+any World forged before step 3.
 
 ## Open questions
 

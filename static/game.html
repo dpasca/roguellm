@@ -374,6 +374,7 @@
                              the primary surface, with the map demoted to a
                              minimap. Switchable via ?layout=scene so the two
                              can be compared before committing to either. -->
+                        <div class="stage-frame" v-if="sceneLayout && !gameState.in_combat">
                         <section v-if="sceneLayout && !gameState.in_combat"
                                  class="location-stage"
                                  :class="{ 'has-art': currentBackdrop }"
@@ -400,6 +401,23 @@
                                      class="stage-enemy">
                             </div>
                         </section>
+
+                        <!-- Announces an area on entry, then fades itself.
+                             Sits outside the stage because the stage is hidden
+                             when a World has no art, and art is off by default.
+                             aria-live so it is spoken without stealing focus,
+                             since it takes no interaction. The key restarts the
+                             animation when one crossing follows another before
+                             the first has faded. -->
+                        <div v-if="areaReveal"
+                             :key="areaReveal.id"
+                             class="stage-arrival"
+                             :class="{ 'over-art': currentBackdrop }"
+                             role="status"
+                             aria-live="polite">
+                            <p>{{ areaReveal.line }}</p>
+                        </div>
+                        </div>
 
                         <!-- Game Map -->
                         <div class="game-map" :class="{
