@@ -90,6 +90,7 @@ class GameStateManager:
         # persisted into the world snapshot alongside the map and placements.
         self._generated_tile_info: List[dict] = []
         self._snapshot_tile_info_by_language: Dict[str, List[dict]] = {}
+        self._snapshot_regions_by_language: Dict[str, List[dict]] = {}
 
         # Awaited once per forge milestone when set; see report_progress.
         self.on_progress = None
@@ -1166,12 +1167,15 @@ class GameStateManager:
 
         tile_info_by_language = snapshot.get("tile_info_by_language") or {}
         self._snapshot_tile_info_by_language = dict(tile_info_by_language)
+        self._snapshot_regions_by_language = dict(snapshot.get("regions_by_language") or {})
 
         return {
             "cell_types": cell_types,
             "entity_placements": snapshot.get("entity_placements") or [],
             "tile_info": tile_info_by_language.get(getattr(self, "language", "en")) or [],
-            "regions": snapshot.get("regions") or [],
+            "regions": (snapshot.get("regions_by_language") or {}).get(
+                getattr(self, "language", "en")
+            ) or [],
         }
 
     def _save_world_snapshot(self) -> None:
@@ -1194,11 +1198,23 @@ class GameStateManager:
                 entity_placements=getattr(self, "entity_placements", []) or [],
                 tile_info_by_language=tile_info_by_language,
                 snapshot_version=WORLD_SNAPSHOT_VERSION,
-                regions=self.state.regions or [],
+                regions_by_language=self._regions_by_language_for_snapshot(),
             )
             self._snapshot_tile_info_by_language = tile_info_by_language
         except Exception as exc:
             logger.error("Failed to save world snapshot: %s", exc)
+
+    def _regions_by_language_for_snapshot(self) -> Dict[str, List[dict]]:
+        """Merge this run's areas into the per-language map already persisted.
+
+        Crossing lines are prose, so they are keyed by language exactly as tile
+        prose is. Playing a World in a second language must not overwrite the
+        first language's sentences.
+        """
+        stored = dict(self._snapshot_regions_by_language or {})
+        if self.state.regions:
+            stored[getattr(self, "language", "en")] = self.state.regions
+        return stored
 
     async def initialize_region_borders(self, snapshot_regions: Optional[List[dict]] = None):
         """Attach the crossing text for each pair of touching areas.
@@ -1212,6 +1228,10 @@ class GameStateManager:
             for region in (snapshot_regions or [])
             if isinstance(region, dict)
         }
+        # A snapshot that recorded areas but no crossings gets one more attempt
+        # per run. That is deliberate: the call is cheap, and a World whose
+        # crossings were lost to a transient API failure heals on its next play
+        # instead of staying mute forever.
         if saved and any(saved.values()):
             for region in self.state.regions:
                 region["borders"] = saved.get(region["id"]) or {}

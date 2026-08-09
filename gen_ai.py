@@ -766,10 +766,9 @@ Each placement should indicate whether it's an enemy or an item.
             return {}
 
         user_msg = json.dumps({
-            "areas": [
-                {"id": r["id"], "name": r.get("name"), "description": r.get("description")}
-                for r in regions
-            ],
+            # Only the name: areas are derived from terrain and carry no
+            # description, so sending one would send null on every entry.
+            "areas": [{"id": r["id"], "name": r.get("name")} for r in regions],
             "crossings": pairs,
         }, ensure_ascii=False)
 

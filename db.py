@@ -664,9 +664,12 @@ class DatabaseManager:
                 # languages, but the map and placements are.
                 'tile_info_by_language': tile_info if isinstance(tile_info, dict) else {},
                 'visual_manifest': json.loads(result[4]) if result[4] else None,
-                # Absent on worlds saved before area crossings existed; the
-                # caller regenerates them rather than failing the snapshot.
-                'regions': json.loads(result[5]) if result[5] else [],
+                # Keyed by language, like tile_info: crossing lines are prose
+                # and are not reusable across languages. Absent on worlds saved
+                # before area crossings existed, and a bare list on the handful
+                # saved while this was briefly unkeyed - both fall back to
+                # regenerating rather than failing the snapshot.
+                'regions_by_language': DatabaseManager._as_language_map(result[5]),
             }
 
         return self._execute_with_retry(_get, generator_id, snapshot_version)
@@ -696,6 +699,14 @@ class DatabaseManager:
 
         self._execute_with_retry(_save)
 
+    @staticmethod
+    def _as_language_map(raw):
+        """Read a language-keyed column, tolerating a pre-keying bare list."""
+        if not raw:
+            return {}
+        value = json.loads(raw)
+        return value if isinstance(value, dict) else {}
+
     def save_generator_world(
             self,
             generator_id: str,
@@ -704,7 +715,7 @@ class DatabaseManager:
             entity_placements: List[Dict],
             tile_info_by_language: Dict[str, List[Dict]],
             snapshot_version: int = 1,
-            regions: Optional[List[Dict]] = None,
+            regions_by_language: Optional[Dict[str, List[Dict]]] = None,
     ) -> None:
         """Persist the playable snapshot so replays reuse it instead of regenerating."""
         def _save(conn, *args):
@@ -728,7 +739,7 @@ class DatabaseManager:
                 map_csv,
                 json.dumps(entity_placements),
                 json.dumps(tile_info_by_language),
-                json.dumps(regions or [])
+                json.dumps(regions_by_language or {})
             ))
             conn.commit()
 
