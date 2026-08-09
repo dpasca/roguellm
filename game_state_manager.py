@@ -242,9 +242,19 @@ class GameStateManager:
                 on_progress=lambda fields: self.report_progress(**fields),
             )
             characters = art.get("characters") or {}
-            if not characters:
+            locations = art.get("locations") or {}
+            if not characters and not locations:
                 logger.warning("No art generated for %s", self.generator_id)
                 return
+            if not characters:
+                # Backdrops and characters are separate calls, and image models
+                # are stricter about people than about places, so losing every
+                # character while the locations succeed is a real outcome.
+                # Bailing here would orphan art that has already been paid for.
+                logger.warning(
+                    "No character art for %s; attaching %s backdrops anyway",
+                    self.generator_id, len(locations),
+                )
 
             attach_art_to_definitions(
                 art,
@@ -268,7 +278,10 @@ class GameStateManager:
                     snapshot_version=WORLD_SNAPSHOT_VERSION,
                 )
 
-            logger.info("Attached art for %s entities in %s", len(characters), self.generator_id)
+            logger.info(
+                "Attached art for %s entities and %s locations in %s",
+                len(characters), len(locations), self.generator_id,
+            )
         except Exception as exc:
             logger.error("World art generation failed for %s: %s", self.generator_id, exc)
 

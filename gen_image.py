@@ -18,6 +18,7 @@ import base64
 import io
 import logging
 import os
+import re
 from collections import Counter
 from typing import Any, List, Optional, Sequence, Tuple
 
@@ -965,12 +966,35 @@ def compose_world_cover(
     return canvas.convert("RGBA")
 
 
+ASSET_NAME_SAFE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def safe_asset_name(name: str, fallback: str = "asset") -> str:
+    """Reduce a name to something safe to use as a single path segment.
+
+    Asset names are model-generated entity ids, and the theme they come from is
+    user-supplied, so they are not trustworthy path components. Anything outside
+    a conservative charset is collapsed, and a name that is all separators - or
+    any form of `..` - falls back rather than escaping the world directory.
+    """
+    cleaned = ASSET_NAME_SAFE.sub("-", str(name or "")).strip("-._")
+    if not cleaned or set(cleaned) <= {"."}:
+        return fallback
+    return cleaned[:120]
+
+
 def save_asset(image: Image.Image, world_id: str, name: str, assets_dir: Optional[str] = None) -> str:
     """Write one asset and return the URL the world definition should carry."""
     base_dir = assets_dir or get_world_assets_dir()
-    world_dir = os.path.join(base_dir, world_id)
+    safe_world = safe_asset_name(world_id, "world")
+    world_dir = os.path.join(base_dir, safe_world)
     os.makedirs(world_dir, exist_ok=True)
 
-    filename = f"{name}.png"
-    image.save(os.path.join(world_dir, filename), format="PNG", optimize=True)
-    return f"/assets/worlds/{world_id}/{filename}"
+    filename = f"{safe_asset_name(name)}.png"
+    target = os.path.join(world_dir, filename)
+    # Belt and braces: the name is sanitized above, so this should never trip.
+    if os.path.commonpath([os.path.abspath(world_dir), os.path.abspath(target)]) != os.path.abspath(world_dir):
+        raise ValueError(f"Refusing to write asset outside its world directory: {name!r}")
+
+    image.save(target, format="PNG", optimize=True)
+    return f"/assets/worlds/{safe_world}/{filename}"

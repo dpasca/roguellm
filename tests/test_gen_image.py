@@ -826,6 +826,42 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(len(database.list_worlds(local_dev=True)), 1)
 
+    async def test_backdrops_survive_total_character_failure(self):
+        """Losing every character must not orphan the location art.
+
+        Character and backdrop prompts are separate calls and image models are
+        stricter about people than places, so all-characters-fail with
+        locations-succeed is a real outcome. Bailing there threw away art the
+        forge had already paid for.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            database = self.make_db(directory)
+            manager = self.make_manager(database)
+            world_id = manager.generator_id
+
+            async def only_locations(manifest, generator_id, generator=None, assets_dir=None, on_progress=None):
+                return {
+                    "characters": {},
+                    "locations": {"street": f"/assets/worlds/{world_id}/location-street.png"},
+                    "cover": None,
+                }
+
+            with patch.dict(os.environ, {
+                "ENABLE_WORLD_ART": "1",
+                "WORLD_ASSETS_DIR": os.path.join(directory, "assets"),
+            }), \
+                    patch("game_state_manager.db", database), \
+                    patch("game_state_manager.generate_world_art", only_locations):
+                await manager.generate_and_attach_world_art()
+
+            stored = database.get_generator(world_id)
+            cells = stored["celltype_defs"]
+            cells = list(cells.values()) if isinstance(cells, dict) else cells
+            self.assertEqual(
+                cells[0].get("backdrop_url"),
+                f"/assets/worlds/{world_id}/location-street.png",
+            )
+
     async def test_art_urls_are_persisted_for_enemies(self):
         with tempfile.TemporaryDirectory() as directory:
             database = self.make_db(directory)
@@ -884,3 +920,40 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SafeAssetNameTests(unittest.TestCase):
+    """Asset names are model-generated ids from a user-supplied theme."""
+
+    def test_ordinary_ids_survive(self):
+        from gen_image import safe_asset_name
+        for name in ("player", "konbini-scout", "location-3", "player_neutral"):
+            self.assertEqual(safe_asset_name(name), name)
+
+    def test_traversal_cannot_escape_the_world_directory(self):
+        from gen_image import safe_asset_name
+        for name in ("../../etc/passwd", "..", "../..", "/absolute/path"):
+            with self.subTest(name=name):
+                cleaned = safe_asset_name(name)
+                self.assertNotIn("/", cleaned)
+                self.assertNotIn("..", cleaned)
+
+    def test_empty_or_separator_only_names_fall_back(self):
+        from gen_image import safe_asset_name
+        for name in ("", None, "///", "..."):
+            with self.subTest(name=name):
+                self.assertEqual(safe_asset_name(name), "asset")
+
+    def test_save_asset_writes_inside_the_world_directory(self):
+        import tempfile
+        from PIL import Image
+        from gen_image import save_asset
+        with tempfile.TemporaryDirectory() as directory:
+            url = save_asset(Image.new("RGBA", (4, 4)), "world1", "../../escape", directory)
+            written = [
+                os.path.join(root, f)
+                for root, _, files in os.walk(directory) for f in files
+            ]
+            self.assertEqual(len(written), 1)
+            self.assertTrue(os.path.abspath(written[0]).startswith(os.path.abspath(directory)))
+            self.assertTrue(url.startswith("/assets/worlds/world1/"))

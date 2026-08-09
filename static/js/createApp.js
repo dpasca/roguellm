@@ -677,7 +677,10 @@ const app = Vue.createApp({
                 case 'art_failed': {
                     const slot = this.forge.cast.find(entry => entry.id === event.character_id);
                     if (slot) slot.failed = true;
-                    this.forge.done = (event.index || this.forge.done) + 1;
+                    // Same shape as 'art': the backend increments before
+                    // reporting, so index is already the completed count.
+                    // Adding one here made a failure count double.
+                    this.forge.done = event.index || this.forge.done + 1;
                     break;
                 }
 
