@@ -11,6 +11,15 @@
     <script src="https://unpkg.com/vue-i18n@9"></script>
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Formerly @imported from game.css; linked so versioning.js can
+         cache-bust them and so they download in parallel. They stay ahead of
+         game.css because an @import sits at the top of its parent, so its rules
+         lost ties against that parent - keeping the order preserves the cascade. -->
+    <link rel="stylesheet" href="/static/css/game_layout.css">
+    <link rel="stylesheet" href="/static/css/game_combat.css">
+    <link rel="stylesheet" href="/static/css/game_inventory.css">
+    <link rel="stylesheet" href="/static/css/game_map.css">
+    <link rel="stylesheet" href="/static/css/game_art.css">
     <link rel="stylesheet" href="/static/css/game.css">
     <link rel="stylesheet" href="/static/css/game_overlay.css">
     <link rel="stylesheet" href="/static/css/game_controls.css">

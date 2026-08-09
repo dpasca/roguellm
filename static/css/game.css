@@ -1,9 +1,8 @@
-/* Import modular stylesheets */
-@import url('game_layout.css');
-@import url('game_combat.css');
-@import url('game_inventory.css');
-@import url('game_map.css');
-@import url('game_art.css');
+/* The modular stylesheets are linked from game.html rather than imported here.
+ * versioning.js cache-busts link[rel=stylesheet] only, so an @import child kept
+ * its cached copy after a deploy while its parent was refetched. Linking them
+ * also drops the import waterfall, since @import cannot start downloading until
+ * this file has been fetched and parsed. */
 
 /* Core Game Styles */
 .restart-button {
