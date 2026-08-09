@@ -422,7 +422,7 @@ Consequences to carry:
 
 ## 13. Testing
 
-226 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
+255 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
 `HIGH_SPEC_MODEL_API_KEY` to be set to anything, and `SESSION_SECRET_KEY` — some
 construct the app and fail on a missing key even though they make no model
 calls. No test spends money.
@@ -436,12 +436,41 @@ Notable guards, each protecting something that actually broke:
 - Replaying a World never regenerates its map or placements.
 - Chroma keying does not punch holes in subjects, and de-spill leaves
   single-channel colours alone.
+- Terrain areas are contiguous, evenly sized, and one per backdrop, across 25
+  seeds. `derive_regions` finds connected components, so asserting one region
+  per terrain is the same assertion as every region being contiguous.
+- A completion never sends `temperature`, which a reasoning model rejects
+  outright, and never sends `reasoning_effort` to a model too old to take it.
 
-**Frontend has no automated coverage**, and it should. Several real bugs this
-cycle were invisible from the code and only appeared in a browser: a 422px
-element in a 390px viewport, a stage overflowing its grid row, CSS that never
-applied because the value was set inline in JavaScript, and a favicon 404 on
-every page load.
+### Frontend
+
+`tests/test_frontend_smoke.py` covers what a green Python suite cannot see. It
+boots a real uvicorn on a free port, seeds a dev World with a **complete
+snapshot** so a run makes no model calls, and drives Chromium against it.
+
+It checks the four things the handoff previously named as worth making
+permanent - no failed requests on load, no horizontal overflow at 390px and
+360px, one accessible name per World card, movement controls above the fold -
+plus that moving raises no script errors and that the area-crossing line appears
+when, and only when, the area actually changes.
+
+    venv/bin/pip install playwright && venv/bin/playwright install chromium
+    venv/bin/python -m pytest tests/test_frontend_smoke.py
+
+Playwright is deliberately **not** in `requirements.txt`: it is a test-only
+dependency that pulls browser binaries. The module skips rather than fails when
+either playwright or a browser is missing, so `pytest tests/` still works
+without it.
+
+This earns its keep. The area-crossing work shipped a handler defined among the
+`computed` properties instead of in `methods`, so every crossing threw a
+TypeError - and 249 unit tests stayed green. Reintroducing that one-word change
+now fails two of these tests. Earlier browser-only bugs it would also have
+caught: a 422px element in a 390px viewport, a stage overflowing its grid row,
+CSS that never applied because the value was set inline in JavaScript, and a
+favicon 404 on every page load.
+
+Still uncovered: combat, inventory, and the forge reveal.
 
 Driving a browser is the way to catch those. A Playwright MCP server is
 available in the working environment and is the easiest route — its
@@ -472,7 +501,18 @@ Ordered by what blocks what.
 6. **Rate limiting on forging.** It is the expensive operation and is ungated
    beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
    much more after.
-7. Token auth for the mobile client.
-8. Smaller: the local-dev Quick Start button points at a retired World; the
-   location name can appear three times on one screen; `_data/assets/efea0944/`
-   holds orphaned art from a deleted test World.
+7. **`response_format` on the worldgen JSON calls.** Only `world_moderation.py`
+   asks for structured output; every `_gen_game_elems_from_json_sample` caller
+   relies on prompt wording, then repairs the result. That is not theoretical:
+   a forge died mid-run with `KeyError: slice(None, 1, None)` because the model
+   returned a bare object where a one-element array was expected, and it does so
+   only intermittently. `normalize_generated_defs` now absorbs the known wrong
+   shapes, but asking for the right one is the actual fix. Carried over from a
+   2025-05-28 TODO file, now deleted in favour of this entry.
+8. **No automated frontend coverage.** See section 13; two real bugs in the
+   area-crossing work were invisible to a green suite and only appeared in a
+   browser.
+9. Token auth for the mobile client.
+10. Smaller: the local-dev Quick Start button points at a retired World; the
+    location name can appear three times on one screen; `_data/assets/efea0944/`
+    holds orphaned art from a deleted test World.

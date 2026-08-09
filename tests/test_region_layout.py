@@ -95,9 +95,6 @@ class RegionLayoutTests(unittest.TestCase):
         self.assertGreater(len(manager.derive_regions()), len(CELLTYPE_DEFS) * 3)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class RegionAdjacencyTests(unittest.TestCase):
     """Crossings are only coherent if the geography handed to the model is real."""
@@ -148,3 +145,6 @@ class RegionAdjacencyTests(unittest.TestCase):
 
         self.assertEqual(manager.border_line(*inside), "")
         self.assertTrue(manager.border_line(*crossing).startswith("into "))
+
+if __name__ == "__main__":
+    unittest.main()
