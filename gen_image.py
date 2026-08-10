@@ -31,6 +31,10 @@ logger = logging.getLogger()
 
 DEFAULT_IMAGE_MODEL = "gpt-image-2"
 DEFAULT_IMAGE_QUALITY = "medium"
+WORLD_ASSET_EXTENSION = ".webp"
+WORLD_ASSET_FORMAT = "WEBP"
+WORLD_ASSET_WEBP_QUALITY = 85
+WORLD_ASSET_WEBP_METHOD = 6
 
 # 1536x1024 gives ~512px per frame across three frames, more than a mobile
 # sprite needs. Portraits and backdrops stay square.
@@ -647,12 +651,12 @@ async def generate_world_art(
 
     await asyncio.gather(*(draw(character) for character in characters))
 
-    locations = await _generate_backdrops(
+    locations, location_backdrops = await _generate_backdrops(
         manifest, world_id, generator, style, assets_dir, report
     )
 
     cover_url = await _generate_cover(
-        manifest, neutral_frames, world_id, locations, assets_dir
+        manifest, neutral_frames, world_id, location_backdrops, assets_dir
     )
     if cover_url:
         await report(stage="cover", cover_url=cover_url)
@@ -667,7 +671,7 @@ async def _generate_backdrops(
         style: str,
         assets_dir: Optional[str],
         report,
-) -> dict:
+) -> Tuple[dict, dict]:
     """Draw every location, so exploration can show where you are.
 
     Concurrent for the same reason characters are: cohesion comes from the
@@ -676,9 +680,10 @@ async def _generate_backdrops(
     """
     locations = manifest.get("locations") or []
     if not locations:
-        return {}
+        return {}, {}
 
     results = {}
+    backdrops = {}
     limit = asyncio.Semaphore(ART_CONCURRENCY)
     done = 0
 
@@ -696,6 +701,7 @@ async def _generate_backdrops(
         results[location_id] = save_asset(
             backdrop, world_id, f"location-{location_id}", assets_dir
         )
+        backdrops[location_id] = backdrop
         done += 1
         await report(
             stage="location",
@@ -706,14 +712,14 @@ async def _generate_backdrops(
         )
 
     await asyncio.gather(*(draw(location) for location in locations))
-    return results
+    return results, backdrops
 
 
 async def _generate_cover(
         manifest: dict,
         neutral_frames: dict,
         world_id: str,
-        location_urls: dict,
+        location_backdrops: dict,
         assets_dir: Optional[str],
 ) -> Optional[str]:
     """Compose the gallery card from the sprites, over a location backdrop.
@@ -729,20 +735,12 @@ async def _generate_cover(
     if hero is None:
         return None
 
-    backdrop = None
     first_location = next(
         (location["id"] for location in (manifest.get("locations") or [])
-         if location["id"] in location_urls),
+         if location["id"] in location_backdrops),
         None,
     )
-    if first_location:
-        path = os.path.join(
-            assets_dir or get_world_assets_dir(), world_id, f"location-{first_location}.png"
-        )
-        try:
-            backdrop = Image.open(path).convert("RGBA")
-        except Exception as exc:
-            logger.error("Could not reuse backdrop for the cover of %s: %s", world_id, exc)
+    backdrop = location_backdrops.get(first_location)
 
     supporting = [
         frame for character_id, frame in neutral_frames.items()
@@ -984,17 +982,33 @@ def safe_asset_name(name: str, fallback: str = "asset") -> str:
 
 
 def save_asset(image: Image.Image, world_id: str, name: str, assets_dir: Optional[str] = None) -> str:
-    """Write one asset and return the URL the world definition should carry."""
+    """Write one WebP asset and return the URL the World should carry.
+
+    Existing Worlds keep their persisted PNG URLs and files. Only newly forged
+    assets take this path, so the format change needs no data migration.
+    """
     base_dir = assets_dir or get_world_assets_dir()
     safe_world = safe_asset_name(world_id, "world")
     world_dir = os.path.join(base_dir, safe_world)
     os.makedirs(world_dir, exist_ok=True)
 
-    filename = f"{safe_asset_name(name)}.png"
+    filename = f"{safe_asset_name(name)}{WORLD_ASSET_EXTENSION}"
     target = os.path.join(world_dir, filename)
     # Belt and braces: the name is sanitized above, so this should never trip.
     if os.path.commonpath([os.path.abspath(world_dir), os.path.abspath(target)]) != os.path.abspath(world_dir):
         raise ValueError(f"Refusing to write asset outside its world directory: {name!r}")
 
-    image.save(target, format="PNG", optimize=True)
+    has_alpha = "A" in image.getbands() or "transparency" in image.info
+    prepared = image.convert("RGBA" if has_alpha else "RGB")
+    if has_alpha and prepared.getchannel("A").getextrema() == (255, 255):
+        # Backdrops and covers are opaque. Omitting their redundant alpha plane
+        # makes them a little smaller while sprites and tokens retain theirs.
+        prepared = prepared.convert("RGB")
+
+    prepared.save(
+        target,
+        format=WORLD_ASSET_FORMAT,
+        quality=WORLD_ASSET_WEBP_QUALITY,
+        method=WORLD_ASSET_WEBP_METHOD,
+    )
     return f"/assets/worlds/{safe_world}/{filename}"

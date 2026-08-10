@@ -480,9 +480,8 @@ free-tier allowance.
 
 **Phase 6 — Mobile app.** Replaces the PWA plan.
 1. Wrap the existing frontend with Capacitor, following the ChatNext3 setup.
-2. Convert generated art to WebP before this matters: ~20 MB per World over a
-   mobile connection is not shippable, and it is a tenfold cut for no visible
-   loss.
+2. **Done:** newly generated art is quality-85 WebP. Historical PNG Worlds keep
+   working without migration; new Worlds are roughly 2 MB instead of 20 MB.
 3. Replace cookie-session auth with a token the app can hold, and add Sign in
    with Apple.
 4. Store listings, review, and IAP products for credits. Budget the 15-30% cut
@@ -493,6 +492,7 @@ free-tier allowance.
 Phases 1 through 4 are complete: runtime model cost during play is zero, Worlds
 persist and are shareable, art generates end to end, the front page is a prompt
 and a gallery, and exploration shows the place you are standing in.
+The WebP prerequisite from Phase 6 is also complete for newly forged Worlds.
 
 Open, roughly in order of how much they block anything:
 
@@ -515,10 +515,11 @@ Open, roughly in order of how much they block anything:
   matches, so "Abandoned Control Tower" and "Control Tower" both show.
 - `_data/assets/efea0944/` holds orphaned art from a deleted test World.
 
-Phases 5 and 6 below have not been started. Deployment is being taken forward
-separately; see [deployment-handoff.md](deployment-handoff.md), the technical
-handoff: architecture, the client contract, data model, costs, deployment, and
-the traps that are not visible from reading the code.
+Phase 5 has not started. Phase 6 has only its WebP prerequisite complete;
+Capacitor, token auth, and store work have not started. Deployment is being
+taken forward separately; see [deployment-handoff.md](deployment-handoff.md),
+the technical handoff: architecture, the client contract, data model, costs,
+deployment, and the traps that are not visible from reading the code.
 
 ## Open questions
 

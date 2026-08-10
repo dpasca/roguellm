@@ -312,12 +312,59 @@ class SaveAssetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             url = save_asset(image, "world-1", "hero-neutral", assets_dir=directory)
-            written = os.path.join(directory, "world-1", "hero-neutral.png")
+            written = os.path.join(directory, "world-1", "hero-neutral.webp")
 
             self.assertTrue(os.path.exists(written))
-            self.assertEqual(Image.open(written).size, (16, 16))
+            with Image.open(written) as stored:
+                self.assertEqual(stored.format, "WEBP")
+                self.assertEqual(stored.size, (16, 16))
 
-        self.assertEqual(url, "/assets/worlds/world-1/hero-neutral.png")
+        self.assertEqual(url, "/assets/worlds/world-1/hero-neutral.webp")
+
+    def test_transparent_sprite_alpha_survives_webp_encoding(self):
+        image = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+        image.paste(Image.new("RGBA", (16, 16), (255, 0, 0, 255)), (8, 8))
+
+        with tempfile.TemporaryDirectory() as directory:
+            save_asset(image, "world-1", "hero", assets_dir=directory)
+            written = os.path.join(directory, "world-1", "hero.webp")
+
+            with Image.open(written) as stored:
+                rgba = stored.convert("RGBA")
+                self.assertEqual(rgba.getpixel((0, 0))[3], 0)
+                self.assertEqual(rgba.getpixel((16, 16))[3], 255)
+
+    def test_opaque_assets_drop_the_redundant_alpha_plane(self):
+        image = Image.new("RGBA", (16, 16), (20, 30, 40, 255))
+
+        with tempfile.TemporaryDirectory() as directory:
+            save_asset(image, "world-1", "location", assets_dir=directory)
+            written = os.path.join(directory, "world-1", "location.webp")
+
+            with Image.open(written) as stored:
+                self.assertEqual(stored.mode, "RGB")
+
+    def test_static_asset_route_serves_the_webp_media_type(self):
+        from fastapi import FastAPI
+        from fastapi.staticfiles import StaticFiles
+        from fastapi.testclient import TestClient
+
+        with tempfile.TemporaryDirectory() as directory:
+            url = save_asset(
+                Image.new("RGBA", (16, 16), (20, 30, 40, 255)),
+                "world-1",
+                "cover",
+                assets_dir=directory,
+            )
+            app = FastAPI()
+            app.mount("/assets/worlds", StaticFiles(directory=directory))
+
+            response = TestClient(app).get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "image/webp")
+        self.assertEqual(response.content[:4], b"RIFF")
+        self.assertEqual(response.content[8:12], b"WEBP")
 
     def test_worlds_do_not_share_a_directory(self):
         image = Image.new("RGBA", (16, 16), (255, 0, 0, 255))
@@ -326,8 +373,8 @@ class SaveAssetTests(unittest.TestCase):
             save_asset(image, "world-1", "hero", assets_dir=directory)
             save_asset(image, "world-2", "hero", assets_dir=directory)
 
-            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "hero.png")))
-            self.assertTrue(os.path.exists(os.path.join(directory, "world-2", "hero.png")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "hero.webp")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-2", "hero.webp")))
 
     def test_frame_names_cover_the_states_the_renderer_expects(self):
         self.assertEqual(FRAME_NAMES, ("neutral", "attack", "defeat"))
@@ -501,12 +548,12 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(set(art["characters"]), {"player", "punk", "boss"})
             self.assertTrue(os.path.exists(
-                os.path.join(directory, "world-1", "punk-neutral.png")))
+                os.path.join(directory, "world-1", "punk-neutral.webp")))
             self.assertTrue(os.path.exists(
-                os.path.join(directory, "world-1", "punk-token.png")))
+                os.path.join(directory, "world-1", "punk-token.webp")))
 
         self.assertEqual(art["characters"]["punk"]["neutral"],
-                         "/assets/worlds/world-1/punk-neutral.png")
+                         "/assets/worlds/world-1/punk-neutral.webp")
 
     async def test_every_character_receives_the_same_style_text(self):
         generator = FakeArtGenerator()
@@ -602,11 +649,11 @@ class CoverTests(unittest.IsolatedAsyncioTestCase):
                 "world-1", generator=generator, assets_dir=directory,
             )
 
-            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.png")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.webp")))
             self.assertTrue(os.path.exists(
-                os.path.join(directory, "world-1", "location-street.png")))
+                os.path.join(directory, "world-1", "location-street.webp")))
 
-        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.png")
+        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.webp")
 
     async def test_every_location_gets_a_backdrop(self):
         """Exploration shows where you are, so each terrain needs its own."""
@@ -620,7 +667,7 @@ class CoverTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(set(art["locations"]), {"street"})
         self.assertEqual(art["locations"]["street"],
-                         "/assets/worlds/world-1/location-street.png")
+                         "/assets/worlds/world-1/location-street.webp")
 
     async def test_the_cover_reuses_a_backdrop_rather_than_making_its_own(self):
         """Generating a scene only the card would ever see is a wasted image."""
@@ -644,9 +691,9 @@ class CoverTests(unittest.IsolatedAsyncioTestCase):
                 "world-1", generator=generator, assets_dir=directory,
             )
 
-            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.png")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "world-1", "cover.webp")))
 
-        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.png")
+        self.assertEqual(art["cover"], "/assets/worlds/world-1/cover.webp")
 
     async def test_no_characters_means_no_cover(self):
         generator = FakeArtGenerator(fail_ids=("courier", "thug", "heavy"))
@@ -822,7 +869,7 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(stored)
             self.assertEqual(
                 stored["player_defs"][0]["sprite_url"],
-                f"/assets/worlds/{original_id}/player-neutral.png",
+                f"/assets/worlds/{original_id}/player-neutral.webp",
             )
             self.assertEqual(len(database.list_worlds(local_dev=True)), 1)
 
@@ -881,7 +928,7 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
         enemies = {e["enemy_id"]: e for e in stored["enemy_defs"]}
         self.assertEqual(
             enemies["punk"]["sprite_token_url"],
-            f"/assets/worlds/{world_id}/punk-token.png",
+            f"/assets/worlds/{world_id}/punk-token.webp",
         )
         self.assertIn("sprite_frames", enemies["boss"])
 

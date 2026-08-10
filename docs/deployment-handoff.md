@@ -345,8 +345,9 @@ which is the evidence the pattern works on that host.
 
 Art lives in `_data/assets/<world_id>/`, in the same volume as the database.
 
-Measured per World: **30 files, 20-25 MB**. The database is 364 KB for ten
-Worlds, so art is effectively all of the state. A thousand Worlds is ~25 GB.
+Historical PNG Worlds use **30 files and 20-25 MB** each. Newly forged Worlds
+use quality-85 WebP and measured about **2.1 MB**. Existing PNG URLs remain
+valid and need no migration; the format changes only when new assets are saved.
 
 ### WebP is the single biggest win
 
@@ -362,8 +363,8 @@ Measured on a real World at quality 85:
 
 Tenfold cut in disk, bandwidth, and mobile download for no visible loss.
 Sprites and tokens need alpha, which WebP supports; backdrops and covers are
-opaque and could drop it for a little more. `save_asset` in `gen_image.py`
-writes PNG today.
+saved without an alpha plane when they are fully opaque. `save_asset` in
+`gen_image.py` now writes WebP while preserving alpha for sprites and tokens.
 
 Under the mobile plan this stops being a saving and becomes a prerequisite:
 20 MB per World over a phone connection is not shippable.
@@ -501,21 +502,19 @@ movement controls above the fold, one accessible name per World card, and no
 Ordered by what blocks what.
 
 1. **The reverse proxy cutover.** Blocking any production deploy.
-2. **WebP conversion.** Biggest infrastructure win, and a prerequisite for the
-   mobile client.
-3. **Art in backups**, or an explicit decision that art is regenerable.
-4. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
+2. **Art in backups**, or an explicit decision that art is regenerable.
+3. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.
-5. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
-6. **Rate limiting on forging.** It is the expensive operation and is ungated
+4. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
+5. **Rate limiting on forging.** It is the expensive operation and is ungated
    beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
    much more after.
-7. **Frontend coverage is not in CI**, and reaches only the landing page and
+6. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
    inventory, and the forge reveal are still uncovered.
-8. Token auth for the mobile client.
-9. Smaller: the local-dev Quick Start button points at a retired World; the
+7. Token auth for the mobile client.
+8. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.
