@@ -106,7 +106,7 @@ def log_token_usage(model_name: str, usage: Any) -> None:
 
 
 def normalize_generated_defs(data: Any) -> List[dict]:
-    """Coerce one generation response into the list every caller expects.
+    """Coerce one generation response into the inner definition list.
 
     The model returns the right content in the wrong container often enough to
     matter, and not on every call, so it slips through a single manual test. All
@@ -137,6 +137,66 @@ def normalize_generated_defs(data: Any) -> List[dict]:
 
     # A bare entity, which is what a one-element sample tends to produce
     return [data]
+
+
+def json_schema_from_sample(sample: Any) -> Dict[str, Any]:
+    """Build the strict JSON Schema subset used by Structured Outputs.
+
+    Definition samples are also the runtime contract. Deriving the schema from
+    them keeps that contract in one place and allows arrays to contain the
+    handful of object variants present in the samples, such as item effects.
+    """
+    if sample is None:
+        return {"type": "null"}
+    if isinstance(sample, bool):
+        return {"type": "boolean"}
+    if isinstance(sample, int):
+        return {"type": "integer"}
+    if isinstance(sample, float):
+        return {"type": "number"}
+    if isinstance(sample, str):
+        return {"type": "string"}
+    if isinstance(sample, dict):
+        return {
+            "type": "object",
+            "properties": {
+                key: json_schema_from_sample(value)
+                for key, value in sample.items()
+            },
+            "required": list(sample.keys()),
+            "additionalProperties": False,
+        }
+    if isinstance(sample, list):
+        item_schemas = []
+        signatures = set()
+        for item in sample:
+            schema = json_schema_from_sample(item)
+            signature = json.dumps(schema, sort_keys=True, separators=(",", ":"))
+            if signature not in signatures:
+                signatures.add(signature)
+                item_schemas.append(schema)
+
+        if not item_schemas:
+            raise ValueError("Structured-output samples cannot contain an empty array")
+        items = item_schemas[0] if len(item_schemas) == 1 else {"anyOf": item_schemas}
+        return {"type": "array", "items": items}
+
+    raise TypeError(f"Unsupported structured-output sample type: {type(sample).__name__}")
+
+
+def generated_defs_response_format(
+        definition_key: str,
+        template_defs: List[dict],
+) -> Dict[str, Any]:
+    """Describe one generated definition payload for Chat Completions."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": f"generated_{definition_key}",
+            "schema": json_schema_from_sample({definition_key: template_defs}),
+            "strict": True,
+        },
+    }
 
 
 WORLD_TRANSLATION_FIELDS = (
@@ -233,6 +293,7 @@ class GenAI:
             system_msg: str,
             user_msg: str,
             quality: str,
+            response_format: Optional[Dict[str, Any]] = None,
     ):
         use_model = self.hi_model if quality == MODEL_QUALITY_HIGH else self.lo_model
         logger.info(
@@ -246,17 +307,32 @@ class GenAI:
             logger.info("User message: %s", user_msg)
 
         try:
-            async def get_completion():
+            async def get_completion(with_response_format: bool):
+                params = dict(use_model.completion_params())
+                if with_response_format and response_format is not None:
+                    params["response_format"] = response_format
                 return await use_model.client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": system_msg},
                         {"role": "user", "content": user_msg}
                     ],
-                    **use_model.completion_params()
+                    **params
                 )
 
-            response = await with_exponential_backoff(get_completion)
-            result = response.choices[0].message.content
+            try:
+                response = await with_exponential_backoff(
+                    lambda: get_completion(response_format is not None)
+                )
+            except Exception:
+                if response_format is None:
+                    raise
+                logger.warning(
+                    "Structured response format failed for model %s; retrying without it.",
+                    use_model.model_name,
+                )
+                response = await with_exponential_backoff(lambda: get_completion(False))
+
+            result = response.choices[0].message.content or ""
             logger.info("Obtained completion (%s)", describe_text(result))
             log_token_usage(use_model.model_name, getattr(response, "usage", None))
             if is_sensitive_content_logging_enabled():
@@ -574,10 +650,9 @@ A universe where you can become the master of the universe by defeating other ma
     async def _gen_game_elems_from_json_sample(
             self,
             json_template: str,
-            system_msg: str
-    ) -> List[dict]:
-        if DO_BYPASS_WORLD_GEN:
-            return json.loads(json_template)
+            system_msg: str,
+            definition_key: str,
+    ) -> Dict[str, List[dict]]:
 
         system_msg = append_language_and_desc_to_prompt(
             # NOTE: We're adding the general JSON rules to help against bad formatting
@@ -586,41 +661,66 @@ A universe where you can become the master of the universe by defeating other ma
             self.theme_desc
         )
         # Verify that the input is valid JSON
-        template_list = []
         try:
-            template_list = json.loads(json_template)
+            template_defs = normalize_generated_defs(json.loads(json_template))
         except json.JSONDecodeError:
             logger.error("Invalid JSON input template (%s)", describe_text(json_template))
             raise ValueError("Invalid JSON input")
 
+        template_object = {definition_key: template_defs}
+        if DO_BYPASS_WORLD_GEN:
+            return template_object
+
         # Generate a new list of items
         response = await self._quick_completion(
             system_msg=system_msg,
-            user_msg=json_template,
-            quality=MODEL_QUALITY_FOR_JSON
+            user_msg=json.dumps(template_object, ensure_ascii=False),
+            quality=MODEL_QUALITY_FOR_JSON,
+            response_format=generated_defs_response_format(definition_key, template_defs),
         )
-        # Convert the response to a list of dictionaries
+        # Keep the public return shape identical to the template files. The
+        # inner normalizer still repairs known shapes when a compatible model
+        # rejects response_format and the fallback returns loose JSON.
         try:
             data = normalize_generated_defs(json.loads(extract_clean_data(response)))
+            if not data:
+                logger.error("Generated definitions were empty (%s)", describe_text(response))
+                return template_object
             # Validate any font-awesome icons in the data
             data = self._validate_icons(data)
-            return data
+            return {definition_key: data}
         except json.JSONDecodeError:
-            # Fallback to the original list if the response is broken
+            # Fallback to the original definitions if the response is broken
             logger.error("Invalid JSON output (%s)", describe_text(response))
-            return template_list
+            return template_object
 
-    async def gen_players_from_json_sample(self, player_defs: str) -> dict:
-        return await self._gen_game_elems_from_json_sample(player_defs, SYS_GEN_PLAYER_JSON_MSG)
+    async def gen_players_from_json_sample(self, player_defs: str) -> Dict[str, List[dict]]:
+        return await self._gen_game_elems_from_json_sample(
+            player_defs,
+            SYS_GEN_PLAYER_JSON_MSG,
+            "player_defs",
+        )
 
-    async def gen_game_items_from_json_sample(self, item_defs: str) -> List[dict]:
-        return await self._gen_game_elems_from_json_sample(item_defs, SYS_GEN_GAME_ITEMS_JSON_MSG)
+    async def gen_game_items_from_json_sample(self, item_defs: str) -> Dict[str, List[dict]]:
+        return await self._gen_game_elems_from_json_sample(
+            item_defs,
+            SYS_GEN_GAME_ITEMS_JSON_MSG,
+            "item_defs",
+        )
 
-    async def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> List[dict]:
-        return await self._gen_game_elems_from_json_sample(enemy_defs, SYS_GEN_GAME_ENEMIES_JSON_MSG)
+    async def gen_game_enemies_from_json_sample(self, enemy_defs: str) -> Dict[str, List[dict]]:
+        return await self._gen_game_elems_from_json_sample(
+            enemy_defs,
+            SYS_GEN_GAME_ENEMIES_JSON_MSG,
+            "enemy_defs",
+        )
 
-    async def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> List[dict]:
-        return await self._gen_game_elems_from_json_sample(celltype_defs, SYS_GEN_GAME_CELLTYPES_JSON_MSG)
+    async def gen_game_celltypes_from_json_sample(self, celltype_defs: str) -> Dict[str, List[dict]]:
+        return await self._gen_game_elems_from_json_sample(
+            celltype_defs,
+            SYS_GEN_GAME_CELLTYPES_JSON_MSG,
+            "celltype_defs",
+        )
 
     # Generate strategic entity placements (both enemies and items)
     async def gen_entity_placements(

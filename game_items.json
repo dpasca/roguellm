@@ -55,7 +55,8 @@
       "name": "Stimulant",
       "type": "consumable",
       "effect": {
-        "attack": 8
+        "attack": 8,
+        "duration": 3
       },
       "description": "Hits harder for a while. You will feel it later.",
       "font_awesome_icon": "fa-solid fa-bolt"

@@ -118,6 +118,11 @@ Roughly 20 API calls, 2-4 minutes with art on.
    asking it to match the shape while replacing the content. Those samples are
    deliberately genre-neutral; naming them Goblin and Orc used to pull every
    World toward monsters-and-loot.
+   These four requests now send a strict `json_schema` response format derived
+   from the sample, so the top-level `*_defs` container and every nested field
+   are enforced by the API. OpenAI-compatible models that reject the parameter
+   are retried without it, then the existing shape normalizer repairs the known
+   loose-output forms.
 3. `save_generator` → the World id. **The id is a content hash of the
    definitions.**
 4. `gen_visual_manifest` — one art direction for the whole World: style,
@@ -506,19 +511,11 @@ Ordered by what blocks what.
 6. **Rate limiting on forging.** It is the expensive operation and is ungated
    beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
    much more after.
-7. **`response_format` on the worldgen JSON calls.** Only `world_moderation.py`
-   asks for structured output; every `_gen_game_elems_from_json_sample` caller
-   relies on prompt wording, then repairs the result. That is not theoretical:
-   a forge died mid-run with `KeyError: slice(None, 1, None)` because the model
-   returned a bare object where a one-element array was expected, and it does so
-   only intermittently. `normalize_generated_defs` now absorbs the known wrong
-   shapes, but asking for the right one is the actual fix. Carried over from a
-   2025-05-28 TODO file, now deleted in favour of this entry.
-8. **Frontend coverage is not in CI**, and reaches only the landing page and
+7. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
    inventory, and the forge reveal are still uncovered.
-9. Token auth for the mobile client.
-10. Smaller: the local-dev Quick Start button points at a retired World; the
+8. Token auth for the mobile client.
+9. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.

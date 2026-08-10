@@ -85,16 +85,20 @@ async def build_world(theme, language):
 
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    def sample(filename, key):
+    def sample(filename):
         with open(os.path.join(here, filename), encoding="utf-8") as f:
-            return json.dumps(json.load(f)[key])
+            return json.dumps(json.load(f))
 
-    players, items, enemies, celltypes = await asyncio.gather(
-        gen_ai.gen_players_from_json_sample(sample("game_players.json", "player_defs")),
-        gen_ai.gen_game_items_from_json_sample(sample("game_items.json", "item_defs")),
-        gen_ai.gen_game_enemies_from_json_sample(sample("game_enemies.json", "enemy_defs")),
-        gen_ai.gen_game_celltypes_from_json_sample(sample("game_celltypes.json", "celltype_defs")),
+    player_result, item_result, enemy_result, celltype_result = await asyncio.gather(
+        gen_ai.gen_players_from_json_sample(sample("game_players.json")),
+        gen_ai.gen_game_items_from_json_sample(sample("game_items.json")),
+        gen_ai.gen_game_enemies_from_json_sample(sample("game_enemies.json")),
+        gen_ai.gen_game_celltypes_from_json_sample(sample("game_celltypes.json")),
     )
+    players = player_result["player_defs"]
+    items = item_result["item_defs"]
+    enemies = enemy_result["enemy_defs"]
+    celltypes = celltype_result["celltype_defs"]
 
     logger.info("Generating visual manifest")
     manifest = await gen_ai.gen_visual_manifest(players, enemies, celltypes)
