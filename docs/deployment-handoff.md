@@ -353,6 +353,24 @@ RogueLLM compose remain beside those files on the VPS. Roll back by restoring
 the copies, reconnecting the app to `chatnext3-network` with its
 `roguellm-production` alias, and recreating nginx.
 
+### Promotion readiness (2026-08-10)
+
+Staging runs application commit `cddf9f3`. It passed a paid art-enabled forge,
+replay without model calls, movement, WebSocket, persistence across rebuild,
+asset MIME, and both health endpoints. The full local suite is 266 passed, seven
+Playwright-package skips, and 571 subtests passed; the skipped browser surface
+was exercised through the managed browser instead.
+
+The staging image also booted successfully against a disposable restore of the
+real production database. That rehearsed the additive schema migration without
+mounting or changing the live production volume. Production itself remains on
+`ba917bd`; promotion has not happened yet.
+
+Keep `ENABLE_WORLD_ART=0` for the first production promotion. Signup plus forge
+is not yet protected by credits or a production-grade forge limiter, so turning
+on paid image calls would expose an unnecessary spend surface. Enable art only
+for a controlled cohort or after that guard exists.
+
 ---
 
 ## 11. Storage
@@ -418,9 +436,42 @@ mobile client forces.
 
 ### Backups
 
-`scripts/backup-production-sqlite.sh` takes the **database only**. A host loss
-keeps the Worlds and loses every image in them. Either extend it to archive
-`_data/assets`, or decide explicitly that art is regenerable and record that.
+`scripts/backup-production-data.sh` creates an atomic snapshot directory with:
+
+- a transactionally consistent SQLite copy made with the online backup API;
+- every file under `_data/assets` in a separate compressed archive;
+- non-secret metadata, SHA-256 checksums, and a completion marker.
+
+The database is copied before the asset tree. Generated assets are immutable
+once their World is saved, so every asset referenced by that database snapshot
+already exists when the archive starts. The old
+`scripts/backup-production-sqlite.sh` path is retained as a compatibility
+wrapper and now runs the complete backup.
+
+`scripts/check-production-backups.sh` checks recency, free space, checksums,
+SQLite integrity, and archive structure. `scripts/test-production-backup-restore.sh`
+extracts into disposable files, verifies every persisted `/assets/worlds/...`
+URL, and can boot a network-isolated app against the restored copy. It never
+mounts or changes the live volume.
+
+Verified on 2026-08-10:
+
+- staging restored 30 WebP files / 2,765,932 bytes and resolved all 36 database
+  references to 30 unique files;
+- a disposable staging app passed app health, database health, and actual asset
+  serving;
+- production restored 13 Worlds with SQLite integrity `ok`; it correctly had
+  no generated assets before art was enabled.
+
+The snapshot directory is outside Docker's data volume but still on the same
+VPS disk. It protects against a broken deployment or lost Docker volume. A full
+host/disk loss still requires confirmed Hetzner Cloud Backups or an off-host
+copy of the backup root.
+
+The production VPS now runs the complete backup daily, validates the newest
+snapshot daily, and performs a network-isolated restore smoke test weekly. The
+previous crontab was saved server-side before this schedule replaced the old
+database-only job.
 
 ---
 
@@ -450,7 +501,7 @@ Consequences to carry:
 
 ## 13. Testing
 
-255 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
+266 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
 `HIGH_SPEC_MODEL_API_KEY` to be set to anything, and `SESSION_SECRET_KEY` — some
 construct the app and fail on a missing key even though they make no model
 calls. No test spends money.
@@ -518,7 +569,9 @@ movement controls above the fold, one accessible name per World card, and no
 
 Ordered by what blocks what.
 
-1. **Art in backups**, or an explicit decision that art is regenerable.
+1. **Confirm the off-host layer.** Complete data snapshots now cover SQLite and
+   art, but the backup root is on the VPS filesystem. Confirm Hetzner Cloud
+   Backups include it or replicate snapshots off-host.
 2. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.

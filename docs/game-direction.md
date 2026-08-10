@@ -398,8 +398,10 @@ image count is back to the ~12 estimated here.
    `roguellm-production-data` and keep any host path in the server-side
    environment, not in this repo. Revisit object storage only if disk or
    bandwidth actually become a problem.
-7. Include generated art in backups — `scripts/backup-production-sqlite.sh`
-   covers the database only, so art would not survive a host loss today.
+7. Include generated art in backups — complete. Atomic snapshots now contain a
+   consistent SQLite copy and `_data/assets`, with checksums and a disposable
+   restore test. The remaining infrastructure decision is confirming Hetzner
+   Cloud Backups cover the snapshot root or adding an off-host copy.
 
 ## Deployment isolation
 
@@ -503,8 +505,9 @@ Open, roughly in order of how much they block anything:
 - **Backdrops are generated at medium quality but displayed sunk** behind a
   shade gradient at 40% opacity. Dropping just those to low quality cuts a
   forge from about $0.47 to $0.29, measured, with nothing visible lost.
-- **Backups do not cover generated art.** `scripts/backup-production-sqlite.sh`
-  takes the database only, so art would not survive a host loss.
+- **The off-host backup layer is unconfirmed.** Complete snapshots now cover
+  SQLite and generated art, but they remain on the VPS disk until Hetzner Cloud
+  Backups are confirmed or the snapshot root is replicated elsewhere.
 - The local-dev "Quick Start: Piedone" button points at a retired World.
 - The location name can still appear three times on one screen: stage eyebrow,
   stage heading, and the stats card. The eyebrow dedupe only catches exact

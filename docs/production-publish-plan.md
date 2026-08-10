@@ -160,7 +160,7 @@ Current status:
 
 - Staging is live on the VPS through the shared ChatNext3 Nginx ingress.
 - A separate `roguellm-production` VPS stack has been prepared with its own env,
-  container, volume, loopback port, and Docker network alias.
+  container, volume, loopback port, and private Compose network.
 - Production DNS has been moved to the registrar-managed zone and points at the
   VPS ingress. Keep concrete DNS records, server IPs, and registrar credentials
   out of this repo.
@@ -216,6 +216,25 @@ Completed cutover notes:
   dotfile deny rule does not intercept Let's Encrypt probes.
 - The shared certbot renewal cron runs `certbot renew` over the shared
   certificate directory and reloads Nginx after a successful run.
+
+Application release promotion checklist:
+
+1. Run the complete data backup and its integrity check.
+2. Save the deployed source and tag the current application image with a
+   timestamped rollback tag.
+3. Sync an exact committed tree while preserving the server-side production env
+   file, data, backups, and timestamped rollback files.
+4. Build the candidate image before replacing the running container.
+5. Recreate only the application service and wait for Docker health plus
+   `/health` and `/health/db`.
+6. Verify HTTPS, login/session, World listing, an existing run, and WSS through
+   the public proxy.
+7. Keep `ENABLE_WORLD_ART=0` until forge spend is limited by a controlled cohort,
+   credits, or a production-grade limiter.
+
+Rollback restores the saved source, recreates the app from the rollback image,
+and leaves the named data volume intact. The schema changes in the pending
+release are additive; the old image ignores the added snapshot table.
 
 ## Database Plan
 
@@ -412,24 +431,42 @@ Manual backup:
 
 ```bash
 APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> \
-  scripts/backup-production-sqlite.sh
+  scripts/backup-production-data.sh
 ```
 
-Cron shape:
+Validate and restore-test the latest snapshot without touching the live volume:
+
+```bash
+APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> \
+  scripts/check-production-backups.sh
+
+APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> \
+  scripts/test-production-backup-restore.sh
+```
+
+`RESTORE_SMOKE_IMAGE=<IMAGE>` and `RESTORE_ENV_FILE=<ENV_FILE>` add a disposable,
+network-isolated app boot plus health and asset-serving probes.
+
+Cron shape (daily backup/check, weekly restore test):
 
 ```cron
-17 2 * * * APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> <APP_DIR>/scripts/backup-production-sqlite.sh >> <PRIVATE_BACKUP_DIR>/backup.log 2>&1
+17 2 * * * APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> <SCRIPT_DIR>/backup-production-data.sh >> <PRIVATE_BACKUP_DIR>/backup.log 2>&1
+20 9 * * * APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> <SCRIPT_DIR>/check-production-backups.sh >> <PRIVATE_BACKUP_DIR>/check.log 2>&1
+35 4 * * 0 APP_DIR=<APP_DIR> BACKUP_ROOT=<PRIVATE_BACKUP_DIR> RESTORE_SMOKE_IMAGE=<IMAGE> RESTORE_ENV_FILE=<ENV_FILE> <SCRIPT_DIR>/test-production-backup-restore.sh >> <PRIVATE_BACKUP_DIR>/restore-test.log 2>&1
 ```
 
-The script:
+The backup:
 
 - creates a consistent copy with SQLite's online backup API inside the running
   app container;
-- copies the backup out with `docker cp`;
-- compresses it with `gzip`;
-- validates the compressed archive with `PRAGMA integrity_check`;
-- writes a checksum and small metadata file;
-- prunes files older than `RETENTION_DAYS`, defaulting to 14 days.
+- archives `_data/assets` after the database copy;
+- validates both archives and publishes them atomically with checksums,
+  metadata, and a completion marker;
+- rejects overlapping runs with a lock and prunes snapshots older than
+  `RETENTION_DAYS`, defaulting to 14 days.
+
+The original `scripts/backup-production-sqlite.sh` name remains as a
+compatibility wrapper and performs the complete backup too.
 
 ## Suggested Implementation Order
 
