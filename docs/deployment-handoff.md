@@ -309,6 +309,9 @@ by default and should stay off in production; it is a privacy surface.
 
 ## 10. Deployment
 
+- **Hosting**: DNS points at the VPS, where nginx terminates TLS and proxies to
+  the FastAPI container. Firebase is Analytics only; it does not host the app,
+  database, or generated assets.
 - **App**: FastAPI + uvicorn, `main:app`, port 8000 in the container.
 - **Image**: `python:3.11-slim`, non-root `app` (uid 10001), `HEALTHCHECK` built
   in, `--proxy-headers --forwarded-allow-ips *` so it trusts a proxy.
@@ -357,8 +360,11 @@ the copies, reconnecting the app to `chatnext3-network` with its
 Art lives in `_data/assets/<world_id>/`, in the same volume as the database.
 
 Historical PNG Worlds use **30 files and 20-25 MB** each. Newly forged Worlds
-use quality-85 WebP and measured about **2.1 MB**. Existing PNG URLs remain
-valid and need no migration; the format changes only when new assets are saved.
+use 30 quality-85 WebP files and measured **2-3 MB** in two real forges. The
+staging forge also verified 24 RGBA sprite/token files, six RGB
+backdrop/cover files, `image/webp` responses, and persistence across a container
+rebuild. Existing PNG URLs remain valid and need no migration; the format
+changes only when new assets are saved.
 
 ### WebP is the single biggest win
 
