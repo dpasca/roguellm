@@ -29,6 +29,11 @@ Everything else in this plan follows from that inversion:
 
 ## Chosen shape: Journey
 
+> **Superseded.** This section records the decision as it stood at the time.
+> Phase 4 below abandoned the Journey after seeing the game with real art, and
+> the tile grid is staying. Read Phase 4 and Status before acting on anything
+> here. Phase 5 is credits and payments, not the Journey.
+
 Three shapes were considered.
 
 - **A — Reskin.** Keep the tile grid, add art, rebuild the front page. Lowest

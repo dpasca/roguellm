@@ -5,6 +5,11 @@ from feature work. It aims to be self-contained: architecture, the client
 contract, data model, costs, deployment, and the traps that are not visible from
 reading the code.
 
+[handoff-2026-08-10.md](handoff-2026-08-10.md) is a point-in-time session
+handoff: why recent decisions were made, API behaviour found by experiment, and
+the traps that are invisible in the code. Read it before changing the region
+layer, the model configuration, or the art pipeline.
+
 The product reasoning lives in [game-direction.md](game-direction.md). The older
 [production-publish-plan.md](production-publish-plan.md) still holds useful
 detail on DNS, auth hardening, and the staging runbook, though its PWA and

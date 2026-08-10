@@ -5,6 +5,9 @@ place rather than a scatter of unrelated settings. It follows directly from
 [game-direction.md](game-direction.md) Phase 4, which put a backdrop behind the
 grid and left one problem behind.
 
+Session background, including the decisions here that look arbitrary in the
+code and why: [handoff-2026-08-10.md](handoff-2026-08-10.md).
+
 Related: [visual-assets.md](visual-assets.md) defines the art contract this
 extends; [story-encounters.md](story-encounters.md) defines the encounter
 contract that hangs off terrain today.
