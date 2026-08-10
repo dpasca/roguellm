@@ -509,9 +509,10 @@ Ordered by what blocks what.
    only intermittently. `normalize_generated_defs` now absorbs the known wrong
    shapes, but asking for the right one is the actual fix. Carried over from a
    2025-05-28 TODO file, now deleted in favour of this entry.
-8. **No automated frontend coverage.** See section 13; two real bugs in the
-   area-crossing work were invisible to a green suite and only appeared in a
-   browser.
+8. **Frontend coverage is not in CI**, and reaches only the landing page and
+   movement. See section 13: the browser tests exist and catch what a green
+   Python suite cannot, but nothing runs them automatically, and combat,
+   inventory, and the forge reveal are still uncovered.
 9. Token auth for the mobile client.
 10. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
