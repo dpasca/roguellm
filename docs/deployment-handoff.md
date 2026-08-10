@@ -318,26 +318,37 @@ by default and should stay off in production; it is a privacy surface.
 - **State**: one named volume per stack at `/app/_data`, holding the database
   and all art.
 
-RogueLLM shares the VPS hardware with other apps and **nothing else**: separate
-project, env file, volume, port. The goal is that moving to a dedicated server
-is a DNS change plus the same compose file.
+RogueLLM has its own project, env file, volume, loopback port, and default
+network. The shared reverse proxy is the only container outside the stack that
+joins that network. Moving RogueLLM to a dedicated server does not require a
+compose change; only the external proxy and DNS need repointing.
 
-### Blocking: the reverse proxy cutover
+### Reverse proxy cutover (completed 2026-08-10)
 
-`docker-compose.production.yml` **no longer joins `chatnext3-network`**.
-Deploying that before the proxy is repointed breaks ingress, because the proxy
-still resolves RogueLLM by container alias over a network the app has left.
+`docker-compose.production.yml` no longer joins `chatnext3-network`, and the
+live app was detached from it. The shared nginx proxy instead joins
+`roguellm-production_default` from the proxy side and uses
+`roguellm-production-app-1:8000` as its upstream. RogueLLM remains published on
+`127.0.0.1:18081` for host-local diagnostics, not as the containerized proxy's
+transport.
 
-1. Point the proxy upstream at `127.0.0.1:${ROGUELLM_HOST_PORT}` (18081).
-2. A containerized proxy cannot reach host loopback directly — give it
-   `extra_hosts: ["host.docker.internal:host-gateway"]`, or use the bridge
-   gateway.
-3. **Keep the WebSocket upgrade headers for `/ws/*`.** Play is entirely
-   websocket; HTTP alone will look like it works and then hang.
-4. Verify `/health`, `/health/db`, login, and one full websocket run.
+Do not replace this with the previously proposed
+`host.docker.internal:host-gateway` route while the app is loopback-only. On
+this Linux host that name resolves to `172.17.0.1`, while Docker publishes the
+app only on `127.0.0.1`; a container probe correctly received connection
+refused. Reaching the app through its private Compose network preserves the
+loopback-only host exposure.
 
-Rollback is restoring the `networks:` block. Staging already runs this way,
-which is the evidence the pattern works on that host.
+The existing WebSocket upgrade headers for `/ws/*` were retained. After the
+cutover, nginx and the app were healthy; `/`, `/health`, and `/health/db`
+returned 200; `/api/me` returned the expected unauthenticated 401; and a managed
+browser opened `wss://roguellm.com/ws/game/...` and received an application
+message.
+
+Timestamped pre-cutover copies of the proxy compose, proxy vhost, and deployed
+RogueLLM compose remain beside those files on the VPS. Roll back by restoring
+the copies, reconnecting the app to `chatnext3-network` with its
+`roguellm-production` alias, and recreating nginx.
 
 ---
 
@@ -501,20 +512,19 @@ movement controls above the fold, one accessible name per World card, and no
 
 Ordered by what blocks what.
 
-1. **The reverse proxy cutover.** Blocking any production deploy.
-2. **Art in backups**, or an explicit decision that art is regenerable.
-3. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
+1. **Art in backups**, or an explicit decision that art is regenerable.
+2. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.
-4. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
-5. **Rate limiting on forging.** It is the expensive operation and is ungated
+3. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
+4. **Rate limiting on forging.** It is the expensive operation and is ungated
    beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
    much more after.
-6. **Frontend coverage is not in CI**, and reaches only the landing page and
+5. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
    inventory, and the forge reveal are still uncovered.
-7. Token auth for the mobile client.
-8. Smaller: the local-dev Quick Start button points at a retired World; the
+6. Token auth for the mobile client.
+7. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.

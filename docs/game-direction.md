@@ -403,37 +403,37 @@ image count is back to the ~12 estimated here.
 
 ## Deployment isolation
 
-RogueLLM shares the VPS hardware with other apps and nothing else. Separate
-Docker project, separate env file, separate volumes, separate loopback port. The
-goal is that moving to a dedicated server is a DNS change plus the same compose
-file, with nothing to unpick.
+RogueLLM has a separate Docker project, env file, volumes, loopback port, and
+default network. The shared reverse proxy is the only container outside the
+stack that joins that network. The goal is that moving to a dedicated server
+keeps the same RogueLLM compose file; only the external proxy and DNS need
+repointing.
 
 Both compose files now meet this. Production previously joined
 `chatnext3-network` as an external network with a container alias, which was a
-hard dependency on another app's Docker environment. That is removed: production
-and staging are now the same shape, reached purely through
-`127.0.0.1:${ROGUELLM_HOST_PORT}`.
+hard dependency on another app's Docker environment. That is removed:
+production and staging now have the same self-contained shape and both publish
+only on `127.0.0.1:${ROGUELLM_HOST_PORT}`.
 
 Do not share volumes, databases, sessions, or auth with any other app on the
 host. Generated assets live under `_data/assets`, inside the existing
 `roguellm-production-data` volume, so there is one volume to move or snapshot.
 
-### Required proxy cutover
+### Proxy cutover (completed 2026-08-10)
 
-**The compose change alone will break production ingress on next deploy.** The
-shared reverse proxy still resolves RogueLLM by container alias over the removed
-network. Before or with that deploy, repoint its upstream at the published
-loopback port:
+The shared nginx proxy now joins `roguellm-production_default` from the proxy
+side and routes to `roguellm-production-app-1:8000`. The RogueLLM app is no
+longer attached to `chatnext3-network`; its own compose file has no external
+network dependency.
 
-- Upstream becomes `127.0.0.1:${ROGUELLM_HOST_PORT}` on the host.
-- A containerized proxy cannot reach host loopback directly. Give it
-  `extra_hosts: ["host.docker.internal:host-gateway"]` and use that name, or
-  address the Docker bridge gateway.
-- Keep the WebSocket upgrade headers for `/ws/*`.
-- Verify `/health`, `/health/db`, login, and a WebSocket run before and after.
+The previously proposed `host.docker.internal:host-gateway` route was tested
+and rejected. On the Linux VPS it resolves to the Docker bridge address, which
+cannot reach a port published only on host loopback. The private-network route
+keeps port 18081 loopback-only without adding a relay or firewall exception.
 
-Roll back by restoring the `networks` block if the proxy change cannot land in
-the same window.
+The cutover retained the WebSocket upgrade headers and passed `/`, `/health`,
+`/health/db`, unauthenticated auth routing, and a real managed-browser WSS
+handshake. Timestamped pre-cutover files remain on the VPS for rollback.
 
 **Phase 3 — Front page. Done.**
 1. `list_worlds` left joins `generator_worlds` for `cover_url`, conditionally,
@@ -496,10 +496,6 @@ The WebP prerequisite from Phase 6 is also complete for newly forged Worlds.
 
 Open, roughly in order of how much they block anything:
 
-- **The proxy cutover has not happened.** `docker-compose.production.yml` no
-  longer joins `chatnext3-network`, so the reverse proxy must be repointed at
-  the loopback port before that change deploys, or production ingress breaks.
-  See the deployment isolation section above.
 - **The sample Worlds are `unlisted`, not `public`**, so they do not appear on
   the public front page. Making them public runs the moderation review, which
   is worth doing deliberately: they are the first Worlds whose baked prose the
