@@ -17,6 +17,7 @@ import asyncio
 import base64
 import io
 import logging
+import mimetypes
 import os
 import re
 from collections import Counter
@@ -58,6 +59,11 @@ COVER_SIZE = (1200, 675)
 # and cost minutes: a World with 11 characters took over nine of them.
 ART_CONCURRENCY = 4
 BACKDROP_SIZE = "1536x1024"
+
+
+def register_world_asset_media_types() -> None:
+    """Keep WebP responses correct on hosts with a sparse MIME database."""
+    mimetypes.add_type("image/webp", WORLD_ASSET_EXTENSION)
 
 
 def _despill_pixel(pixel: tuple, key: tuple) -> tuple:

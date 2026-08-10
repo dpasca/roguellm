@@ -1,3 +1,4 @@
+import mimetypes
 import os
 import tempfile
 import unittest
@@ -24,6 +25,7 @@ from gen_image import (
     has_visible_content,
     is_world_art_enabled,
     make_token,
+    register_world_asset_media_types,
     remove_flat_background,
     save_asset,
     slice_sprite_sheet,
@@ -349,17 +351,22 @@ class SaveAssetTests(unittest.TestCase):
         from fastapi.staticfiles import StaticFiles
         from fastapi.testclient import TestClient
 
-        with tempfile.TemporaryDirectory() as directory:
-            url = save_asset(
-                Image.new("RGBA", (16, 16), (20, 30, 40, 255)),
-                "world-1",
-                "cover",
-                assets_dir=directory,
-            )
-            app = FastAPI()
-            app.mount("/assets/worlds", StaticFiles(directory=directory))
+        mimetypes.init()
+        with patch.dict(mimetypes.types_map, {".webp": "application/octet-stream"}):
+            self.assertEqual(mimetypes.guess_type("cover.webp")[0], "application/octet-stream")
+            register_world_asset_media_types()
 
-            response = TestClient(app).get(url)
+            with tempfile.TemporaryDirectory() as directory:
+                url = save_asset(
+                    Image.new("RGBA", (16, 16), (20, 30, 40, 255)),
+                    "world-1",
+                    "cover",
+                    assets_dir=directory,
+                )
+                app = FastAPI()
+                app.mount("/assets/worlds", StaticFiles(directory=directory))
+
+                response = TestClient(app).get(url)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "image/webp")

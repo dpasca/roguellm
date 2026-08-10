@@ -37,8 +37,13 @@ class GameSessionSmokeTests(unittest.TestCase):
                 {"type": "item", "entity_id": "espresso", "x": 1, "y": 0},
                 {"type": "enemy", "entity_id": "street_punk", "x": 2, "y": 0},
             ]
+            test_environment = {
+                "ENABLE_DEBUG_SEED": "1",
+                "LOW_SPEC_MODEL_API_KEY": "test-key",
+                "HIGH_SPEC_MODEL_API_KEY": "test-key",
+            }
 
-            with patch.dict(os.environ, {"ENABLE_DEBUG_SEED": "1"}), \
+            with patch.dict(os.environ, test_environment), \
                     patch("main.db", manager), \
                     patch("game_state_manager.db", manager), \
                     patch("main.get_prerendered_content", passthrough_prerender), \
