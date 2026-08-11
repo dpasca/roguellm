@@ -29,6 +29,9 @@ ENV/
 .env
 .env.*
 
+# Deployment credentials
+secrets/
+
 # Data
 _data
 _artifacts/

@@ -17,6 +17,7 @@ services:
       - "127.0.0.1:${ROGUELLM_HOST_PORT:-18080}:8000"
     volumes:
       - roguellm-data:/app/_data
+      - ./secrets:/run/secrets/roguellm:ro
     healthcheck:
       test:
         - CMD

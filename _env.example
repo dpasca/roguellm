@@ -125,12 +125,16 @@ APPLE_IAP_ISSUER_ID=
 # Prefer a server-only file over an inline secret. If an inline key is required,
 # use APPLE_IAP_PRIVATE_KEY with literal \n line breaks.
 APPLE_IAP_PRIVATE_KEY_PATH=
+# Compose mounts the ignored server-side ./secrets directory read-only at
+# /run/secrets/roguellm, for example:
+# APPLE_IAP_PRIVATE_KEY_PATH=/run/secrets/roguellm/apple-iap-private-key.p8
 # APPLE_IAP_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 # Use Apple PKI roots. Comma-separated base64 DER certificates are convenient
 # in Docker env files.
 APPLE_IAP_ROOT_CA_BASE64=
 # Mounted certificate paths are also supported as an alternative.
 APPLE_IAP_ROOT_CA_PATHS=
+# APPLE_IAP_ROOT_CA_PATHS=/run/secrets/roguellm/AppleIncRootCertificate.cer,/run/secrets/roguellm/AppleRootCA-G2.cer,/run/secrets/roguellm/AppleRootCA-G3.cer
 # Production rejects sandbox transactions unless deliberately enabled for test.
 APPLE_IAP_ALLOW_SANDBOX=0
 
@@ -138,6 +142,7 @@ APPLE_IAP_ALLOW_SANDBOX=0
 # and have permission to inspect orders/subscriptions. Prefer a server-only file.
 GOOGLE_PLAY_PACKAGE_NAME=com.newtypekk.roguellm
 GOOGLE_PLAY_SERVICE_ACCOUNT_PATH=
+# GOOGLE_PLAY_SERVICE_ACCOUNT_PATH=/run/secrets/roguellm/google-play-service-account.json
 # Inline JSON is also supported as GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.
 # GOOGLE_PLAY_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 # Production rejects license-tester purchases unless deliberately enabled.

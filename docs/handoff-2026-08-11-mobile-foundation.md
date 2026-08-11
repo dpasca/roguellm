@@ -127,6 +127,49 @@ never initiates a charge.
   development-only advisories come through Capacitor CLI's `xcode` dependency;
   there is no non-breaking Capacitor 8 upgrade that removes them today.
 
+## Store provisioning completed on 2026-08-11
+
+Apple is provisioned under the NEWTYPE K.K. team (`69NH26W767`):
+
+- App Store Connect app `RogueLLM`, numeric app id `6800248025`, bundle id
+  `com.newtypekk.roguellm`.
+- Consumables `credits_40`, `credits_120`, and `credits_300` are Prepare for
+  Submission at US prices $1.99, $4.99, and $9.99 respectively.
+- Dedicated In-App Purchase key `RogueLLM Purchase Verify`, key id
+  `3LJ5D26T57`, issuer id `69a6de72-3df6-47e3-e053-5b8c7c11a4d1`.
+- The one-time `.p8` download is held outside the repository. The three current
+  public Apple PKI roots were fetched from Apple's PKI page and validated as
+  self-signed CA certificates before deployment.
+
+Google Play is provisioned under the NEWTYPE, Japan developer account:
+
+- Play app `RogueLLM`, package `com.newtypekk.roguellm`, with Play App Signing
+  active.
+- The three matching one-time products are active in 173 countries/regions at
+  US prices $1.99, $4.99, and $9.99.
+- Internal release `1 (1.0)` contains the signed AAB. Its SHA-256 is
+  `24d86faec76e48c1bba0e8d92b3ddb8a488d65e88105357eed546ec16ec9d1ad`.
+  No tester list is configured yet, so the release is not installable by a
+  tester until one is added.
+- Dedicated service account
+  `roguellm-purchase-verifier@newtypekk-2.iam.gserviceaccount.com` has access
+  only to RogueLLM, with read-only app access plus View financial data (the
+  Purchases API permission). It has no Google Cloud project role. The Android
+  Publisher API is enabled in `newtypekk-2`.
+- The first authenticated dummy-token probe immediately after granting access
+  returned `401` / insufficient permissions. Keep the store gate off and retry
+  after Play permission propagation; a non-401/403 invalid-token response is
+  the readiness signal.
+
+Android release signing is configured through `ROGUELLM_ANDROID_*` environment
+variables. The upload keystore and passwords remain outside Git. Release bundle
+creation and `jarsigner` verification pass with JDK 21.
+
+Both Compose stacks mount an ignored server-side `./secrets` directory at
+`/run/secrets/roguellm` read-only. Keep `ENABLE_WORLD_CREDITS=0` and
+`ENABLE_MOBILE_STORE=0` while deploying the schema and credentials. Temporarily
+allow sandbox/test transactions only when a tester build is ready.
+
 ## What needs external accounts
 
 No Porkbun change is required. Hetzner is needed only to deploy the updated

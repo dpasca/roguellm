@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+def releaseKeystorePath = System.getenv('ROGUELLM_ANDROID_KEYSTORE_PATH')
+def releaseKeystorePassword = System.getenv('ROGUELLM_ANDROID_KEYSTORE_PASSWORD')
+def releaseKeyAlias = System.getenv('ROGUELLM_ANDROID_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('ROGUELLM_ANDROID_KEY_PASSWORD')
+def releaseSigningConfigured = [
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+].every { it }
+
 android {
     namespace = "com.newtypekk.roguellm"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +27,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
