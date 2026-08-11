@@ -67,14 +67,44 @@ This is the newest handoff. It continues
   server verification, stable local identity, cookie session, and `/api/me`
   all succeeded. `/api/me` returned `200` with `auth_providers: ["apple"]`.
 
+## Production deployment completed — 2026-08-12
+
+- Commit `9060be2c7f5dc592b0fa51741e54ad88357d74ef` is deployed from
+  `/home/deploy/roguellm-production`. The production environment explicitly
+  sets `ENABLE_SOCIAL_AUTH=1` and `ENABLE_LEGACY_PASSWORD_AUTH=0`.
+- The reverse-proxy CSP was extended for the Firebase auth iframe and the
+  Google endpoints actually used by Firebase Auth. It now permits the Firebase
+  project iframe, Google API loader, Identity Toolkit and token endpoints,
+  Google account frames, and the current Analytics collector. The vhost passed
+  `nginx -t` before each zero-downtime reload. Timestamped pre-change copies are
+  beside `/opt/chatnext3/nginx/extra_conf.d/roguellm-production.conf`.
+- Public and loopback `/health`, `/health/db`, `/`, `/delete-account`, and
+  `/openapi.json` all pass. A new 390x844 browser session loads without CSP or
+  application console errors.
+- Real production Google and Apple sign-in both pass through their provider,
+  Firebase, `POST /api/auth/firebase`, the signed production cookie, and
+  `/api/me`. The server logged two `200` auth exchanges with no exception;
+  `/api/me` reported `auth_providers: ["google"]` and `["apple"]`
+  respectively. The managed browser was signed out afterward.
+- The pre-deploy data snapshot is `20260811T145034Z`. The post-migration and
+  post-login snapshot is `20260811T171839Z`; its checksums and SQLite integrity
+  pass, and a network-isolated disposable restore passed schema, app health,
+  database health, and asset probes.
+- Rollback source/config is
+  `/home/deploy/roguellm-production-rollbacks/20260811T145311Z-pre-9060be2`.
+  The prior image is tagged `roguellm-production-app:pre-9060be2`.
+- World art, world credits, the mobile store, Apple sandbox purchases, and
+  Google test purchases remain disabled. No DNS, Porkbun, or Firebase Hosting
+  change was needed.
+
 ## Remaining rollout work
 
 1. Adding Sign in with Apple invalidated provisioning profiles that included
    the RogueLLM App ID. Regenerate or let Xcode automatically regenerate them
    before the next signed iOS archive or device build.
-2. Put the Firebase web configuration and social-auth flags in the VPS
-   production environment, take the normal backup, deploy, and run real
-   Google/Apple sign-in smoke tests against `https://roguellm.com`.
+2. Build and distribute fresh Android internal-test and iOS TestFlight builds,
+   then confirm native Google/Apple login and bearer-session exchange on real
+   devices.
 3. Run the destructive account-deletion smoke test with a sacrificial provider
    account before publishing new store builds. Do not delete a maintainer's
    real Google or Apple RogueLLM identity merely to exercise this path.
