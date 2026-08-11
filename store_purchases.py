@@ -21,6 +21,8 @@ CREDIT_PRODUCTS = {
     "credits_300": 300,
 }
 
+APPLE_TRANSACTION_NOT_FOUND_ERROR = 4040010
+
 
 class StorePurchaseVerificationError(Exception):
     def __init__(self, message: str, code: str, status_code: int = 400):
@@ -210,7 +212,10 @@ class StorePurchaseVerifier:
             )
 
         try:
-            from appstoreserverlibrary.api_client import AppStoreServerAPIClient
+            from appstoreserverlibrary.api_client import (
+                APIException,
+                AppStoreServerAPIClient,
+            )
             from appstoreserverlibrary.models.Environment import Environment
             from appstoreserverlibrary.models.Type import Type
             from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier
@@ -221,47 +226,78 @@ class StorePurchaseVerifier:
                 503,
             ) from error
 
-        apple_environment = (
-            Environment.PRODUCTION
-            if normalized_environment == "production"
-            else Environment.SANDBOX
-        )
-        app_apple_id = None
-        if apple_environment == Environment.PRODUCTION:
-            try:
-                app_apple_id = int(raw_apple_id)
-            except ValueError as error:
-                raise StorePurchaseVerificationError(
-                    "Apple purchase verification is not configured.",
-                    "store_not_configured",
-                    503,
-                ) from error
-
         try:
-            client = AppStoreServerAPIClient(
-                self._read_apple_private_key(),
-                key_id,
-                issuer_id,
-                bundle_id,
-                apple_environment,
-            )
-            verifier = SignedDataVerifier(
-                self._read_apple_root_certificates(),
-                True,
-                apple_environment,
-                bundle_id,
-                app_apple_id,
-            )
-            response = client.get_transaction_info(transaction_id)
-            signed_transaction = response.signedTransactionInfo
-            if not signed_transaction:
+            private_key = self._read_apple_private_key()
+            root_certificates = self._read_apple_root_certificates()
+            candidate_environments = [normalized_environment]
+            if normalized_environment == "production" and allow_sandbox:
+                candidate_environments.append("sandbox")
+
+            transaction = None
+            for candidate_environment in candidate_environments:
+                apple_environment = (
+                    Environment.PRODUCTION
+                    if candidate_environment == "production"
+                    else Environment.SANDBOX
+                )
+                app_apple_id = None
+                if apple_environment == Environment.PRODUCTION:
+                    try:
+                        app_apple_id = int(raw_apple_id)
+                    except ValueError as error:
+                        raise StorePurchaseVerificationError(
+                            "Apple purchase verification is not configured.",
+                            "store_not_configured",
+                            503,
+                        ) from error
+
+                client = AppStoreServerAPIClient(
+                    private_key,
+                    key_id,
+                    issuer_id,
+                    bundle_id,
+                    apple_environment,
+                )
+                try:
+                    response = client.get_transaction_info(transaction_id)
+                except APIException as error:
+                    should_try_sandbox = (
+                        candidate_environment == "production"
+                        and len(candidate_environments) > 1
+                        and (
+                            error.http_status_code == 401
+                            or error.raw_api_error
+                            == APPLE_TRANSACTION_NOT_FOUND_ERROR
+                        )
+                    )
+                    if should_try_sandbox:
+                        continue
+                    raise
+
+                signed_transaction = response.signedTransactionInfo
+                if not signed_transaction:
+                    raise StorePurchaseVerificationError(
+                        "Apple did not return a signed transaction.",
+                        "invalid_transaction",
+                    )
+                verifier = SignedDataVerifier(
+                    root_certificates,
+                    True,
+                    apple_environment,
+                    bundle_id,
+                    app_apple_id,
+                )
+                transaction = verifier.verify_and_decode_signed_transaction(
+                    signed_transaction
+                )
+                normalized_environment = candidate_environment
+                break
+
+            if transaction is None:
                 raise StorePurchaseVerificationError(
-                    "Apple did not return a signed transaction.",
+                    "Apple could not verify this purchase.",
                     "invalid_transaction",
                 )
-            transaction = verifier.verify_and_decode_signed_transaction(
-                signed_transaction
-            )
         except StorePurchaseVerificationError:
             raise
         except Exception as error:

@@ -314,6 +314,93 @@ class MobileFoundationTests(unittest.TestCase):
                 "signed-transaction"
             )
 
+    def test_apple_verification_falls_back_to_allowed_sandbox(self):
+        from appstoreserverlibrary.api_client import APIException
+        from appstoreserverlibrary.models.Environment import Environment
+        from appstoreserverlibrary.models.Type import Type
+
+        transaction = SimpleNamespace(
+            transactionId="apple-sandbox-transaction",
+            productId="credits_120",
+            type=Type.CONSUMABLE,
+            revocationDate=None,
+            quantity=1,
+            appAccountToken=self.user["id"],
+            purchaseDate=123456789,
+            storefront="JPN",
+        )
+        response = SimpleNamespace(signedTransactionInfo="signed-transaction")
+        environment = {
+            "APP_ENV": "production",
+            "APPLE_APP_ID": "6800248025",
+            "APPLE_BUNDLE_ID": "com.newtypekk.roguellm",
+            "APPLE_IAP_KEY_ID": "test-key",
+            "APPLE_IAP_ISSUER_ID": "test-issuer",
+            "APPLE_IAP_ALLOW_SANDBOX": "1",
+        }
+        production_errors = (
+            APIException(401),
+            APIException(404, 4040010, "Transaction ID not found."),
+        )
+
+        for production_error in production_errors:
+            with self.subTest(production_error=str(production_error)):
+                verifier = StorePurchaseVerifier()
+                production_client = Mock()
+                production_client.get_transaction_info.side_effect = (
+                    production_error
+                )
+                sandbox_client = Mock()
+                sandbox_client.get_transaction_info.return_value = response
+
+                with patch.dict(os.environ, environment), \
+                        patch.object(
+                            verifier,
+                            "_read_apple_private_key",
+                            return_value=b"private-key",
+                        ), \
+                        patch.object(
+                            verifier,
+                            "_read_apple_root_certificates",
+                            return_value=[b"root-certificate"],
+                        ), \
+                        patch(
+                            "appstoreserverlibrary.api_client."
+                            "AppStoreServerAPIClient",
+                            side_effect=[production_client, sandbox_client],
+                        ) as api_client, \
+                        patch(
+                            "appstoreserverlibrary.signed_data_verifier."
+                            "SignedDataVerifier"
+                        ) as signed_data_verifier:
+                    signed_data_verifier.return_value \
+                        .verify_and_decode_signed_transaction.return_value = (
+                            transaction
+                        )
+
+                    verified = verifier.verify(
+                        provider="apple",
+                        user_id=self.user["id"],
+                        transaction_id="apple-sandbox-transaction",
+                        environment="production",
+                    )
+
+                self.assertEqual(verified.product_id, "credits_120")
+                self.assertEqual(verified.environment, "sandbox")
+                self.assertEqual(api_client.call_count, 2)
+                self.assertEqual(
+                    api_client.call_args_list[0].args[-1],
+                    Environment.PRODUCTION,
+                )
+                self.assertEqual(
+                    api_client.call_args_list[1].args[-1],
+                    Environment.SANDBOX,
+                )
+                production_client.get_transaction_info \
+                    .assert_called_once_with("apple-sandbox-transaction")
+                sandbox_client.get_transaction_info \
+                    .assert_called_once_with("apple-sandbox-transaction")
+
     def test_google_verification_uses_product_v2_authority(self):
         verifier = StorePurchaseVerifier()
         credentials = Mock(token="service-account-token")
