@@ -4,10 +4,14 @@
 
 - Creator milestone rewards landed first as `0ed617d` (`Add creator milestone
   rewards`) and were pushed to `origin/master`.
-- Mobile work was built from that exact tip on `feature/mobile-foundation` in
-  the isolated worktree. Use Git history to locate the final integration
-  commit.
-- The canonical worktree was not touched; do not rename `master`.
+- Mobile work landed on `master` as `da7028a` (`Add mobile apps and verified
+  credit purchases`). Release-credential and secret-mount support followed as
+  `465a0ec` (`Configure mobile release credentials`). Apple pre-release
+  verification fallback followed as `0e021ea` (`Handle Apple sandbox
+  verification before release`). All are on `origin/master`.
+- This work was completed from an isolated worktree. That does not change the
+  branch or deployment semantics; the canonical worktree was not touched. Do
+  not rename `master`.
 
 ## Hosting model
 
@@ -111,7 +115,7 @@ never initiates a charge.
 
 ## Verification
 
-- `venv/bin/python -m pytest tests/ -q`: 288 passed, 7 skipped, 571 subtests
+- `venv/bin/python -m pytest tests/ -q`: 289 passed, 7 skipped, 573 subtests
   passed.
 - The dedicated foundation tests cover hashed token rotation/revocation,
   bearer API use, user binding across game-session/WebSocket setup, atomic paid
@@ -149,17 +153,34 @@ Google Play is provisioned under the NEWTYPE, Japan developer account:
   US prices $1.99, $4.99, and $9.99.
 - Internal release `1 (1.0)` contains the signed AAB. Its SHA-256 is
   `24d86faec76e48c1bba0e8d92b3ddb8a488d65e88105357eed546ec16ec9d1ad`.
-  No tester list is configured yet, so the release is not installable by a
-  tester until one is added.
+  The existing two-person `Testers L1` list is attached, the track is active,
+  and the signed-in developer account accepted the invite. The opt-in URL is
+  `https://play.google.com/apps/internaltest/4701630974171201245`.
+- `Testers L1` is also enabled under account-wide License testing with
+  `RESPOND_NORMALLY`, so Play can provide test payment methods without real
+  charges.
 - Dedicated service account
   `roguellm-purchase-verifier@newtypekk-2.iam.gserviceaccount.com` has access
   only to RogueLLM, with read-only app access plus View financial data (the
   Purchases API permission). It has no Google Cloud project role. The Android
   Publisher API is enabled in `newtypekk-2`.
 - The first authenticated dummy-token probe immediately after granting access
-  returned `401` / insufficient permissions. Keep the store gate off and retry
-  after Play permission propagation; a non-401/403 invalid-token response is
-  the readiness signal.
+  returned `401` / insufficient permissions. After propagation, the same
+  production-server probe returned `400 Invalid Value`, the expected response
+  for a fake purchase token. Service-account and Purchases API access are
+  ready.
+
+App Store Connect already contains three Sandbox test accounts, so no new
+Apple test identity was created. A production-server probe authenticates to the
+Apple sandbox endpoint and returns the expected invalid-transaction response
+(`4000006`). The production endpoint returns `401` while RogueLLM has no live
+App Store release. Apple staff documents that production App Store Server API
+access is locked until the first release is live in
+[Developer Forums thread 806452](https://developer.apple.com/forums/thread/806452).
+Purchase verification now falls back from production to sandbox on the
+pre-release `401` and the post-release transaction-not-found response, but only
+while `APPLE_IAP_ALLOW_SANDBOX=1`; the signed transaction is still validated
+against the selected environment and bundle.
 
 Android release signing is configured through `ROGUELLM_ANDROID_*` environment
 variables. The upload keystore and passwords remain outside Git. Release bundle
@@ -170,26 +191,45 @@ Both Compose stacks mount an ignored server-side `./secrets` directory at
 `ENABLE_MOBILE_STORE=0` while deploying the schema and credentials. Temporarily
 allow sandbox/test transactions only when a tester build is ready.
 
-## What needs external accounts
+## Production deployment completed on 2026-08-11
 
-No Porkbun change is required. Hetzner is needed only to deploy the updated
-server and add secret environment values. Before enabling purchases:
+Commit `0e021ea57549cc85243261111bd3bf43285453dd` is deployed from
+`/home/deploy/roguellm-production` on the Hetzner VPS. The app, loopback health
+checks, public HTTPS health endpoints, OpenAPI document, mounted credentials,
+Apple root certificates, and all six mobile database tables passed verification.
+No Porkbun or Firebase hosting change was needed. Firebase remains Analytics
+only; APIs and generated assets remain on the VPS.
 
-1. In App Store Connect, register the app/bundle id, create the three
-   consumables, create an App Store Server API key, and note the numeric Apple
-   app id, issuer id, and key id. Install the private key and Apple roots only on
-   the server. Root certificates may be configured as comma-separated base64
-   DER values, which avoids adding a Docker secret mount.
-2. In Play Console, register the same package, create the three one-time
-   products, link a Google Cloud service account with order/purchase access, and
-   install its JSON only on the server.
-3. Configure Apple signing/team and Android upload signing, replace the
-   placeholder icon/splash, and build a sandbox/internal-test app.
-4. Deploy with the server variables from `_env.example`. Temporarily allow
-   Apple sandbox and Google license-tester purchases, test success,
-   cancellation, retry/redelivery, and duplicate verification, then restore
-   production-only policy and set `ENABLE_WORLD_CREDITS=1` plus
-   `ENABLE_MOBILE_STORE=1`.
+The pre-deploy backup is `20260811T090416Z`; the post-migration backup is
+`20260811T091245Z`. A disposable restore of the latter passed SQLite integrity,
+schema, app health, and asset probes. It contains zero worlds intentionally
+because the incompatible old worlds were removed, and 182 static asset files
+with no generated world assets yet. A fresh snapshot immediately before the
+Apple-fallback cutover is `20260811T092455Z`. The rollback image is tagged
+`roguellm-production-app:pre-0e021ea`.
+
+Production is deliberately running with these rollout gates off:
+
+- `ENABLE_WORLD_ART=0`
+- `ENABLE_WORLD_CREDITS=0`
+- `ENABLE_MOBILE_STORE=0`
+- `APPLE_IAP_ALLOW_SANDBOX=0`
+- `GOOGLE_PLAY_ALLOW_TEST_PURCHASES=0`
+
+## Remaining controlled rollout
+
+1. Replace the placeholder native icon and splash before public submission.
+2. On Android, open the internal-test opt-in URL using a `Testers L1` account,
+   install release `1 (1.0)`, and confirm native login and game launch.
+3. On iOS, run a development-signed build on a Developer Mode device or upload
+   a TestFlight build, then use one of the existing Sandbox accounts.
+4. For the purchase-test window only, enable the mobile store, Apple sandbox,
+   and Google test-purchase flags. Test success, cancellation, retry/redelivery,
+   and duplicate verification on both platforms, then turn the sandbox/test
+   flags back off.
+5. Once generation credits are ready for users, enable
+   `ENABLE_WORLD_CREDITS=1` and `ENABLE_MOBILE_STORE=1`. Retest Apple production
+   API access after the first App Store release goes live.
 
 Later hardening should add store notification/reconciliation jobs for refunds
 or revocations that occur after the initial consumable grant. That is separate
