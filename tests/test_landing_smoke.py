@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -76,6 +77,12 @@ class LandingSmokeTests(unittest.TestCase):
                     landing_css = (
                         REPO_ROOT / "static/css/landing.css"
                     ).read_text(encoding="utf-8")
+                    lobby_css = (
+                        REPO_ROOT / "static/css/lobby.css"
+                    ).read_text(encoding="utf-8")
+                    capacitor_config = json.loads(
+                        (REPO_ROOT / "capacitor.config.json").read_text(encoding="utf-8")
+                    )
                     english_translations = (
                         REPO_ROOT / "static/translations/en.json"
                     ).read_text(encoding="utf-8")
@@ -170,6 +177,14 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("debug_seed", landing_js)
                     self.assertIn("requiresAuthForSelectedCreation", landing_js)
                     self.assertIn("launchButtonLabel", landing_js)
+                    self.assertNotIn("showEmptySignupPrompt", landing_js)
+                    self.assertNotIn("{{ t('signupToCreate') }}", html)
+                    self.assertIn("--safe-area-inset-top", lobby_css)
+                    self.assertIn("--safe-area-inset-bottom", lobby_css)
+                    self.assertEqual(
+                        capacitor_config["plugins"]["SystemBars"]["insetsHandling"],
+                        "css",
+                    )
                     self.assertIn("do_web_search: true", landing_js)
                     self.assertIn("window.trackAnalyticsEvent('game_started'", landing_js)
                     self.assertNotIn("analytics.logEvent('page_view'", landing_js)

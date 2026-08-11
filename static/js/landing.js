@@ -202,9 +202,6 @@ const app = Vue.createApp({
                 ? this.t('publicWorldsEmptyBodySignedIn')
                 : this.t('publicWorldsEmptyBodyAnonymous');
         },
-        showEmptySignupPrompt() {
-            return !this.currentUser && this.worldTab === 'public';
-        },
         dashboardInitial() {
             const username = this.currentUser?.username || this.t('guestUser');
             return username.trim().charAt(0).toUpperCase() || '?';
@@ -287,9 +284,6 @@ const app = Vue.createApp({
         // The forge button is always a create action, so it must not inherit
         // selectedTheme, which defaults to 'world' and made it read "Start Run".
         forgeButtonLabel() {
-            if (this.requiresAuthForSelectedCreation) {
-                return this.t('signupToCreate');
-            }
             const credits = this.currentUser?.credits;
             if (credits?.enabled) {
                 return this.t('createWorldCredits', { credits: credits.forge_cost });

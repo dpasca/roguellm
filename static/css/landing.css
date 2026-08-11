@@ -1677,9 +1677,9 @@ body.landing-page .credit-store-footnote > span:first-child {
 @media (max-width: 760px) {
     body.landing-page .credit-store-modal {
         border-radius: 22px 22px 10px 10px;
-        bottom: max(6px, env(safe-area-inset-bottom));
+        bottom: max(6px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         left: 6px;
-        max-height: calc(100dvh - 12px - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 12px - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         max-width: none;
         top: auto;
         transform: none;
@@ -1758,7 +1758,7 @@ body.landing-page .credit-store-footnote > span:first-child {
 
     body.landing-page .credit-store-content {
         gap: 14px;
-        padding: 16px 14px max(18px, env(safe-area-inset-bottom));
+        padding: 16px 14px max(18px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     }
 
     body.landing-page .credit-store-benefits {
@@ -2384,9 +2384,9 @@ body.landing-page .auth-strip .auth-mode {
 @media (max-width: 760px) {
     body.landing-page .auth-strip {
         border-radius: 16px 16px 10px 10px;
-        bottom: max(8px, env(safe-area-inset-bottom));
+        bottom: max(8px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         left: 8px;
-        max-height: calc(100dvh - 16px - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 16px - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         max-width: none;
         right: 8px;
         top: auto;
@@ -2729,9 +2729,9 @@ body.landing-page .lobby-sheet-message.is-error {
 
     body.landing-page .lobby-sheet-panel {
         border-radius: 16px 16px 10px 10px;
-        bottom: max(8px, env(safe-area-inset-bottom));
+        bottom: max(8px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         left: 8px;
-        max-height: calc(100dvh - 16px - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 16px - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         max-width: none;
         right: 8px;
         top: auto;

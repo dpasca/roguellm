@@ -115,13 +115,7 @@
                     <p class="forge-hint">
                         <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-user-plus'" aria-hidden="true"></i>
                         <span>{{ forgeHint }}</span>
-                        <button v-if="!currentUser"
-                                type="button"
-                                class="forge-hint-btn"
-                                @click="promptSignupForSave">
-                            {{ t('signupToCreate') }}
-                        </button>
-                        <button v-else-if="currentUser?.credits?.enabled"
+                        <button v-if="currentUser?.credits?.enabled"
                                 type="button"
                                 class="forge-hint-btn"
                                 data-credit-store-trigger
@@ -205,13 +199,6 @@
                     <div v-else class="gallery-state gallery-empty">
                         <strong>{{ emptyWorldsTitle }}</strong>
                         <span>{{ emptyWorldsMessage }}</span>
-                        <button v-if="showEmptySignupPrompt"
-                                type="button"
-                                class="lobby-secondary-btn"
-                                @click="promptSignupForSave">
-                            <i class="fas fa-user-plus"></i>
-                            <span>{{ t('signupToCreate') }}</span>
-                        </button>
                     </div>
 
                     <button type="button" class="world-code-trigger" @click="openWorldCodePanel">

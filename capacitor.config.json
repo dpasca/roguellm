@@ -1,5 +1,13 @@
 {
   "appId": "com.newtypekk.roguellm",
   "appName": "RogueLLM",
-  "webDir": "mobile-dist"
+  "webDir": "mobile-dist",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK",
+      "hidden": false,
+      "animation": "NONE"
+    }
+  }
 }
