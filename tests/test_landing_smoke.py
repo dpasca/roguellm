@@ -70,6 +70,9 @@ class LandingSmokeTests(unittest.TestCase):
 
                     html = landing.text
                     landing_js = (REPO_ROOT / "static/js/landing.js").read_text(encoding="utf-8")
+                    credit_store_js = (
+                        REPO_ROOT / "static/js/creditStore.js"
+                    ).read_text(encoding="utf-8")
                     landing_css = (
                         REPO_ROOT / "static/css/landing.css"
                     ).read_text(encoding="utf-8")
@@ -121,6 +124,11 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn('class="world-code-trigger"', html)
                     self.assertIn('class="lobby-sheet-panel world-code-panel"', html)
                     self.assertIn('class="lobby-sheet-panel world-menu-panel"', html)
+                    self.assertIn('class="credit-store-modal"', html)
+                    self.assertIn('class="credit-store-pack-grid"', html)
+                    self.assertIn('aria-labelledby="credit-store-title"', html)
+                    self.assertIn('@click="openCreditStore"', html)
+                    self.assertIn('@click="purchaseCreditPack(pack)"', html)
                     self.assertIn(DEV_PIEDONE_THEME, landing_js)
                     self.assertIn("submitAuth", landing_js)
                     self.assertIn("responseErrorMessage", landing_js)
@@ -140,6 +148,15 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("/api/my/worlds", landing_js)
                     self.assertIn("/api/my/stats", landing_js)
                     self.assertIn("dashboardStats", landing_js)
+                    self.assertIn("openCreditStore", landing_js)
+                    self.assertIn("purchaseCreditPack", landing_js)
+                    self.assertIn("result.verified !== true", landing_js)
+                    self.assertIn("this.creditBalance <= balanceBeforePurchase", landing_js)
+                    self.assertIn("RogueLLMCreditPurchaseProvider", credit_store_js)
+                    self.assertIn("credits_40", credit_store_js)
+                    self.assertIn("credits_120", credit_store_js)
+                    self.assertIn("credits_300", credit_store_js)
+                    self.assertNotIn("fetch(", credit_store_js)
                     self.assertIn("copyWorldLink", landing_js)
                     self.assertIn("openWorldCodePanel", landing_js)
                     self.assertIn("openWorldMenu", landing_js)
@@ -163,6 +180,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn(".world-option .world-preview", landing_css)
                     self.assertIn(".world-launch-actions", landing_css)
                     self.assertIn(".lobby-sheet-panel", landing_css)
+                    self.assertIn(".credit-store-modal", landing_css)
+                    self.assertIn(".credit-store-pack", landing_css)
                     self.assertIn("grid-template-columns: minmax(360px, 0.95fr) minmax(520px, 1.05fr)", landing_css)
                     self.assertIn("grid-template-columns: minmax(126px, 150px) minmax(128px, 1fr) minmax(128px, 1fr) auto", landing_css)
                     self.assertIn("overflow-y: auto", landing_css)
@@ -176,6 +195,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("publicReviewClose", english_translations)
                     self.assertIn("signupToCreate", english_translations)
                     self.assertIn("authRequiredToCreateWorld", english_translations)
+                    self.assertIn("creditStoreMobileOnly", english_translations)
+                    self.assertIn("creditStoreSecureNote", english_translations)
                     self.assertNotIn('id="fantasy"', html)
                     self.assertNotIn('class="theme-options"', html)
                     self.assertNotIn("doWebSearch", landing_js)

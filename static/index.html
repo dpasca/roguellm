@@ -58,6 +58,19 @@
                     <span>{{ t('title') }}</span>
                 </a>
                 <div class="lobby-bar-tools">
+                    <button v-if="currentUser?.credits?.enabled"
+                            type="button"
+                            class="lobby-credit-balance"
+                            data-credit-store-trigger
+                            :aria-label="t('creditStoreOpenAria', { credits: creditBalance })"
+                            @click="openCreditStore">
+                        <span class="lobby-credit-icon" aria-hidden="true">
+                            <i class="fas fa-gem"></i>
+                        </span>
+                        <strong>{{ creditBalance }}</strong>
+                        <span class="lobby-credit-label">{{ t('dashboardCredits') }}</span>
+                        <i class="fas fa-plus lobby-credit-plus" aria-hidden="true"></i>
+                    </button>
                     <select v-model="selectedLanguage"
                             class="lobby-language"
                             :aria-label="t('language')">
@@ -106,6 +119,13 @@
                                 class="forge-hint-btn"
                                 @click="promptSignupForSave">
                             {{ t('signupToCreate') }}
+                        </button>
+                        <button v-else-if="currentUser?.credits?.enabled"
+                                type="button"
+                                class="forge-hint-btn"
+                                data-credit-store-trigger
+                                @click="openCreditStore">
+                            {{ t('getCredits') }}
                         </button>
                     </p>
                 </section>
@@ -239,6 +259,23 @@
                             <span>{{ stat.label }}</span>
                         </div>
                     </div>
+                    <button v-if="currentUser.credits?.enabled"
+                            type="button"
+                            class="account-credit-card"
+                            data-credit-store-trigger
+                            @click="openCreditStore">
+                        <span class="account-credit-card-icon" aria-hidden="true">
+                            <i class="fas fa-gem"></i>
+                        </span>
+                        <span>
+                            <strong>{{ t('creditStoreAccountTitle') }}</strong>
+                            <small>{{ t('creditStoreAccountBody', { credits: creditBalance }) }}</small>
+                        </span>
+                        <span class="account-credit-card-action">
+                            {{ t('getCredits') }}
+                            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        </span>
+                    </button>
                     <button type="button"
                             class="auth-secondary-btn"
                             :disabled="isAuthenticating"
@@ -277,6 +314,147 @@
                         {{ authMode === 'signup' ? t('signup') : t('login') }}
                     </button>
                 </form>
+            </section>
+
+            <button v-if="isCreditStoreOpen"
+                    type="button"
+                    class="credit-store-backdrop"
+                    :aria-label="t('publicReviewClose')"
+                    @click="closeCreditStore"></button>
+            <section v-if="isCreditStoreOpen"
+                     class="credit-store-modal"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-labelledby="credit-store-title"
+                     @keydown.esc="closeCreditStore">
+                <header class="credit-store-hero">
+                    <div class="credit-store-orbit" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <button type="button"
+                            class="credit-store-close"
+                            :aria-label="t('publicReviewClose')"
+                            @click="closeCreditStore">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                    <div class="credit-store-kicker">
+                        <i class="fas fa-mobile-alt" aria-hidden="true"></i>
+                        <span>{{ creditStoreAvailabilityLabel }}</span>
+                    </div>
+                    <div class="credit-store-heading">
+                        <div class="credit-store-gem" aria-hidden="true">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <div>
+                            <h2 id="credit-store-title">{{ t('creditStoreTitle') }}</h2>
+                            <p>{{ t('creditStoreBody') }}</p>
+                        </div>
+                    </div>
+                    <div class="credit-store-balance-card">
+                        <span>{{ t('creditStoreBalance') }}</span>
+                        <strong>{{ creditBalance }}</strong>
+                        <small>{{ t('dashboardCredits') }}</small>
+                    </div>
+                </header>
+
+                <div class="credit-store-content">
+                    <ul class="credit-store-benefits" :aria-label="t('creditStoreIncluded')">
+                        <li>
+                            <i class="fas fa-dice-d20" aria-hidden="true"></i>
+                            <span>{{ t('creditStoreForgeRate', { cost: creditForgeCost }) }}</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-play" aria-hidden="true"></i>
+                            <span>{{ t('creditStorePlayFree') }}</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-palette" aria-hidden="true"></i>
+                            <span>{{ t('creditStoreReroll') }}</span>
+                        </li>
+                    </ul>
+
+                    <div v-if="creditStoreLoading"
+                         class="credit-store-loading"
+                         role="status">
+                        <span aria-hidden="true"></span>
+                        {{ t('creditStoreLoading') }}
+                    </div>
+
+                    <div class="credit-store-pack-grid"
+                         :class="{ 'is-loading': creditStoreLoading }">
+                        <article v-for="pack in creditStorePacks"
+                                 :key="pack.id"
+                                 class="credit-store-pack"
+                                 :class="[`tone-${pack.tone}`, { featured: pack.featured }]">
+                            <div v-if="pack.featured" class="credit-store-popular">
+                                <i class="fas fa-star" aria-hidden="true"></i>
+                                {{ t('creditStoreMostPopular') }}
+                            </div>
+                            <div class="credit-store-pack-top">
+                                <span class="credit-store-pack-mark" aria-hidden="true">
+                                    <i class="fas fa-gem"></i>
+                                </span>
+                                <div>
+                                    <h3>{{ t(pack.titleKey) }}</h3>
+                                    <p>{{ t(pack.captionKey) }}</p>
+                                </div>
+                            </div>
+                            <div class="credit-store-amount">
+                                <strong>{{ pack.credits }}</strong>
+                                <span>{{ t('dashboardCredits') }}</span>
+                            </div>
+                            <p class="credit-store-world-value">
+                                <i class="fas fa-magic" aria-hidden="true"></i>
+                                {{ t('creditStoreWorlds', { worlds: creditPackWorldCount(pack) }) }}
+                            </p>
+                            <div class="credit-store-price">
+                                <strong>{{ pack.displayPrice }}</strong>
+                                <span>{{ t('creditStoreOneTime') }}</span>
+                            </div>
+                            <button type="button"
+                                    class="credit-store-pack-button"
+                                    :disabled="purchasingCreditPackId !== null"
+                                    @click="purchaseCreditPack(pack)">
+                                <span>{{ creditStoreButtonLabel(pack) }}</span>
+                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </article>
+                    </div>
+
+                    <div class="credit-store-earn-card">
+                        <span class="credit-store-earn-icon" aria-hidden="true">
+                            <i class="fas fa-trophy"></i>
+                        </span>
+                        <span>
+                            <strong>{{ t('creditStoreEarnTitle') }}</strong>
+                            <small>{{ t('creditStoreEarnBody') }}</small>
+                        </span>
+                    </div>
+
+                    <p v-if="creditStoreNotice"
+                       class="credit-store-notice"
+                       :class="`is-${creditStoreNotice.type}`"
+                       :role="creditStoreNotice.type === 'error' ? 'alert' : 'status'">
+                        <i class="fas"
+                           :class="creditStoreNotice.type === 'success'
+                               ? 'fa-check-circle'
+                               : creditStoreNotice.type === 'error'
+                                   ? 'fa-exclamation-circle'
+                                   : 'fa-mobile-alt'"
+                           aria-hidden="true"></i>
+                        <span>{{ creditStoreNotice.message }}</span>
+                    </p>
+
+                    <footer class="credit-store-footnote">
+                        <span>
+                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                            {{ t('creditStoreSecureNote') }}
+                        </span>
+                        <span>{{ t('creditStorePricingNote') }}</span>
+                    </footer>
+                </div>
             </section>
 
             <button v-if="isWorldCodePanelOpen"

@@ -493,9 +493,9 @@ and the store cut.
 Consequences to carry:
 
 - **Credits sold in-app go through StoreKit and Play Billing at 15-30%.**
-  Against a marginal cost of ~$0.47 per forge, that comes off the margin
-  directly. Selling credits on the web to spend in-app is against both stores'
-  rules for digital goods consumed in-app.
+  Against the core art path's roughly $0.07 per forge before retries, that still
+  comes off the margin directly. Selling credits on the web to spend in-app is
+  against both stores' rules for digital goods consumed in-app.
 - **Capacitor rather than native.** The frontend is already portrait-first, and
   ChatNext3 already ships an iOS build on Capacitor 7 with a multi-instance
   config. Wrapping keeps one codebase; Android is the same toolchain.
@@ -509,7 +509,8 @@ Consequences to carry:
 
 ## 13. Testing
 
-266 tests, `python -m pytest tests/`. Requires `LOW_SPEC_MODEL_API_KEY` and
+281 tests pass and 7 browser-package tests skip, `python -m pytest tests/`.
+Requires `LOW_SPEC_MODEL_API_KEY` and
 `HIGH_SPEC_MODEL_API_KEY` to be set to anything, and `SESSION_SECRET_KEY` — some
 construct the app and fail on a missing key even though they make no model
 calls. No test spends money.
@@ -583,8 +584,10 @@ Ordered by what blocks what.
 2. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.
-3. **Paid credit packs and mobile IAP.** The ledger and free economy exist, but
-   there is not yet a Stripe, StoreKit, or Play Billing purchase path.
+3. **Paid credit packs and mobile IAP.** The ledger, free economy, and polished
+   provider-neutral shop UI exist. Web is a non-purchasing preview; there is not
+   yet a StoreKit/Play Billing adapter or server receipt-verification endpoint.
+   Stripe is deliberately deferred unless web becomes a shipping target.
 4. **Creator milestone policy.** Qualified unique completers are tracked and
    shown, but the thresholds and credit payouts need an explicit product choice.
 5. **Frontend coverage is not in CI**, and reaches only the landing page and
@@ -623,8 +626,13 @@ Implemented behind `ENABLE_WORLD_CREDITS=0`:
 - The lobby shows the balance and forge price, disables an unaffordable forge,
   exposes creator popularity, and reports the capped completion reward on the
   victory screen.
+- The lobby's credit shop presents 40-, 120-, and 300-credit pack previews and
+  is responsive down to the phone layout. On web its calls stop at an explicit
+  mobile-only notice. A future injected native provider supplies localized
+  prices and may report success only after server-side receipt verification;
+  the browser never changes a balance locally.
 
 The database tables are additive and created by `init_db`; no one-off migration
 command is required. It is safe to deploy with both rollout flags off. Enabling
-credits before paid packs intentionally creates a free-only beta: users get
+credits before native IAP intentionally creates a free-only beta: users get
 three forges plus capped play rewards, but have no purchase path after that.

@@ -1,5 +1,12 @@
+import {
+    createPreviewCreditPacks,
+    loadCreditPackCatalog
+} from './creditStore.js';
+
 // Language configuration
 document.documentElement.classList.add('landing-root');
+
+let creditPurchaseProvider = null;
 
 const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
@@ -40,6 +47,12 @@ const app = Vue.createApp({
                 password: ''
             },
             isAccountPanelOpen: false,
+            isCreditStoreOpen: false,
+            creditStorePacks: createPreviewCreditPacks(),
+            creditStoreAvailable: false,
+            creditStoreLoading: false,
+            creditStoreNotice: null,
+            purchasingCreditPackId: null,
             isWorldCodePanelOpen: false,
             worldMenuId: null,
             rerollingWorldId: null,
@@ -176,6 +189,17 @@ const app = Vue.createApp({
         canAffordForge() {
             const credits = this.currentUser?.credits;
             return !credits?.enabled || credits.total >= credits.forge_cost;
+        },
+        creditBalance() {
+            return Number(this.currentUser?.credits?.total || 0);
+        },
+        creditForgeCost() {
+            return Math.max(1, Number(this.currentUser?.credits?.forge_cost || 10));
+        },
+        creditStoreAvailabilityLabel() {
+            return this.creditStoreAvailable
+                ? this.t('creditStoreReadyLabel')
+                : this.t('creditStorePreviewLabel');
         },
         forgeHint() {
             const credits = this.currentUser?.credits;
@@ -337,6 +361,128 @@ const app = Vue.createApp({
         },
         clearInfo() {
             this.infoMessage = null;
+        },
+        async openCreditStore() {
+            if (!this.currentUser) {
+                this.promptSignupForSave();
+                return;
+            }
+
+            this.isAccountPanelOpen = false;
+            this.isWorldCodePanelOpen = false;
+            this.worldMenuId = null;
+            this.creditStoreNotice = null;
+            this.isCreditStoreOpen = true;
+            document.documentElement.classList.add('credit-store-open');
+            this.$nextTick(() => {
+                const closeButton = document.querySelector('.credit-store-close');
+                if (closeButton) {
+                    closeButton.focus({ preventScroll: true });
+                }
+            });
+            await this.refreshCreditStoreCatalog();
+        },
+        closeCreditStore() {
+            this.isCreditStoreOpen = false;
+            this.creditStoreNotice = null;
+            document.documentElement.classList.remove('credit-store-open');
+            this.$nextTick(() => {
+                const trigger = document.querySelector('[data-credit-store-trigger]');
+                if (trigger) {
+                    trigger.focus({ preventScroll: true });
+                }
+            });
+        },
+        async refreshCreditStoreCatalog() {
+            this.creditStoreLoading = true;
+            try {
+                const catalog = await loadCreditPackCatalog();
+                this.creditStorePacks = catalog.packs;
+                this.creditStoreAvailable = catalog.available;
+                creditPurchaseProvider = catalog.provider;
+            } catch (error) {
+                console.warn('Credit store catalog unavailable:', error);
+                this.creditStorePacks = createPreviewCreditPacks();
+                this.creditStoreAvailable = false;
+                creditPurchaseProvider = null;
+            } finally {
+                this.creditStoreLoading = false;
+            }
+        },
+        creditPackWorldCount(pack) {
+            return Math.floor(pack.credits / this.creditForgeCost);
+        },
+        creditStoreButtonLabel(pack) {
+            if (this.purchasingCreditPackId === pack.id) {
+                return this.t('creditStoreProcessing');
+            }
+            if (this.creditStoreAvailable) {
+                return this.t('creditStoreBuyCta', { price: pack.displayPrice });
+            }
+            return this.t('creditStoreMobileCta');
+        },
+        async purchaseCreditPack(pack) {
+            this.creditStoreNotice = null;
+            if (!this.creditStoreAvailable || !creditPurchaseProvider) {
+                this.creditStoreNotice = {
+                    type: 'info',
+                    message: this.t('creditStoreMobileOnly')
+                };
+                if (window.trackAnalyticsEvent) {
+                    window.trackAnalyticsEvent('credit_pack_previewed', {
+                        product_key: pack.productKey,
+                        credits: pack.credits
+                    });
+                }
+                return;
+            }
+
+            this.purchasingCreditPackId = pack.id;
+            const balanceBeforePurchase = this.creditBalance;
+            try {
+                // The native adapter must return verified=true only after the
+                // server has validated the store receipt and appended the
+                // idempotent paid-credit ledger entry. This UI never grants
+                // credits from a client-side purchase result.
+                const result = await creditPurchaseProvider.purchase(pack.productKey);
+                if (!result || result.verified !== true) {
+                    this.creditStoreNotice = {
+                        type: 'error',
+                        message: this.t('creditStorePurchaseUnverified')
+                    };
+                    return;
+                }
+
+                await this.loadCurrentUser();
+                await this.loadAccountStats();
+                if (!this.currentUser || this.creditBalance <= balanceBeforePurchase) {
+                    this.creditStoreNotice = {
+                        type: 'error',
+                        message: this.t('creditStorePurchaseUnverified')
+                    };
+                    return;
+                }
+                this.creditStoreNotice = {
+                    type: 'success',
+                    message: this.t('creditStorePurchaseSuccess', {
+                        credits: this.creditBalance
+                    })
+                };
+                if (window.trackAnalyticsEvent) {
+                    window.trackAnalyticsEvent('credit_pack_purchased', {
+                        product_key: pack.productKey,
+                        credits: pack.credits
+                    });
+                }
+            } catch (error) {
+                console.error('Credit purchase failed:', error);
+                this.creditStoreNotice = {
+                    type: 'error',
+                    message: error?.message || this.t('creditStorePurchaseFailed')
+                };
+            } finally {
+                this.purchasingCreditPackId = null;
+            }
         },
         async responseErrorMessage(response, fallbackMessage) {
             const fallback = typeof fallbackMessage === 'string' && fallbackMessage.trim()

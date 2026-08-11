@@ -269,8 +269,16 @@ in. That is the share moment and the credit justification in one animation.
   popularity count.
 - **Remix** — fork a public World with a twist — costs credits. This is the
   growth loop that converts a player into a creator.
-- Paid packs, creator milestone payouts, remix pricing, and mobile IAP are not
-  implemented yet. `ENABLE_WORLD_CREDITS` therefore remains off by default.
+- The mobile-first shop now previews 40-, 120-, and 300-credit packs at target
+  USD prices of $1.99, $4.99, and $9.99. Those are presentation defaults, not a
+  source of truth: StoreKit or Play Billing supplies the final localized price.
+- Web deliberately cannot complete a purchase. The storefront looks and behaves
+  like the future mobile screen, but its provider seam only accepts a successful
+  result after a native adapter has verified the receipt with the server. Stripe
+  is deferred unless web later becomes a real shipping target.
+- Creator milestone payouts, remix pricing, receipt verification, and mobile IAP
+  are not implemented yet. `ENABLE_WORLD_CREDITS` therefore remains off by
+  default.
 
 ## Front page
 
@@ -294,8 +302,8 @@ useful later, a marketing or desktop companion.
 This reverses the earlier recommendation in this document, which argued PWA
 first to avoid store review and the store cut. That trade is now accepted
 deliberately, and it has one consequence worth carrying into Phase 5: **credits
-sold in-app go through StoreKit and Play Billing, which take 15-30%.** On a
-product whose marginal cost is roughly $0.45 of image generation per forge, that
+sold in-app go through StoreKit and Play Billing, which take 15-30%.** The core
+art path is now roughly $0.07 per forge before retries, but the store share still
 comes off the margin directly, so credit pack pricing has to be set against the
 net rather than the list price. Selling credits on the web and consuming them in
 the app is the usual way around it and is against both stores' rules for digital
@@ -487,8 +495,10 @@ grid.
 The cover now reuses a location backdrop instead of generating a scene only the
 gallery card would ever see.
 
-**Phase 5 — Credits and payments.** Stripe, credit ledger, forge/remix pricing,
-free-tier allowance.
+**Phase 5 — Credits and payments.** The credit ledger, forge price, free
+allowance, completion rewards, and provider-neutral storefront are done. Native
+receipt verification, creator rewards, and remix pricing remain. Stripe is not
+on the critical path for a mobile-only launch.
 
 **Phase 6 — Mobile app.** Replaces the PWA plan.
 1. Wrap the existing frontend with Capacitor, following the ChatNext3 setup.

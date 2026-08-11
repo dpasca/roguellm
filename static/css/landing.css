@@ -995,6 +995,831 @@ body.landing-page .info-message {
     }
 }
 
+/* Credit storefront ------------------------------------------------------ */
+html.credit-store-open,
+html.credit-store-open body {
+    overflow: hidden;
+}
+
+body.landing-page .account-credit-card {
+    align-items: center;
+    background:
+        linear-gradient(125deg, rgba(120, 226, 255, 0.12), rgba(139, 100, 255, 0.16)),
+        #101d29;
+    border: 1px solid rgba(118, 183, 224, 0.38);
+    border-radius: 11px;
+    color: #eff6ff;
+    cursor: pointer;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    margin: 0;
+    min-height: 60px;
+    padding: 9px 10px;
+    text-align: left;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+    width: 100%;
+}
+
+body.landing-page .account-credit-card:hover {
+    border-color: rgba(132, 215, 255, 0.72);
+    box-shadow: 0 9px 26px rgba(28, 74, 116, 0.22);
+    transform: translateY(-1px);
+}
+
+body.landing-page .account-credit-card-icon {
+    align-items: center;
+    background: linear-gradient(145deg, #a5f1ff, #957bff 66%, #f1a0ff);
+    border-radius: 10px;
+    box-shadow: 0 0 18px rgba(121, 170, 255, 0.3);
+    color: #101327;
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    width: 40px;
+}
+
+body.landing-page .account-credit-card > span:nth-child(2) {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+body.landing-page .account-credit-card strong {
+    font-size: 0.82rem;
+}
+
+body.landing-page .account-credit-card small {
+    color: #9fb4c9;
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+
+body.landing-page .account-credit-card-action {
+    align-items: center;
+    color: #a8eaff;
+    display: inline-flex;
+    font-size: 0.7rem;
+    font-weight: 800;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+body.landing-page .account-credit-card-action i {
+    font-size: 0.58rem;
+}
+
+body.landing-page .credit-store-backdrop {
+    backdrop-filter: blur(10px);
+    background: rgba(2, 4, 12, 0.78);
+    border: 0;
+    border-radius: 0;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    z-index: 79;
+}
+
+body.landing-page .credit-store-modal {
+    background: #090b15;
+    border: 1px solid rgba(137, 163, 255, 0.34);
+    border-radius: 24px;
+    box-shadow:
+        0 32px 100px rgba(0, 0, 0, 0.68),
+        0 0 80px rgba(87, 92, 216, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: #f1f3fb;
+    left: 50%;
+    max-height: min(900px, calc(100dvh - 32px));
+    max-width: min(960px, calc(100vw - 32px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 960px;
+    z-index: 80;
+    animation: credit-store-in 260ms cubic-bezier(0.16, 0.9, 0.3, 1);
+}
+
+@keyframes credit-store-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, calc(-50% + 18px)) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+body.landing-page .credit-store-hero {
+    background:
+        radial-gradient(circle at 82% 20%, rgba(246, 143, 255, 0.22), transparent 27%),
+        radial-gradient(circle at 16% -14%, rgba(108, 226, 255, 0.26), transparent 37%),
+        linear-gradient(135deg, #16223e 0%, #171330 53%, #271535 100%);
+    border-bottom: 1px solid rgba(169, 183, 255, 0.2);
+    min-height: 222px;
+    overflow: hidden;
+    padding: 28px 224px 30px 32px;
+    position: relative;
+}
+
+body.landing-page .credit-store-hero::before {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+    content: '';
+    inset: 0;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent);
+    pointer-events: none;
+    position: absolute;
+}
+
+body.landing-page .credit-store-close {
+    align-items: center;
+    backdrop-filter: blur(8px);
+    background: rgba(7, 9, 21, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 50%;
+    color: #cbd2ea;
+    cursor: pointer;
+    display: flex;
+    height: 40px;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    right: 18px;
+    top: 18px;
+    width: 40px;
+    z-index: 3;
+}
+
+body.landing-page .credit-store-close:hover {
+    background: rgba(35, 39, 69, 0.74);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #fff;
+}
+
+body.landing-page .credit-store-orbit {
+    border: 1px solid rgba(163, 194, 255, 0.18);
+    border-radius: 50%;
+    height: 270px;
+    pointer-events: none;
+    position: absolute;
+    right: -32px;
+    top: -58px;
+    width: 270px;
+}
+
+body.landing-page .credit-store-orbit::before,
+body.landing-page .credit-store-orbit::after {
+    border: 1px solid rgba(222, 174, 255, 0.13);
+    border-radius: 50%;
+    content: '';
+    inset: 32px;
+    position: absolute;
+}
+
+body.landing-page .credit-store-orbit::after {
+    inset: 70px;
+}
+
+body.landing-page .credit-store-orbit span {
+    background: #b9f3ff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #80dfff;
+    height: 5px;
+    position: absolute;
+    width: 5px;
+}
+
+body.landing-page .credit-store-orbit span:nth-child(1) {
+    left: 27px;
+    top: 81px;
+}
+
+body.landing-page .credit-store-orbit span:nth-child(2) {
+    background: #f3afff;
+    bottom: 54px;
+    box-shadow: 0 0 12px #df7dff;
+    right: 34px;
+}
+
+body.landing-page .credit-store-orbit span:nth-child(3) {
+    bottom: 19px;
+    left: 91px;
+}
+
+body.landing-page .credit-store-kicker {
+    align-items: center;
+    background: rgba(130, 171, 255, 0.11);
+    border: 1px solid rgba(155, 195, 255, 0.24);
+    border-radius: 999px;
+    color: #b9dcff;
+    display: inline-flex;
+    font-size: 0.67rem;
+    font-weight: 800;
+    gap: 7px;
+    letter-spacing: 0.1em;
+    margin-bottom: 18px;
+    padding: 6px 10px;
+    position: relative;
+    text-transform: uppercase;
+    z-index: 2;
+}
+
+body.landing-page .credit-store-heading {
+    align-items: center;
+    display: grid;
+    gap: 17px;
+    grid-template-columns: auto minmax(0, 1fr);
+    position: relative;
+    z-index: 2;
+}
+
+body.landing-page .credit-store-heading > div:last-child {
+    display: grid;
+    gap: 7px;
+}
+
+body.landing-page .credit-store-gem {
+    align-items: center;
+    background: linear-gradient(145deg, #b7fbff 2%, #6ebdff 40%, #9b72ff 72%, #f5a1ff);
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    border-radius: 18px;
+    box-shadow:
+        0 0 0 7px rgba(145, 198, 255, 0.08),
+        0 14px 32px rgba(56, 95, 208, 0.34),
+        inset 0 1px 6px rgba(255, 255, 255, 0.62);
+    color: #151736;
+    display: flex;
+    font-size: 1.55rem;
+    height: 68px;
+    justify-content: center;
+    transform: rotate(-5deg);
+    width: 68px;
+}
+
+body.landing-page .credit-store-heading h2 {
+    color: #fff;
+    font-size: clamp(1.55rem, 3.4vw, 2.25rem);
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    margin: 0;
+    max-width: 18ch;
+}
+
+body.landing-page .credit-store-heading p {
+    color: #b9c1d8;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin: 0;
+    max-width: 55ch;
+}
+
+body.landing-page .credit-store-balance-card {
+    align-items: baseline;
+    backdrop-filter: blur(12px);
+    background: rgba(8, 10, 27, 0.48);
+    border: 1px solid rgba(200, 214, 255, 0.2);
+    border-radius: 18px;
+    bottom: 30px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    min-width: 156px;
+    padding: 14px 16px;
+    position: absolute;
+    right: 32px;
+    z-index: 2;
+}
+
+body.landing-page .credit-store-balance-card > span {
+    color: #98a5c3;
+    font-size: 0.65rem;
+    font-weight: 800;
+    grid-column: 1 / -1;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+body.landing-page .credit-store-balance-card strong {
+    color: #fff;
+    font-size: 1.55rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+body.landing-page .credit-store-balance-card small {
+    color: #b9c9e6;
+    font-size: 0.67rem;
+    font-weight: 800;
+    margin-left: 6px;
+    text-transform: uppercase;
+}
+
+body.landing-page .credit-store-content {
+    background:
+        radial-gradient(circle at 50% 0, rgba(87, 110, 233, 0.07), transparent 36%),
+        #090b15;
+    display: grid;
+    gap: 18px;
+    padding: 22px 28px 24px;
+}
+
+body.landing-page .credit-store-benefits {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+body.landing-page .credit-store-benefits li {
+    align-items: center;
+    color: #aeb8d1;
+    display: flex;
+    font-size: 0.73rem;
+    font-weight: 700;
+    gap: 8px;
+    justify-content: center;
+    min-width: 0;
+    text-align: center;
+}
+
+body.landing-page .credit-store-benefits i {
+    color: #82dcf5;
+    font-size: 0.7rem;
+}
+
+body.landing-page .credit-store-loading {
+    align-items: center;
+    color: #aeb8d1;
+    display: flex;
+    font-size: 0.75rem;
+    gap: 8px;
+    justify-content: center;
+    min-height: 18px;
+}
+
+body.landing-page .credit-store-loading span {
+    animation: credit-store-spin 0.75s linear infinite;
+    border: 2px solid rgba(158, 194, 255, 0.22);
+    border-radius: 50%;
+    border-top-color: #9fe7ff;
+    height: 15px;
+    width: 15px;
+}
+
+@keyframes credit-store-spin {
+    to { transform: rotate(360deg); }
+}
+
+body.landing-page .credit-store-pack-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    transition: opacity 0.16s ease;
+}
+
+body.landing-page .credit-store-pack-grid.is-loading {
+    opacity: 0.58;
+}
+
+body.landing-page .credit-store-pack {
+    background:
+        linear-gradient(145deg, rgba(137, 192, 255, 0.07), transparent 48%),
+        #111522;
+    border: 1px solid rgba(135, 154, 196, 0.24);
+    border-radius: 17px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    overflow: hidden;
+    padding: 17px;
+    position: relative;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+body.landing-page .credit-store-pack:hover {
+    border-color: rgba(140, 187, 255, 0.48);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    transform: translateY(-3px);
+}
+
+body.landing-page .credit-store-pack.featured {
+    background:
+        radial-gradient(circle at 90% 0, rgba(225, 134, 255, 0.17), transparent 38%),
+        linear-gradient(145deg, rgba(100, 193, 255, 0.13), transparent 52%),
+        #17162a;
+    border-color: rgba(158, 137, 255, 0.66);
+    box-shadow: 0 12px 34px rgba(79, 66, 185, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+body.landing-page .credit-store-pack.tone-worldsmith {
+    background:
+        radial-gradient(circle at 90% 0, rgba(255, 193, 96, 0.13), transparent 38%),
+        linear-gradient(145deg, rgba(133, 218, 255, 0.09), transparent 52%),
+        #131722;
+}
+
+body.landing-page .credit-store-popular {
+    align-items: center;
+    background: linear-gradient(90deg, #776dff, #bd6fff);
+    border-radius: 0 0 0 10px;
+    color: #fff;
+    display: flex;
+    font-size: 0.59rem;
+    font-weight: 900;
+    gap: 5px;
+    letter-spacing: 0.07em;
+    padding: 6px 9px;
+    position: absolute;
+    right: 0;
+    text-transform: uppercase;
+    top: 0;
+}
+
+body.landing-page .credit-store-pack-top {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 42px;
+}
+
+body.landing-page .credit-store-pack-mark {
+    align-items: center;
+    background: rgba(108, 205, 255, 0.1);
+    border: 1px solid rgba(117, 207, 255, 0.25);
+    border-radius: 10px;
+    color: #91e5ff;
+    display: flex;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+body.landing-page .tone-adventure .credit-store-pack-mark {
+    background: rgba(150, 111, 255, 0.14);
+    border-color: rgba(175, 143, 255, 0.36);
+    color: #c6adff;
+}
+
+body.landing-page .tone-worldsmith .credit-store-pack-mark {
+    background: rgba(255, 190, 91, 0.1);
+    border-color: rgba(255, 199, 111, 0.3);
+    color: #ffd18a;
+}
+
+body.landing-page .credit-store-pack-top > div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+body.landing-page .credit-store-pack h3 {
+    color: #f7f8ff;
+    font-size: 0.94rem;
+    margin: 0;
+}
+
+body.landing-page .credit-store-pack-top p {
+    color: #8995ae;
+    font-size: 0.65rem;
+    line-height: 1.3;
+    margin: 0;
+}
+
+body.landing-page .credit-store-amount {
+    align-items: baseline;
+    display: flex;
+    gap: 7px;
+}
+
+body.landing-page .credit-store-amount strong {
+    background: linear-gradient(135deg, #fff, #b9dfff 56%, #cab7ff);
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(1.9rem, 4vw, 2.55rem);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+}
+
+body.landing-page .credit-store-amount span {
+    color: #9da9c2;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body.landing-page .credit-store-world-value {
+    align-items: center;
+    color: #d5dcf0;
+    display: flex;
+    font-size: 0.75rem;
+    font-weight: 700;
+    gap: 7px;
+    margin: 0;
+}
+
+body.landing-page .credit-store-world-value i {
+    color: #83dff4;
+    font-size: 0.67rem;
+}
+
+body.landing-page .credit-store-price {
+    align-items: baseline;
+    border-top: 1px solid rgba(173, 188, 225, 0.13);
+    display: flex;
+    gap: 7px;
+    padding-top: 11px;
+}
+
+body.landing-page .credit-store-price strong {
+    color: #fff;
+    font-size: 1rem;
+}
+
+body.landing-page .credit-store-price span {
+    color: #7f8aa3;
+    font-size: 0.64rem;
+}
+
+body.landing-page .credit-store-pack-button {
+    align-items: center;
+    background: linear-gradient(135deg, #476bcf, #735dd9);
+    border: 1px solid rgba(164, 192, 255, 0.25);
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    font-size: 0.73rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: space-between;
+    margin: 0;
+    min-height: 42px;
+    padding: 9px 11px;
+    width: 100%;
+}
+
+body.landing-page .featured .credit-store-pack-button {
+    background: linear-gradient(135deg, #6d67f0, #a058e4);
+    box-shadow: 0 7px 20px rgba(117, 81, 220, 0.24);
+}
+
+body.landing-page .tone-worldsmith .credit-store-pack-button {
+    background: linear-gradient(135deg, #4b648d, #765c91);
+}
+
+body.landing-page .credit-store-pack-button:hover:not(:disabled) {
+    filter: brightness(1.12);
+}
+
+body.landing-page .credit-store-pack-button:disabled {
+    cursor: wait;
+    opacity: 0.62;
+}
+
+body.landing-page .credit-store-earn-card {
+    align-items: center;
+    background:
+        linear-gradient(90deg, rgba(71, 197, 157, 0.1), rgba(93, 164, 231, 0.08)),
+        #0e1720;
+    border: 1px solid rgba(87, 204, 168, 0.24);
+    border-radius: 13px;
+    display: grid;
+    gap: 11px;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 11px 13px;
+}
+
+body.landing-page .credit-store-earn-icon {
+    align-items: center;
+    background: rgba(77, 215, 168, 0.12);
+    border-radius: 9px;
+    color: #72e5bd;
+    display: flex;
+    height: 36px;
+    justify-content: center;
+    width: 36px;
+}
+
+body.landing-page .credit-store-earn-card > span:last-child {
+    display: grid;
+    gap: 2px;
+}
+
+body.landing-page .credit-store-earn-card strong {
+    color: #dffcf2;
+    font-size: 0.76rem;
+}
+
+body.landing-page .credit-store-earn-card small {
+    color: #8db4a9;
+    font-size: 0.68rem;
+    line-height: 1.35;
+}
+
+body.landing-page .credit-store-notice {
+    align-items: center;
+    background: rgba(59, 112, 154, 0.14);
+    border: 1px solid rgba(95, 162, 215, 0.28);
+    border-radius: 11px;
+    color: #c9e5f8;
+    display: flex;
+    font-size: 0.75rem;
+    gap: 9px;
+    line-height: 1.4;
+    margin: 0;
+    padding: 10px 12px;
+}
+
+body.landing-page .credit-store-notice.is-success {
+    background: rgba(57, 151, 112, 0.14);
+    border-color: rgba(87, 205, 155, 0.3);
+    color: #c8f6df;
+}
+
+body.landing-page .credit-store-notice.is-error {
+    background: rgba(169, 64, 87, 0.14);
+    border-color: rgba(232, 100, 126, 0.3);
+    color: #ffd0d9;
+}
+
+body.landing-page .credit-store-footnote {
+    align-items: center;
+    color: #717b93;
+    display: flex;
+    font-size: 0.62rem;
+    gap: 14px;
+    justify-content: space-between;
+    line-height: 1.35;
+}
+
+body.landing-page .credit-store-footnote > span:first-child {
+    align-items: center;
+    color: #8999b6;
+    display: inline-flex;
+    gap: 6px;
+}
+
+@media (max-width: 760px) {
+    body.landing-page .credit-store-modal {
+        border-radius: 22px 22px 10px 10px;
+        bottom: max(6px, env(safe-area-inset-bottom));
+        left: 6px;
+        max-height: calc(100dvh - 12px - env(safe-area-inset-bottom));
+        max-width: none;
+        top: auto;
+        transform: none;
+        width: calc(100vw - 12px);
+        animation-name: credit-store-mobile-in;
+    }
+
+    @keyframes credit-store-mobile-in {
+        from {
+            opacity: 0;
+            transform: translateY(24px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    body.landing-page .credit-store-hero {
+        min-height: 0;
+        padding: 22px 20px 20px;
+    }
+
+    body.landing-page .credit-store-close {
+        right: 13px;
+        top: 13px;
+    }
+
+    body.landing-page .credit-store-kicker {
+        margin-bottom: 15px;
+        max-width: calc(100% - 54px);
+    }
+
+    body.landing-page .credit-store-heading {
+        align-items: start;
+        gap: 13px;
+    }
+
+    body.landing-page .credit-store-gem {
+        border-radius: 14px;
+        font-size: 1.18rem;
+        height: 52px;
+        width: 52px;
+    }
+
+    body.landing-page .credit-store-heading h2 {
+        font-size: clamp(1.45rem, 7vw, 1.85rem);
+        max-width: 16ch;
+    }
+
+    body.landing-page .credit-store-heading p {
+        font-size: 0.78rem;
+    }
+
+    body.landing-page .credit-store-balance-card {
+        align-items: center;
+        bottom: auto;
+        display: flex;
+        gap: 5px;
+        margin-top: 16px;
+        min-width: 0;
+        padding: 9px 11px;
+        position: relative;
+        right: auto;
+        width: fit-content;
+    }
+
+    body.landing-page .credit-store-balance-card > span {
+        grid-column: auto;
+        margin: 0 5px 0 0;
+    }
+
+    body.landing-page .credit-store-balance-card strong {
+        font-size: 1.05rem;
+    }
+
+    body.landing-page .credit-store-content {
+        gap: 14px;
+        padding: 16px 14px max(18px, env(safe-area-inset-bottom));
+    }
+
+    body.landing-page .credit-store-benefits {
+        gap: 6px;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .credit-store-benefits li {
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    body.landing-page .credit-store-pack-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.landing-page .credit-store-pack {
+        gap: 10px;
+        padding: 15px;
+    }
+
+    body.landing-page .credit-store-pack:hover {
+        transform: none;
+    }
+
+    body.landing-page .credit-store-amount strong {
+        font-size: 2.15rem;
+    }
+
+    body.landing-page .credit-store-footnote {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+}
+
+@media (max-width: 420px) {
+    body.landing-page .account-credit-card-action {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    body.landing-page .credit-store-orbit {
+        opacity: 0.72;
+        right: -118px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.landing-page .credit-store-modal,
+    body.landing-page .credit-store-loading span {
+        animation: none;
+    }
+
+    body.landing-page .credit-store-pack,
+    body.landing-page .account-credit-card {
+        transition: none;
+    }
+}
+
 /* Mobile-first game lobby refresh */
 html.landing-root {
     height: auto;
