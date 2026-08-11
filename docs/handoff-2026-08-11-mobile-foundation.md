@@ -220,7 +220,7 @@ Production is deliberately running with these rollout gates off:
 
 1. Replace the placeholder native icon and splash before public submission.
 2. On Android, open the internal-test opt-in URL using a `Testers L1` account,
-   install release `1 (1.0)`, and confirm native login and game launch.
+   update to release `2 (1.0.1)`, and confirm native login and game launch.
 3. On iOS, run a development-signed build on a Developer Mode device or upload
    a TestFlight build, then use one of the existing Sandbox accounts.
 4. For the purchase-test window only, enable the mobile store, Apple sandbox,
