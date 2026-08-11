@@ -34,6 +34,8 @@ This is the newest handoff. It continues
   `AB:88:13:EF:09:DF:32:A2:22:10:19:34:3A:07:44:6C:FE:0A:46:C9`.
 - Android upload SHA-1 is registered:
   `DE:05:B3:E4:2B:A9:93:95:23:5A:EC:44:C8:C1:1B:EA:91:53:F9:5D`.
+- Play App Signing SHA-1 is registered:
+  `6C:C7:5E:A5:BA:EC:EA:DC:D9:26:D4:5E:4C:76:E5:92:8B:78:1C:60`.
 - OAuth authorized domains now include `roguellm.com` and
   `www.roguellm.com`, in addition to the Firebase defaults.
 
@@ -47,6 +49,9 @@ This is the newest handoff. It continues
 - Embedded Playwright at 390×844 confirms one concise sign-in prompt, equal
   Google/Apple buttons, a safe account sheet, and direct `/delete-account`
   routing.
+- Real Google web sign-in passes end to end: provider consent, Firebase token
+  issue, server verification, stable local identity, cookie session, `/api/me`,
+  and authenticated account/World state all succeeded.
 
 ## Remaining external setup before deployment
 
@@ -59,13 +64,9 @@ This is the newest handoff. It continues
    one-time `.p8`. Do not confuse it with the App Store purchase API key.
 4. Enter Services ID, Team ID `69NH26W767`, key ID, and private key in the
    Firebase Apple provider OAuth code-flow configuration.
-5. Add the Play App Signing SHA-1 to the Firebase Android app. The debug and
-   release-upload fingerprints are already registered, but neither covers
-   installs re-signed by Play.
-6. Put the Firebase web configuration and auth flags in the VPS production
+5. Put the Firebase web configuration and auth flags in the VPS production
    environment, take the normal backup, deploy, and run real Google/Apple
    sign-in plus account-deletion smoke tests before publishing new store builds.
 
-Do not deploy the social-only UI until steps 1–5 are complete: Apple would be
-visible but nonfunctional on web/Android, and Play-installed Google builds could
-fail signature validation.
+Do not deploy the social-only UI until steps 1–4 are complete: Apple would be
+visible but nonfunctional on web and Android.

@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "693029179648-f49lt15vsniij9eg982k3942pnt3h05j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.newtypekk.roguellm",
+            "certificate_hash": "6cc75ea5baeceadcd926d45e4c76e5928b781c60"
+          }
+        },
+        {
           "client_id": "693029179648-nkgnmqdhh6f23e8qnvfcelstcc7tjs5b.apps.googleusercontent.com",
           "client_type": 3
         }
