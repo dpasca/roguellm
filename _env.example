@@ -101,6 +101,8 @@ WORLD_FORGE_CREDIT_COST=10
 WELCOME_CREDITS=30
 COMPLETION_REWARD_CREDITS=1
 COMPLETION_REWARD_DAILY_CAP=5
+# Creator rewards are product-defined: +5 at 5 qualified players, +10 at 20,
+# and +20 at 50. Each milestone pays once per World.
 
 # Search Provider Configuration (optional)
 # Possible providers: duckduckgo, serpapi

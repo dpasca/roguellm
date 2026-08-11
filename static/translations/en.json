@@ -30,6 +30,7 @@
     "dashboardWelcome": "{username}'s Worlds",
     "dashboardWorlds": "Worlds",
     "dashboardCredits": "Credits",
+    "dashboardCreatorCredits": "Creator credits",
     "dashboardPlays": "Plays",
     "dashboardCompletions": "Clears",
     "dashboardPlayers": "Players",
@@ -121,6 +122,10 @@
     "worldCounts": "{enemies} enemies · {items} items · {terrain} terrain",
     "worldPopularity": "{plays} plays · {completions} clears · {players} players",
     "worldPopularityLabel": "Popularity",
+    "creatorMilestoneTitle": "Creator rewards",
+    "creatorMilestoneReward": "+{credits} credits at {players} players",
+    "creatorMilestoneProgress": "{current} of {target} qualified players",
+    "creatorMilestoneComplete": "All creator rewards unlocked",
     "quickStartPiedone": "Quick Start: Piedone",
     "myWorlds": "My Worlds",
     "publicWorlds": "Public",
@@ -209,7 +214,8 @@
         "finalMoments": "Final moments",
         "chooseWorld": "Choose another world",
         "creditReward": "+{credits} credit for completing a new World. Balance: {balance}.",
-        "creditCapReached": "Daily credit reward limit reached. This completion still counts."
+        "creditCapReached": "Daily credit reward limit reached. This completion still counts.",
+        "creatorMilestoneReward": "This World reached {players} players. Its creator earned +{credits} credits."
     },
     "combat": {
         "stats": {

@@ -186,7 +186,11 @@
                         {{ $t(gameState.game_won ? 'runEnd.victoryBody' : 'runEnd.defeatBody') }}
                     </p>
 
-                    <section v-if="gameState.game_won && completionReward"
+                    <section v-if="gameState.game_won && completionReward && (
+                                 completionReward.reward_granted || (
+                                     completionReward.first_distinct_completion &&
+                                     completionReward.daily_rewards_remaining === 0
+                                 ))"
                              class="run-end-credit-reward"
                              :class="{ 'is-capped': !completionReward.reward_granted }">
                         <i class="fas fa-coins" aria-hidden="true"></i>
@@ -197,6 +201,15 @@
                             }) }}
                         </span>
                         <span v-else>{{ $t('runEnd.creditCapReached') }}</span>
+                    </section>
+
+                    <section v-if="gameState.game_won && completionReward?.creator_reward?.reward_granted"
+                             class="run-end-credit-reward is-creator">
+                        <i class="fas fa-crown" aria-hidden="true"></i>
+                        <span>{{ $t('runEnd.creatorMilestoneReward', {
+                            credits: completionReward.creator_reward.credits_granted,
+                            players: completionReward.creator_reward.milestone_players
+                        }) }}</span>
                     </section>
 
                     <section v-if="gameState.objective" class="run-end-objective">

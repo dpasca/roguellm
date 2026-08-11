@@ -547,6 +547,34 @@
                             <dd>{{ formatWorldPopularity(activeWorldMenu) }}</dd>
                         </div>
                     </dl>
+                    <section v-if="activeCreatorMilestoneProgress"
+                             class="creator-milestone-card"
+                             :class="{ 'is-complete': activeCreatorMilestoneProgress.complete }">
+                        <header>
+                            <span class="creator-milestone-icon" aria-hidden="true">
+                                <i class="fas fa-crown"></i>
+                            </span>
+                            <span>
+                                <small>{{ t('creatorMilestoneTitle') }}</small>
+                                <strong v-if="!activeCreatorMilestoneProgress.complete">
+                                    {{ t('creatorMilestoneReward', {
+                                        credits: activeCreatorMilestoneProgress.credits,
+                                        players: activeCreatorMilestoneProgress.targetPlayers
+                                    }) }}
+                                </strong>
+                                <strong v-else>{{ t('creatorMilestoneComplete') }}</strong>
+                            </span>
+                        </header>
+                        <template v-if="!activeCreatorMilestoneProgress.complete">
+                            <div class="creator-milestone-progress" aria-hidden="true">
+                                <span :style="{ width: `${activeCreatorMilestoneProgress.percentage}%` }"></span>
+                            </div>
+                            <p>{{ t('creatorMilestoneProgress', {
+                                current: activeCreatorMilestoneProgress.currentPlayers,
+                                target: activeCreatorMilestoneProgress.targetPlayers
+                            }) }}</p>
+                        </template>
+                    </section>
                     <p class="world-preview-theme">{{ activeWorldMenu.theme }}</p>
                     <div class="world-actions">
                         <button type="button"

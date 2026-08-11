@@ -267,6 +267,9 @@ in. That is the share moment and the credit justification in one animation.
 - World cards and creator dashboards show plays, completions, and qualified
   unique completers. The creator's own completion does not increase the unique
   popularity count.
+- Creators earn one-time promotional milestone grants per World: 5 credits at
+  5 qualified players, another 10 at 20, and another 20 at 50. Anonymous,
+  repeat, and creator-owned clears do not advance those thresholds.
 - **Remix** — fork a public World with a twist — costs credits. This is the
   growth loop that converts a player into a creator.
 - The mobile-first shop now previews 40-, 120-, and 300-credit packs at target
@@ -276,9 +279,8 @@ in. That is the share moment and the credit justification in one animation.
   like the future mobile screen, but its provider seam only accepts a successful
   result after a native adapter has verified the receipt with the server. Stripe
   is deferred unless web later becomes a real shipping target.
-- Creator milestone payouts, remix pricing, receipt verification, and mobile IAP
-  are not implemented yet. `ENABLE_WORLD_CREDITS` therefore remains off by
-  default.
+- Remix pricing, receipt verification, and mobile IAP are not implemented yet.
+  `ENABLE_WORLD_CREDITS` therefore remains off by default.
 
 ## Front page
 
@@ -496,9 +498,9 @@ The cover now reuses a location backdrop instead of generating a scene only the
 gallery card would ever see.
 
 **Phase 5 — Credits and payments.** The credit ledger, forge price, free
-allowance, completion rewards, and provider-neutral storefront are done. Native
-receipt verification, creator rewards, and remix pricing remain. Stripe is not
-on the critical path for a mobile-only launch.
+allowance, completion rewards, creator milestones, and provider-neutral
+storefront are done. Native receipt verification, mobile IAP, and remix pricing
+remain. Stripe is not on the critical path for a mobile-only launch.
 
 **Phase 6 — Mobile app.** Replaces the PWA plan.
 1. Wrap the existing frontend with Capacitor, following the ChatNext3 setup.
@@ -522,9 +524,6 @@ Open, roughly in order of how much they block anything:
   the public front page. Making them public runs the moderation review, which
   is worth doing deliberately: they are the first Worlds whose baked prose the
   reviewer will see.
-- **Backdrops are generated at medium quality but displayed sunk** behind a
-  shade gradient at 40% opacity. Dropping just those to low quality cuts a
-  forge from about $0.47 to $0.29, measured, with nothing visible lost.
 - **The off-host backup layer is unconfirmed.** Complete snapshots now cover
   SQLite and generated art, but they remain on the VPS disk until Hetzner Cloud
   Backups are confirmed or the snapshot root is replicated elsewhere.
@@ -534,11 +533,13 @@ Open, roughly in order of how much they block anything:
   matches, so "Abandoned Control Tower" and "Control Tower" both show.
 - `_data/assets/efea0944/` holds orphaned art from a deleted test World.
 
-Phase 5 has not started. Phase 6 has only its WebP prerequisite complete;
-Capacitor, token auth, and store work have not started. Deployment is being
-taken forward separately; see [deployment-handoff.md](deployment-handoff.md),
-the technical handoff: architecture, the client contract, data model, costs,
-deployment, and the traps that are not visible from reading the code.
+The Phase 5 free economy, creator rewards, and provider-neutral storefront are
+implemented; native receipt verification, mobile IAP, and remix pricing remain.
+Phase 6 has only its WebP prerequisite complete; Capacitor, token auth, and store
+work have not started. Deployment is being taken forward separately; see
+[deployment-handoff.md](deployment-handoff.md), the technical handoff:
+architecture, the client contract, data model, costs, deployment, and the traps
+that are not visible from reading the code.
 
 ## Open questions
 

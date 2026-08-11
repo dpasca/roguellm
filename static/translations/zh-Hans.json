@@ -11,6 +11,7 @@
   "// Theme Selection": "主题选择相关翻译",
   "account": "账户",
   "dashboardCredits": "点数",
+  "dashboardCreatorCredits": "创作者点数",
   "dashboardWorlds": "世界",
   "dashboardPlays": "游玩",
   "dashboardCompletions": "通关",
@@ -42,6 +43,10 @@
   "worldCounts": "{enemies} 个敌人 · {items} 个物品 · {terrain} 种地形",
   "worldPopularity": "{plays} 次游玩 · {completions} 次通关 · {players} 名玩家",
   "worldPopularityLabel": "热度",
+  "creatorMilestoneTitle": "创作者奖励",
+  "creatorMilestoneReward": "达到 {players} 名玩家可获 +{credits} 点数",
+  "creatorMilestoneProgress": "{current}/{target} 名有效玩家",
+  "creatorMilestoneComplete": "已解锁全部创作者奖励",
   "createWorldCredits": "创建世界 · {credits} 点数",
   "forgeCreditsHint": "创建该世界需要 {cost} 点数。你有 {credits}。",
   "forgeCreditsInsufficient": "创建需要 {cost} 点数。你只有 {credits}。",
@@ -137,7 +142,8 @@
     "finalMoments": "最后时刻",
     "chooseWorld": "选择另一个世界",
     "creditReward": "完成新世界奖励 +{credits} 点数。余额：{balance}。",
-    "creditCapReached": "今日点数奖励已达上限。本次通关仍会计入记录。"
+    "creditCapReached": "今日点数奖励已达上限。本次通关仍会计入记录。",
+    "creatorMilestoneReward": "这个世界已达到 {players} 名玩家，其创作者获得了 +{credits} 点数。"
   },
   "combat": {
     "stats": {

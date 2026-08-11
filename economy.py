@@ -13,6 +13,11 @@ DEFAULT_WORLD_FORGE_CREDIT_COST = 10
 DEFAULT_WELCOME_CREDITS = 30
 DEFAULT_COMPLETION_REWARD_CREDITS = 1
 DEFAULT_COMPLETION_REWARD_DAILY_CAP = 5
+DEFAULT_CREATOR_MILESTONE_REWARDS = (
+    (5, 5),
+    (20, 10),
+    (50, 20),
+)
 
 
 def _non_negative_int(name: str, default: int) -> int:
@@ -54,3 +59,8 @@ def get_completion_reward_daily_cap() -> int:
     return _non_negative_int(
         "COMPLETION_REWARD_DAILY_CAP", DEFAULT_COMPLETION_REWARD_DAILY_CAP
     )
+
+
+def get_creator_milestone_rewards():
+    """Return immutable (qualified players, promo credits) product milestones."""
+    return DEFAULT_CREATOR_MILESTONE_REWARDS

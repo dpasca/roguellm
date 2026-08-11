@@ -968,7 +968,7 @@ const app = Vue.createApp({
                 (reward.reward_granted || (
                     reward.first_distinct_completion &&
                     reward.daily_rewards_remaining === 0
-                ))
+                ) || reward.creator_reward?.reward_granted)
             ) {
                 this.completionReward = reward;
             }

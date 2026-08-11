@@ -950,6 +950,7 @@ class WorldApiTests(unittest.TestCase):
     def test_websocket_win_records_popularity_and_capped_reward_payload(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = self.make_db(tmpdir)
+            creator = manager.create_user("rewardcreator", VALID_TEST_PASSWORD)
             world_id = manager.save_generator(
                 theme_desc="Reward World",
                 theme_desc_better="Reward World",
@@ -958,6 +959,7 @@ class WorldApiTests(unittest.TestCase):
                 item_defs=[],
                 enemy_defs=[],
                 celltype_defs={},
+                owner_id=creator["id"],
                 visibility="public",
             )
 
@@ -981,6 +983,10 @@ class WorldApiTests(unittest.TestCase):
 
             with patch.object(main, "db", manager), \
                     patch("main.Game.create", return_value=WinningGame()), \
+                    patch(
+                        "main.get_creator_milestone_rewards",
+                        return_value=((1, 5),),
+                    ), \
                     patch.dict(os.environ, {
                         "ENABLE_WORLD_CREDITS": "1",
                         "WELCOME_CREDITS": "30",
@@ -1012,7 +1018,13 @@ class WorldApiTests(unittest.TestCase):
                 self.assertTrue(reward["reward_granted"])
                 self.assertTrue(reward["rewards_enabled"])
                 self.assertEqual(reward["credits_granted"], 1)
+                self.assertTrue(reward["creator_reward"]["reward_granted"])
+                self.assertEqual(reward["creator_reward"]["credits_granted"], 5)
+                self.assertEqual(reward["creator_reward"]["milestone_players"], 1)
                 self.assertEqual(manager.get_credit_balance(user_id)["total"], 31)
+                self.assertEqual(
+                    manager.get_credit_balance(creator["id"])["total"], 5
+                )
                 self.assertEqual(manager.get_world_metrics(world_id), {
                     "play_count": 1,
                     "completion_count": 1,
@@ -1265,6 +1277,7 @@ class WorldApiTests(unittest.TestCase):
             "total_plays": 0,
             "total_completions": 0,
             "unique_completers": 0,
+            "creator_reward_credits": 0,
         })
 
     def test_websocket_creation_succeeds_for_private_world_owner(self):

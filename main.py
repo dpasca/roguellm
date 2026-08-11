@@ -44,6 +44,7 @@ from db import WORLD_SNAPSHOT_VERSION, db
 from economy import (
     get_completion_reward_credits,
     get_completion_reward_daily_cap,
+    get_creator_milestone_rewards,
     get_welcome_credits,
     get_world_forge_credit_cost,
     is_world_credits_enabled,
@@ -205,6 +206,10 @@ def serialize_credit_state(user_id: str) -> Dict:
         "forge_cost": get_world_forge_credit_cost(),
         "completion_reward": get_completion_reward_credits(),
         "completion_daily_cap": get_completion_reward_daily_cap(),
+        "creator_milestones": [
+            {"players": players, "credits": credits}
+            for players, credits in get_creator_milestone_rewards()
+        ],
         "world_art_enabled": is_world_art_enabled(),
     }
 
@@ -1830,6 +1835,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                                 get_completion_reward_daily_cap()
                                 if is_world_credits_enabled() else 0
                             ),
+                            creator_milestones=(
+                                get_creator_milestone_rewards()
+                                if is_world_credits_enabled() else ()
+                            ),
                         )
                         completion["rewards_enabled"] = is_world_credits_enabled()
                         if isinstance(response, dict):
@@ -2019,6 +2028,10 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
                             daily_reward_cap=(
                                 get_completion_reward_daily_cap()
                                 if is_world_credits_enabled() else 0
+                            ),
+                            creator_milestones=(
+                                get_creator_milestone_rewards()
+                                if is_world_credits_enabled() else ()
                             ),
                         )
                         completion["rewards_enabled"] = is_world_credits_enabled()

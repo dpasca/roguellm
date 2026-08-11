@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from db import DatabaseManager
+from economy import get_creator_milestone_rewards
 
 
 class CreditAndPopularityTests(unittest.TestCase):
@@ -177,6 +178,74 @@ class CreditAndPopularityTests(unittest.TestCase):
         listed = self.database.list_worlds(owner_id=self.user["id"])[0]
         self.assertEqual(listed["play_count"], 2)
         self.assertEqual(listed["completion_count"], 2)
+
+    def test_creator_milestones_are_atomic_idempotent_promo_grants(self):
+        self.assertEqual(
+            get_creator_milestone_rewards(),
+            ((5, 5), (20, 10), (50, 20)),
+        )
+        creator = self.database.create_user("creator", "Secret123!")
+        world_id = self.make_world("Creator World", owner_id=creator["id"])
+        players = [
+            self.database.create_user(f"player-{index}", "Secret123!")
+            for index in range(4)
+        ]
+        test_milestones = ((2, 5), (3, 10), (4, 20))
+
+        creator_grants = []
+        for index, player in enumerate(players):
+            result = self.database.record_world_completion(
+                f"milestone-session-{index}", world_id, player["id"],
+                creator_milestones=test_milestones,
+            )
+            creator_grants.append(result["creator_reward"]["credits_granted"])
+
+        duplicate_session = self.database.record_world_completion(
+            "milestone-session-3", world_id, players[3]["id"],
+            creator_milestones=test_milestones,
+        )
+        repeat_player = self.database.record_world_completion(
+            "repeat-player-session", world_id, players[0]["id"],
+            creator_milestones=test_milestones,
+        )
+        creator_completion = self.database.record_world_completion(
+            "creator-own-session", world_id, creator["id"],
+            creator_milestones=test_milestones,
+        )
+
+        self.assertEqual(creator_grants, [0, 5, 10, 20])
+        self.assertFalse(duplicate_session["creator_reward"]["reward_granted"])
+        self.assertFalse(repeat_player["creator_reward"]["reward_granted"])
+        self.assertFalse(creator_completion["creator_reward"]["reward_granted"])
+        self.assertEqual(
+            self.database.get_credit_balance(creator["id"]),
+            {"promo": 35, "paid": 0, "total": 35},
+        )
+        self.assertEqual(
+            self.database.get_world_metrics(world_id)["unique_completer_count"],
+            4,
+        )
+        self.assertEqual(
+            self.database.get_user_world_stats(creator["id"])[
+                "creator_reward_credits"
+            ],
+            35,
+        )
+        with self.database.get_connection() as conn:
+            ledger_rows = conn.execute("""
+                SELECT operation_key, amount, bucket
+                FROM credit_ledger
+                WHERE kind = 'creator_milestone_reward'
+                ORDER BY amount
+            """).fetchall()
+        self.assertEqual(
+            [(row[0], row[1], row[2]) for row in ledger_rows],
+            [
+                (f"creator_milestone:{world_id}:2", 5, "promo"),
+                (f"creator_milestone:{world_id}:3", 10, "promo"),
+                (f"creator_milestone:{world_id}:4", 20, "promo"),
+            ],
+        )
 
     def test_failed_art_reroll_restores_the_single_free_allowance(self):
         world_id = self.make_world("Reroll World", owner_id=self.user["id"])

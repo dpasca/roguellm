@@ -11,6 +11,7 @@
   "// Theme Selection": "Traduzioni relative alla selezione del tema",
   "account": "Account",
   "dashboardCredits": "Crediti",
+  "dashboardCreatorCredits": "Crediti creatore",
   "dashboardWorlds": "Mondi",
   "dashboardPlays": "Partite",
   "dashboardCompletions": "Completati",
@@ -42,6 +43,10 @@
   "worldCounts": "{enemies} nemici · {items} oggetti · {terrain} terreni",
   "worldPopularity": "{plays} partite · {completions} completati · {players} giocatori",
   "worldPopularityLabel": "Popolarità",
+  "creatorMilestoneTitle": "Premi creatore",
+  "creatorMilestoneReward": "+{credits} crediti a {players} giocatori",
+  "creatorMilestoneProgress": "{current} di {target} giocatori validi",
+  "creatorMilestoneComplete": "Tutti i premi creatore sbloccati",
   "createWorldCredits": "Crea mondo · {credits} crediti",
   "forgeCreditsHint": "Questo mondo costa {cost} crediti. Ne hai {credits}.",
   "forgeCreditsInsufficient": "Servono {cost} crediti per creare. Ne hai {credits}.",
@@ -137,7 +142,8 @@
     "finalMoments": "Ultimi momenti",
     "chooseWorld": "Scegli un altro mondo",
     "creditReward": "+{credits} credito per aver completato un nuovo mondo. Saldo: {balance}.",
-    "creditCapReached": "Hai raggiunto il limite giornaliero di crediti. Il completamento viene comunque conteggiato."
+    "creditCapReached": "Hai raggiunto il limite giornaliero di crediti. Il completamento viene comunque conteggiato.",
+    "creatorMilestoneReward": "Questo mondo ha raggiunto {players} giocatori. Il suo creatore ha ottenuto +{credits} crediti."
   },
   "combat": {
     "stats": {

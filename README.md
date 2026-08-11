@@ -144,9 +144,11 @@ intentional.
 existing World stays free. New accounts receive 30 promotional credits, a
 technical forge failure is refunded automatically, and completing a distinct
 World earns 1 credit up to 5 times per UTC day. See `_env.example` for the
-individual overrides. The lobby includes a mobile-first credit-shop preview,
-but no payment provider or receipt endpoint is connected yet. Production should
-leave the flag off unless the free-only beta behavior is deliberate.
+individual overrides. Creators receive one-time promotional grants when a World
+reaches 5, 20, and 50 qualified players: 5, 10, and 20 credits respectively.
+The lobby includes a mobile-first credit-shop preview, but no payment provider
+or receipt endpoint is connected yet. Production should leave the flag off
+unless the free-only beta behavior is deliberate.
 
 ## Search Provider Configuration
 

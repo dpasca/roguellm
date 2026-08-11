@@ -304,7 +304,7 @@ Added this cycle, all additive:
 | `IMAGE_MODEL_BASE_URL` | unset | OpenAI-compatible endpoints. |
 | `WORLD_ASSETS_DIR` | `_data/assets` | Inside the data volume on purpose. |
 | `WORLD_CREATION_TIMEOUT_SECONDS` | `60`, or `600` with art | |
-| `ENABLE_WORLD_CREDITS` | `0` | Rollout gate. New forge charging and completion rewards turn on together. |
+| `ENABLE_WORLD_CREDITS` | `0` | Rollout gate. Forge charging, player completion rewards, and creator milestones turn on together. |
 | `WORLD_FORGE_CREDIT_COST` | `10` | Existing World play is always free. |
 | `WELCOME_CREDITS` | `30` | Idempotent promotional grant, including existing users on next login. |
 | `COMPLETION_REWARD_CREDITS` | `1` | First completion of a distinct World only. |
@@ -374,10 +374,11 @@ real production database. That rehearsed the additive schema migration without
 mounting or changing the live production volume. Production itself remains on
 `ba917bd`; promotion has not happened yet.
 
-Keep `ENABLE_WORLD_ART=0` for the first production promotion. Signup plus forge
-is not yet protected by credits or a production-grade forge limiter, so turning
-on paid image calls would expose an unnecessary spend surface. Enable art only
-for a controlled cohort or after that guard exists.
+Keep `ENABLE_WORLD_ART=0` for the first production promotion. At the staging
+commit described above, signup plus forge was not yet protected by credits or a
+production-grade forge limiter. Current code adds the credit guard, but it has
+not been promoted or exercised against production, so enable art only for a
+controlled cohort after that deployment is verified.
 
 ---
 
@@ -588,14 +589,12 @@ Ordered by what blocks what.
    provider-neutral shop UI exist. Web is a non-purchasing preview; there is not
    yet a StoreKit/Play Billing adapter or server receipt-verification endpoint.
    Stripe is deliberately deferred unless web becomes a shipping target.
-4. **Creator milestone policy.** Qualified unique completers are tracked and
-   shown, but the thresholds and credit payouts need an explicit product choice.
-5. **Frontend coverage is not in CI**, and reaches only the landing page and
+4. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
    inventory, and the forge reveal are still uncovered.
-6. Token auth for the mobile client.
-7. Smaller: the local-dev Quick Start button points at a retired World; the
+5. Token auth for the mobile client.
+6. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.
 
@@ -617,6 +616,10 @@ Implemented behind `ENABLE_WORLD_CREDITS=0`:
 - A server-qualified first completion of a distinct World awards 1 promotional
   credit, at most 5 times per UTC day. Replays and reconnects cannot farm the
   reward.
+- A World creator receives idempotent promotional milestone grants at 5, 20,
+  and 50 qualified players: 5, 10, and 20 credits respectively. Each threshold
+  pays once per World in the same transaction that records the qualifying
+  completion. Anonymous, repeat, and creator-owned clears cannot trigger it.
 - `world_play_sessions`, `world_metrics`, and distinct player-completion rows
   track plays, clears, and qualified unique completers. A creator completing
   their own World counts as a clear but not as a unique popularity signal.
@@ -624,8 +627,9 @@ Implemented behind `ENABLE_WORLD_CREDITS=0`:
   directory, publishes only a complete hero/backdrop/cover bundle, cache-busts
   the persisted URLs, and restores the allowance on technical failure.
 - The lobby shows the balance and forge price, disables an unaffordable forge,
-  exposes creator popularity, and reports the capped completion reward on the
-  victory screen.
+  exposes popularity and the next creator milestone on owned Worlds, totals
+  earned creator credits in the account, and reports both player and triggered
+  creator rewards on the victory screen.
 - The lobby's credit shop presents 40-, 120-, and 300-credit pack previews and
   is responsive down to the phone layout. On web its calls stop at an explicit
   mobile-only notice. A future injected native provider supplies localized

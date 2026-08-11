@@ -412,6 +412,16 @@
     color: #c1cdd1;
 }
 
+.run-end-credit-reward.is-creator {
+    background: linear-gradient(135deg, rgba(76, 51, 122, 0.72), rgba(31, 77, 105, 0.66));
+    border-color: #8d78cc;
+    color: #f1eaff;
+}
+
+.run-end-credit-reward.is-creator i {
+    color: #e8c675;
+}
+
 .run-end-objective {
     align-items: end;
     background: rgba(6, 15, 20, 0.8);

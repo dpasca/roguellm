@@ -110,6 +110,54 @@ const app = Vue.createApp({
             }
             return this.allWorlds.find(world => world.id === this.worldMenuId) || null;
         },
+        creatorMilestones() {
+            const milestones = this.currentUser?.credits?.creator_milestones;
+            if (!Array.isArray(milestones)) {
+                return [];
+            }
+
+            return milestones
+                .map(milestone => ({
+                    players: Number(milestone?.players || 0),
+                    credits: Number(milestone?.credits || 0)
+                }))
+                .filter(milestone => milestone.players > 0 && milestone.credits > 0)
+                .sort((left, right) => left.players - right.players);
+        },
+        activeCreatorMilestoneProgress() {
+            const world = this.activeWorldMenu;
+            if (
+                !world ||
+                !this.currentUser?.credits?.enabled ||
+                !this.isOwnedWorld(world) ||
+                this.creatorMilestones.length === 0
+            ) {
+                return null;
+            }
+
+            const currentPlayers = Math.max(0, Number(world.unique_completer_count || 0));
+            const nextMilestone = this.creatorMilestones.find(
+                milestone => currentPlayers < milestone.players
+            );
+            if (!nextMilestone) {
+                return {
+                    complete: true,
+                    currentPlayers,
+                    percentage: 100
+                };
+            }
+
+            return {
+                complete: false,
+                currentPlayers,
+                targetPlayers: nextMilestone.players,
+                credits: nextMilestone.credits,
+                percentage: Math.min(
+                    100,
+                    Math.round((currentPlayers / nextMilestone.players) * 100)
+                )
+            };
+        },
         hasCurrentWorldOptions() {
             return this.worlds.length > 0;
         },
@@ -182,6 +230,10 @@ const app = Vue.createApp({
                 dashboardStats.unshift({
                     label: this.t('dashboardCredits'),
                     value: this.currentUser.credits.total || 0
+                });
+                dashboardStats.push({
+                    label: this.t('dashboardCreatorCredits'),
+                    value: `+${stats.creator_reward_credits || 0}`
                 });
             }
             return dashboardStats;

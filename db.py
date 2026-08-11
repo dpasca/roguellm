@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import time
 import asyncio
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 from contextlib import contextmanager
 import logging
 import boto3
@@ -1425,6 +1425,7 @@ class DatabaseManager:
                     "total_plays": 0,
                     "total_completions": 0,
                     "unique_completers": 0,
+                    "creator_reward_credits": 0,
                 }
 
             visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
@@ -1443,6 +1444,7 @@ class DatabaseManager:
                 "total_plays": 0,
                 "total_completions": 0,
                 "unique_completers": 0,
+                "creator_reward_credits": 0,
             }
             for row in cur.fetchall():
                 visibility = row[0] or "unlisted"
@@ -1479,6 +1481,15 @@ class DatabaseManager:
                 stats["total_plays"] = int(metrics[0] or 0)
                 stats["total_completions"] = int(metrics[1] or 0)
                 stats["unique_completers"] = int(metrics[2] or 0)
+
+            creator_rewards = cur.execute("""
+                SELECT COALESCE(SUM(amount), 0)
+                FROM credit_ledger
+                WHERE user_id = ?
+                  AND kind = 'creator_milestone_reward'
+                  AND amount > 0
+            """, (owner_id,)).fetchone()
+            stats["creator_reward_credits"] = int(creator_rewards[0] or 0)
 
             return stats
 
@@ -1747,10 +1758,18 @@ class DatabaseManager:
             user_id: Optional[str],
             reward_amount: int = 0,
             daily_reward_cap: int = 0,
+            creator_milestones: Optional[Sequence[Tuple[int, int]]] = None,
     ) -> Dict:
         """Record a server-qualified win and its optional capped reward."""
         reward_amount = max(0, reward_amount)
         daily_reward_cap = max(0, daily_reward_cap)
+        milestone_rewards = {}
+        for player_count, credit_amount in creator_milestones or ():
+            player_count = int(player_count)
+            credit_amount = int(credit_amount)
+            if player_count > 0 and credit_amount > 0:
+                milestone_rewards[player_count] = credit_amount
+        normalized_milestones = sorted(milestone_rewards.items())
 
         def _record(conn):
             conn.execute("BEGIN IMMEDIATE")
@@ -1784,6 +1803,12 @@ class DatabaseManager:
                     "applied": False,
                     "reward_granted": False,
                     "credits_granted": 0,
+                    "creator_reward": {
+                        "reward_granted": False,
+                        "credits_granted": 0,
+                        "milestone_players": None,
+                        "milestones_reached": [],
+                    },
                     "balance": balance,
                     **metrics,
                 }
@@ -1802,13 +1827,15 @@ class DatabaseManager:
             """, (generator_id,))
 
             first_distinct_completion = False
+            owner_id = None
+            qualifies_for_popularity = False
             if user_id:
                 owner_row = conn.execute(
                     "SELECT owner_id FROM generators WHERE id = ?",
                     (generator_id,),
                 ).fetchone()
                 owner_id = owner_row[0] if owner_row else None
-                qualifies_for_popularity = int(owner_id != user_id)
+                qualifies_for_popularity = owner_id != user_id
                 completion_cur = conn.execute("""
                     INSERT OR IGNORE INTO world_player_completions (
                         user_id, generator_id, first_session_id,
@@ -1816,7 +1843,7 @@ class DatabaseManager:
                     ) VALUES (?, ?, ?, ?)
                 """, (
                     user_id, generator_id, session_id,
-                    qualifies_for_popularity,
+                    int(qualifies_for_popularity),
                 ))
                 first_distinct_completion = completion_cur.rowcount > 0
                 if first_distinct_completion and qualifies_for_popularity:
@@ -1826,6 +1853,45 @@ class DatabaseManager:
                             updated_at = CURRENT_TIMESTAMP
                         WHERE generator_id = ?
                     """, (generator_id,))
+
+            creator_milestones_reached = []
+            creator_credits_granted = 0
+            if (
+                    first_distinct_completion
+                    and qualifies_for_popularity
+                    and owner_id
+                    and normalized_milestones
+            ):
+                unique_completer_count = self._world_metrics_from_connection(
+                    conn, generator_id
+                )["unique_completer_count"]
+                for milestone_players, milestone_credits in normalized_milestones:
+                    if milestone_players > unique_completer_count:
+                        break
+                    operation_key = (
+                        f"creator_milestone:{generator_id}:{milestone_players}"
+                    )
+                    milestone_cur = conn.execute("""
+                        INSERT OR IGNORE INTO credit_ledger (
+                            id, operation_key, user_id, bucket, amount, kind,
+                            reference_type, reference_id, metadata
+                        ) VALUES (?, ?, ?, 'promo', ?,
+                                  'creator_milestone_reward', 'world', ?, ?)
+                    """, (
+                        str(uuid.uuid4()), operation_key, owner_id,
+                        milestone_credits, generator_id,
+                        json.dumps({
+                            "qualified_players": milestone_players,
+                            "trigger_session_id": session_id,
+                            "trigger_user_id": user_id,
+                        }, sort_keys=True),
+                    ))
+                    if milestone_cur.rowcount > 0:
+                        creator_credits_granted += milestone_credits
+                        creator_milestones_reached.append({
+                            "players": milestone_players,
+                            "credits": milestone_credits,
+                        })
 
             reward_granted = False
             credits_granted = 0
@@ -1875,6 +1941,15 @@ class DatabaseManager:
                 "daily_rewards_remaining": max(
                     0, daily_reward_cap - daily_reward_count
                 ),
+                "creator_reward": {
+                    "reward_granted": bool(creator_milestones_reached),
+                    "credits_granted": creator_credits_granted,
+                    "milestone_players": (
+                        creator_milestones_reached[-1]["players"]
+                        if creator_milestones_reached else None
+                    ),
+                    "milestones_reached": creator_milestones_reached,
+                },
                 "balance": balance,
                 **metrics,
             }

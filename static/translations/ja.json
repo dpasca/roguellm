@@ -11,6 +11,7 @@
   "// Theme Selection": "テーマ選択関連の翻訳",
   "account": "アカウント",
   "dashboardCredits": "クレジット",
+  "dashboardCreatorCredits": "クリエイター獲得",
   "dashboardWorlds": "ワールド",
   "dashboardPlays": "プレイ",
   "dashboardCompletions": "クリア",
@@ -42,6 +43,10 @@
   "worldCounts": "敵 {enemies} · アイテム {items} · 地形 {terrain}",
   "worldPopularity": "{plays} プレイ · {completions} クリア · {players} 人",
   "worldPopularityLabel": "人気",
+  "creatorMilestoneTitle": "クリエイター報酬",
+  "creatorMilestoneReward": "{players}人で+{credits}クレジット",
+  "creatorMilestoneProgress": "対象プレイヤー {current}/{target}人",
+  "creatorMilestoneComplete": "クリエイター報酬をすべて獲得済み",
   "createWorldCredits": "ワールド作成 · {credits} クレジット",
   "forgeCreditsHint": "このワールドは {cost} クレジットです。残高は {credits} です。",
   "forgeCreditsInsufficient": "作成には {cost} クレジット必要です。残高は {credits} です。",
@@ -137,7 +142,8 @@
     "finalMoments": "最後の出来事",
     "chooseWorld": "別のワールドを選ぶ",
     "creditReward": "新しいワールドのクリア報酬：+{credits} クレジット。残高：{balance}。",
-    "creditCapReached": "本日のクレジット報酬上限に達しました。クリア記録は残ります。"
+    "creditCapReached": "本日のクレジット報酬上限に達しました。クリア記録は残ります。",
+    "creatorMilestoneReward": "このワールドのプレイヤーが{players}人に到達し、クリエイターに+{credits}クレジットが贈られました。"
   },
   "combat": {
     "stats": {
