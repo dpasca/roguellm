@@ -21,6 +21,10 @@ docs/*.png
 frontend/node_modules/
 frontend/visual-inspections/
 static/game2/
+node_modules/
+mobile-dist/
+ios/
+android/
 
 .DS_Store
 Thumbs.db

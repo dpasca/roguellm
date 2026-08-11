@@ -45,8 +45,11 @@ free.
 | `entity_placement_manager.py` | 182 | Where enemies and items go |
 | `game.py` | 163 | Composition root for a run |
 
-Frontend is Vue 3 from a CDN, no build step: `static/index.html` (lobby),
-`static/game.html` (run), `static/js/landing.js`, `static/js/createApp.js`.
+The web frontend is Vue 3 from a CDN, with no web deployment build step:
+`static/index.html` (lobby), `static/game.html` (run),
+`static/js/landing.js`, `static/js/createApp.js`. The Capacitor mobile build
+copies those files and bundles Vue, vue-i18n, Font Awesome, and the native
+adapter locally so a released app never depends on a CDN or live HTML shell.
 
 ---
 
@@ -102,8 +105,13 @@ Auth: `POST /api/signup`, `POST /api/login`, `POST /api/logout`, `GET /api/me`.
 Health: `GET /health`, `GET /health/db`.
 Pages: `/`, `/game/{session_id}`, `/admin`.
 
-**Auth is a signed session cookie today.** A native client needs a token
-instead; see Mobile.
+Web auth uses the existing signed session cookie. Native auth uses opaque,
+short-lived bearer tokens from `/api/mobile/auth/signup` and
+`/api/mobile/auth/login`; rotating refresh tokens are exchanged at
+`/api/mobile/auth/refresh` and revoked at `/api/mobile/auth/logout`. Only token
+hashes are persisted. The authenticated session-creation request binds the
+user id to the random game session, so the WebSocket URL never contains a
+credential.
 
 ---
 
@@ -176,8 +184,10 @@ the background. Measured at under 0.05% of pixels.
 
 ## 5. Data model
 
-SQLite at `_data/rllm_game_data.db`. Five tables: `users`, `generators`,
-`generator_translations`, `generator_worlds`, `world_moderation_reviews`.
+SQLite at `_data/rllm_game_data.db`. Twelve application tables cover users and
+mobile sessions; World definitions, snapshots, translations, and moderation;
+the credit ledger and verified store purchases; and play, completion,
+popularity, and art-reroll records.
 
 - **`generators`** — a World: theme, generated title/summary, language, and the
   four `*_defs` JSON columns. Art URLs live on those definitions.
@@ -486,10 +496,9 @@ database-only job.
 
 ## 12. Mobile
 
-The product is now **mobile only, shipped through the App Store and Play
-Store**. PWA is dropped. This reverses the earlier recommendation in
-`game-direction.md`, which argued PWA first specifically to avoid store review
-and the store cut.
+The product is **mobile-first**, shipped through the App Store and Play Store.
+The live web app remains useful for development, preview, links, and free play,
+but Stripe is deferred and web cannot buy credits. PWA is dropped.
 
 Consequences to carry:
 
@@ -497,20 +506,41 @@ Consequences to carry:
   Against the core art path's roughly $0.07 per forge before retries, that still
   comes off the margin directly. Selling credits on the web to spend in-app is
   against both stores' rules for digital goods consumed in-app.
-- **Capacitor rather than native.** The frontend is already portrait-first, and
-  ChatNext3 already ships an iOS build on Capacitor 7 with a multi-instance
-  config. Wrapping keeps one codebase; Android is the same toolchain.
-- **Auth needs a token, not a session cookie.** Sign in with Apple is
-  effectively mandatory on iOS if any other social sign-in is offered.
+- **Capacitor rather than two native UIs.** `ios/` and `android/` ship the same
+  bundled frontend. `mobile-dist/` is reproducible build output and is ignored.
+- **Token auth is implemented.** Access tokens live only in memory; the rotating
+  refresh token is kept in iOS Keychain or Android Keystore-backed storage.
+- **Native IAP is implemented but rollout-gated.** The provider loads localized
+  StoreKit/Play Billing products, sends Apple transaction IDs or Google purchase
+  tokens to the server, and finishes/consumes only after the idempotent ledger
+  grant succeeds. The server independently fetches and validates the purchase,
+  product, quantity, environment, and opaque RogueLLM account id.
 - **Asset size becomes a client problem.** See WebP and bundling above.
 - The server becomes an API and content host. It largely already is: play is
-  websocket, art is static files.
+  WebSocket, generated art is served from `/assets/worlds`, and the native
+  adapter rewrites those relative URLs to the server origin recursively.
+
+Build with Node 22 or newer:
+
+    npm ci
+    npm run mobile:sync
+
+The default API/public origin is `https://roguellm.com`. Override
+`ROGUELLM_API_BASE_URL`, `ROGUELLM_PUBLIC_WEB_URL`, and
+`ROGUELLM_APPLE_ENVIRONMENT=sandbox` when producing a staging build. Do not add
+Capacitor `server.url` for production; the shell is intentionally bundled.
+
+Production stays safe with `ENABLE_MOBILE_STORE=0`. Store rollout requires the
+three matching consumables (`credits_40`, `credits_120`, `credits_300`), Apple
+App Store Server API credentials and roots, a linked Google Play service
+account, signed native builds, and sandbox/license-tester validation. The full
+server variable list is in `_env.example`.
 
 ---
 
 ## 13. Testing
 
-281 tests pass and 7 browser-package tests skip, `python -m pytest tests/`.
+288 tests pass and 7 browser-package tests skip, `python -m pytest tests/`.
 Requires `LOW_SPEC_MODEL_API_KEY` and
 `HIGH_SPEC_MODEL_API_KEY` to be set to anything, and `SESSION_SECRET_KEY` — some
 construct the app and fail on a missing key even though they make no model
@@ -561,12 +591,11 @@ favicon 404 on every page load.
 
 Still uncovered: combat, inventory, and the forge reveal.
 
-Driving a browser is the way to catch those. A Playwright MCP server is
-available in the working environment and is the easiest route — its
+Driving a browser is the way to catch those. The embedded Little Control Room
+Playwright service is the supported route in this environment — its
 accessibility snapshot is often better than a screenshot for structural checks,
-since it shows the semantic tree directly and makes duplicated or missing labels
-obvious. Playwright is also installed in the project venv as a fallback, which
-is how the layout measurements in this document were taken.
+since it shows the semantic tree directly and makes duplicated or missing
+labels obvious. Do not install another local Playwright copy merely to use it.
 
 Neither is wired into CI. The useful checks to make permanent are the ones that
 already caught something: no horizontal overflow at 390px and 360px, the
@@ -585,16 +614,16 @@ Ordered by what blocks what.
 2. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.
-3. **Paid credit packs and mobile IAP.** The ledger, free economy, and polished
-   provider-neutral shop UI exist. Web is a non-purchasing preview; there is not
-   yet a StoreKit/Play Billing adapter or server receipt-verification endpoint.
-   Stripe is deliberately deferred unless web becomes a shipping target.
+3. **Provision and test the stores.** Create the three consumables in App Store
+   Connect and Play Console, install the server-side verification credentials,
+   configure native signing, and run sandbox/license-tester purchases through
+   cancellation, retry, redelivery, and duplicate-verification cases. Keep
+   `ENABLE_MOBILE_STORE=0` until this passes. Stripe remains deferred.
 4. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
    inventory, and the forge reveal are still uncovered.
-5. Token auth for the mobile client.
-6. Smaller: the local-dev Quick Start button points at a retired World; the
+5. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.
 
@@ -630,11 +659,12 @@ Implemented behind `ENABLE_WORLD_CREDITS=0`:
   exposes popularity and the next creator milestone on owned Worlds, totals
   earned creator credits in the account, and reports both player and triggered
   creator rewards on the victory screen.
-- The lobby's credit shop presents 40-, 120-, and 300-credit pack previews and
-  is responsive down to the phone layout. On web its calls stop at an explicit
-  mobile-only notice. A future injected native provider supplies localized
-  prices and may report success only after server-side receipt verification;
-  the browser never changes a balance locally.
+- The lobby's credit shop presents 40-, 120-, and 300-credit packs and is
+  responsive down to the phone layout. On web its calls stop at an explicit
+  mobile-only notice. The Capacitor provider supplies localized prices and may
+  report success only after server-side Apple/Google verification and an
+  idempotent paid-credit ledger append; the browser never changes a balance
+  locally.
 
 The database tables are additive and created by `init_db`; no one-off migration
 command is required. It is safe to deploy with both rollout flags off. Enabling

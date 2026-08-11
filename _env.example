@@ -104,6 +104,45 @@ COMPLETION_REWARD_DAILY_CAP=5
 # Creator rewards are product-defined: +5 at 5 qualified players, +10 at 20,
 # and +20 at 50. Each milestone pays once per World.
 
+# Native mobile authentication. Access tokens are short-lived; refresh tokens
+# rotate and are stored in the device Keychain/Keystore. These defaults normally
+# need no override. Origins must be exact, comma-separated native app origins.
+MOBILE_ACCESS_TOKEN_TTL_SECONDS=900
+MOBILE_REFRESH_TOKEN_TTL_SECONDS=2592000
+MOBILE_ALLOWED_ORIGINS=capacitor://localhost,https://localhost,http://localhost
+
+# Mobile credit purchases. Keep this off until the matching consumable products
+# exist in both stores and the verification credentials below are installed on
+# the server. The shop also requires ENABLE_WORLD_CREDITS=1. Product IDs are
+# credits_40, credits_120, and credits_300.
+ENABLE_MOBILE_STORE=0
+
+# Apple App Store Server API / signed transaction verification.
+APPLE_BUNDLE_ID=com.newtypekk.roguellm
+APPLE_APP_ID=
+APPLE_IAP_KEY_ID=
+APPLE_IAP_ISSUER_ID=
+# Prefer a server-only file over an inline secret. If an inline key is required,
+# use APPLE_IAP_PRIVATE_KEY with literal \n line breaks.
+APPLE_IAP_PRIVATE_KEY_PATH=
+# APPLE_IAP_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+# Use Apple PKI roots. Comma-separated base64 DER certificates are convenient
+# in Docker env files.
+APPLE_IAP_ROOT_CA_BASE64=
+# Mounted certificate paths are also supported as an alternative.
+APPLE_IAP_ROOT_CA_PATHS=
+# Production rejects sandbox transactions unless deliberately enabled for test.
+APPLE_IAP_ALLOW_SANDBOX=0
+
+# Google Play Developer API. The service account must be linked in Play Console
+# and have permission to inspect orders/subscriptions. Prefer a server-only file.
+GOOGLE_PLAY_PACKAGE_NAME=com.newtypekk.roguellm
+GOOGLE_PLAY_SERVICE_ACCOUNT_PATH=
+# Inline JSON is also supported as GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.
+# GOOGLE_PLAY_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+# Production rejects license-tester purchases unless deliberately enabled.
+GOOGLE_PLAY_ALLOW_TEST_PURCHASES=0
+
 # Search Provider Configuration (optional)
 # Possible providers: duckduckgo, serpapi
 SEARCH_PROVIDER=duckduckgo

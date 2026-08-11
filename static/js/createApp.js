@@ -493,19 +493,19 @@ const app = Vue.createApp({
             }
         },
         homeUrl() {
-            const url = new URL('/', window.location.origin);
             const urlLang = new URLSearchParams(window.location.search).get('lang');
             const storedLang = localStorage.getItem('preferredLanguage');
             const lang = urlLang || storedLang;
-            if (lang) {
-                url.searchParams.set('lang', lang);
-            }
-            return url.toString();
+            return window.RogueLLMRuntime.homeUrl(lang);
         },
         goHome() {
             this.isMenuOpen = false;
             const url = this.homeUrl();
-            if (this.gameState.game_over || this.gameState.game_won) {
+            if (
+                window.RogueLLMRuntime.isNative ||
+                this.gameState.game_over ||
+                this.gameState.game_won
+            ) {
                 window.location.href = url;
                 return;
             }
@@ -532,7 +532,11 @@ const app = Vue.createApp({
             if (!this.generatorId) return;
 
             // Create the share URL with generator_id (this will create a new session for the recipient)
-            const shareUrl = `${window.location.origin}/game?game_id=${this.generatorId}`;
+            const language = new URLSearchParams(window.location.search).get('lang');
+            const shareUrl = window.RogueLLMRuntime.publicWorldUrl(
+                this.generatorId,
+                language
+            );
 
             try {
                 await navigator.clipboard.writeText(shareUrl);
@@ -547,9 +551,7 @@ const app = Vue.createApp({
             this.isMenuOpen = false;
         },
         async initWebSocket() {
-            // Extract session ID from URL path
-            const pathParts = window.location.pathname.split('/');
-            const sessionId = pathParts[2]; // /game/{session_id}
+            const sessionId = window.RogueLLMRuntime.getGameSessionId();
 
             if (!sessionId) {
                 console.error('No session ID found in URL');
@@ -557,9 +559,10 @@ const app = Vue.createApp({
                 return;
             }
 
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             this.hasRequestedInitialState = false;
-            this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/game/${sessionId}`);
+            this.ws = new WebSocket(
+                window.RogueLLMRuntime.websocketUrl(sessionId)
+            );
 
             this.ws.onmessage = async (event) => {
                 if (!event.data) {
@@ -568,7 +571,9 @@ const app = Vue.createApp({
                 }
 
                 try {
-                    const response = JSON.parse(event.data);
+                    const response = window.RogueLLMRuntime.resolveRemoteUrls(
+                        JSON.parse(event.data)
+                    );
                     console.log("Received message:", response);
 
                     // Handle different message types
@@ -627,7 +632,7 @@ const app = Vue.createApp({
             this.ws.onclose = (event) => {
                 if (event.code === 1006) {
                     // Redirect to landing page if connection fails
-                    window.location.href = '/';
+                    window.location.href = window.RogueLLMRuntime.homeUrl();
                 } else {
                     setTimeout(() => this.initWebSocket(), 5000);
                 }
@@ -925,6 +930,11 @@ const app = Vue.createApp({
             }
         },
         newGame(openInNewTab = false) {
+            if (window.RogueLLMRuntime.isNative) {
+                window.location.href = window.RogueLLMRuntime.homeUrl();
+                return;
+            }
+
             // Send a POST request to the server to clear the session
             fetch('/logout', {
                 method: 'POST',

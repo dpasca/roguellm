@@ -146,9 +146,54 @@ technical forge failure is refunded automatically, and completing a distinct
 World earns 1 credit up to 5 times per UTC day. See `_env.example` for the
 individual overrides. Creators receive one-time promotional grants when a World
 reaches 5, 20, and 50 qualified players: 5, 10, and 20 credits respectively.
-The lobby includes a mobile-first credit-shop preview, but no payment provider
-or receipt endpoint is connected yet. Production should leave the flag off
-unless the free-only beta behavior is deliberate.
+The lobby includes a mobile-first credit shop. Web remains a non-purchasing
+preview; the Capacitor apps connect it to StoreKit and Play Billing, and the
+server verifies every transaction before granting credits. Native purchases
+remain separately gated by `ENABLE_MOBILE_STORE=0` until the store products and
+server credentials are configured.
+
+## Mobile apps
+
+The iOS and Android projects use Capacitor and ship the web UI inside each app.
+They do not point a WebView at the live website. The live server remains the
+authority for accounts, Worlds, WebSockets, purchases, and generated assets.
+Firebase is used only for optional Analytics; it is not the application or
+generated-asset host.
+
+Mobile development requires Node.js 22 or newer. iOS additionally requires
+Xcode, while the Android build requires Android Studio/SDK 36 and JDK 21.
+
+```bash
+npm ci
+npm run mobile:sync
+npm run mobile:open:ios
+# or
+npm run mobile:open:android
+```
+
+`npm run mobile:sync` rebuilds `mobile-dist/`, then copies it and the native
+plugins into both projects. The build defaults to `https://roguellm.com`; a
+staging build can override it without changing source:
+
+```bash
+ROGUELLM_API_BASE_URL=https://staging.example.com \
+ROGUELLM_PUBLIC_WEB_URL=https://staging.example.com \
+ROGUELLM_APPLE_ENVIRONMENT=sandbox \
+npm run mobile:sync
+```
+
+Mobile login uses short-lived bearer tokens with rotating refresh tokens. The
+refresh token lives in the iOS Keychain or Android Keystore-backed secure
+storage; access tokens stay in memory. A game WebSocket is authorized through
+the opaque session ID returned by the authenticated session-creation request,
+so credentials are never placed in WebSocket URLs.
+
+The native product IDs are `credits_40`, `credits_120`, and `credits_300`.
+Before turning on purchases, create those as consumables in App Store Connect
+and Play Console, configure the Apple and Google verification credentials from
+`_env.example` on the server, and then set both `ENABLE_WORLD_CREDITS=1` and
+`ENABLE_MOBILE_STORE=1`. The server uses the store transaction ID or purchase
+token as its idempotency key and never trusts a client-supplied credit amount.
 
 ## Search Provider Configuration
 

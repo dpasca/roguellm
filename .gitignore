@@ -38,6 +38,8 @@ backups/
 tools/venv
 
 # Frontend
+node_modules/
+mobile-dist/
 frontend/node_modules/
 frontend/visual-inspections/
 static/game2/

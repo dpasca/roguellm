@@ -11,4 +11,7 @@ boto3
 Pillow
 bs4
 aiofiles
+app-store-server-library>=3.1.1,<4
+google-auth>=2.49,<3
+requests>=2.32,<3
 pre-commit

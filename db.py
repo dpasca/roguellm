@@ -4,6 +4,7 @@ import uuid
 import sqlite3
 import hashlib
 import hmac
+import secrets
 import time
 import asyncio
 from typing import Dict, List, Optional, Sequence, Tuple, Union
@@ -303,6 +304,26 @@ class DatabaseManager:
             self._ensure_column(conn, "users", "password_reset_required", "INTEGER NOT NULL DEFAULT 0")
             self._ensure_column(conn, "users", "password_reset_marked_at", "TIMESTAMP NULL")
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS mobile_auth_sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    access_token_hash TEXT UNIQUE NOT NULL,
+                    refresh_token_hash TEXT UNIQUE NOT NULL,
+                    access_expires_at INTEGER NOT NULL,
+                    refresh_expires_at INTEGER NOT NULL,
+                    platform TEXT NULL,
+                    device_name TEXT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    revoked_at TIMESTAMP NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mobile_auth_sessions_user
+                ON mobile_auth_sessions(user_id, refresh_expires_at)
+            """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS credit_ledger (
                     id TEXT PRIMARY KEY,
                     operation_key TEXT NOT NULL,
@@ -321,6 +342,25 @@ class DatabaseManager:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created
                 ON credit_ledger(user_id, created_at)
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS store_purchases (
+                    id TEXT PRIMARY KEY,
+                    provider TEXT NOT NULL CHECK (provider IN ('apple', 'google')),
+                    external_transaction_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    product_id TEXT NOT NULL,
+                    credits INTEGER NOT NULL CHECK (credits > 0),
+                    environment TEXT NOT NULL,
+                    provider_metadata TEXT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (provider, external_transaction_id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_store_purchases_user_created
+                ON store_purchases(user_id, created_at)
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS world_metrics (
@@ -1516,6 +1556,99 @@ class DatabaseManager:
             user_id,
         )
 
+    def record_verified_store_purchase(
+            self,
+            user_id: str,
+            provider: str,
+            external_transaction_id: str,
+            product_id: str,
+            credits: int,
+            environment: str,
+            provider_metadata: Optional[Dict] = None,
+    ) -> Dict:
+        """Atomically record one verified purchase and grant paid credits.
+
+        Verification happens outside this class. This method deliberately
+        accepts a fixed credit amount from the server-side product catalog,
+        then makes the purchase row and ledger grant one transaction.
+        """
+        if provider not in {"apple", "google"}:
+            raise ValueError("Store provider must be 'apple' or 'google'")
+        if not external_transaction_id:
+            raise ValueError("Store transaction identifier is required")
+        if not product_id:
+            raise ValueError("Store product identifier is required")
+        if credits <= 0:
+            raise ValueError("Store credit grant must be positive")
+
+        transaction_digest = hashlib.sha256(
+            f"{provider}:{external_transaction_id}".encode("utf-8")
+        ).hexdigest()
+        operation_key = f"store_purchase:{provider}:{transaction_digest}"
+        metadata_json = (
+            json.dumps(provider_metadata, sort_keys=True)
+            if provider_metadata else None
+        )
+
+        def _record(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute("""
+                SELECT id, user_id, product_id, credits, environment
+                FROM store_purchases
+                WHERE provider = ? AND external_transaction_id = ?
+            """, (provider, external_transaction_id)).fetchone()
+            if existing:
+                same_purchase = (
+                    existing[1] == user_id
+                    and existing[2] == product_id
+                    and int(existing[3]) == credits
+                )
+                balance = self._credit_balance_from_connection(conn, user_id)
+                conn.commit()
+                return {
+                    "applied": False,
+                    "conflict": not same_purchase,
+                    "purchase_id": existing[0],
+                    "product_id": existing[2],
+                    "credits": int(existing[3]),
+                    "environment": existing[4],
+                    "balance": balance,
+                }
+
+            purchase_id = str(uuid.uuid4())
+            conn.execute("""
+                INSERT INTO store_purchases (
+                    id, provider, external_transaction_id, user_id,
+                    product_id, credits, environment, provider_metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                purchase_id, provider, external_transaction_id, user_id,
+                product_id, credits, environment, metadata_json,
+            ))
+            conn.execute("""
+                INSERT INTO credit_ledger (
+                    id, operation_key, user_id, bucket, amount, kind,
+                    reference_type, reference_id, metadata
+                ) VALUES (?, ?, ?, 'paid', ?, 'store_purchase',
+                          'store_purchase', ?, ?)
+            """, (
+                str(uuid.uuid4()), operation_key, user_id, credits,
+                purchase_id, metadata_json,
+            ))
+            balance = self._credit_balance_from_connection(conn, user_id)
+            conn.commit()
+            return {
+                "applied": True,
+                "conflict": False,
+                "purchase_id": purchase_id,
+                "product_id": product_id,
+                "credits": credits,
+                "environment": environment,
+                "balance": balance,
+            }
+
+        return self._execute_with_retry(_record)
+
     def grant_credits(
             self,
             user_id: str,
@@ -2151,6 +2284,159 @@ class DatabaseManager:
             return hmac.compare_digest(new_key, key)
         except Exception:
             return False
+
+    @staticmethod
+    def _hash_mobile_auth_token(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def create_mobile_auth_session(
+            self,
+            user_id: str,
+            access_ttl_seconds: int,
+            refresh_ttl_seconds: int,
+            platform: Optional[str] = None,
+            device_name: Optional[str] = None,
+            now: Optional[int] = None,
+    ) -> Dict:
+        if access_ttl_seconds <= 0 or refresh_ttl_seconds <= 0:
+            raise ValueError("Mobile authentication TTLs must be positive")
+        if access_ttl_seconds >= refresh_ttl_seconds:
+            raise ValueError("Mobile refresh tokens must outlive access tokens")
+
+        issued_at = int(time.time() if now is None else now)
+        access_token = secrets.token_urlsafe(48)
+        refresh_token = secrets.token_urlsafe(48)
+        session_id = str(uuid.uuid4())
+        access_expires_at = issued_at + access_ttl_seconds
+        refresh_expires_at = issued_at + refresh_ttl_seconds
+
+        def _create(conn):
+            conn.execute("""
+                INSERT INTO mobile_auth_sessions (
+                    id, user_id, access_token_hash, refresh_token_hash,
+                    access_expires_at, refresh_expires_at, platform, device_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id,
+                user_id,
+                self._hash_mobile_auth_token(access_token),
+                self._hash_mobile_auth_token(refresh_token),
+                access_expires_at,
+                refresh_expires_at,
+                platform,
+                device_name,
+            ))
+            conn.commit()
+
+        self._execute_with_retry(_create)
+        return {
+            "session_id": session_id,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "access_expires_at": access_expires_at,
+            "refresh_expires_at": refresh_expires_at,
+        }
+
+    def get_mobile_access_token_user_id(
+            self,
+            access_token: str,
+            now: Optional[int] = None,
+    ) -> Optional[str]:
+        if not access_token:
+            return None
+
+        current_time = int(time.time() if now is None else now)
+        token_hash = self._hash_mobile_auth_token(access_token)
+
+        def _get(conn):
+            row = conn.execute("""
+                SELECT user_id
+                FROM mobile_auth_sessions
+                WHERE access_token_hash = ?
+                  AND revoked_at IS NULL
+                  AND access_expires_at > ?
+                  AND refresh_expires_at > ?
+            """, (token_hash, current_time, current_time)).fetchone()
+            return row[0] if row else None
+
+        return self._execute_with_retry(_get)
+
+    def refresh_mobile_auth_session(
+            self,
+            refresh_token: str,
+            access_ttl_seconds: int,
+            refresh_ttl_seconds: int,
+            now: Optional[int] = None,
+    ) -> Optional[Dict]:
+        if not refresh_token:
+            return None
+        if access_ttl_seconds <= 0 or refresh_ttl_seconds <= 0:
+            raise ValueError("Mobile authentication TTLs must be positive")
+        if access_ttl_seconds >= refresh_ttl_seconds:
+            raise ValueError("Mobile refresh tokens must outlive access tokens")
+
+        issued_at = int(time.time() if now is None else now)
+        old_refresh_hash = self._hash_mobile_auth_token(refresh_token)
+        next_access_token = secrets.token_urlsafe(48)
+        next_refresh_token = secrets.token_urlsafe(48)
+        access_expires_at = issued_at + access_ttl_seconds
+        refresh_expires_at = issued_at + refresh_ttl_seconds
+
+        def _refresh(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("""
+                SELECT id, user_id
+                FROM mobile_auth_sessions
+                WHERE refresh_token_hash = ?
+                  AND revoked_at IS NULL
+                  AND refresh_expires_at > ?
+            """, (old_refresh_hash, issued_at)).fetchone()
+            if not row:
+                conn.rollback()
+                return None
+
+            conn.execute("""
+                UPDATE mobile_auth_sessions
+                SET access_token_hash = ?, refresh_token_hash = ?,
+                    access_expires_at = ?, refresh_expires_at = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                self._hash_mobile_auth_token(next_access_token),
+                self._hash_mobile_auth_token(next_refresh_token),
+                access_expires_at,
+                refresh_expires_at,
+                row[0],
+            ))
+            conn.commit()
+            return {
+                "session_id": row[0],
+                "user_id": row[1],
+                "access_token": next_access_token,
+                "refresh_token": next_refresh_token,
+                "access_expires_at": access_expires_at,
+                "refresh_expires_at": refresh_expires_at,
+            }
+
+        return self._execute_with_retry(_refresh)
+
+    def revoke_mobile_auth_session(self, access_token: str) -> bool:
+        if not access_token:
+            return False
+
+        token_hash = self._hash_mobile_auth_token(access_token)
+
+        def _revoke(conn):
+            cursor = conn.execute("""
+                UPDATE mobile_auth_sessions
+                SET revoked_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE access_token_hash = ? AND revoked_at IS NULL
+            """, (token_hash,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+        return self._execute_with_retry(_revoke)
 
     def create_user(self, username: str, password: str) -> Optional[Dict]:
         user_id = str(uuid.uuid4())

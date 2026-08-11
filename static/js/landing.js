@@ -173,6 +173,9 @@ const app = Vue.createApp({
             return tabs;
         },
         isLocalDev() {
+            if (window.RogueLLMRuntime?.isNative) {
+                return false;
+            }
             return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
         },
         emptyWorldsTitle() {
@@ -1015,16 +1018,17 @@ const app = Vue.createApp({
             this.clearError();
             this.clearInfo();
 
-            const shareUrl = new URL('/game', window.location.origin);
-            shareUrl.searchParams.set('generator_id', world.id);
-            shareUrl.searchParams.set('lang', this.selectedLanguage);
+            const shareUrl = window.RogueLLMRuntime.publicWorldUrl(
+                world.id,
+                this.selectedLanguage
+            );
 
             try {
-                await navigator.clipboard.writeText(shareUrl.toString());
+                await navigator.clipboard.writeText(shareUrl);
                 this.infoMessage = this.t('shareLinkCopied');
             } catch (error) {
                 console.warn('Clipboard unavailable:', error);
-                this.infoMessage = shareUrl.toString();
+                this.infoMessage = shareUrl;
             }
         },
         async rerollWorldArt(world) {
@@ -1216,7 +1220,10 @@ const app = Vue.createApp({
                 const data = await response.json();
 
                 // Redirect to the session-specific game URL
-                const gameUrl = `/game/${data.session_id}?lang=${this.selectedLanguage}`;
+                const gameUrl = window.RogueLLMRuntime.gameUrl(
+                    data.session_id,
+                    this.selectedLanguage
+                );
                 window.location.href = gameUrl;
 
             } catch (error) {

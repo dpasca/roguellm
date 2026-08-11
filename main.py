@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.websockets import WebSocketDisconnect
 from pydantic import BaseModel
 from typing import Dict, List, Optional
@@ -53,6 +54,11 @@ from world_moderation import (
     get_world_public_review_model_name,
     process_due_public_world_reviews,
     process_public_world_review,
+)
+from store_purchases import (
+    StorePurchaseVerificationError,
+    StorePurchaseVerifier,
+    get_credit_product_catalog,
 )
 
 load_dotenv()
@@ -180,7 +186,25 @@ def is_debug_seed_allowed(request: Request) -> bool:
         or os.getenv("ENABLE_DEBUG_SEED") == "1"
     )
 
+def get_request_bearer_token(request: Request) -> Optional[str]:
+    authorization = (request.headers.get("authorization") or "").strip()
+    if not authorization:
+        return None
+
+    scheme, separator, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not separator or not token.strip():
+        return None
+    return token.strip()
+
+
 def get_request_user_id(request: Request) -> Optional[str]:
+    authorization = (request.headers.get("authorization") or "").strip()
+    if authorization:
+        access_token = get_request_bearer_token(request)
+        if not access_token:
+            return None
+        return db.get_mobile_access_token_user_id(access_token)
+
     return request.session.get("user_id")
 
 
@@ -356,6 +380,13 @@ def serialize_generator_metadata(
 
 PRODUCTION_ENV_NAMES = {"production", "prod"}
 SESSION_COOKIE_DEFAULT_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
+MOBILE_ACCESS_TOKEN_DEFAULT_TTL_SECONDS = 15 * 60
+MOBILE_REFRESH_TOKEN_DEFAULT_TTL_SECONDS = 30 * 24 * 60 * 60
+MOBILE_DEFAULT_ALLOWED_ORIGINS = (
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost",
+)
 PLACEHOLDER_SESSION_SECRETS = {
     "changeme",
     "change_me",
@@ -520,8 +551,38 @@ def get_env_int(name: str, default: int, minimum: int = 1) -> int:
     return value
 
 
+def get_mobile_auth_ttls() -> tuple:
+    access_ttl = get_env_int(
+        "MOBILE_ACCESS_TOKEN_TTL_SECONDS",
+        MOBILE_ACCESS_TOKEN_DEFAULT_TTL_SECONDS,
+        minimum=60,
+    )
+    refresh_ttl = get_env_int(
+        "MOBILE_REFRESH_TOKEN_TTL_SECONDS",
+        MOBILE_REFRESH_TOKEN_DEFAULT_TTL_SECONDS,
+        minimum=300,
+    )
+    if refresh_ttl <= access_ttl:
+        raise ValueError(
+            "MOBILE_REFRESH_TOKEN_TTL_SECONDS must be greater than "
+            "MOBILE_ACCESS_TOKEN_TTL_SECONDS."
+        )
+    return access_ttl, refresh_ttl
+
+
+def get_mobile_allowed_origins() -> List[str]:
+    raw_origins = os.getenv("MOBILE_ALLOWED_ORIGINS")
+    if raw_origins is None:
+        return list(MOBILE_DEFAULT_ALLOWED_ORIGINS)
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
 def is_analytics_enabled() -> bool:
     return get_env_bool("ANALYTICS_ENABLED", False)
+
+
+def is_mobile_store_enabled() -> bool:
+    return get_env_bool("ENABLE_MOBILE_STORE", False)
 
 
 def get_firebase_config() -> Dict[str, str]:
@@ -624,6 +685,7 @@ world_creation_rate_limiter = make_rate_limiter(
     WORLD_CREATION_DEFAULT_MAX_ATTEMPTS,
     WORLD_CREATION_DEFAULT_WINDOW_SECONDS,
 )
+store_purchase_verifier = StorePurchaseVerifier()
 
 
 def is_login_required_to_create_world() -> bool:
@@ -859,6 +921,13 @@ app.add_middleware(
     https_only=is_production_env(),
     same_site=get_session_cookie_same_site(),
     max_age=get_session_cookie_max_age_seconds(),
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_mobile_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-RogueLLM-Mobile"],
 )
 
 # Mount static files directory
@@ -1131,7 +1200,8 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         'status': 'creating',  # creating, ready, error
         'generator_id': creation_request.generator_id,
         'language': creation_request.language,
-        'debug_seed': creation_request.debug_seed
+        'debug_seed': creation_request.debug_seed,
+        'requester_user_id': requester_user_id,
     }
 
     logging.info(f"Created new game session: {session_id}")
@@ -1379,7 +1449,7 @@ class VisibilityUpdateRequest(BaseModel):
 
 @app.patch("/api/worlds/{world_id}/visibility")
 async def update_world_visibility(request: VisibilityUpdateRequest, req: Request, world_id: str):
-    user_id = req.session.get("user_id")
+    user_id = get_request_user_id(req)
     if not user_id:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -1504,8 +1574,25 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-@app.post("/api/signup")
-async def signup(request: SignupRequest, req: Request):
+
+class MobileSignupRequest(SignupRequest):
+    platform: Optional[str] = None
+    device_name: Optional[str] = None
+
+
+class MobileLoginRequest(LoginRequest):
+    platform: Optional[str] = None
+    device_name: Optional[str] = None
+
+
+class MobileRefreshRequest(BaseModel):
+    refresh_token: str
+
+
+def create_signup_user(
+        signup_request: SignupRequest,
+        req: Request,
+) -> tuple:
     rate_limit_key = signup_rate_limiter.make_key(req, scope="signup")
     rate_limited_response = consume_rate_limit_attempt(
         signup_rate_limiter,
@@ -1513,58 +1600,171 @@ async def signup(request: SignupRequest, req: Request):
         SIGNUP_RATE_LIMIT_MESSAGE,
     )
     if rate_limited_response is not None:
-        return rate_limited_response
+        return None, rate_limited_response
 
-    username = request.username.strip()
-    password = request.password
+    username = signup_request.username.strip()
+    password = signup_request.password
     if not username or not password:
-        return JSONResponse({"error": "Username and password are required"}, status_code=400)
+        return None, JSONResponse(
+            {"error": "Username and password are required"},
+            status_code=400,
+        )
     if len(username) < 3:
-        return JSONResponse({"error": "Username must be at least 3 characters"}, status_code=400)
+        return None, JSONResponse(
+            {"error": "Username must be at least 3 characters"},
+            status_code=400,
+        )
 
     password_error = validate_signup_password(username, password)
     if password_error:
-        return JSONResponse({"error": password_error}, status_code=400)
+        return None, JSONResponse({"error": password_error}, status_code=400)
 
     user = db.create_user(username, password)
     if not user:
-        return JSONResponse({"error": "Username already exists"}, status_code=409)
+        return None, JSONResponse(
+            {"error": "Username already exists"},
+            status_code=409,
+        )
+    return user, None
+
+
+def authenticate_login_user(
+        login_request: LoginRequest,
+        req: Request,
+) -> tuple:
+    rate_limit_key = auth_rate_limiter.make_key(
+        req,
+        login_request.username,
+        "login",
+    )
+    if is_rate_limiting_enabled() and auth_rate_limiter.is_limited(rate_limit_key):
+        return None, rate_limit_response(
+            LOGIN_RATE_LIMIT_MESSAGE,
+            auth_rate_limiter.retry_after_seconds(rate_limit_key),
+        )
+
+    user = db.get_user_by_username(login_request.username)
+    if not user or not db._verify_password(
+            login_request.password,
+            user["password_hash"],
+    ):
+        if is_rate_limiting_enabled():
+            auth_rate_limiter.record_failure(rate_limit_key)
+        return None, JSONResponse(
+            {"error": "Invalid username or password"},
+            status_code=401,
+        )
+
+    auth_rate_limiter.clear(rate_limit_key)
+    return user, None
+
+
+def issue_mobile_auth_response(
+        user: Dict,
+        platform: Optional[str],
+        device_name: Optional[str],
+) -> JSONResponse:
+    access_ttl, refresh_ttl = get_mobile_auth_ttls()
+    auth_session = db.create_mobile_auth_session(
+        user_id=user["id"],
+        access_ttl_seconds=access_ttl,
+        refresh_ttl_seconds=refresh_ttl,
+        platform=(platform or "").strip()[:32] or None,
+        device_name=(device_name or "").strip()[:120] or None,
+    )
+    return JSONResponse({
+        "user": serialize_user(user),
+        "token_type": "Bearer",
+        "access_token": auth_session["access_token"],
+        "refresh_token": auth_session["refresh_token"],
+        "expires_in": access_ttl,
+        "refresh_expires_in": refresh_ttl,
+    })
+
+@app.post("/api/signup")
+async def signup(request: SignupRequest, req: Request):
+    user, error_response = create_signup_user(request, req)
+    if error_response is not None:
+        return error_response
 
     req.session["user_id"] = user["id"]
     return JSONResponse(serialize_user(user))
 
 @app.post("/api/login")
 async def login(request: LoginRequest, req: Request):
-    rate_limit_key = auth_rate_limiter.make_key(req, request.username, "login")
-    if is_rate_limiting_enabled() and auth_rate_limiter.is_limited(rate_limit_key):
-        return rate_limit_response(
-            LOGIN_RATE_LIMIT_MESSAGE,
-            auth_rate_limiter.retry_after_seconds(rate_limit_key),
-        )
+    user, error_response = authenticate_login_user(request, req)
+    if error_response is not None:
+        return error_response
 
-    user = db.get_user_by_username(request.username)
-    if not user:
-        if is_rate_limiting_enabled():
-            auth_rate_limiter.record_failure(rate_limit_key)
-        return JSONResponse({"error": "Invalid username or password"}, status_code=401)
-
-    if not db._verify_password(request.password, user["password_hash"]):
-        if is_rate_limiting_enabled():
-            auth_rate_limiter.record_failure(rate_limit_key)
-        return JSONResponse({"error": "Invalid username or password"}, status_code=401)
-
-    auth_rate_limiter.clear(rate_limit_key)
     req.session["user_id"] = user["id"]
     return JSONResponse(serialize_user(user))
 
+
+@app.post("/api/mobile/auth/signup")
+async def mobile_signup(request: MobileSignupRequest, req: Request):
+    user, error_response = create_signup_user(request, req)
+    if error_response is not None:
+        return error_response
+    return issue_mobile_auth_response(user, request.platform, request.device_name)
+
+
+@app.post("/api/mobile/auth/login")
+async def mobile_login(request: MobileLoginRequest, req: Request):
+    user, error_response = authenticate_login_user(request, req)
+    if error_response is not None:
+        return error_response
+    return issue_mobile_auth_response(user, request.platform, request.device_name)
+
+
+@app.post("/api/mobile/auth/refresh")
+async def mobile_refresh(request: MobileRefreshRequest):
+    access_ttl, refresh_ttl = get_mobile_auth_ttls()
+    auth_session = db.refresh_mobile_auth_session(
+        request.refresh_token,
+        access_ttl_seconds=access_ttl,
+        refresh_ttl_seconds=refresh_ttl,
+    )
+    if not auth_session:
+        return JSONResponse(
+            {"error": "The mobile session has expired."},
+            status_code=401,
+        )
+
+    user = db.get_user_by_id(auth_session["user_id"])
+    if not user:
+        return JSONResponse({"error": "User not found"}, status_code=404)
+    return JSONResponse({
+        "user": serialize_user(user),
+        "token_type": "Bearer",
+        "access_token": auth_session["access_token"],
+        "refresh_token": auth_session["refresh_token"],
+        "expires_in": access_ttl,
+        "refresh_expires_in": refresh_ttl,
+    })
+
+
+@app.post("/api/mobile/auth/logout")
+async def mobile_logout(req: Request):
+    access_token = get_request_bearer_token(req)
+    user_id = get_request_user_id(req)
+    if not access_token or not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    db.revoke_mobile_auth_session(access_token)
+    req.session.pop("user_id", None)
+    return JSONResponse({"message": "Logged out"})
+
 @app.post("/api/logout")
 async def api_logout(req: Request):
+    access_token = get_request_bearer_token(req)
+    if access_token:
+        db.revoke_mobile_auth_session(access_token)
     req.session.pop("user_id", None)
     return JSONResponse({"message": "Logged out"})
 
 @app.get("/api/me")
 async def get_me(req: Request):
-    user_id = req.session.get("user_id")
+    user_id = get_request_user_id(req)
     if not user_id:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
 
@@ -1573,6 +1773,85 @@ async def get_me(req: Request):
         return JSONResponse({"error": "User not found"}, status_code=404)
 
     return JSONResponse(serialize_user(user))
+
+
+class MobileStorePurchaseRequest(BaseModel):
+    provider: str
+    transaction_id: Optional[str] = None
+    purchase_token: Optional[str] = None
+    environment: Optional[str] = None
+
+
+@app.get("/api/mobile/store/config")
+async def get_mobile_store_config(req: Request):
+    user_id = get_request_user_id(req)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    return JSONResponse({
+        "enabled": is_mobile_store_enabled(),
+        "store_account_token": user_id,
+        "products": get_credit_product_catalog(),
+    })
+
+
+@app.post("/api/mobile/purchases/verify")
+async def verify_mobile_store_purchase(
+        purchase_request: MobileStorePurchaseRequest,
+        req: Request,
+):
+    user_id = get_request_user_id(req)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    if not is_mobile_store_enabled():
+        return JSONResponse({
+            "error": "Mobile credit purchases are not enabled yet.",
+            "code": "store_disabled",
+        }, status_code=503)
+
+    try:
+        verified_purchase = await asyncio.to_thread(
+            store_purchase_verifier.verify,
+            provider=purchase_request.provider,
+            user_id=user_id,
+            transaction_id=purchase_request.transaction_id,
+            purchase_token=purchase_request.purchase_token,
+            environment=purchase_request.environment,
+        )
+    except StorePurchaseVerificationError as error:
+        return JSONResponse({
+            "error": str(error),
+            "code": error.code,
+        }, status_code=error.status_code)
+    except Exception:
+        logging.exception("Unexpected mobile store verification failure")
+        return JSONResponse({
+            "error": "The store could not verify this purchase.",
+            "code": "store_unavailable",
+        }, status_code=503)
+
+    purchase = db.record_verified_store_purchase(
+        user_id=user_id,
+        provider=verified_purchase.provider,
+        external_transaction_id=verified_purchase.external_transaction_id,
+        product_id=verified_purchase.product_id,
+        credits=verified_purchase.credits,
+        environment=verified_purchase.environment,
+        provider_metadata=verified_purchase.metadata,
+    )
+    if purchase["conflict"]:
+        return JSONResponse({
+            "error": "This store purchase has already been claimed.",
+            "code": "purchase_already_claimed",
+        }, status_code=409)
+
+    return JSONResponse({
+        "verified": True,
+        "applied": purchase["applied"],
+        "product_id": purchase["product_id"],
+        "credits": purchase["credits"],
+        "balance": purchase["balance"],
+    })
 
 # Logout
 @app.post("/logout")
@@ -1611,7 +1890,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             return
 
         session = game_session_manager.sessions[session_id]
-        user_id = websocket.session.get("user_id")
+        user_id = session.get("requester_user_id") or websocket.session.get("user_id")
         forge_charge_operation = None
 
         # If game is not created yet, create it now
