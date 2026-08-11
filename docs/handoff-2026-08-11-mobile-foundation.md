@@ -234,3 +234,40 @@ Production is deliberately running with these rollout gates off:
 Later hardening should add store notification/reconciliation jobs for refunds
 or revocations that occur after the initial consumable grant. That is separate
 from the now-complete purchase-time verification and idempotency path.
+
+## Mobile lobby follow-up completed on 2026-08-11
+
+Commit `caa82a325c421ae6bbfc2a5c7011ed5ff8e85820` removes the three
+simultaneous `Sign Up to Create` prompts from the anonymous lobby. The primary
+button now remains `Create World`; tapping it still opens account creation when
+the production login gate applies. The anonymous hint and empty gallery remain
+informative without repeating the same call to action.
+
+Capacitor `SystemBars` now supplies CSS insets, and the lobby, dialogs, game
+header, mobile dock, and panels consume those values with web-safe `env()`
+fallbacks. This fixes the bundled Android shell drawing the RogueLLM header
+under the system status bar. The change is deployed to the web production app,
+whose health endpoint reports the same commit. Rollout flags remain off. The
+pre-deploy snapshot is `20260811T121143Z`; rollback source and image are
+`20260811T121403Z-pre-caa82a3` and
+`roguellm-production-app:pre-caa82a3`.
+
+Signed Android internal release `2 (1.0.1)` is active and available to the
+existing internal testers. Its AAB SHA-256 is
+`13ecf4d0dc9f285eb7cd1da1f5bdb717adc58ad7623576de6a78b07cf6c06b34`.
+
+Social login should land as Google and Apple together, not Google alone.
+[App Review Guideline 4.8](https://developer.apple.com/app-store/review/guidelines/#login-services)
+exempts an app that exclusively uses its own account system, so the current
+username/password flow does not require Sign in with Apple. Once Google Sign-In
+authenticates a user's primary RogueLLM account, the iOS app must also offer an
+equivalent privacy-preserving login; in practice that is Sign in with Apple.
+No nonfunctional social buttons were added in this release.
+
+Before public store submission, account deletion also needs an explicit product
+and data-retention design. Apple requires in-app deletion for apps that support
+account creation, and
+[Google Play](https://support.google.com/googleplay/android-developer/answer/13327111)
+requires both an in-app path and an external web deletion resource. The
+unresolved decision is whether deletion removes private/unlisted Worlds and
+anonymizes public Worlds, or removes every World owned by the account.
