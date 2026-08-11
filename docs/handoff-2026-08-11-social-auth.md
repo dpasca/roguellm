@@ -38,6 +38,16 @@ This is the newest handoff. It continues
   `6C:C7:5E:A5:BA:EC:EA:DC:D9:26:D4:5E:4C:76:E5:92:8B:78:1C:60`.
 - OAuth authorized domains now include `roguellm.com` and
   `www.roguellm.com`, in addition to the Firebase defaults.
+- Sign in with Apple is enabled on the primary App ID
+  `com.newtypekk.roguellm` under team `69NH26W767`.
+- Web Services ID `com.newtypekk.roguellm.web` is grouped with that primary
+  App ID. Its domain is `roguellm.firebaseapp.com` and its return URL is
+  `https://roguellm.firebaseapp.com/__/auth/handler`.
+- Dedicated Sign in with Apple key `RogueLLM Sign In With Apple` has key ID
+  `94J7363CD3`. The one-time private key is stored outside the repository at
+  `~/.config/roguellm/secrets/apple-sign-in-AuthKey_94J7363CD3.p8` with mode
+  `0600`; Firebase has the matching Services ID, team ID, key ID, and private
+  key in the Apple provider OAuth code-flow configuration.
 
 ## Verification completed
 
@@ -52,21 +62,19 @@ This is the newest handoff. It continues
 - Real Google web sign-in passes end to end: provider consent, Firebase token
   issue, server verification, stable local identity, cookie session, `/api/me`,
   and authenticated account/World state all succeeded.
+- Real Apple web sign-in also passes end to end: Apple login and privacy
+  consent, the Firebase callback and code exchange, Firebase token issue,
+  server verification, stable local identity, cookie session, and `/api/me`
+  all succeeded. `/api/me` returned `200` with `auth_providers: ["apple"]`.
 
-## Remaining external setup before deployment
+## Remaining rollout work
 
-1. In Apple Developer, enable Sign in with Apple for the primary App ID
-   `com.newtypekk.roguellm`.
-2. Create/configure a Services ID such as `com.newtypekk.roguellm.web`, with
-   domain `roguellm.firebaseapp.com` and return URL
-   `https://roguellm.firebaseapp.com/__/auth/handler`.
-3. Create a Sign in with Apple key for that primary App ID and download its
-   one-time `.p8`. Do not confuse it with the App Store purchase API key.
-4. Enter Services ID, Team ID `69NH26W767`, key ID, and private key in the
-   Firebase Apple provider OAuth code-flow configuration.
-5. Put the Firebase web configuration and auth flags in the VPS production
-   environment, take the normal backup, deploy, and run real Google/Apple
-   sign-in plus account-deletion smoke tests before publishing new store builds.
-
-Do not deploy the social-only UI until steps 1–4 are complete: Apple would be
-visible but nonfunctional on web and Android.
+1. Adding Sign in with Apple invalidated provisioning profiles that included
+   the RogueLLM App ID. Regenerate or let Xcode automatically regenerate them
+   before the next signed iOS archive or device build.
+2. Put the Firebase web configuration and social-auth flags in the VPS
+   production environment, take the normal backup, deploy, and run real
+   Google/Apple sign-in smoke tests against `https://roguellm.com`.
+3. Run the destructive account-deletion smoke test with a sacrificial provider
+   account before publishing new store builds. Do not delete a maintainer's
+   real Google or Apple RogueLLM identity merely to exercise this path.
