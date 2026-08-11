@@ -10,6 +10,11 @@
   },
   "// Theme Selection": "主題選擇相關翻譯",
   "account": "帳戶",
+  "dashboardCredits": "點數",
+  "dashboardWorlds": "世界",
+  "dashboardPlays": "遊玩",
+  "dashboardCompletions": "通關",
+  "dashboardPlayers": "玩家",
   "selectTheme": "選擇您的主題",
   "fantasyTheme": "奇幻主題",
   "customTheme": "自訂主題",
@@ -35,7 +40,17 @@
   "worldContents": "內容",
   "worldDetails": "世界詳情",
   "worldCounts": "{enemies} 個敵人 · {items} 個物品 · {terrain} 種地形",
+  "worldPopularity": "{plays} 次遊玩 · {completions} 次通關 · {players} 名玩家",
+  "worldPopularityLabel": "熱度",
+  "createWorldCredits": "建立世界 · {credits} 點數",
+  "forgeCreditsHint": "建立此世界需要 {cost} 點數。你有 {credits}。",
+  "forgeCreditsInsufficient": "建立需要 {cost} 點數。你只有 {credits}。",
   "quickStartPiedone": "快速開始：Piedone",
+  "rerollArtFree": "重新產生畫面 · 免費",
+  "rerollingArt": "正在重新產生畫面…",
+  "rerollArtConfirm": "要替換英雄和背景嗎？這會使用此世界唯一一次免費畫面重試。",
+  "rerollArtComplete": "世界畫面已重新產生。",
+  "rerollArtFailed": "無法重新產生世界畫面",
   "// Game Interface": "遊戲內介面翻譯",
   "menu": {
     "home": "首頁",
@@ -86,7 +101,9 @@
     "defeatTitle": "本次冒險到此為止",
     "defeatBody": "世界會記得你走了多遠。嘗試另一條路線，或選擇新的冒險。",
     "finalMoments": "最後時刻",
-    "chooseWorld": "選擇另一個世界"
+    "chooseWorld": "選擇另一個世界",
+    "creditReward": "完成新世界獎勵 +{credits} 點數。餘額：{balance}。",
+    "creditCapReached": "今日點數獎勵已達上限。本次通關仍會計入紀錄。"
   },
   "combat": {
     "stats": {

@@ -20,6 +20,8 @@ import logging
 import mimetypes
 import os
 import re
+import shutil
+import uuid
 from collections import Counter
 from typing import Any, List, Optional, Sequence, Tuple
 
@@ -32,6 +34,8 @@ logger = logging.getLogger()
 
 DEFAULT_IMAGE_MODEL = "gpt-image-2"
 DEFAULT_IMAGE_QUALITY = "medium"
+DEFAULT_WORLD_ART_TIER = "core"
+DEFAULT_CORE_BACKDROP_QUALITY = "low"
 WORLD_ASSET_EXTENSION = ".webp"
 WORLD_ASSET_FORMAT = "WEBP"
 WORLD_ASSET_WEBP_QUALITY = 85
@@ -203,6 +207,30 @@ def get_image_model_name() -> str:
 
 def get_image_model_quality() -> str:
     return (os.getenv("IMAGE_MODEL_QUALITY") or DEFAULT_IMAGE_QUALITY).strip().lower()
+
+
+def get_world_art_tier() -> str:
+    """Choose the paid asset bundle without changing the renderer contract."""
+    tier = (os.getenv("WORLD_ART_TIER") or DEFAULT_WORLD_ART_TIER).strip().lower()
+    if tier not in {"core", "full"}:
+        logger.warning("Unknown WORLD_ART_TIER %r; using %s", tier, DEFAULT_WORLD_ART_TIER)
+        return DEFAULT_WORLD_ART_TIER
+    return tier
+
+
+def get_character_image_quality() -> str:
+    return (
+        os.getenv("IMAGE_CHARACTER_QUALITY") or get_image_model_quality()
+    ).strip().lower()
+
+
+def get_backdrop_image_quality(tier: Optional[str] = None) -> str:
+    override = os.getenv("IMAGE_BACKDROP_QUALITY")
+    if override:
+        return override.strip().lower()
+    if (tier or get_world_art_tier()) == "core":
+        return DEFAULT_CORE_BACKDROP_QUALITY
+    return get_image_model_quality()
 
 
 def get_image_model_api_key() -> Optional[str]:
@@ -478,13 +506,19 @@ class WorldArtGenerator:
         # Latches to False the first time the model rejects transparent output.
         self.supports_transparent = True
 
-    async def _generate(self, prompt: str, size: str, transparent: bool) -> Image.Image:
+    async def _generate(
+            self,
+            prompt: str,
+            size: str,
+            transparent: bool,
+            quality: Optional[str] = None,
+    ) -> Image.Image:
         async def call():
             kwargs = {
                 "model": self.model_name,
                 "prompt": prompt,
                 "size": size,
-                "quality": self.quality,
+                "quality": quality or self.quality,
                 "output_format": "png",
             }
             if transparent:
@@ -498,7 +532,12 @@ class WorldArtGenerator:
 
         return Image.open(io.BytesIO(base64.b64decode(payload))).convert("RGBA")
 
-    async def _generate_with_background_fallback(self, build_prompt, size: str) -> Image.Image:
+    async def _generate_with_background_fallback(
+            self,
+            build_prompt,
+            size: str,
+            quality: Optional[str] = None,
+    ) -> Image.Image:
         """Ask for transparent output, falling back to a keyed background.
 
         gpt-image-2 rejects `background="transparent"` outright, so the chroma
@@ -509,7 +548,9 @@ class WorldArtGenerator:
         """
         if self.supports_transparent:
             try:
-                return await self._generate(build_prompt(True), size, True)
+                return await self._generate(
+                    build_prompt(True), size, True, quality=quality
+                )
             except BadRequestError as exc:
                 if not _is_background_unsupported(exc):
                     raise
@@ -519,13 +560,16 @@ class WorldArtGenerator:
                 )
                 self.supports_transparent = False
 
-        return await self._generate(build_prompt(False), size, False)
+        return await self._generate(
+            build_prompt(False), size, False, quality=quality
+        )
 
     async def generate_character(
             self,
             identity: str,
             style: str,
             frame_names: Sequence[str] = FRAME_NAMES,
+            quality: Optional[str] = None,
     ) -> dict:
         """Generate one character's frames plus its map token.
 
@@ -537,6 +581,7 @@ class WorldArtGenerator:
                 identity, style, frame_names, transparent=transparent
             ),
             SHEET_SIZE,
+            quality=quality,
         )
 
         if self.debug_dir:
@@ -572,10 +617,16 @@ class WorldArtGenerator:
             "was_opaque": was_opaque,
         }
 
-    async def generate_backdrop(self, identity: str, style: str) -> Image.Image:
+    async def generate_backdrop(
+            self,
+            identity: str,
+            style: str,
+            quality: Optional[str] = None,
+    ) -> Image.Image:
         """Generate one empty location, kept opaque since it is a background."""
         return await self._generate(
-            build_backdrop_prompt(identity, style), BACKDROP_SIZE, transparent=False
+            build_backdrop_prompt(identity, style), BACKDROP_SIZE,
+            transparent=False, quality=quality,
         )
 
 
@@ -585,6 +636,7 @@ async def generate_world_art(
         generator: Optional["WorldArtGenerator"] = None,
         assets_dir: Optional[str] = None,
         on_progress=None,
+        tier: Optional[str] = None,
 ) -> dict:
     """Generate and persist a World's character art, returning URLs by id.
 
@@ -602,6 +654,9 @@ async def generate_world_art(
         return {"characters": {}, "cover": None}
 
     generator = generator or WorldArtGenerator()
+    tier = tier or get_world_art_tier()
+    if tier not in {"core", "full"}:
+        raise ValueError("tier must be 'core' or 'full'")
     style = build_style_block(manifest)
 
     async def report(**fields):
@@ -612,6 +667,12 @@ async def generate_world_art(
                 logger.debug("Art progress callback failed: %s", exc)
 
     characters = manifest.get("characters") or []
+    if tier == "core" and characters:
+        hero = next(
+            (character for character in characters if character.get("id") == "player"),
+            characters[0],
+        )
+        characters = [hero]
     total = len(characters)
     art = {}
     neutral_frames = {}
@@ -624,7 +685,10 @@ async def generate_world_art(
 
         async with limit:
             try:
-                result = await generator.generate_character(character["identity"], style)
+                result = await generator.generate_character(
+                    character["identity"], style,
+                    quality=get_character_image_quality(),
+                )
             except Exception as exc:
                 logger.error("Art generation failed for '%s': %s", character_id, exc)
                 completed += 1
@@ -658,7 +722,8 @@ async def generate_world_art(
     await asyncio.gather(*(draw(character) for character in characters))
 
     locations, location_backdrops = await _generate_backdrops(
-        manifest, world_id, generator, style, assets_dir, report
+        manifest, world_id, generator, style, assets_dir, report,
+        tier=tier,
     )
 
     cover_url = await _generate_cover(
@@ -677,6 +742,7 @@ async def _generate_backdrops(
         style: str,
         assets_dir: Optional[str],
         report,
+        tier: str = "full",
 ) -> Tuple[dict, dict]:
     """Draw every location, so exploration can show where you are.
 
@@ -685,6 +751,8 @@ async def _generate_backdrops(
     and the game falls back to that terrain's colour and icon.
     """
     locations = manifest.get("locations") or []
+    if tier == "core":
+        locations = locations[:1]
     if not locations:
         return {}, {}
 
@@ -698,7 +766,10 @@ async def _generate_backdrops(
         location_id = location["id"]
         async with limit:
             try:
-                backdrop = await generator.generate_backdrop(location["identity"], style)
+                backdrop = await generator.generate_backdrop(
+                    location["identity"], style,
+                    quality=get_backdrop_image_quality(tier),
+                )
             except Exception as exc:
                 logger.error("Backdrop failed for '%s': %s", location_id, exc)
                 done += 1
@@ -1018,3 +1089,39 @@ def save_asset(image: Image.Image, world_id: str, name: str, assets_dir: Optiona
         method=WORLD_ASSET_WEBP_METHOD,
     )
     return f"/assets/worlds/{safe_world}/{filename}"
+
+
+def publish_staged_world_assets(
+        staging_assets_dir: str,
+        world_id: str,
+        target_assets_dir: Optional[str] = None,
+) -> None:
+    """Atomically replace a World's successfully staged WebP files."""
+    safe_world = safe_asset_name(world_id, "world")
+    source_dir = os.path.join(staging_assets_dir, safe_world)
+    if not os.path.isdir(source_dir):
+        raise ValueError("Staged World art directory is missing")
+
+    target_dir = os.path.join(target_assets_dir or get_world_assets_dir(), safe_world)
+    os.makedirs(target_dir, exist_ok=True)
+    filenames = [
+        filename
+        for filename in os.listdir(source_dir)
+        if filename.endswith(WORLD_ASSET_EXTENSION)
+        and os.path.isfile(os.path.join(source_dir, filename))
+    ]
+    if not filenames:
+        raise ValueError("Staged World art contains no assets")
+
+    for filename in filenames:
+        source = os.path.join(source_dir, filename)
+        target = os.path.join(target_dir, filename)
+        temporary_target = os.path.join(
+            target_dir, f".{filename}.{uuid.uuid4().hex}.tmp"
+        )
+        try:
+            shutil.copyfile(source, temporary_target)
+            os.replace(temporary_target, target)
+        finally:
+            if os.path.exists(temporary_target):
+                os.unlink(temporary_target)

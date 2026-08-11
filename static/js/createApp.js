@@ -160,6 +160,7 @@ const app = Vue.createApp({
             errorMessage: null,
             generatorId: null,
             showShareNotification: false,
+            completionReward: null,
             selectedTile: null,
             hasRequestedInitialState: false,
             // The location is the primary surface on phones, with the map as a
@@ -707,6 +708,7 @@ const app = Vue.createApp({
             this.ws.send(JSON.stringify({ action: 'get_initial_state' }));
         },
         async restartGame() {
+            this.completionReward = null;
             // Show loading overlay
             const loadingOverlay = document.querySelector('.loading-overlay');
             const loadingMessage = document.querySelector('#loading-message');
@@ -960,6 +962,16 @@ const app = Vue.createApp({
         },
         handleGameState(response) {
             this.isStoryChoicePending = false;
+            const reward = response.completion_reward;
+            if (
+                reward?.rewards_enabled &&
+                (reward.reward_granted || (
+                    reward.first_distinct_completion &&
+                    reward.daily_rewards_remaining === 0
+                ))
+            ) {
+                this.completionReward = reward;
+            }
             if (response.type === 'update' && response.state) {
                 console.log('Received state update:', response.state);
                 const wasInCombat = this.gameState.in_combat;

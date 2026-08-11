@@ -10,6 +10,11 @@
   },
   "// Theme Selection": "Traducciones relacionadas con la selección de tema",
   "account": "Cuenta",
+  "dashboardCredits": "Créditos",
+  "dashboardWorlds": "Mundos",
+  "dashboardPlays": "Partidas",
+  "dashboardCompletions": "Completados",
+  "dashboardPlayers": "Jugadores",
   "selectTheme": "Selecciona tu tema",
   "fantasyTheme": "Tema de fantasía",
   "customTheme": "Tema personalizado",
@@ -35,7 +40,17 @@
   "worldContents": "Contenido",
   "worldDetails": "Detalles del mundo",
   "worldCounts": "{enemies} enemigos · {items} objetos · {terrain} terrenos",
+  "worldPopularity": "{plays} partidas · {completions} completados · {players} jugadores",
+  "worldPopularityLabel": "Popularidad",
+  "createWorldCredits": "Crear mundo · {credits} créditos",
+  "forgeCreditsHint": "Este mundo cuesta {cost} créditos. Tienes {credits}.",
+  "forgeCreditsInsufficient": "Necesitas {cost} créditos para crear. Tienes {credits}.",
   "quickStartPiedone": "Inicio rápido: Piedone",
+  "rerollArtFree": "Regenerar arte · Gratis",
+  "rerollingArt": "Regenerando arte…",
+  "rerollArtConfirm": "¿Reemplazar el héroe y el fondo? Esto usa la única regeneración visual gratis de este mundo.",
+  "rerollArtComplete": "Arte del mundo regenerado.",
+  "rerollArtFailed": "No se pudo regenerar el arte del mundo",
   "// Game Interface": "Traducciones de la interfaz del juego",
   "menu": {
     "home": "Inicio",
@@ -86,7 +101,9 @@
     "defeatTitle": "La partida termina aquí",
     "defeatBody": "El mundo recuerda hasta dónde llegaste. Prueba otra ruta o elige una nueva aventura.",
     "finalMoments": "Últimos momentos",
-    "chooseWorld": "Elegir otro mundo"
+    "chooseWorld": "Elegir otro mundo",
+    "creditReward": "+{credits} crédito por completar un mundo nuevo. Saldo: {balance}.",
+    "creditCapReached": "Has alcanzado el límite diario de créditos. La victoria sigue contando."
   },
   "combat": {
     "stats": {

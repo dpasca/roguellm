@@ -26,6 +26,7 @@ from game_messages import msg as localized_msg
 from gen_image import (
     attach_art_to_definitions,
     generate_world_art,
+    get_world_art_tier,
     is_world_art_enabled,
 )
 
@@ -170,6 +171,7 @@ class GameStateManager:
             )
             logger.info(f"Saved generator with ID: {manager.generator_id}")
 
+            art_tier = get_world_art_tier()
             await manager.report_progress(
                 "cast",
                 world_id=manager.generator_id,
@@ -177,10 +179,11 @@ class GameStateManager:
                     {"id": enemy.get("enemy_id"), "name": enemy.get("name")}
                     for enemy in (manager.definitions.enemy_defs or [])
                     if isinstance(enemy, dict)
-                ],
+                ] if art_tier == "full" else [],
                 player={"id": "player", "name": (manager.definitions.player_defs or [{}])[0].get("name")},
                 item_count=len(manager.definitions.item_defs or []),
                 terrain_count=len(manager.definitions.celltype_defs or []),
+                art_tier=art_tier,
             )
 
             await manager.generate_and_attach_world_art()
@@ -240,6 +243,7 @@ class GameStateManager:
                 manifest,
                 self.generator_id,
                 on_progress=lambda fields: self.report_progress(**fields),
+                tier=get_world_art_tier(),
             )
             characters = art.get("characters") or {}
             locations = art.get("locations") or {}

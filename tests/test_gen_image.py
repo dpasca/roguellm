@@ -19,8 +19,11 @@ from gen_image import (
     build_style_block,
     generate_world_art,
     normalize_visual_manifest,
+    get_backdrop_image_quality,
+    get_character_image_quality,
     get_image_model_name,
     get_image_model_quality,
+    get_world_art_tier,
     get_world_assets_dir,
     has_visible_content,
     is_world_art_enabled,
@@ -70,6 +73,19 @@ class ConfigTests(unittest.TestCase):
     def test_quality_is_overridable(self):
         with patch.dict(os.environ, {"IMAGE_MODEL_QUALITY": "LOW"}):
             self.assertEqual(get_image_model_quality(), "low")
+
+    def test_core_art_is_the_default_bundle(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(get_world_art_tier(), "core")
+            self.assertEqual(get_character_image_quality(), "medium")
+            self.assertEqual(get_backdrop_image_quality(), "low")
+
+    def test_full_art_inherits_the_model_quality_for_backdrops(self):
+        with patch.dict(os.environ, {
+            "WORLD_ART_TIER": "full",
+            "IMAGE_MODEL_QUALITY": "high",
+        }, clear=True):
+            self.assertEqual(get_backdrop_image_quality(), "high")
 
     def test_assets_live_in_the_data_volume(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -519,14 +535,18 @@ class FakeArtGenerator:
         self.calls = []
         self.backdrop_calls = []
 
-    async def generate_backdrop(self, identity, style):
-        self.backdrop_calls.append({"identity": identity, "style": style})
+    async def generate_backdrop(self, identity, style, quality=None):
+        self.backdrop_calls.append({
+            "identity": identity, "style": style, "quality": quality,
+        })
         if self.backdrop_fails:
             raise RuntimeError("backdrop failed")
         return Image.new("RGBA", (128, 96), (20, 30, 50, 255))
 
-    async def generate_character(self, identity, style):
-        self.calls.append({"identity": identity, "style": style})
+    async def generate_character(self, identity, style, quality=None):
+        self.calls.append({
+            "identity": identity, "style": style, "quality": quality,
+        })
         if any(bad in identity for bad in self.fail_ids):
             raise RuntimeError("generation failed")
 
@@ -551,6 +571,7 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 "world-1",
                 generator=generator,
                 assets_dir=directory,
+                tier="full",
             )
 
             self.assertEqual(set(art["characters"]), {"player", "punk", "boss"})
@@ -571,6 +592,7 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 "world-1",
                 generator=generator,
                 assets_dir=directory,
+                tier="full",
             )
 
         styles = {call["style"] for call in generator.calls}
@@ -585,6 +607,7 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
                 "world-1",
                 generator=generator,
                 assets_dir=directory,
+                tier="full",
             )
 
         self.assertEqual(set(art["characters"]), {"player", "boss"})
@@ -597,6 +620,23 @@ class WorldArtOrchestrationTests(unittest.IsolatedAsyncioTestCase):
             {"characters": {}, "cover": None},
         )
         self.assertEqual(generator.calls, [])
+
+    async def test_core_bundle_draws_only_the_hero_and_primary_backdrop(self):
+        generator = FakeArtGenerator()
+
+        with tempfile.TemporaryDirectory() as directory:
+            art = await generate_world_art(
+                normalize_visual_manifest(make_manifest(), WORLD),
+                "world-1",
+                generator=generator,
+                assets_dir=directory,
+                tier="core",
+            )
+
+        self.assertEqual(set(art["characters"]), {"player"})
+        self.assertEqual(set(art["locations"]), {"street"})
+        self.assertEqual(generator.calls[0]["quality"], "medium")
+        self.assertEqual(generator.backdrop_calls[0]["quality"], "low")
 
 
 class CoverTests(unittest.IsolatedAsyncioTestCase):
@@ -865,6 +905,7 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             with patch.dict(os.environ, {
                 "ENABLE_WORLD_ART": "1",
                 "WORLD_ASSETS_DIR": os.path.join(directory, "assets"),
+                "WORLD_ART_TIER": "full",
             }), \
                     patch("game_state_manager.db", database), \
                     patch("gen_image.WorldArtGenerator", lambda *a, **k: FakeArtGenerator()):
@@ -893,7 +934,10 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             manager = self.make_manager(database)
             world_id = manager.generator_id
 
-            async def only_locations(manifest, generator_id, generator=None, assets_dir=None, on_progress=None):
+            async def only_locations(
+                    manifest, generator_id, generator=None, assets_dir=None,
+                    on_progress=None, tier=None,
+            ):
                 return {
                     "characters": {},
                     "locations": {"street": f"/assets/worlds/{world_id}/location-street.png"},
@@ -903,6 +947,7 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             with patch.dict(os.environ, {
                 "ENABLE_WORLD_ART": "1",
                 "WORLD_ASSETS_DIR": os.path.join(directory, "assets"),
+                "WORLD_ART_TIER": "full",
             }), \
                     patch("game_state_manager.db", database), \
                     patch("game_state_manager.generate_world_art", only_locations):
@@ -925,6 +970,7 @@ class ForgeWiringTests(unittest.IsolatedAsyncioTestCase):
             with patch.dict(os.environ, {
                 "ENABLE_WORLD_ART": "1",
                 "WORLD_ASSETS_DIR": os.path.join(directory, "assets"),
+                "WORLD_ART_TIER": "full",
             }), \
                     patch("game_state_manager.db", database), \
                     patch("gen_image.WorldArtGenerator", lambda *a, **k: FakeArtGenerator()):
@@ -1011,3 +1057,18 @@ class SafeAssetNameTests(unittest.TestCase):
             self.assertEqual(len(written), 1)
             self.assertTrue(os.path.abspath(written[0]).startswith(os.path.abspath(directory)))
             self.assertTrue(url.startswith("/assets/worlds/world1/"))
+
+    def test_staged_assets_publish_only_after_the_bundle_is_ready(self):
+        from gen_image import publish_staged_world_assets
+
+        with tempfile.TemporaryDirectory() as staging, \
+                tempfile.TemporaryDirectory() as target:
+            save_asset(
+                Image.new("RGBA", (4, 4), (255, 0, 0, 255)),
+                "world1", "cover", staging,
+            )
+            publish_staged_world_assets(staging, "world1", target)
+
+            published = os.path.join(target, "world1", "cover.webp")
+            self.assertTrue(os.path.exists(published))
+            self.assertEqual(Image.open(published).size, (4, 4))

@@ -25,10 +25,14 @@ import uuid
 import zlib
 import base64
 import secrets
+import tempfile
 from social_crawler import get_prerendered_content
 from gen_image import (
+    attach_art_to_definitions,
+    generate_world_art,
     get_world_assets_dir,
     is_world_art_enabled,
+    publish_staged_world_assets,
     register_world_asset_media_types,
 )
 import asyncio
@@ -36,7 +40,14 @@ import aiofiles
 
 from starlette.middleware.sessions import SessionMiddleware
 from game import Game
-from db import db
+from db import WORLD_SNAPSHOT_VERSION, db
+from economy import (
+    get_completion_reward_credits,
+    get_completion_reward_daily_cap,
+    get_welcome_credits,
+    get_world_forge_credit_cost,
+    is_world_credits_enabled,
+)
 from world_moderation import (
     get_world_public_review_model_name,
     process_due_public_world_reviews,
@@ -172,8 +183,37 @@ def get_request_user_id(request: Request) -> Optional[str]:
     return request.session.get("user_id")
 
 
+def ensure_welcome_credits(user_id: str) -> Dict:
+    amount = get_welcome_credits()
+    if amount:
+        db.grant_credits(
+            user_id=user_id,
+            amount=amount,
+            kind="welcome_grant",
+            operation_key=f"welcome:{user_id}",
+            reference_type="user",
+            reference_id=user_id,
+        )
+    return db.get_credit_balance(user_id)
+
+
+def serialize_credit_state(user_id: str) -> Dict:
+    balance = ensure_welcome_credits(user_id)
+    return {
+        **balance,
+        "enabled": is_world_credits_enabled(),
+        "forge_cost": get_world_forge_credit_cost(),
+        "completion_reward": get_completion_reward_credits(),
+        "completion_daily_cap": get_completion_reward_daily_cap(),
+        "world_art_enabled": is_world_art_enabled(),
+    }
+
+
 def serialize_user(user: Dict) -> Dict:
-    return {"username": user["username"]}
+    return {
+        "username": user["username"],
+        "credits": serialize_credit_state(user["id"]),
+    }
 
 
 def get_admin_usernames() -> set:
@@ -223,6 +263,12 @@ def can_manage_world(world: Dict, requester_user_id: Optional[str]) -> bool:
 
 
 def serialize_world_summary(world: Dict, requester_user_id: Optional[str]) -> Dict:
+    can_manage = can_manage_world(world, requester_user_id)
+    free_art_rerolls_remaining = 0
+    if can_manage and is_world_art_enabled():
+        free_art_rerolls_remaining = db.get_free_world_art_rerolls_remaining(
+            world["id"], requester_user_id
+        )
     return {
         "id": world["id"],
         "title": world["title"],
@@ -243,8 +289,30 @@ def serialize_world_summary(world: Dict, requester_user_id: Optional[str]) -> Di
         "public_review_after": world.get("public_review_after"),
         "public_reviewed_at": world.get("public_reviewed_at"),
         "cover_url": world.get("cover_url"),
-        "can_manage": can_manage_world(world, requester_user_id),
+        "play_count": world.get("play_count", 0),
+        "completion_count": world.get("completion_count", 0),
+        "unique_completer_count": world.get("unique_completer_count", 0),
+        "can_manage": can_manage,
+        "free_art_rerolls_remaining": free_art_rerolls_remaining,
+        "can_reroll_art": bool(free_art_rerolls_remaining),
     }
+
+
+def version_world_art_urls(art: Dict, version: str) -> Dict:
+    """Cache-bust rerolled files while keeping their stable on-disk names."""
+    def version_url(value):
+        if not isinstance(value, str) or not value.startswith("/assets/worlds/"):
+            return value
+        separator = "&" if "?" in value else "?"
+        return f"{value}{separator}v={version}"
+
+    for frames in (art.get("characters") or {}).values():
+        for name, value in list(frames.items()):
+            frames[name] = version_url(value)
+    for location_id, value in list((art.get("locations") or {}).items()):
+        art["locations"][location_id] = version_url(value)
+    art["cover"] = version_url(art.get("cover"))
+    return art
 
 
 def serialize_generator_metadata(
@@ -1011,6 +1079,25 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         if login_required_response is not None:
             return login_required_response
 
+        if is_world_credits_enabled():
+            if not requester_user_id:
+                return JSONResponse({
+                    "error": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE
+                }, status_code=401)
+
+            credit_state = serialize_credit_state(requester_user_id)
+            forge_cost = credit_state["forge_cost"]
+            if credit_state["total"] < forge_cost:
+                return JSONResponse({
+                    "error": (
+                        f"This World needs {forge_cost} credits; "
+                        f"you have {credit_state['total']}."
+                    ),
+                    "code": "insufficient_credits",
+                    "credits_required": forge_cost,
+                    "credits_available": credit_state["total"],
+                }, status_code=402)
+
         rate_limit_key = world_creation_rate_limiter.make_key(
             req,
             requester_user_id or "anonymous",
@@ -1092,6 +1179,112 @@ async def get_my_worlds(request: Request, limit: int = 20):
             "error": "Failed to load worlds"
         }, status_code=500)
 
+
+@app.post("/api/worlds/{world_id}/art/reroll")
+async def reroll_world_art(world_id: str, request: Request):
+    """Use the owner's one free reroll for the core visual bundle."""
+    user_id = get_request_user_id(request)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    if not is_world_art_enabled():
+        return JSONResponse({
+            "error": "World art generation is not enabled."
+        }, status_code=503)
+
+    generator_data = db.get_generator(world_id)
+    if not generator_data or generator_data.get("owner_id") != user_id:
+        return JSONResponse({"error": "World not found"}, status_code=404)
+
+    snapshot = db.get_generator_world(world_id, WORLD_SNAPSHOT_VERSION)
+    manifest = (snapshot or {}).get("visual_manifest")
+    if not isinstance(manifest, dict):
+        return JSONResponse({
+            "error": "This World has no saved art direction to reroll."
+        }, status_code=409)
+
+    attempt_id = db.reserve_free_world_art_reroll(world_id, user_id)
+    if not attempt_id:
+        return JSONResponse({
+            "error": "The free visual reroll has already been used.",
+            "code": "free_reroll_used",
+            "free_art_rerolls_remaining": 0,
+        }, status_code=409)
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="roguellm-art-reroll-") as staging_dir:
+            art = await asyncio.wait_for(
+                generate_world_art(
+                    manifest,
+                    world_id,
+                    assets_dir=staging_dir,
+                    tier="core",
+                ),
+                timeout=300,
+            )
+            if not (art.get("characters") or {}).get("player"):
+                raise RuntimeError("The reroll did not produce a usable hero")
+            if not art.get("locations"):
+                raise RuntimeError("The reroll did not produce a usable backdrop")
+            if not art.get("cover"):
+                raise RuntimeError("The reroll did not produce a usable cover")
+
+            publish_staged_world_assets(staging_dir, world_id)
+
+        art = version_world_art_urls(art, attempt_id[:12])
+        attach_art_to_definitions(
+            art,
+            generator_data["player_defs"],
+            generator_data["enemy_defs"],
+            generator_data["celltype_defs"],
+        )
+        db.update_generator_definitions(
+            generator_id=world_id,
+            player_defs=generator_data["player_defs"],
+            enemy_defs=generator_data["enemy_defs"],
+            celltype_defs=generator_data["celltype_defs"],
+        )
+        for translation in db.list_generator_translations(world_id):
+            attach_art_to_definitions(
+                art,
+                translation["player_defs"],
+                translation["enemy_defs"],
+                translation["celltype_defs"],
+            )
+            db.save_generator_translation(
+                generator_id=world_id,
+                language=translation["language"],
+                theme_desc_better=translation["theme_desc_better"],
+                player_defs=translation["player_defs"],
+                item_defs=translation["item_defs"],
+                enemy_defs=translation["enemy_defs"],
+                celltype_defs=translation["celltype_defs"],
+                translation_version=translation["translation_version"],
+            )
+        db.save_generator_visual_manifest(
+            generator_id=world_id,
+            manifest={**manifest, "cover_url": art["cover"]},
+            snapshot_version=WORLD_SNAPSHOT_VERSION,
+        )
+        db.finish_world_art_reroll(attempt_id, succeeded=True)
+        return JSONResponse({
+            "id": world_id,
+            "cover_url": art["cover"],
+            "free_art_rerolls_remaining": 0,
+            "can_reroll_art": False,
+            "message": "World art rerolled.",
+        })
+    except asyncio.TimeoutError:
+        db.finish_world_art_reroll(attempt_id, succeeded=False)
+        return JSONResponse({
+            "error": "The visual reroll timed out. Your free reroll was restored."
+        }, status_code=504)
+    except Exception:
+        logging.exception("World art reroll failed for %s", world_id)
+        db.finish_world_art_reroll(attempt_id, succeeded=False)
+        return JSONResponse({
+            "error": "The visual reroll failed. Your free reroll was restored."
+        }, status_code=502)
+
 @app.get("/api/my/stats")
 async def get_my_stats(request: Request):
     """Return dashboard stats for the logged-in user."""
@@ -1107,6 +1300,7 @@ async def get_my_stats(request: Request):
         return JSONResponse({
             "username": user["username"],
             "stats": db.get_user_world_stats(user_id),
+            "credits": serialize_credit_state(user_id),
         })
     except Exception as e:
         logging.error(f"Error loading user stats: {e}")
@@ -1412,6 +1606,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             return
 
         session = game_session_manager.sessions[session_id]
+        user_id = websocket.session.get("user_id")
+        forge_charge_operation = None
 
         # If game is not created yet, create it now
         if session['status'] == 'creating':
@@ -1424,7 +1620,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             try:
                 request = session['creation_request']
                 seed = request.debug_seed if request.debug_seed is not None else int(time.time())
-                user_id = websocket.session.get("user_id")
 
                 if request.generator_id:
                     # Check if generator exists
@@ -1444,7 +1639,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     language = request.language or generator_data['language']
                     do_web_search = False  # Don't re-do web search for existing generators
                 else:
-                    if is_login_required_to_create_world() and not user_id:
+                    if (
+                            (is_login_required_to_create_world() or is_world_credits_enabled())
+                            and not user_id
+                    ):
                         await websocket.send_json({
                             "type": "error",
                             "message": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE
@@ -1455,6 +1653,26 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     theme_desc = request.theme if request.theme else "fantasy"
                     language = request.language
                     do_web_search = request.do_web_search
+
+                    if is_world_credits_enabled():
+                        forge_charge_operation = f"forge:{session_id}"
+                        charge = db.spend_credits(
+                            user_id=user_id,
+                            amount=get_world_forge_credit_cost(),
+                            kind="world_forge",
+                            operation_key=forge_charge_operation,
+                            reference_type="game_session",
+                            reference_id=session_id,
+                        )
+                        if not charge["spent"]:
+                            await websocket.send_json({
+                                "type": "error",
+                                "code": "insufficient_credits",
+                                "message": "You no longer have enough credits to forge this World.",
+                                "credits": charge["balance"],
+                            })
+                            return
+                        session["forge_charge_operation"] = forge_charge_operation
 
                 await websocket.send_json({
                     "type": "status",
@@ -1484,6 +1702,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         timeout=get_world_creation_timeout_seconds()
                     )
                 except asyncio.TimeoutError:
+                    if forge_charge_operation and user_id:
+                        db.refund_credit_spend(
+                            user_id=user_id,
+                            original_operation_key=forge_charge_operation,
+                            reference_type="game_session",
+                            reference_id=session_id,
+                        )
+                    session['status'] = 'error'
                     await websocket.send_json({
                         "type": "error",
                         "message": "Game creation is taking longer than expected. Please try again with a simpler theme or use an existing generator."
@@ -1505,6 +1731,18 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             except Exception:
                 logging.exception("Error creating game for session %s", session_id)
+                if forge_charge_operation and user_id:
+                    try:
+                        db.refund_credit_spend(
+                            user_id=user_id,
+                            original_operation_key=forge_charge_operation,
+                            reference_type="game_session",
+                            reference_id=session_id,
+                        )
+                    except Exception:
+                        logging.exception(
+                            "Could not refund failed forge for session %s", session_id
+                        )
                 session['status'] = 'error'
                 await websocket.send_json({
                     "type": "error",
@@ -1520,6 +1758,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 "message": "Game not ready"
             })
             return
+
+        world_id = (
+            game_instance.state_manager.generator_id
+            if game_instance.state_manager else None
+        )
+        if world_id:
+            try:
+                db.record_world_play_start(session_id, world_id, user_id)
+            except Exception:
+                logging.exception("Could not record play start for %s", session_id)
 
         # Handle the WebSocket connection with the game instance
         try:
@@ -1547,6 +1795,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 # client reads that as code 1006 and redirects home, so one bad
                 # action ejected the player and lost the whole run.
                 try:
+                    state = getattr(game_instance.state_manager, "state", None)
+                    was_won = bool(getattr(state, "game_won", False))
                     response = await game_instance.handle_message(message)
                 except (WebSocketDisconnect, ConnectionResetError):
                     raise
@@ -1563,6 +1813,31 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 # Add generator_id to response if available
                 if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
                     response['generator_id'] = game_instance.state_manager.generator_id
+
+                state = getattr(game_instance.state_manager, "state", None)
+                is_won = bool(getattr(state, "game_won", False))
+                if not was_won and is_won and world_id:
+                    try:
+                        completion = db.record_world_completion(
+                            session_id=session_id,
+                            generator_id=world_id,
+                            user_id=user_id,
+                            reward_amount=(
+                                get_completion_reward_credits()
+                                if is_world_credits_enabled() else 0
+                            ),
+                            daily_reward_cap=(
+                                get_completion_reward_daily_cap()
+                                if is_world_credits_enabled() else 0
+                            ),
+                        )
+                        completion["rewards_enabled"] = is_world_credits_enabled()
+                        if isinstance(response, dict):
+                            response["completion_reward"] = completion
+                    except Exception:
+                        logging.exception(
+                            "Could not record completion for session %s", session_id
+                        )
 
                 await websocket.send_json(response)
 
@@ -1604,6 +1879,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 async def legacy_websocket_endpoint(websocket: WebSocket):
     """Legacy WebSocket endpoint - creates session on-the-fly for backward compatibility."""
     game_instance = None
+    forge_charge_operation = None
+    user_id = None
     try:
         await websocket.accept()
         logging.info("New WebSocket connection established (legacy)")
@@ -1616,7 +1893,11 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
         do_web_search = session.get("do_web_search", False)
         user_id = websocket.session.get("user_id")
 
-        if not generator_id and is_login_required_to_create_world() and not user_id:
+        if (
+                not generator_id
+                and (is_login_required_to_create_world() or is_world_credits_enabled())
+                and not user_id
+        ):
             await websocket.send_json({
                 "type": "error",
                 "message": LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE
@@ -1633,6 +1914,25 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
         # Create a new Game instance
         rand_seed = int(time.time())
 
+        if not generator_id and is_world_credits_enabled():
+            forge_charge_operation = f"legacy-forge:{uuid.uuid4()}"
+            charge = db.spend_credits(
+                user_id=user_id,
+                amount=get_world_forge_credit_cost(),
+                kind="world_forge",
+                operation_key=forge_charge_operation,
+                reference_type="legacy_websocket",
+                reference_id=forge_charge_operation,
+            )
+            if not charge["spent"]:
+                await websocket.send_json({
+                    "type": "error",
+                    "code": "insufficient_credits",
+                    "message": "You do not have enough credits to forge this World.",
+                    "credits": charge["balance"],
+                })
+                return
+
         # Create game instance using the factory method
         game_instance = await Game.create(
             seed=rand_seed,
@@ -1643,10 +1943,22 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
             owner_id=user_id,
             visibility=get_default_new_world_visibility()
         )
+        # From here the forge succeeded; later socket failures are gameplay
+        # failures and must not refund a completed World.
+        forge_charge_operation = None
 
         # Create session for this game
         session_id = game_session_manager.create_session(game_instance)
         logging.info(f"Created legacy session: {session_id}")
+        world_id = (
+            game_instance.state_manager.generator_id
+            if game_instance.state_manager else None
+        )
+        if world_id:
+            try:
+                db.record_world_play_start(session_id, world_id, user_id)
+            except Exception:
+                logging.exception("Could not record legacy play start for %s", session_id)
 
         try:
             game_instance.add_client(websocket)
@@ -1673,6 +1985,8 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
                 # client reads that as code 1006 and redirects home, so one bad
                 # action ejected the player and lost the whole run.
                 try:
+                    state = getattr(game_instance.state_manager, "state", None)
+                    was_won = bool(getattr(state, "game_won", False))
                     response = await game_instance.handle_message(message)
                 except (WebSocketDisconnect, ConnectionResetError):
                     raise
@@ -1689,6 +2003,31 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
                 # Add generator_id to response if available
                 if game_instance.state_manager and game_instance.state_manager.generator_id and isinstance(response, dict):
                     response['generator_id'] = game_instance.state_manager.generator_id
+
+                state = getattr(game_instance.state_manager, "state", None)
+                is_won = bool(getattr(state, "game_won", False))
+                if not was_won and is_won and world_id:
+                    try:
+                        completion = db.record_world_completion(
+                            session_id=session_id,
+                            generator_id=world_id,
+                            user_id=user_id,
+                            reward_amount=(
+                                get_completion_reward_credits()
+                                if is_world_credits_enabled() else 0
+                            ),
+                            daily_reward_cap=(
+                                get_completion_reward_daily_cap()
+                                if is_world_credits_enabled() else 0
+                            ),
+                        )
+                        completion["rewards_enabled"] = is_world_credits_enabled()
+                        if isinstance(response, dict):
+                            response["completion_reward"] = completion
+                    except Exception:
+                        logging.exception(
+                            "Could not record legacy completion for %s", session_id
+                        )
 
                 await websocket.send_json(response)
 
@@ -1710,6 +2049,16 @@ async def legacy_websocket_endpoint(websocket: WebSocket):
         logging.info("WebSocket disconnected during initialization")
     except Exception:
         logging.exception("WebSocket connection error")
+        if forge_charge_operation and user_id:
+            try:
+                db.refund_credit_spend(
+                    user_id=user_id,
+                    original_operation_key=forge_charge_operation,
+                    reference_type="legacy_websocket",
+                    reference_id=forge_charge_operation,
+                )
+            except Exception:
+                logging.exception("Could not refund failed legacy forge")
         # Send error message to client if possible
         try:
             await websocket.send_json({

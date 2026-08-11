@@ -839,6 +839,282 @@ class WorldApiTests(unittest.TestCase):
             self.assertIsNone(session["generator_id"])
             self.assertTrue(session["creation_request"].do_web_search)
 
+    def test_credit_enabled_forge_charges_when_websocket_starts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+
+            class FakeGame:
+                def __init__(self, world_id):
+                    self.state_manager = SimpleNamespace(
+                        generator_id=world_id,
+                        error_message=None,
+                        state=SimpleNamespace(game_won=False),
+                    )
+
+                def add_client(self, websocket):
+                    pass
+
+                def remove_client(self, websocket):
+                    pass
+
+                async def handle_message(self, message):
+                    return {"type": "update"}
+
+            async def fake_create(**kwargs):
+                world_id = manager.save_generator(
+                    theme_desc=kwargs["theme_desc"],
+                    theme_desc_better="Credit World",
+                    language=kwargs["language"],
+                    player_defs=[],
+                    item_defs=[],
+                    enemy_defs=[],
+                    celltype_defs={},
+                    owner_id=kwargs["owner_id"],
+                    visibility=kwargs["visibility"],
+                )
+                return FakeGame(world_id)
+
+            with patch.object(main, "db", manager), \
+                    patch("main.Game.create", side_effect=fake_create), \
+                    patch.dict(os.environ, {
+                        "ENABLE_WORLD_CREDITS": "1",
+                        "WELCOME_CREDITS": "30",
+                        "WORLD_FORGE_CREDIT_COST": "10",
+                    }):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                signup = client.post("/api/signup", json={
+                    "username": "creditplayer",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                self.assertEqual(signup.json()["credits"]["total"], 30)
+
+                response = client.post("/api/create_game_session", json={
+                    "theme": "A credit world",
+                    "language": "en",
+                })
+                session_id = response.json()["session_id"]
+                self.assertEqual(
+                    manager.get_credit_balance(
+                        manager.get_user_by_username("creditplayer")["id"]
+                    )["total"],
+                    30,
+                )
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "ready")
+                    self.assertEqual(
+                        websocket.receive_json()["type"], "connection_established"
+                    )
+
+                user_id = manager.get_user_by_username("creditplayer")["id"]
+                self.assertEqual(manager.get_credit_balance(user_id)["total"], 20)
+
+    def test_failed_credit_enabled_forge_is_refunded(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+
+            with patch.object(main, "db", manager), \
+                    patch("main.Game.create", side_effect=RuntimeError("forge failed")), \
+                    patch.dict(os.environ, {
+                        "ENABLE_WORLD_CREDITS": "1",
+                        "WELCOME_CREDITS": "30",
+                        "WORLD_FORGE_CREDIT_COST": "10",
+                    }):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                client.post("/api/signup", json={
+                    "username": "refundplayer",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                response = client.post("/api/create_game_session", json={
+                    "theme": "A broken forge",
+                    "language": "en",
+                })
+                session_id = response.json()["session_id"]
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    error = websocket.receive_json()
+
+                user_id = manager.get_user_by_username("refundplayer")["id"]
+                self.assertEqual(error["type"], "error")
+                self.assertEqual(manager.get_credit_balance(user_id)["total"], 30)
+                self.assertEqual(
+                    main.game_session_manager.sessions[session_id]["status"], "error"
+                )
+
+    def test_websocket_win_records_popularity_and_capped_reward_payload(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Reward World",
+                theme_desc_better="Reward World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                visibility="public",
+            )
+
+            class WinningGame:
+                def __init__(self):
+                    self.state_manager = SimpleNamespace(
+                        generator_id=world_id,
+                        error_message=None,
+                        state=SimpleNamespace(game_won=False),
+                    )
+
+                def add_client(self, websocket):
+                    pass
+
+                def remove_client(self, websocket):
+                    pass
+
+                async def handle_message(self, message):
+                    self.state_manager.state.game_won = True
+                    return {"type": "update", "state": {"game_won": True}}
+
+            with patch.object(main, "db", manager), \
+                    patch("main.Game.create", return_value=WinningGame()), \
+                    patch.dict(os.environ, {
+                        "ENABLE_WORLD_CREDITS": "1",
+                        "WELCOME_CREDITS": "30",
+                        "COMPLETION_REWARD_CREDITS": "1",
+                        "COMPLETION_REWARD_DAILY_CAP": "5",
+                    }):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                client.post("/api/signup", json={
+                    "username": "winner",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                response = client.post("/api/create_game_session", json={
+                    "generator_id": world_id,
+                    "language": "en",
+                })
+                session_id = response.json()["session_id"]
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "ready")
+                    websocket.receive_json()
+                    websocket.send_json({"action": "get_initial_state"})
+                    win = websocket.receive_json()
+
+                user_id = manager.get_user_by_username("winner")["id"]
+                reward = win["completion_reward"]
+                self.assertTrue(reward["reward_granted"])
+                self.assertTrue(reward["rewards_enabled"])
+                self.assertEqual(reward["credits_granted"], 1)
+                self.assertEqual(manager.get_credit_balance(user_id)["total"], 31)
+                self.assertEqual(manager.get_world_metrics(world_id), {
+                    "play_count": 1,
+                    "completion_count": 1,
+                    "unique_completer_count": 1,
+                })
+
+    def test_owner_gets_one_free_staged_core_art_reroll(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            owner = manager.create_user("artist", VALID_TEST_PASSWORD)
+            world_id = manager.save_generator(
+                theme_desc="Art World",
+                theme_desc_better="Art World",
+                language="en",
+                player_defs=[{"name": "Hero"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs=[{"id": "street", "name": "Street"}],
+                owner_id=owner["id"],
+                visibility="private",
+            )
+            manifest = {
+                "style": "paper-cut adventure art",
+                "palette": ["#102030", "#405060"],
+                "exclusions": [],
+                "characters": [
+                    {"id": "player", "kind": "player", "identity": "A hero"}
+                ],
+                "locations": [
+                    {"id": "street", "identity": "A moonlit street"}
+                ],
+            }
+            manager.save_generator_visual_manifest(world_id, manifest)
+            manager.save_generator_translation(
+                generator_id=world_id,
+                language="it",
+                theme_desc_better="Mondo d'arte",
+                player_defs=[{"name": "Eroe"}],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs=[{"id": "street", "name": "Strada"}],
+                translation_version=5,
+            )
+
+            async def fake_generate(
+                    visual_manifest, target_world_id, generator=None,
+                    assets_dir=None, on_progress=None, tier=None,
+            ):
+                from PIL import Image
+                from gen_image import save_asset
+
+                image = Image.new("RGBA", (32, 32), (40, 120, 180, 255))
+                frames = {
+                    name: save_asset(
+                        image, target_world_id, f"player-{name}", assets_dir
+                    )
+                    for name in ("neutral", "attack", "defeat")
+                }
+                frames["token"] = save_asset(
+                    image, target_world_id, "player-token", assets_dir
+                )
+                return {
+                    "characters": {"player": frames},
+                    "locations": {
+                        "street": save_asset(
+                            image, target_world_id, "location-street", assets_dir
+                        )
+                    },
+                    "cover": save_asset(
+                        image, target_world_id, "cover", assets_dir
+                    ),
+                }
+
+            assets_dir = os.path.join(tmpdir, "assets")
+            with patch.object(main, "db", manager), \
+                    patch("main.generate_world_art", side_effect=fake_generate), \
+                    patch.dict(os.environ, {
+                        "ENABLE_WORLD_ART": "1",
+                        "WORLD_ASSETS_DIR": assets_dir,
+                    }):
+                client = TestClient(main.app)
+                client.post("/api/login", json={
+                    "username": "artist",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                before = client.get("/api/my/worlds").json()["worlds"][0]
+                first = client.post(f"/api/worlds/{world_id}/art/reroll")
+                second = client.post(f"/api/worlds/{world_id}/art/reroll")
+
+            self.assertTrue(before["can_reroll_art"])
+            self.assertEqual(first.status_code, 200)
+            self.assertFalse(first.json()["can_reroll_art"])
+            self.assertIn("?v=", first.json()["cover_url"])
+            self.assertEqual(second.status_code, 409)
+            stored = manager.get_generator(world_id)
+            self.assertIn("?v=", stored["player_defs"][0]["sprite_url"])
+            translated = manager.get_generator_translation(world_id, "it", 5)
+            self.assertIn("?v=", translated["player_defs"][0]["sprite_url"])
+            self.assertTrue(os.path.exists(
+                os.path.join(assets_dir, world_id, "cover.webp")
+            ))
+
     def test_websocket_rejects_unauthenticated_new_world_when_required(self):
         session_id = "auth-required-session"
         main.game_session_manager.sessions.clear()
@@ -986,6 +1262,9 @@ class WorldApiTests(unittest.TestCase):
             "unlisted_worlds": 1,
             "public_worlds": 1,
             "total_entities": 10,
+            "total_plays": 0,
+            "total_completions": 0,
+            "unique_completers": 0,
         })
 
     def test_websocket_creation_succeeds_for_private_world_owner(self):

@@ -79,18 +79,28 @@ HIGH_SPEC_MODEL_REASONING_EFFORT=low
 # HIGH_SPEC_MODEL_BASE_URL=https://api.openai.com/v1
 
 # World art generation (optional, costs money per forged World).
-# Off by default. Roughly 12 images per World: ~$0.35 at medium quality,
-# ~$0.06 at low. gpt-image-1-mini is removed from the API on 2026-12-01 and
-# gpt-image-1 deprecates 2026-10-23, so neither is a safe default.
+# Off by default. The core tier makes two calls: one medium hero sheet and one
+# low-quality primary backdrop; its token and cover are composed locally.
 ENABLE_WORLD_ART=0
+# WORLD_ART_TIER=core
 # IMAGE_MODEL_NAME=gpt-image-2
 # IMAGE_MODEL_QUALITY=medium
+# IMAGE_CHARACTER_QUALITY=medium
+# IMAGE_BACKDROP_QUALITY=low
 # Falls back to LOW_SPEC_MODEL_API_KEY when unset.
 # IMAGE_MODEL_API_KEY=your_openai_api_key_here
 # IMAGE_MODEL_BASE_URL=https://api.openai.com/v1
 # Generated art lives inside the existing data volume so there is one thing to
 # back up and one thing to move when the app changes hosts.
 # WORLD_ASSETS_DIR=_data/assets
+
+# Credits. Keep disabled until an intentional rollout; playing existing Worlds
+# remains free. A new account receives three core forges at these defaults.
+ENABLE_WORLD_CREDITS=0
+WORLD_FORGE_CREDIT_COST=10
+WELCOME_CREDITS=30
+COMPLETION_REWARD_CREDITS=1
+COMPLETION_REWARD_DAILY_CAP=5
 
 # Search Provider Configuration (optional)
 # Possible providers: duckduckgo, serpapi

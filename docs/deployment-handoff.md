@@ -295,12 +295,20 @@ Added this cycle, all additive:
 | Variable | Default | Notes |
 |---|---|---|
 | `ENABLE_WORLD_ART` | `0` | Off. Every forge costs real money when on. |
+| `WORLD_ART_TIER` | `core` | Core is one hero sheet plus one primary backdrop; `full` draws everything. |
 | `IMAGE_MODEL_NAME` | `gpt-image-2` | See deprecation dates above. |
 | `IMAGE_MODEL_QUALITY` | `medium` | `low` for backdrops is the saving. |
+| `IMAGE_CHARACTER_QUALITY` | inherits `IMAGE_MODEL_QUALITY` | Core default remains medium. |
+| `IMAGE_BACKDROP_QUALITY` | `low` in core | Full inherits `IMAGE_MODEL_QUALITY` unless overridden. |
 | `IMAGE_MODEL_API_KEY` | falls back to `LOW_SPEC_MODEL_API_KEY` | |
 | `IMAGE_MODEL_BASE_URL` | unset | OpenAI-compatible endpoints. |
 | `WORLD_ASSETS_DIR` | `_data/assets` | Inside the data volume on purpose. |
 | `WORLD_CREATION_TIMEOUT_SECONDS` | `60`, or `600` with art | |
+| `ENABLE_WORLD_CREDITS` | `0` | Rollout gate. New forge charging and completion rewards turn on together. |
+| `WORLD_FORGE_CREDIT_COST` | `10` | Existing World play is always free. |
+| `WELCOME_CREDITS` | `30` | Idempotent promotional grant, including existing users on next login. |
+| `COMPLETION_REWARD_CREDITS` | `1` | First completion of a distinct World only. |
+| `COMPLETION_REWARD_DAILY_CAP` | `5` | UTC-day cap per user. |
 
 `ENABLE_LLM_CONTENT_LOGGING` writes prompts and completions to logs. It is off
 by default and should stay off in production; it is a privacy surface.
@@ -575,10 +583,10 @@ Ordered by what blocks what.
 2. **Sample Worlds are `unlisted`**, so they do not appear publicly. Making them
    public runs the moderation review — worth doing deliberately, since they are
    the first Worlds whose baked prose the reviewer will see.
-3. **Backdrops at low quality**, taking a forge from $0.47 to $0.29.
-4. **Rate limiting on forging.** It is the expensive operation and is ungated
-   beyond `REQUIRE_LOGIN_TO_CREATE_WORLD`. This matters before credits exist and
-   much more after.
+3. **Paid credit packs and mobile IAP.** The ledger and free economy exist, but
+   there is not yet a Stripe, StoreKit, or Play Billing purchase path.
+4. **Creator milestone policy.** Qualified unique completers are tracked and
+   shown, but the thresholds and credit payouts need an explicit product choice.
 5. **Frontend coverage is not in CI**, and reaches only the landing page and
    movement. See section 13: the browser tests exist and catch what a green
    Python suite cannot, but nothing runs them automatically, and combat,
@@ -587,3 +595,36 @@ Ordered by what blocks what.
 7. Smaller: the local-dev Quick Start button points at a retired World; the
     location name can appear three times on one screen; `_data/assets/efea0944/`
     holds orphaned art from a deleted test World.
+
+---
+
+## 15. Phase 5 credit foundation
+
+Implemented behind `ENABLE_WORLD_CREDITS=0`:
+
+- An append-only SQLite ledger with separate promotional and paid buckets.
+  Spending is atomic, consumes promotional credits first, and is idempotent by
+  operation key.
+- A new World charges when its WebSocket actually starts forging, not when the
+  landing page allocates an in-memory session. An ordinary timeout or exception
+  appends a matching refund into the same buckets. Existing World play never
+  spends credits.
+- Welcome grants are idempotent. With defaults, a user starts at 30 credits and
+  a core forge costs 10.
+- A server-qualified first completion of a distinct World awards 1 promotional
+  credit, at most 5 times per UTC day. Replays and reconnects cannot farm the
+  reward.
+- `world_play_sessions`, `world_metrics`, and distinct player-completion rows
+  track plays, clears, and qualified unique completers. A creator completing
+  their own World counts as a clear but not as a unique popularity signal.
+- The owner has one free core-art reroll. It generates into a temporary staging
+  directory, publishes only a complete hero/backdrop/cover bundle, cache-busts
+  the persisted URLs, and restores the allowance on technical failure.
+- The lobby shows the balance and forge price, disables an unaffordable forge,
+  exposes creator popularity, and reports the capped completion reward on the
+  victory screen.
+
+The database tables are additive and created by `init_db`; no one-off migration
+command is required. It is safe to deploy with both rollout flags off. Enabling
+credits before paid packs intentionally creates a free-only beta: users get
+three forges plus capped play rewards, but have no purchase path after that.

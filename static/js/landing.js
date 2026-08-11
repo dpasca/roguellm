@@ -42,6 +42,7 @@ const app = Vue.createApp({
             isAccountPanelOpen: false,
             isWorldCodePanelOpen: false,
             worldMenuId: null,
+            rerollingWorldId: null,
             isAuthenticating: false,
             publicReviewDialog: {
                 isOpen: false,
@@ -146,24 +147,53 @@ const app = Vue.createApp({
         },
         dashboardStats() {
             const stats = this.accountStats || {};
-            return [
+            const dashboardStats = [
                 {
                     label: this.t('dashboardWorlds'),
                     value: stats.total_worlds || 0
                 },
                 {
-                    label: this.t('dashboardPrivate'),
-                    value: stats.private_worlds || 0
+                    label: this.t('dashboardPlays'),
+                    value: stats.total_plays || 0
                 },
                 {
-                    label: this.t('dashboardPublic'),
-                    value: stats.public_worlds || 0
+                    label: this.t('dashboardCompletions'),
+                    value: stats.total_completions || 0
                 },
                 {
-                    label: this.t('dashboardEntities'),
-                    value: stats.total_entities || 0
+                    label: this.t('dashboardPlayers'),
+                    value: stats.unique_completers || 0
                 }
             ];
+            if (this.currentUser?.credits?.enabled) {
+                dashboardStats.unshift({
+                    label: this.t('dashboardCredits'),
+                    value: this.currentUser.credits.total || 0
+                });
+            }
+            return dashboardStats;
+        },
+        canAffordForge() {
+            const credits = this.currentUser?.credits;
+            return !credits?.enabled || credits.total >= credits.forge_cost;
+        },
+        forgeHint() {
+            const credits = this.currentUser?.credits;
+            if (!credits?.enabled) {
+                return this.currentUser
+                    ? this.t('customSaveHintSignedIn')
+                    : this.t('customSaveHintAnonymous');
+            }
+            if (!this.canAffordForge) {
+                return this.t('forgeCreditsInsufficient', {
+                    credits: credits.total,
+                    cost: credits.forge_cost
+                });
+            }
+            return this.t('forgeCreditsHint', {
+                credits: credits.total,
+                cost: credits.forge_cost
+            });
         },
         requiresAuthForSelectedCreation() {
             return !this.currentUser && this.selectedTheme !== 'world' && !this.isLocalDev;
@@ -180,6 +210,10 @@ const app = Vue.createApp({
         forgeButtonLabel() {
             if (this.requiresAuthForSelectedCreation) {
                 return this.t('signupToCreate');
+            }
+            const credits = this.currentUser?.credits;
+            if (credits?.enabled) {
+                return this.t('createWorldCredits', { credits: credits.forge_cost });
             }
             return this.t('createWorld');
         }
@@ -333,6 +367,13 @@ const app = Vue.createApp({
                 enemies: world.enemy_count,
                 items: world.item_count,
                 terrain: world.terrain_count
+            });
+        },
+        formatWorldPopularity(world) {
+            return this.t('worldPopularity', {
+                plays: world.play_count || 0,
+                completions: world.completion_count || 0,
+                players: world.unique_completer_count || 0
             });
         },
         worldVisibilityLabel(world) {
@@ -675,6 +716,9 @@ const app = Vue.createApp({
                 }
                 const data = await response.json();
                 this.accountStats = data.stats || null;
+                if (data.credits && this.currentUser) {
+                    this.currentUser = { ...this.currentUser, credits: data.credits };
+                }
             } catch (error) {
                 console.warn('Account stats unavailable:', error);
                 this.accountStats = null;
@@ -783,6 +827,32 @@ const app = Vue.createApp({
             } catch (error) {
                 console.warn('Clipboard unavailable:', error);
                 this.infoMessage = shareUrl.toString();
+            }
+        },
+        async rerollWorldArt(world) {
+            if (!world?.can_reroll_art || this.rerollingWorldId) return;
+            if (!window.confirm(this.t('rerollArtConfirm'))) return;
+
+            this.clearError();
+            this.clearInfo();
+            this.rerollingWorldId = world.id;
+            try {
+                const response = await fetch(`/api/worlds/${world.id}/art/reroll`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    throw new Error(await this.responseErrorMessage(
+                        response, this.t('rerollArtFailed')
+                    ));
+                }
+
+                const data = await response.json();
+                this.replaceWorldInLists({ ...world, ...data });
+                this.infoMessage = this.t('rerollArtComplete');
+            } catch (error) {
+                this.errorMessage = error.message || this.t('rerollArtFailed');
+            } finally {
+                this.rerollingWorldId = null;
             }
         },
         replaceWorldInLists(updatedWorld) {

@@ -10,6 +10,11 @@
   },
   "// Theme Selection": "テーマ選択関連の翻訳",
   "account": "アカウント",
+  "dashboardCredits": "クレジット",
+  "dashboardWorlds": "ワールド",
+  "dashboardPlays": "プレイ",
+  "dashboardCompletions": "クリア",
+  "dashboardPlayers": "プレイヤー",
   "selectTheme": "テーマを選択してください",
   "fantasyTheme": "ファンタジーテーマ",
   "customTheme": "カスタムテーマ",
@@ -35,7 +40,17 @@
   "worldContents": "内容",
   "worldDetails": "ワールド詳細",
   "worldCounts": "敵 {enemies} · アイテム {items} · 地形 {terrain}",
+  "worldPopularity": "{plays} プレイ · {completions} クリア · {players} 人",
+  "worldPopularityLabel": "人気",
+  "createWorldCredits": "ワールド作成 · {credits} クレジット",
+  "forgeCreditsHint": "このワールドは {cost} クレジットです。残高は {credits} です。",
+  "forgeCreditsInsufficient": "作成には {cost} クレジット必要です。残高は {credits} です。",
   "quickStartPiedone": "クイック開始: Piedone",
+  "rerollArtFree": "アート再生成 · 無料",
+  "rerollingArt": "アートを再生成中…",
+  "rerollArtConfirm": "ヒーローと背景を置き換えますか？このワールドで1回だけの無料再生成を使います。",
+  "rerollArtComplete": "ワールドアートを再生成しました。",
+  "rerollArtFailed": "ワールドアートを再生成できませんでした",
   "// Game Interface": "ゲーム内インターフェースの翻訳",
   "menu": {
     "home": "ホーム",
@@ -86,7 +101,9 @@
     "defeatTitle": "今回の旅はここまで",
     "defeatBody": "世界はあなたの歩みを覚えています。別の道を試すか、新しい冒険を選びましょう。",
     "finalMoments": "最後の出来事",
-    "chooseWorld": "別のワールドを選ぶ"
+    "chooseWorld": "別のワールドを選ぶ",
+    "creditReward": "新しいワールドのクリア報酬：+{credits} クレジット。残高：{balance}。",
+    "creditCapReached": "本日のクレジット報酬上限に達しました。クリア記録は残ります。"
   },
   "combat": {
     "stats": {

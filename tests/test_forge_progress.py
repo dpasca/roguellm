@@ -38,7 +38,7 @@ class RecordingGenerator:
         image.paste(Image.new("RGBA", (16, 16), (200, 60, 60, 255)), (8, 8))
         return image
 
-    async def generate_character(self, identity, style):
+    async def generate_character(self, identity, style, quality=None):
         if any(bad in identity for bad in self.fail_ids):
             raise RuntimeError("generation failed")
         return {
@@ -46,7 +46,7 @@ class RecordingGenerator:
             "token": self._swatch(),
         }
 
-    async def generate_backdrop(self, identity, style):
+    async def generate_backdrop(self, identity, style, quality=None):
         return Image.new("RGBA", (64, 48), (20, 30, 50, 255))
 
 
@@ -66,6 +66,7 @@ class ForgeProgressTests(unittest.IsolatedAsyncioTestCase):
             generator=generator,
             assets_dir=tmpdir,
             on_progress=on_progress,
+            tier="full",
         )
         return events
 
@@ -94,13 +95,15 @@ class ForgeProgressTests(unittest.IsolatedAsyncioTestCase):
         peak = 0
 
         class SlowGenerator(RecordingGenerator):
-            async def generate_character(self, identity, style):
+            async def generate_character(self, identity, style, quality=None):
                 nonlocal in_flight, peak
                 in_flight += 1
                 peak = max(peak, in_flight)
                 try:
                     await asyncio.sleep(0.02)
-                    return await RecordingGenerator.generate_character(self, identity, style)
+                    return await RecordingGenerator.generate_character(
+                        self, identity, style, quality=quality
+                    )
                 finally:
                     in_flight -= 1
 
@@ -143,6 +146,7 @@ class ForgeProgressTests(unittest.IsolatedAsyncioTestCase):
                 generator=RecordingGenerator(),
                 assets_dir=tmpdir,
                 on_progress=exploding,
+                tier="full",
             )
 
         self.assertEqual(set(art["characters"]), {"player", "punk", "boss"})

@@ -389,6 +389,29 @@
     margin: 0;
 }
 
+.run-end-credit-reward {
+    align-items: center;
+    background: rgba(32, 77, 67, 0.55);
+    border: 1px solid #4d9e86;
+    border-radius: 10px;
+    color: #d8fff1;
+    display: flex;
+    font-size: 0.82rem;
+    gap: 10px;
+    line-height: 1.4;
+    padding: 10px 12px;
+}
+
+.run-end-credit-reward i {
+    color: #ffcf67;
+}
+
+.run-end-credit-reward.is-capped {
+    background: rgba(56, 57, 63, 0.55);
+    border-color: #596971;
+    color: #c1cdd1;
+}
+
 .run-end-objective {
     align-items: end;
     background: rgba(6, 15, 20, 0.8);

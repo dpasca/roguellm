@@ -303,6 +303,81 @@ class DatabaseManager:
             self._ensure_column(conn, "users", "password_reset_required", "INTEGER NOT NULL DEFAULT 0")
             self._ensure_column(conn, "users", "password_reset_marked_at", "TIMESTAMP NULL")
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS credit_ledger (
+                    id TEXT PRIMARY KEY,
+                    operation_key TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    bucket TEXT NOT NULL CHECK (bucket IN ('promo', 'paid')),
+                    amount INTEGER NOT NULL CHECK (amount != 0),
+                    kind TEXT NOT NULL,
+                    reference_type TEXT NULL,
+                    reference_id TEXT NULL,
+                    metadata TEXT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (operation_key, bucket),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created
+                ON credit_ledger(user_id, created_at)
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS world_metrics (
+                    generator_id TEXT PRIMARY KEY,
+                    play_count INTEGER NOT NULL DEFAULT 0,
+                    completion_count INTEGER NOT NULL DEFAULT 0,
+                    unique_completer_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS world_play_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    generator_id TEXT NOT NULL,
+                    user_id TEXT NULL,
+                    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP NULL,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_world_play_sessions_generator
+                ON world_play_sessions(generator_id, started_at)
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS world_player_completions (
+                    user_id TEXT NOT NULL,
+                    generator_id TEXT NOT NULL,
+                    first_session_id TEXT NOT NULL,
+                    qualifies_for_popularity INTEGER NOT NULL DEFAULT 1,
+                    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, generator_id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS world_art_reroll_attempts (
+                    id TEXT PRIMARY KEY,
+                    generator_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    status TEXT NOT NULL CHECK (
+                        status IN ('reserved', 'succeeded', 'failed')
+                    ),
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    finished_at TIMESTAMP NULL,
+                    FOREIGN KEY (generator_id) REFERENCES generators(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_world_art_rerolls_world_user
+                ON world_art_reroll_attempts(generator_id, user_id, status)
+            """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS world_moderation_reviews (
                     id TEXT PRIMARY KEY,
                     generator_id TEXT NOT NULL,
@@ -775,6 +850,30 @@ class DatabaseManager:
 
         return self._execute_with_retry(_get, generator_id, language, translation_version)
 
+    def list_generator_translations(self, generator_id: str) -> List[Dict]:
+        """Return every cached language view so shared art URLs can be updated."""
+        def _list(conn, target_generator_id):
+            rows = conn.execute("""
+                SELECT language, theme_desc_better, player_defs, item_defs,
+                       enemy_defs, celltype_defs, translation_version
+                FROM generator_translations
+                WHERE generator_id = ?
+            """, (target_generator_id,)).fetchall()
+            return [
+                {
+                    "language": row[0],
+                    "theme_desc_better": row[1],
+                    "player_defs": json.loads(row[2]),
+                    "item_defs": json.loads(row[3]),
+                    "enemy_defs": json.loads(row[4]),
+                    "celltype_defs": json.loads(row[5]),
+                    "translation_version": int(row[6] or 1),
+                }
+                for row in rows
+            ]
+
+        return self._execute_with_retry(_list, generator_id)
+
     def save_generator_translation(
             self,
             generator_id: str,
@@ -1216,6 +1315,21 @@ class DatabaseManager:
                 manifest_select = "NULL AS visual_manifest"
                 manifest_join = ""
 
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='world_metrics'"
+            )
+            has_metrics_table = cur.fetchone() is not None
+            if has_metrics_table:
+                metrics_select = """
+                    COALESCE(m.play_count, 0),
+                    COALESCE(m.completion_count, 0),
+                    COALESCE(m.unique_completer_count, 0)
+                """
+                metrics_join = "LEFT JOIN world_metrics m ON m.generator_id = g.id"
+            else:
+                metrics_select = "0, 0, 0"
+                metrics_join = ""
+
             # Left join so a World without art still lists; the gallery falls
             # back to a text card for those.
             cur.execute(f"""
@@ -1227,9 +1341,10 @@ class DatabaseManager:
                        {moderation_model_select}, {moderation_confidence_select},
                        {moderation_categories_select}, {public_requested_at_select},
                        {public_review_after_select}, {public_reviewed_at_select},
-                       {manifest_select}
+                       {manifest_select}, {metrics_select}
                 FROM generators g
                 {manifest_join}
+                {metrics_join}
                 WHERE {where_clause}
                 ORDER BY {order_by}
                 LIMIT ?
@@ -1264,6 +1379,9 @@ class DatabaseManager:
                     "public_review_after": row[18],
                     "public_reviewed_at": row[19],
                     "cover_url": self._cover_url_from_manifest(row[20]),
+                    "play_count": int(row[21] or 0),
+                    "completion_count": int(row[22] or 0),
+                    "unique_completer_count": int(row[23] or 0),
                 })
 
             return worlds
@@ -1304,6 +1422,9 @@ class DatabaseManager:
                     "unlisted_worlds": 0,
                     "public_worlds": 0,
                     "total_entities": 0,
+                    "total_plays": 0,
+                    "total_completions": 0,
+                    "unique_completers": 0,
                 }
 
             visibility_select = "visibility" if "visibility" in columns else "'unlisted' AS visibility"
@@ -1319,6 +1440,9 @@ class DatabaseManager:
                 "unlisted_worlds": 0,
                 "public_worlds": 0,
                 "total_entities": 0,
+                "total_plays": 0,
+                "total_completions": 0,
+                "unique_completers": 0,
             }
             for row in cur.fetchall():
                 visibility = row[0] or "unlisted"
@@ -1337,9 +1461,494 @@ class DatabaseManager:
                     + self._json_mapping_size(row[4])
                 )
 
+            has_metrics = cur.execute("""
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'world_metrics'
+            """).fetchone()
+            if has_metrics:
+                metrics = cur.execute("""
+                    SELECT
+                        COALESCE(SUM(m.play_count), 0),
+                        COALESCE(SUM(m.completion_count), 0),
+                        COALESCE(SUM(m.unique_completer_count), 0)
+                    FROM generators g
+                    LEFT JOIN world_metrics m ON m.generator_id = g.id
+                    WHERE g.owner_id = ?
+                """, (owner_id,)).fetchone()
+                stats["total_plays"] = int(metrics[0] or 0)
+                stats["total_completions"] = int(metrics[1] or 0)
+                stats["unique_completers"] = int(metrics[2] or 0)
+
             return stats
 
         return self._execute_with_retry(_stats, owner_id)
+
+    @staticmethod
+    def _credit_balance_from_connection(conn, user_id: str) -> Dict[str, int]:
+        row = conn.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN bucket = 'promo' THEN amount ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN bucket = 'paid' THEN amount ELSE 0 END), 0)
+            FROM credit_ledger
+            WHERE user_id = ?
+        """, (user_id,)).fetchone()
+        promo = int(row[0] or 0)
+        paid = int(row[1] or 0)
+        return {"promo": promo, "paid": paid, "total": promo + paid}
+
+    def get_credit_balance(self, user_id: str) -> Dict[str, int]:
+        return self._execute_with_retry(
+            lambda conn, target_user_id: self._credit_balance_from_connection(
+                conn, target_user_id
+            ),
+            user_id,
+        )
+
+    def grant_credits(
+            self,
+            user_id: str,
+            amount: int,
+            kind: str,
+            operation_key: str,
+            bucket: str = "promo",
+            reference_type: Optional[str] = None,
+            reference_id: Optional[str] = None,
+            metadata: Optional[Dict] = None,
+    ) -> Dict:
+        """Append one idempotent positive ledger entry."""
+        if amount <= 0:
+            raise ValueError("Credit grants must be positive")
+        if bucket not in {"promo", "paid"}:
+            raise ValueError("Credit bucket must be 'promo' or 'paid'")
+
+        def _grant(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute("""
+                SELECT id
+                FROM credit_ledger
+                WHERE operation_key = ? AND bucket = ?
+            """, (operation_key, bucket)).fetchone()
+            applied = existing is None
+            if applied:
+                conn.execute("""
+                    INSERT INTO credit_ledger (
+                        id, operation_key, user_id, bucket, amount, kind,
+                        reference_type, reference_id, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()), operation_key, user_id, bucket, amount, kind,
+                    reference_type, reference_id,
+                    json.dumps(metadata, sort_keys=True) if metadata else None,
+                ))
+
+            balance = self._credit_balance_from_connection(conn, user_id)
+            conn.commit()
+            return {"applied": applied, "amount": amount, "balance": balance}
+
+        return self._execute_with_retry(_grant)
+
+    def spend_credits(
+            self,
+            user_id: str,
+            amount: int,
+            kind: str,
+            operation_key: str,
+            reference_type: Optional[str] = None,
+            reference_id: Optional[str] = None,
+            metadata: Optional[Dict] = None,
+    ) -> Dict:
+        """Atomically spend promo credits first, then paid credits.
+
+        The spend is itself append-only. Calling this again with the same
+        operation key returns the original successful result without charging
+        twice.
+        """
+        if amount < 0:
+            raise ValueError("Credit spend cannot be negative")
+        if amount == 0:
+            balance = self.get_credit_balance(user_id)
+            return {
+                "spent": True, "applied": False, "amount": 0,
+                "operation_key": operation_key, "balance": balance,
+            }
+
+        def _spend(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            existing_rows = conn.execute("""
+                SELECT amount
+                FROM credit_ledger
+                WHERE operation_key = ? AND user_id = ? AND amount < 0
+            """, (operation_key, user_id)).fetchall()
+            if existing_rows:
+                charged = -sum(int(row[0]) for row in existing_rows)
+                balance = self._credit_balance_from_connection(conn, user_id)
+                conn.commit()
+                return {
+                    "spent": True, "applied": False, "amount": charged,
+                    "operation_key": operation_key, "balance": balance,
+                }
+
+            balance = self._credit_balance_from_connection(conn, user_id)
+            if balance["total"] < amount:
+                conn.rollback()
+                return {
+                    "spent": False, "applied": False, "amount": amount,
+                    "operation_key": operation_key, "balance": balance,
+                }
+
+            promo_amount = min(balance["promo"], amount)
+            paid_amount = amount - promo_amount
+            metadata_json = json.dumps(metadata, sort_keys=True) if metadata else None
+            for bucket, bucket_amount in (
+                    ("promo", promo_amount),
+                    ("paid", paid_amount),
+            ):
+                if not bucket_amount:
+                    continue
+                conn.execute("""
+                    INSERT INTO credit_ledger (
+                        id, operation_key, user_id, bucket, amount, kind,
+                        reference_type, reference_id, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()), operation_key, user_id, bucket,
+                    -bucket_amount, kind, reference_type, reference_id,
+                    metadata_json,
+                ))
+
+            updated_balance = self._credit_balance_from_connection(conn, user_id)
+            conn.commit()
+            return {
+                "spent": True, "applied": True, "amount": amount,
+                "operation_key": operation_key, "balance": updated_balance,
+            }
+
+        return self._execute_with_retry(_spend)
+
+    def refund_credit_spend(
+            self,
+            user_id: str,
+            original_operation_key: str,
+            kind: str = "technical_refund",
+            reference_type: Optional[str] = None,
+            reference_id: Optional[str] = None,
+    ) -> Optional[Dict]:
+        """Reverse an earlier spend into the exact buckets it came from."""
+        refund_operation_key = f"refund:{original_operation_key}"
+
+        def _refund(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            existing_rows = conn.execute("""
+                SELECT amount
+                FROM credit_ledger
+                WHERE operation_key = ? AND user_id = ? AND amount > 0
+            """, (refund_operation_key, user_id)).fetchall()
+            if existing_rows:
+                balance = self._credit_balance_from_connection(conn, user_id)
+                conn.commit()
+                return {
+                    "refunded": True, "applied": False,
+                    "amount": sum(int(row[0]) for row in existing_rows),
+                    "operation_key": refund_operation_key, "balance": balance,
+                }
+
+            spent_rows = conn.execute("""
+                SELECT bucket, amount
+                FROM credit_ledger
+                WHERE operation_key = ? AND user_id = ? AND amount < 0
+            """, (original_operation_key, user_id)).fetchall()
+            if not spent_rows:
+                conn.rollback()
+                return None
+
+            refunded_amount = 0
+            for bucket, raw_amount in spent_rows:
+                amount = -int(raw_amount)
+                refunded_amount += amount
+                conn.execute("""
+                    INSERT INTO credit_ledger (
+                        id, operation_key, user_id, bucket, amount, kind,
+                        reference_type, reference_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(uuid.uuid4()), refund_operation_key, user_id, bucket,
+                    amount, kind, reference_type, reference_id,
+                ))
+
+            balance = self._credit_balance_from_connection(conn, user_id)
+            conn.commit()
+            return {
+                "refunded": True, "applied": True, "amount": refunded_amount,
+                "operation_key": refund_operation_key, "balance": balance,
+            }
+
+        return self._execute_with_retry(_refund)
+
+    @staticmethod
+    def _world_metrics_from_connection(conn, generator_id: str) -> Dict[str, int]:
+        row = conn.execute("""
+            SELECT play_count, completion_count, unique_completer_count
+            FROM world_metrics
+            WHERE generator_id = ?
+        """, (generator_id,)).fetchone()
+        if row is None:
+            return {
+                "play_count": 0,
+                "completion_count": 0,
+                "unique_completer_count": 0,
+            }
+        return {
+            "play_count": int(row[0] or 0),
+            "completion_count": int(row[1] or 0),
+            "unique_completer_count": int(row[2] or 0),
+        }
+
+    def get_world_metrics(self, generator_id: str) -> Dict[str, int]:
+        return self._execute_with_retry(
+            lambda conn, world_id: self._world_metrics_from_connection(conn, world_id),
+            generator_id,
+        )
+
+    def record_world_play_start(
+            self,
+            session_id: str,
+            generator_id: str,
+            user_id: Optional[str],
+    ) -> Dict:
+        """Count a run once even when its WebSocket reconnects."""
+        def _record(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            cur = conn.execute("""
+                INSERT OR IGNORE INTO world_play_sessions (
+                    session_id, generator_id, user_id
+                ) VALUES (?, ?, ?)
+            """, (session_id, generator_id, user_id))
+            applied = cur.rowcount > 0
+            if applied:
+                conn.execute("""
+                    INSERT INTO world_metrics (generator_id, play_count)
+                    VALUES (?, 1)
+                    ON CONFLICT(generator_id) DO UPDATE SET
+                        play_count = play_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                """, (generator_id,))
+
+            metrics = self._world_metrics_from_connection(conn, generator_id)
+            conn.commit()
+            return {"applied": applied, **metrics}
+
+        return self._execute_with_retry(_record)
+
+    def record_world_completion(
+            self,
+            session_id: str,
+            generator_id: str,
+            user_id: Optional[str],
+            reward_amount: int = 0,
+            daily_reward_cap: int = 0,
+    ) -> Dict:
+        """Record a server-qualified win and its optional capped reward."""
+        reward_amount = max(0, reward_amount)
+        daily_reward_cap = max(0, daily_reward_cap)
+
+        def _record(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            play_cur = conn.execute("""
+                INSERT OR IGNORE INTO world_play_sessions (
+                    session_id, generator_id, user_id
+                ) VALUES (?, ?, ?)
+            """, (session_id, generator_id, user_id))
+            if play_cur.rowcount > 0:
+                conn.execute("""
+                    INSERT INTO world_metrics (generator_id, play_count)
+                    VALUES (?, 1)
+                    ON CONFLICT(generator_id) DO UPDATE SET
+                        play_count = play_count + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                """, (generator_id,))
+
+            completed_at = conn.execute("""
+                SELECT completed_at
+                FROM world_play_sessions
+                WHERE session_id = ?
+            """, (session_id,)).fetchone()
+            if completed_at and completed_at[0] is not None:
+                metrics = self._world_metrics_from_connection(conn, generator_id)
+                balance = (
+                    self._credit_balance_from_connection(conn, user_id)
+                    if user_id else None
+                )
+                conn.commit()
+                return {
+                    "applied": False,
+                    "reward_granted": False,
+                    "credits_granted": 0,
+                    "balance": balance,
+                    **metrics,
+                }
+
+            conn.execute("""
+                UPDATE world_play_sessions
+                SET completed_at = CURRENT_TIMESTAMP
+                WHERE session_id = ?
+            """, (session_id,))
+            conn.execute("""
+                INSERT INTO world_metrics (generator_id, completion_count)
+                VALUES (?, 1)
+                ON CONFLICT(generator_id) DO UPDATE SET
+                    completion_count = completion_count + 1,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (generator_id,))
+
+            first_distinct_completion = False
+            if user_id:
+                owner_row = conn.execute(
+                    "SELECT owner_id FROM generators WHERE id = ?",
+                    (generator_id,),
+                ).fetchone()
+                owner_id = owner_row[0] if owner_row else None
+                qualifies_for_popularity = int(owner_id != user_id)
+                completion_cur = conn.execute("""
+                    INSERT OR IGNORE INTO world_player_completions (
+                        user_id, generator_id, first_session_id,
+                        qualifies_for_popularity
+                    ) VALUES (?, ?, ?, ?)
+                """, (
+                    user_id, generator_id, session_id,
+                    qualifies_for_popularity,
+                ))
+                first_distinct_completion = completion_cur.rowcount > 0
+                if first_distinct_completion and qualifies_for_popularity:
+                    conn.execute("""
+                        UPDATE world_metrics
+                        SET unique_completer_count = unique_completer_count + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE generator_id = ?
+                    """, (generator_id,))
+
+            reward_granted = False
+            credits_granted = 0
+            daily_reward_count = 0
+            if user_id:
+                daily_reward_count = int(conn.execute("""
+                    SELECT COUNT(DISTINCT operation_key)
+                    FROM credit_ledger
+                    WHERE user_id = ?
+                      AND kind = 'play_completion_reward'
+                      AND amount > 0
+                      AND DATE(created_at) = DATE('now')
+                """, (user_id,)).fetchone()[0] or 0)
+
+            if (
+                    user_id
+                    and first_distinct_completion
+                    and reward_amount > 0
+                    and daily_reward_count < daily_reward_cap
+            ):
+                operation_key = f"completion_reward:{user_id}:{generator_id}"
+                conn.execute("""
+                    INSERT INTO credit_ledger (
+                        id, operation_key, user_id, bucket, amount, kind,
+                        reference_type, reference_id
+                    ) VALUES (?, ?, ?, 'promo', ?, 'play_completion_reward',
+                              'world', ?)
+                """, (
+                    str(uuid.uuid4()), operation_key, user_id,
+                    reward_amount, generator_id,
+                ))
+                reward_granted = True
+                credits_granted = reward_amount
+                daily_reward_count += 1
+
+            metrics = self._world_metrics_from_connection(conn, generator_id)
+            balance = (
+                self._credit_balance_from_connection(conn, user_id)
+                if user_id else None
+            )
+            conn.commit()
+            return {
+                "applied": True,
+                "first_distinct_completion": first_distinct_completion,
+                "reward_granted": reward_granted,
+                "credits_granted": credits_granted,
+                "daily_rewards_remaining": max(
+                    0, daily_reward_cap - daily_reward_count
+                ),
+                "balance": balance,
+                **metrics,
+            }
+
+        return self._execute_with_retry(_record)
+
+    def reserve_free_world_art_reroll(
+            self,
+            generator_id: str,
+            user_id: str,
+    ) -> Optional[str]:
+        """Reserve the one free visual reroll without allowing double clicks."""
+        attempt_id = str(uuid.uuid4())
+
+        def _reserve(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            # A dead process must not consume the allowance forever. Image
+            # generation has a much shorter timeout than this stale window.
+            conn.execute("""
+                UPDATE world_art_reroll_attempts
+                SET status = 'failed', finished_at = CURRENT_TIMESTAMP
+                WHERE generator_id = ? AND user_id = ?
+                  AND status = 'reserved'
+                  AND created_at < DATETIME('now', '-30 minutes')
+            """, (generator_id, user_id))
+            used_or_active = conn.execute("""
+                SELECT 1
+                FROM world_art_reroll_attempts
+                WHERE generator_id = ? AND user_id = ?
+                  AND status IN ('reserved', 'succeeded')
+                LIMIT 1
+            """, (generator_id, user_id)).fetchone()
+            if used_or_active:
+                conn.rollback()
+                return None
+
+            conn.execute("""
+                INSERT INTO world_art_reroll_attempts (
+                    id, generator_id, user_id, status
+                ) VALUES (?, ?, ?, 'reserved')
+            """, (attempt_id, generator_id, user_id))
+            conn.commit()
+            return attempt_id
+
+        return self._execute_with_retry(_reserve)
+
+    def finish_world_art_reroll(self, attempt_id: str, succeeded: bool) -> bool:
+        def _finish(conn):
+            cur = conn.execute("""
+                UPDATE world_art_reroll_attempts
+                SET status = ?, finished_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND status = 'reserved'
+            """, ("succeeded" if succeeded else "failed", attempt_id))
+            conn.commit()
+            return cur.rowcount > 0
+
+        return self._execute_with_retry(_finish)
+
+    def get_free_world_art_rerolls_remaining(
+            self,
+            generator_id: str,
+            user_id: str,
+    ) -> int:
+        def _remaining(conn):
+            row = conn.execute("""
+                SELECT 1
+                FROM world_art_reroll_attempts
+                WHERE generator_id = ? AND user_id = ?
+                  AND status IN ('reserved', 'succeeded')
+                LIMIT 1
+            """, (generator_id, user_id)).fetchone()
+            return 0 if row else 1
+
+        return self._execute_with_retry(_remaining)
 
     def list_users_with_world_counts(self, limit: int = 100) -> List[Dict]:
         """Return registered users with admin-safe world count metadata."""

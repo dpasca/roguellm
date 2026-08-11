@@ -132,6 +132,21 @@ LOW_SPEC_MODEL_API_KEY=<your_api_key>
 HIGH_SPEC_MODEL_API_KEY=<your_api_key>
 ```
 
+## World Art and Credits
+
+Both paid features are rollout-gated. `ENABLE_WORLD_ART=1` generates the core
+bundle by default: one medium-quality hero sheet and one low-quality primary
+backdrop, with the map token and gallery cover composed locally. Set
+`WORLD_ART_TIER=full` only when the larger all-character/all-location bundle is
+intentional.
+
+`ENABLE_WORLD_CREDITS=1` charges 10 credits for forging a new World; playing an
+existing World stays free. New accounts receive 30 promotional credits, a
+technical forge failure is refunded automatically, and completing a distinct
+World earns 1 credit up to 5 times per UTC day. See `_env.example` for the
+individual overrides. Paid credit packs are not implemented yet, so production
+should leave the flag off unless the free-only beta behavior is deliberate.
+
 ## Search Provider Configuration
 
 *RogueLLM* uses web search to improve newly generated game descriptions.

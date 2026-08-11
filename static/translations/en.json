@@ -29,6 +29,10 @@
     "guestUser": "Guest",
     "dashboardWelcome": "{username}'s Worlds",
     "dashboardWorlds": "Worlds",
+    "dashboardCredits": "Credits",
+    "dashboardPlays": "Plays",
+    "dashboardCompletions": "Clears",
+    "dashboardPlayers": "Players",
     "dashboardPrivate": "Private",
     "dashboardPublic": "Public",
     "dashboardEntities": "Entities",
@@ -44,6 +48,9 @@
     "landingModes": "Landing modes",
     "playWorlds": "Play Worlds",
     "createWorld": "Create World",
+    "createWorldCredits": "Create World · {credits} credits",
+    "forgeCreditsHint": "This World costs {cost} credits. You have {credits}.",
+    "forgeCreditsInsufficient": "You need {cost} credits to forge. You have {credits}.",
     "selectTheme": "Select Your Theme",
     "fantasyTheme": "Fantasy Theme",
     "customTheme": "Custom Theme",
@@ -78,6 +85,8 @@
     "worldContents": "Contents",
     "worldDetails": "World details",
     "worldCounts": "{enemies} enemies · {items} items · {terrain} terrain",
+    "worldPopularity": "{plays} plays · {completions} clears · {players} players",
+    "worldPopularityLabel": "Popularity",
     "quickStartPiedone": "Quick Start: Piedone",
     "myWorlds": "My Worlds",
     "publicWorlds": "Public",
@@ -106,6 +115,11 @@
     "publicReviewClose": "Close",
     "reviewSoon": "soon",
     "copyShareLink": "Copy Link",
+    "rerollArtFree": "Reroll art · Free",
+    "rerollingArt": "Rerolling art…",
+    "rerollArtConfirm": "Replace the hero and backdrop? This uses your one free visual reroll for this World.",
+    "rerollArtComplete": "World art rerolled.",
+    "rerollArtFailed": "Failed to reroll World art",
     "shareLinkCopied": "Share link copied",
     "visibilityUpdateFailed": "Failed to update visibility",
 
@@ -159,7 +173,9 @@
         "defeatTitle": "The run ends here",
         "defeatBody": "The world remembers how far you made it. Take another route or choose a new adventure.",
         "finalMoments": "Final moments",
-        "chooseWorld": "Choose another world"
+        "chooseWorld": "Choose another world",
+        "creditReward": "+{credits} credit for completing a new World. Balance: {balance}.",
+        "creditCapReached": "Daily credit reward limit reached. This completion still counts."
     },
     "combat": {
         "stats": {

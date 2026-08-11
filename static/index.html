@@ -91,7 +91,7 @@
                                   @keydown="handleKeyDown"></textarea>
                         <button type="button"
                                 class="forge-btn"
-                                :disabled="!customDescription.trim()"
+                                :disabled="!customDescription.trim() || !canAffordForge"
                                 @click="forgeWorld">
                             <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
                             <span>{{ forgeButtonLabel }}</span>
@@ -100,7 +100,7 @@
 
                     <p class="forge-hint">
                         <i class="fas" :class="currentUser ? 'fa-lock' : 'fa-user-plus'" aria-hidden="true"></i>
-                        <span>{{ currentUser ? t('customSaveHintSignedIn') : t('customSaveHintAnonymous') }}</span>
+                        <span>{{ forgeHint }}</span>
                         <button v-if="!currentUser"
                                 type="button"
                                 class="forge-hint-btn"
@@ -168,6 +168,7 @@
                                 <div class="card-meta">
                                     <span>{{ world.language }}</span>
                                     <span>{{ formatWorldCounts(world) }}</span>
+                                    <span>{{ formatWorldPopularity(world) }}</span>
                                 </div>
                             </div>
                             <button type="button"
@@ -363,6 +364,10 @@
                             <dt>{{ t('worldContents') }}</dt>
                             <dd>{{ formatWorldCounts(activeWorldMenu) }}</dd>
                         </div>
+                        <div>
+                            <dt>{{ t('worldPopularityLabel') }}</dt>
+                            <dd>{{ formatWorldPopularity(activeWorldMenu) }}</dd>
+                        </div>
                     </dl>
                     <p class="world-preview-theme">{{ activeWorldMenu.theme }}</p>
                     <div class="world-actions">
@@ -371,6 +376,16 @@
                                 @click="copyWorldLink(activeWorldMenu)">
                             <i class="fas fa-link"></i>
                             <span>{{ t('copyShareLink') }}</span>
+                        </button>
+                        <button v-if="isOwnedWorld(activeWorldMenu) && activeWorldMenu.can_reroll_art"
+                                type="button"
+                                class="world-secondary-btn"
+                                :disabled="rerollingWorldId === activeWorldMenu.id"
+                                @click="rerollWorldArt(activeWorldMenu)">
+                            <i class="fas fa-palette"></i>
+                            <span>{{ rerollingWorldId === activeWorldMenu.id
+                                ? t('rerollingArt')
+                                : t('rerollArtFree') }}</span>
                         </button>
                         <label v-if="isOwnedWorld(activeWorldMenu)" class="world-visibility-control">
                             <span>{{ t('visibility') }}</span>

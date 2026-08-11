@@ -243,9 +243,11 @@ attaching URLs, as `visual-assets.md` already specifies.
 
 ### Budget and timing
 
-Per world: 1 hero sheet + ~5 enemy sheets + ~5 location backdrops + 1 cover card
-≈ **12 calls ≈ $0.06 at low quality**, ~$0.35 at medium. At 10–25s each with
-concurrency 4, that is 60–90 seconds of art on top of text generation.
+The default core bundle is now 1 medium hero sheet + 1 low-quality primary
+backdrop. The token and cover are composed locally, so they add no image calls.
+With the measured text forge this is roughly **$0.07 per World** before any
+visual reroll. `WORLD_ART_TIER=full` retains the former all-character and
+all-location bundle for an explicit premium path.
 
 **A 2–4 minute forge is the target.** Make the wait the reveal, not a spinner:
 title card lands, hero fades in, enemies appear one at a time, locations fill
@@ -256,11 +258,19 @@ in. That is the share moment and the credit justification in one animation.
 - **Forging costs credits. Playing is always free.** Play must stay anonymous
   and instant with no login — gating play behind signup kills the sharing loop
   and wastes the moderation work.
-- Free tier: 1–2 forges to try.
+- The implemented rollout defaults are 10 credits per forge and 30 welcome
+  credits, or three core Worlds before a purchase is needed.
+- A creator gets one free core-art reroll per World. Technical failures restore
+  that allowance and failed forges refund their credit charge.
+- Completing a distinct World earns 1 promotional credit, capped at 5 rewards
+  per UTC day. Replays count toward total completions but cannot farm credits.
+- World cards and creator dashboards show plays, completions, and qualified
+  unique completers. The creator's own completion does not increase the unique
+  popularity count.
 - **Remix** — fork a public World with a twist — costs credits. This is the
   growth loop that converts a player into a creator.
-- Real API cost per forge is roughly $0.10–0.50 all-in, so there is honest
-  margin at any sane price point.
+- Paid packs, creator milestone payouts, remix pricing, and mobile IAP are not
+  implemented yet. `ENABLE_WORLD_CREDITS` therefore remains off by default.
 
 ## Front page
 
