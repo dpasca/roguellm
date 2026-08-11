@@ -1,0 +1,71 @@
+# Social authentication handoff — 2026-08-11
+
+This is the newest handoff. It continues
+[`handoff-2026-08-11-mobile-foundation.md`](handoff-2026-08-11-mobile-foundation.md).
+
+## Implemented locally
+
+- Production is social-only: Google and Apple are shown with equal prominence;
+  username/password signup remains available only in development or behind
+  `ENABLE_LEGACY_PASSWORD_AUTH=1`.
+- Firebase ID tokens are verified server-side for project, issuer, expiry,
+  provider, subject, and recent authentication where required. Verified social
+  identities map to stable local users and then use the existing cookie or
+  opaque mobile access/refresh sessions.
+- Account deletion requires a fresh provider sign-in. Apple access is revoked
+  before deletion. Private and unlisted Worlds and their generated assets are
+  deleted; public Worlds are retained with no owner; credits, provider metadata,
+  and private account data are removed. Only a de-identified transaction marker
+  remains to prevent a store purchase from being claimed twice.
+- `/delete-account` is a public web entry point and opens the same in-app flow
+  required by the stores.
+- Native Firebase app config, Google URL handling, Android Google credentials,
+  and the iOS Sign in with Apple entitlement are wired into Capacitor.
+- The mobile lobby consumes system safe-area insets, so its header stays below
+  the Android/iOS status bar.
+
+## Firebase console state
+
+- Project: `roguellm` (`693029179648`).
+- Google and Apple providers are enabled.
+- Android app: `com.newtypekk.roguellm`.
+- iOS app: `com.newtypekk.roguellm`, App Store ID `6800248025`.
+- Android debug SHA-1 is registered:
+  `AB:88:13:EF:09:DF:32:A2:22:10:19:34:3A:07:44:6C:FE:0A:46:C9`.
+- Android upload SHA-1 is registered:
+  `DE:05:B3:E4:2B:A9:93:95:23:5A:EC:44:C8:C1:1B:EA:91:53:F9:5D`.
+- OAuth authorized domains now include `roguellm.com` and
+  `www.roguellm.com`, in addition to the Firebase defaults.
+
+## Verification completed
+
+- Python suite: 299 passed, 7 skipped, 573 subtests passed.
+- Mobile bundle and Capacitor sync pass with Node 22.
+- Android debug build passes with JDK 21, including Google Services processing.
+- Unsigned iOS Simulator build passes with Firebase Auth 12.17.0 and Google
+  Sign-In 9.2.0.
+- Embedded Playwright at 390×844 confirms one concise sign-in prompt, equal
+  Google/Apple buttons, a safe account sheet, and direct `/delete-account`
+  routing.
+
+## Remaining external setup before deployment
+
+1. In Apple Developer, enable Sign in with Apple for the primary App ID
+   `com.newtypekk.roguellm`.
+2. Create/configure a Services ID such as `com.newtypekk.roguellm.web`, with
+   domain `roguellm.firebaseapp.com` and return URL
+   `https://roguellm.firebaseapp.com/__/auth/handler`.
+3. Create a Sign in with Apple key for that primary App ID and download its
+   one-time `.p8`. Do not confuse it with the App Store purchase API key.
+4. Enter Services ID, Team ID `69NH26W767`, key ID, and private key in the
+   Firebase Apple provider OAuth code-flow configuration.
+5. Add the Play App Signing SHA-1 to the Firebase Android app. The debug and
+   release-upload fingerprints are already registered, but neither covers
+   installs re-signed by Play.
+6. Put the Firebase web configuration and auth flags in the VPS production
+   environment, take the normal backup, deploy, and run real Google/Apple
+   sign-in plus account-deletion smoke tests before publishing new store builds.
+
+Do not deploy the social-only UI until steps 1–5 are complete: Apple would be
+visible but nonfunctional on web/Android, and Play-installed Google builds could
+fail signature validation.

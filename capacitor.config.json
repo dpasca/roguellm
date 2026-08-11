@@ -8,6 +8,24 @@
       "style": "DARK",
       "hidden": false,
       "animation": "NONE"
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": [
+        "google.com",
+        "apple.com"
+      ]
+    }
+  },
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageOptions": {
+          "@capacitor-firebase/authentication": {
+            "symlink": true
+          }
+        }
+      }
     }
   }
 }

@@ -118,10 +118,13 @@ class ProductionConfigTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertFalse(main.is_analytics_enabled())
             main.validate_analytics_config()
-            self.assertEqual(
-                main.inject_analytics_head(main.ANALYTICS_HEAD_PLACEHOLDER),
-                "",
+            auth_head = main.inject_analytics_head(
+                main.ANALYTICS_HEAD_PLACEHOLDER
             )
+
+        self.assertIn('"analyticsEnabled":false', auth_head)
+        self.assertIn('"legacyPasswordEnabled":true', auth_head)
+        self.assertNotIn("firebaseRuntime.js", auth_head)
 
     def test_enabled_analytics_requires_complete_firebase_config(self):
         with patch.dict(os.environ, {"ANALYTICS_ENABLED": "1"}, clear=True):
@@ -133,11 +136,27 @@ class ProductionConfigTests(unittest.TestCase):
             main.validate_analytics_config()
             analytics_head = main.get_analytics_head_html()
 
-        self.assertIn("firebase-app-compat.js", analytics_head)
-        self.assertIn("firebase-analytics-compat.js", analytics_head)
-        self.assertIn('/static/js/analytics.js', analytics_head)
+        self.assertIn('/static/js/firebaseRuntime.js', analytics_head)
+        self.assertIn('"analyticsEnabled":true', analytics_head)
         self.assertIn('"measurementId":"G-TEST123"', analytics_head)
         self.assertNotIn(main.ANALYTICS_HEAD_PLACEHOLDER, analytics_head)
+
+    def test_production_defaults_to_social_only_auth(self):
+        environment = {
+            "APP_ENV": "production",
+            "FIREBASE_API_KEY": "test-api-key",
+            "FIREBASE_AUTH_DOMAIN": "roguellm.test.firebaseapp.com",
+            "FIREBASE_PROJECT_ID": "roguellm-test",
+            "FIREBASE_APP_ID": "1:123456789:web:test",
+        }
+        with patch.dict(os.environ, environment, clear=True):
+            self.assertTrue(main.is_social_auth_enabled())
+            self.assertFalse(main.is_legacy_password_auth_enabled())
+            auth_head = main.get_analytics_head_html()
+
+        self.assertIn('"socialEnabled":true', auth_head)
+        self.assertIn('"legacyPasswordEnabled":false', auth_head)
+        self.assertIn('/static/js/firebaseRuntime.js', auth_head)
 
 
 if __name__ == "__main__":

@@ -300,6 +300,11 @@ Existing: `SESSION_SECRET_KEY`, `SESSION_COOKIE_SAMESITE`, `APP_ENV`,
 `ENABLE_LLM_CONTENT_LOGGING`, `DEFAULT_NEW_WORLD_VISIBILITY`,
 `REQUIRE_LOGIN_TO_CREATE_WORLD`, `DO_STORAGE_*` / `DO_SPACES_*`.
 
+Authentication rollout also uses `ENABLE_SOCIAL_AUTH` (production default
+`1`) and `ENABLE_LEGACY_PASSWORD_AUTH` (production default `0`). Social auth
+requires `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, and
+`FIREBASE_APP_ID`; Analytics still requires the complete Firebase config.
+
 Added this cycle, all additive:
 
 | Variable | Default | Notes |

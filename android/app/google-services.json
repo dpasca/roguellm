@@ -1,0 +1,63 @@
+{
+  "project_info": {
+    "project_number": "693029179648",
+    "project_id": "roguellm",
+    "storage_bucket": "roguellm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:693029179648:android:c89c41f5be735071b223e5",
+        "android_client_info": {
+          "package_name": "com.newtypekk.roguellm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "693029179648-30pout6scfkqr6jo7ce9l7q7kqs5bjln.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.newtypekk.roguellm",
+            "certificate_hash": "de05b3e42ba99395235aec44c8c11bea9153f95d"
+          }
+        },
+        {
+          "client_id": "693029179648-457cglm1gsn6r0tegqbbjo01276a5lma.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.newtypekk.roguellm",
+            "certificate_hash": "ab8813ef09df32a2221019343a07446cfe0a46c9"
+          }
+        },
+        {
+          "client_id": "693029179648-nkgnmqdhh6f23e8qnvfcelstcc7tjs5b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5SNmeZvK6QPgpx8u8MaHrh5PYYPvyD6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "693029179648-nkgnmqdhh6f23e8qnvfcelstcc7tjs5b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "693029179648-e0t3otppmjf7ulr24lmilv66oje4fsii.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.newtypekk.roguellm",
+                "app_store_id": "6800248025"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

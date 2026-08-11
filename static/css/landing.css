@@ -2381,6 +2381,183 @@ body.landing-page .auth-strip .auth-mode {
     width: 100%;
 }
 
+body.landing-page .social-auth,
+body.landing-page .legacy-auth-form {
+    display: grid;
+    gap: 10px;
+}
+
+body.landing-page .social-auth-intro {
+    color: #dce8eb;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    margin: 0 0 2px;
+    text-align: center;
+}
+
+body.landing-page .social-auth-btn {
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 10px;
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    display: grid;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    gap: 12px;
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
+    min-height: 50px;
+    padding: 0 14px;
+    transition: box-shadow 0.16s ease, transform 0.16s ease;
+    width: 100%;
+}
+
+body.landing-page .social-auth-btn::after {
+    content: '';
+}
+
+body.landing-page .social-auth-btn:hover:not(:disabled) {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+}
+
+body.landing-page .social-auth-btn:focus-visible {
+    outline: 3px solid rgba(103, 225, 230, 0.55);
+    outline-offset: 2px;
+}
+
+body.landing-page .social-auth-google {
+    background: #fff;
+    color: #202124;
+}
+
+body.landing-page .social-auth-google i {
+    color: #4285f4;
+}
+
+body.landing-page .social-auth-apple {
+    background: #050505;
+    color: #fff;
+}
+
+body.landing-page .social-auth-btn i {
+    font-size: 1.15rem;
+}
+
+body.landing-page .social-auth-btn:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+
+body.landing-page .social-auth-privacy,
+body.landing-page .social-auth-unavailable {
+    color: #81979f;
+    font-size: 0.7rem;
+    line-height: 1.45;
+    margin: 2px 6px 0;
+    text-align: center;
+}
+
+body.landing-page .auth-divider {
+    align-items: center;
+    color: #71868e;
+    display: grid;
+    font-size: 0.68rem;
+    gap: 10px;
+    grid-template-columns: 1fr auto 1fr;
+    margin: 4px 0;
+    text-transform: uppercase;
+}
+
+body.landing-page .auth-divider::before,
+body.landing-page .auth-divider::after {
+    background: #294049;
+    content: '';
+    height: 1px;
+}
+
+body.landing-page .account-danger-zone {
+    border-top: 1px solid #263940;
+    display: grid;
+    margin-top: 4px;
+    padding-top: 12px;
+}
+
+body.landing-page .account-delete-link {
+    background: transparent;
+    border: 0;
+    color: #e99898;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.76rem;
+    margin: 0;
+    padding: 5px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+body.landing-page .account-delete-confirmation {
+    background: rgba(120, 33, 43, 0.18);
+    border: 1px solid rgba(232, 112, 124, 0.34);
+    border-radius: 10px;
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+}
+
+body.landing-page .account-delete-confirmation > strong {
+    color: #ffd9dc;
+    font-size: 0.9rem;
+}
+
+body.landing-page .account-delete-confirmation > p {
+    color: #d2b5b8;
+    font-size: 0.76rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+body.landing-page .account-delete-check {
+    align-items: flex-start;
+    color: #f0d7d9;
+    cursor: pointer;
+    display: grid;
+    font-size: 0.76rem;
+    gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr);
+    line-height: 1.4;
+}
+
+body.landing-page .account-delete-check input {
+    accent-color: #e75f6e;
+    margin-top: 2px;
+}
+
+body.landing-page .account-delete-actions {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 1fr 1.35fr;
+}
+
+body.landing-page .account-delete-btn {
+    background: #b63d4a;
+    border: 1px solid #e16672;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.76rem;
+    font-weight: 700;
+    min-height: 42px;
+    padding: 8px 10px;
+}
+
+body.landing-page .account-delete-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
 @media (max-width: 760px) {
     body.landing-page .auth-strip {
         border-radius: 16px 16px 10px 10px;

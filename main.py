@@ -30,11 +30,18 @@ import tempfile
 from social_crawler import get_prerendered_content
 from gen_image import (
     attach_art_to_definitions,
+    delete_world_assets,
     generate_world_art,
     get_world_assets_dir,
     is_world_art_enabled,
     publish_staged_world_assets,
     register_world_asset_media_types,
+)
+from firebase_auth import (
+    FirebaseAccountDeletionError,
+    FirebaseAuthError,
+    delete_firebase_account,
+    verify_firebase_id_token,
 )
 import asyncio
 import aiofiles
@@ -239,8 +246,13 @@ def serialize_credit_state(user_id: str) -> Dict:
 
 
 def serialize_user(user: Dict) -> Dict:
+    auth_providers = [
+        identity["provider"]
+        for identity in db.get_user_auth_identities(user["id"])
+    ]
     return {
         "username": user["username"],
+        "auth_providers": auth_providers,
         "credits": serialize_credit_state(user["id"]),
     }
 
@@ -399,9 +411,10 @@ PLACEHOLDER_SESSION_SECRETS = {
 VALID_WORLD_VISIBILITIES = {"private", "unlisted", "public"}
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 FALSY_ENV_VALUES = {"0", "false", "no", "off"}
-LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in or create an account to generate a new World."
+LOGIN_REQUIRED_TO_CREATE_WORLD_MESSAGE = "Sign in with Google or Apple to generate a new World."
 LOGIN_RATE_LIMIT_MESSAGE = "Too many login attempts. Try again later."
 SIGNUP_RATE_LIMIT_MESSAGE = "Too many signup attempts. Try again later."
+SOCIAL_AUTH_RATE_LIMIT_MESSAGE = "Too many sign-in attempts. Try again later."
 WORLD_CREATION_RATE_LIMIT_MESSAGE = "Too many new World creation attempts. Try again later."
 PUBLIC_REVIEW_QUEUED_MESSAGE = "Public review is queued. The World will remain private or unlisted until approved."
 PUBLIC_REVIEW_ALREADY_PUBLIC_MESSAGE = "World is already public."
@@ -414,12 +427,15 @@ AUTH_LOGIN_DEFAULT_MAX_ATTEMPTS = 5
 AUTH_LOGIN_DEFAULT_WINDOW_SECONDS = 60
 AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS = 5
 AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS = 60 * 60
+AUTH_SOCIAL_DEFAULT_MAX_ATTEMPTS = 20
+AUTH_SOCIAL_DEFAULT_WINDOW_SECONDS = 60
 WORLD_CREATION_DEFAULT_MAX_ATTEMPTS = 10
 WORLD_CREATION_DEFAULT_WINDOW_SECONDS = 60 * 60
 WORLD_PUBLIC_REVIEW_DEFAULT_DELAY_SECONDS = 0
 WORLD_PUBLIC_REVIEW_DEFAULT_POLL_SECONDS = 30
 WORLD_PUBLIC_REVIEW_DEFAULT_MAX_PER_POLL = 3
 WORLD_PUBLIC_REVIEW_DEFAULT_IMMEDIATE_MAX_PENDING = 10
+ACCOUNT_DELETE_RECENT_AUTH_SECONDS = 5 * 60
 ANALYTICS_HEAD_PLACEHOLDER = "{{ analytics_head | safe }}"
 FIREBASE_CONFIG_ENV_VARS = {
     "apiKey": "FIREBASE_API_KEY",
@@ -581,6 +597,14 @@ def is_analytics_enabled() -> bool:
     return get_env_bool("ANALYTICS_ENABLED", False)
 
 
+def is_social_auth_enabled() -> bool:
+    return get_env_bool("ENABLE_SOCIAL_AUTH", is_production_env())
+
+
+def is_legacy_password_auth_enabled() -> bool:
+    return get_env_bool("ENABLE_LEGACY_PASSWORD_AUTH", not is_production_env())
+
+
 def is_mobile_store_enabled() -> bool:
     return get_env_bool("ENABLE_MOBILE_STORE", False)
 
@@ -592,38 +616,69 @@ def get_firebase_config() -> Dict[str, str]:
     }
 
 
-def validate_analytics_config() -> None:
-    if not is_analytics_enabled():
+def validate_firebase_client_config() -> None:
+    if not is_analytics_enabled() and not is_social_auth_enabled():
         return
 
     firebase_config = get_firebase_config()
+    required_config_keys = {
+        "apiKey",
+        "authDomain",
+        "projectId",
+        "appId",
+    }
+    if is_analytics_enabled():
+        required_config_keys.update(FIREBASE_CONFIG_ENV_VARS)
     missing_env_vars = [
-        env_name
-        for config_key, env_name in FIREBASE_CONFIG_ENV_VARS.items()
+        FIREBASE_CONFIG_ENV_VARS[config_key]
+        for config_key in required_config_keys
         if not firebase_config[config_key]
     ]
     if missing_env_vars:
         raise ValueError(
-            "ANALYTICS_ENABLED=1 requires Firebase configuration: "
-            + ", ".join(missing_env_vars)
+            "Firebase client features require configuration: "
+            + ", ".join(sorted(missing_env_vars))
         )
 
 
-def get_analytics_head_html() -> str:
-    if not is_analytics_enabled():
-        return ""
+def validate_analytics_config() -> None:
+    if is_analytics_enabled():
+        validate_firebase_client_config()
 
-    validate_analytics_config()
+
+def get_analytics_head_html() -> str:
+    validate_firebase_client_config()
+    social_auth_enabled = is_social_auth_enabled()
     firebase_config_json = json.dumps(
         get_firebase_config(),
         separators=(",", ":"),
     ).replace("<", "\\u003c")
-    return "\n".join([
-        '<script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>',
-        '<script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics-compat.js"></script>',
-        f"<script>window.ROGUELLM_FIREBASE_CONFIG = {firebase_config_json};</script>",
-        '<script defer src="/static/js/analytics.js"></script>',
-    ])
+    auth_config_json = json.dumps({
+        "socialEnabled": social_auth_enabled,
+        "legacyPasswordEnabled": is_legacy_password_auth_enabled(),
+        "providers": ["google", "apple"] if social_auth_enabled else [],
+        "accountDeletionUrl": "/delete-account",
+        "analyticsEnabled": is_analytics_enabled(),
+    }, separators=(",", ":")).replace("<", "\\u003c")
+    bootstrap = (
+        "<script>"
+        f"window.ROGUELLM_FIREBASE_CONFIG={firebase_config_json};"
+        f"window.ROGUELLM_AUTH_CONFIG={auth_config_json};"
+        "window.trackAnalyticsEvent=window.trackAnalyticsEvent||function(){};"
+    )
+    if social_auth_enabled:
+        bootstrap += (
+            "window.ROGUELLM_AUTH_READY=new Promise(function(resolve){"
+            "window.__resolveRogueLLMAuthReady=resolve;});"
+        )
+    else:
+        bootstrap += "window.ROGUELLM_AUTH_READY=Promise.resolve(null);"
+    bootstrap += "</script>"
+
+    scripts = [bootstrap]
+    if is_analytics_enabled() or social_auth_enabled:
+        scripts.append('<script type="module" src="/static/js/firebaseRuntime.js"></script>')
+    return "\n".join(scripts)
 
 
 def inject_analytics_head(html_content: str) -> str:
@@ -679,6 +734,11 @@ signup_rate_limiter = make_rate_limiter(
     "AUTH_SIGNUP",
     AUTH_SIGNUP_DEFAULT_MAX_ATTEMPTS,
     AUTH_SIGNUP_DEFAULT_WINDOW_SECONDS,
+)
+social_auth_rate_limiter = make_rate_limiter(
+    "AUTH_SOCIAL",
+    AUTH_SOCIAL_DEFAULT_MAX_ATTEMPTS,
+    AUTH_SOCIAL_DEFAULT_WINDOW_SECONDS,
 )
 world_creation_rate_limiter = make_rate_limiter(
     "WORLD_CREATION",
@@ -873,7 +933,7 @@ def is_world_public_review_worker_enabled() -> bool:
 async def lifespan(app: FastAPI):
     # Startup
     app.state.start_time = time.time()
-    validate_analytics_config()
+    validate_firebase_client_config()
     # Initialize database
     db.init_db()
 
@@ -926,7 +986,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_mobile_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-RogueLLM-Mobile"],
 )
 
@@ -1045,6 +1105,12 @@ async def read_landing(request: Request):
     except Exception as e:
         logging.error(f"Error reading landing page: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/delete-account")
+async def read_delete_account(request: Request):
+    """Public account-deletion entry point required by the mobile stores."""
+    return await read_landing(request)
 
 # Game page - handles both generator sharing and direct session access
 @app.get("/game")
@@ -1589,6 +1655,25 @@ class MobileRefreshRequest(BaseModel):
     refresh_token: str
 
 
+class FirebaseAuthRequest(BaseModel):
+    id_token: str
+    platform: Optional[str] = None
+    device_name: Optional[str] = None
+
+
+class DeleteAccountRequest(BaseModel):
+    id_token: Optional[str] = None
+
+
+def legacy_password_auth_disabled_response() -> Optional[JSONResponse]:
+    if is_legacy_password_auth_enabled():
+        return None
+    return JSONResponse({
+        "error": "Password sign-in is not available. Use Google or Apple.",
+        "code": "legacy_auth_disabled",
+    }, status_code=403)
+
+
 def create_signup_user(
         signup_request: SignupRequest,
         req: Request,
@@ -1683,6 +1768,10 @@ def issue_mobile_auth_response(
 
 @app.post("/api/signup")
 async def signup(request: SignupRequest, req: Request):
+    disabled_response = legacy_password_auth_disabled_response()
+    if disabled_response is not None:
+        return disabled_response
+
     user, error_response = create_signup_user(request, req)
     if error_response is not None:
         return error_response
@@ -1692,6 +1781,10 @@ async def signup(request: SignupRequest, req: Request):
 
 @app.post("/api/login")
 async def login(request: LoginRequest, req: Request):
+    disabled_response = legacy_password_auth_disabled_response()
+    if disabled_response is not None:
+        return disabled_response
+
     user, error_response = authenticate_login_user(request, req)
     if error_response is not None:
         return error_response
@@ -1702,6 +1795,10 @@ async def login(request: LoginRequest, req: Request):
 
 @app.post("/api/mobile/auth/signup")
 async def mobile_signup(request: MobileSignupRequest, req: Request):
+    disabled_response = legacy_password_auth_disabled_response()
+    if disabled_response is not None:
+        return disabled_response
+
     user, error_response = create_signup_user(request, req)
     if error_response is not None:
         return error_response
@@ -1710,10 +1807,68 @@ async def mobile_signup(request: MobileSignupRequest, req: Request):
 
 @app.post("/api/mobile/auth/login")
 async def mobile_login(request: MobileLoginRequest, req: Request):
+    disabled_response = legacy_password_auth_disabled_response()
+    if disabled_response is not None:
+        return disabled_response
+
     user, error_response = authenticate_login_user(request, req)
     if error_response is not None:
         return error_response
     return issue_mobile_auth_response(user, request.platform, request.device_name)
+
+
+@app.post("/api/auth/firebase")
+async def firebase_auth(request: FirebaseAuthRequest, req: Request):
+    """Exchange a verified Firebase social identity for an app session."""
+    if not is_social_auth_enabled():
+        return JSONResponse({
+            "error": "Social sign-in is not available.",
+            "code": "social_auth_disabled",
+        }, status_code=503)
+
+    rate_limit_key = social_auth_rate_limiter.make_key(req, scope="firebase")
+    rate_limited_response = consume_rate_limit_attempt(
+        social_auth_rate_limiter,
+        rate_limit_key,
+        SOCIAL_AUTH_RATE_LIMIT_MESSAGE,
+    )
+    if rate_limited_response is not None:
+        return rate_limited_response
+
+    try:
+        identity = await asyncio.to_thread(
+            verify_firebase_id_token,
+            request.id_token,
+        )
+    except FirebaseAuthError as error:
+        return JSONResponse({
+            "error": str(error),
+            "code": "invalid_firebase_credential",
+        }, status_code=401)
+
+    try:
+        user = db.get_or_create_social_user(
+            issuer=identity.issuer,
+            subject=identity.subject,
+            provider=identity.provider,
+            email=identity.email,
+            display_name=identity.display_name,
+        )
+    except Exception:
+        logging.exception("Unable to resolve Firebase identity")
+        return JSONResponse({
+            "error": "Unable to finish signing in.",
+        }, status_code=500)
+
+    if req.headers.get("X-RogueLLM-Mobile") == "1":
+        return issue_mobile_auth_response(
+            user,
+            request.platform,
+            request.device_name,
+        )
+
+    req.session["user_id"] = user["id"]
+    return JSONResponse(serialize_user(user))
 
 
 @app.post("/api/mobile/auth/refresh")
@@ -1773,6 +1928,82 @@ async def get_me(req: Request):
         return JSONResponse({"error": "User not found"}, status_code=404)
 
     return JSONResponse(serialize_user(user))
+
+
+@app.delete("/api/account")
+async def delete_account(request: DeleteAccountRequest, req: Request):
+    """Permanently delete an account after recent provider sign-in."""
+    user_id = get_request_user_id(req)
+    if not user_id:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    identities = db.get_user_auth_identities(user_id)
+    if identities:
+        if not request.id_token:
+            return JSONResponse({
+                "error": "Sign in again before deleting your account.",
+                "code": "reauthentication_required",
+            }, status_code=401)
+
+        try:
+            identity = await asyncio.to_thread(
+                verify_firebase_id_token,
+                request.id_token,
+                ACCOUNT_DELETE_RECENT_AUTH_SECONDS,
+            )
+        except FirebaseAuthError as error:
+            return JSONResponse({
+                "error": str(error),
+                "code": "reauthentication_required",
+            }, status_code=401)
+
+        matches_user = any(
+            known_identity["issuer"] == identity.issuer
+            and known_identity["subject"] == identity.subject
+            for known_identity in identities
+        )
+        if not matches_user:
+            return JSONResponse({
+                "error": "That sign-in belongs to a different account.",
+                "code": "identity_mismatch",
+            }, status_code=403)
+
+        try:
+            await asyncio.to_thread(
+                delete_firebase_account,
+                request.id_token,
+            )
+        except FirebaseAccountDeletionError as error:
+            return JSONResponse({
+                "error": str(error),
+                "code": "firebase_deletion_failed",
+            }, status_code=503)
+
+    try:
+        deletion = db.delete_user_account(user_id)
+    except Exception:
+        logging.exception("Unable to delete local account %s", user_id)
+        return JSONResponse({
+            "error": "Unable to finish deleting your account.",
+        }, status_code=500)
+
+    if deletion is None:
+        req.session.pop("user_id", None)
+        return JSONResponse({"error": "User not found"}, status_code=404)
+
+    try:
+        delete_world_assets(deletion["deleted_world_ids"])
+    except Exception:
+        # Database deletion is authoritative. Asset cleanup is safe to retry
+        # operationally and must not resurrect or block account deletion.
+        logging.exception("Unable to delete all World assets for %s", user_id)
+
+    req.session.pop("user_id", None)
+    return JSONResponse({
+        "message": "Your account has been deleted.",
+        "deleted_worlds": len(deletion["deleted_world_ids"]),
+        "anonymized_public_worlds": len(deletion["anonymized_world_ids"]),
+    })
 
 
 class MobileStorePurchaseRequest(BaseModel):

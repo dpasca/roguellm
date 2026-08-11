@@ -46,7 +46,11 @@ const app = Vue.createApp({
                 username: '',
                 password: ''
             },
+            authConfig: window.ROGUELLM_AUTH_CONFIG || {},
             isAccountPanelOpen: false,
+            isDeleteConfirmationOpen: false,
+            deleteAccountConfirmed: false,
+            isDeletingAccount: false,
             isCreditStoreOpen: false,
             creditStorePacks: createPreviewCreditPacks(),
             creditStoreAvailable: false,
@@ -87,6 +91,16 @@ const app = Vue.createApp({
         },
         fallbackTranslations() {
             return this.rawTranslations[CONFIG.fallbackLanguage] || {};
+        },
+        socialAuthEnabled() {
+            return this.authConfig.socialEnabled === true;
+        },
+        legacyPasswordAuthEnabled() {
+            return this.authConfig.legacyPasswordEnabled === true;
+        },
+        primaryAuthProvider() {
+            const providers = this.currentUser?.auth_providers;
+            return Array.isArray(providers) ? providers[0] || null : null;
         },
         selectedGeneratorId() {
             if (this.selectedTheme !== 'world') {
@@ -276,7 +290,7 @@ const app = Vue.createApp({
         },
         launchButtonLabel() {
             if (this.requiresAuthForSelectedCreation) {
-                return this.t('signupToCreate');
+                return this.t('signInToCreate');
             }
 
             return this.selectedTheme === 'world' ? this.t('startRun') : this.t('createWorld');
@@ -413,7 +427,7 @@ const app = Vue.createApp({
         },
         async openCreditStore() {
             if (!this.currentUser) {
-                this.promptSignupForSave();
+                this.promptSignInForSave();
                 return;
             }
 
@@ -727,6 +741,7 @@ const app = Vue.createApp({
         },
         closeAccountPanel() {
             this.isAccountPanelOpen = false;
+            this.closeDeleteConfirmation();
             this.$nextTick(() => {
                 const trigger = document.querySelector('.account-trigger');
                 if (trigger) {
@@ -734,17 +749,30 @@ const app = Vue.createApp({
                 }
             });
         },
-        promptSignupForSave() {
-            this.setAuthMode('signup');
+        promptSignInForSave() {
+            this.setAuthMode('login');
             this.isWorldCodePanelOpen = false;
             this.worldMenuId = null;
             this.isAccountPanelOpen = true;
             this.$nextTick(() => {
-                const usernameInput = document.querySelector('.auth-input');
-                if (usernameInput) {
-                    usernameInput.focus({ preventScroll: true });
+                const firstAuthControl = document.querySelector(
+                    '.social-auth-btn, .auth-input'
+                );
+                if (firstAuthControl) {
+                    firstAuthControl.focus({ preventScroll: true });
                 }
             });
+        },
+        openDeleteConfirmation() {
+            this.deleteAccountConfirmed = false;
+            this.isDeleteConfirmationOpen = true;
+        },
+        closeDeleteConfirmation() {
+            if (this.isDeletingAccount) {
+                return;
+            }
+            this.isDeleteConfirmationOpen = false;
+            this.deleteAccountConfirmed = false;
         },
         openWorldCodePanel() {
             this.clearError();
@@ -805,6 +833,64 @@ const app = Vue.createApp({
                 this.worldTab = preferredTab;
             }
         },
+        async getSocialAuthRuntime() {
+            const runtime = await window.ROGUELLM_AUTH_READY;
+            if (!runtime) {
+                throw new Error(this.t('socialAuthUnavailable'));
+            }
+            return runtime;
+        },
+        async exchangeFirebaseCredential(credential) {
+            const response = await fetch('/api/auth/firebase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id_token: credential.idToken
+                })
+            });
+            if (!response.ok) {
+                throw new Error(await this.responseErrorMessage(
+                    response,
+                    this.t('authFailed')
+                ));
+            }
+            const data = await response.json();
+            return data.user || data;
+        },
+        async restoreSocialAppSession() {
+            if (!this.socialAuthEnabled || this.currentUser) {
+                return;
+            }
+            try {
+                const runtime = await this.getSocialAuthRuntime();
+                const credential = await runtime.restoreSession();
+                if (credential?.idToken) {
+                    this.currentUser = await this.exchangeFirebaseCredential(credential);
+                }
+            } catch (error) {
+                console.warn('Unable to restore social sign-in:', error);
+            }
+        },
+        async signInWithProvider(provider) {
+            this.clearError();
+            this.clearInfo();
+            this.isAuthenticating = true;
+            try {
+                const runtime = await this.getSocialAuthRuntime();
+                const credential = await runtime.signIn(provider);
+                const signedInUser = await this.exchangeFirebaseCredential(credential);
+                await this.refreshAuthWorldState('my');
+                this.infoMessage = this.t('authSignedIn', {
+                    username: this.currentUser?.username || signedInUser.username
+                });
+            } catch (error) {
+                this.errorMessage = error.message || this.t('authFailed');
+            } finally {
+                this.isAuthenticating = false;
+            }
+        },
         async submitAuth() {
             this.clearError();
             this.clearInfo();
@@ -853,6 +939,15 @@ const app = Vue.createApp({
                     throw new Error(await this.responseErrorMessage(response, this.t('logoutFailed')));
                 }
 
+                if (this.socialAuthEnabled) {
+                    try {
+                        const runtime = await this.getSocialAuthRuntime();
+                        await runtime.signOut();
+                    } catch (error) {
+                        console.warn('Provider sign-out did not complete:', error);
+                    }
+                }
+
                 this.currentUser = null;
                 this.accountStats = null;
                 this.worldLists.my = [];
@@ -862,6 +957,61 @@ const app = Vue.createApp({
                 this.errorMessage = error.message || this.t('logoutFailed');
             } finally {
                 this.isAuthenticating = false;
+            }
+        },
+        async deleteAccount() {
+            if (!this.deleteAccountConfirmed || this.isDeletingAccount) {
+                return;
+            }
+
+            this.clearError();
+            this.clearInfo();
+            this.isDeletingAccount = true;
+            try {
+                let idToken = null;
+                let runtime = null;
+                if (this.primaryAuthProvider) {
+                    runtime = await this.getSocialAuthRuntime();
+                    const credential = await runtime.prepareAccountDeletion(
+                        this.primaryAuthProvider
+                    );
+                    idToken = credential.idToken;
+                }
+
+                const response = await fetch('/api/account', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id_token: idToken })
+                });
+                if (!response.ok) {
+                    throw new Error(await this.responseErrorMessage(
+                        response,
+                        this.t('accountDeleteFailed')
+                    ));
+                }
+
+                if (runtime) {
+                    try {
+                        await runtime.signOut();
+                    } catch (error) {
+                        console.warn('Provider cleanup did not complete:', error);
+                    }
+                }
+                this.currentUser = null;
+                this.accountStats = null;
+                this.worldLists.my = [];
+                this.isAccountPanelOpen = false;
+                this.isDeleteConfirmationOpen = false;
+                this.deleteAccountConfirmed = false;
+                this.worldTab = 'public';
+                await this.loadWorlds();
+                this.infoMessage = this.t('accountDeleted');
+            } catch (error) {
+                this.errorMessage = error.message || this.t('accountDeleteFailed');
+            } finally {
+                this.isDeletingAccount = false;
             }
         },
         selectFirstWorldForTab() {
@@ -1164,7 +1314,7 @@ const app = Vue.createApp({
             }
 
             if (this.requiresAuthForSelectedCreation) {
-                this.promptSignupForSave();
+                this.promptSignInForSave();
                 this.errorMessage = this.t('authRequiredToCreateWorld');
                 return;
             }
@@ -1258,6 +1408,7 @@ const app = Vue.createApp({
 
                 this.selectedLanguage = initialLang;
                 await this.loadCurrentUser();
+                await this.restoreSocialAppSession();
                 await this.loadAccountStats();
                 await this.loadWorlds();
                 await this.applyDevQuickStartFromUrl();
@@ -1294,6 +1445,11 @@ const app = Vue.createApp({
     },
     async mounted() {
         await this.initialize();
+
+        if (window.location.pathname === '/delete-account') {
+            this.isAccountPanelOpen = true;
+            this.isDeleteConfirmationOpen = Boolean(this.currentUser);
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const generatorId = urlParams.get('generator');

@@ -270,38 +270,98 @@
                             @click="logout">
                         {{ t('logout') }}
                     </button>
-                </div>
-                <form v-else class="auth-form" @submit.prevent="submitAuth">
-                    <div class="auth-mode" role="tablist">
-                        <button type="button"
-                                class="auth-mode-btn"
-                                :class="{ active: authMode === 'login' }"
-                                @click="setAuthMode('login')">
-                            {{ t('login') }}
+                    <div class="account-danger-zone">
+                        <button v-if="!isDeleteConfirmationOpen"
+                                type="button"
+                                class="account-delete-link"
+                                :disabled="isDeletingAccount"
+                                @click="openDeleteConfirmation">
+                            {{ t('deleteAccount') }}
                         </button>
-                        <button type="button"
-                                class="auth-mode-btn"
-                                :class="{ active: authMode === 'signup' }"
-                                @click="setAuthMode('signup')">
-                            {{ t('signup') }}
-                        </button>
+                        <div v-else class="account-delete-confirmation">
+                            <strong>{{ t('deleteAccountTitle') }}</strong>
+                            <p>{{ t('deleteAccountBody') }}</p>
+                            <label class="account-delete-check">
+                                <input v-model="deleteAccountConfirmed" type="checkbox">
+                                <span>{{ t('deleteAccountConfirm') }}</span>
+                            </label>
+                            <div class="account-delete-actions">
+                                <button type="button"
+                                        class="auth-secondary-btn"
+                                        :disabled="isDeletingAccount"
+                                        @click="closeDeleteConfirmation">
+                                    {{ t('cancel') }}
+                                </button>
+                                <button type="button"
+                                        class="account-delete-btn"
+                                        :disabled="!deleteAccountConfirmed || isDeletingAccount"
+                                        @click="deleteAccount">
+                                    {{ isDeletingAccount ? t('accountDeleting') : t('deleteAccountAction') }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <input v-model="authForm.username"
-                           class="auth-input"
-                           type="text"
-                           autocomplete="username"
-                           :placeholder="t('username')">
-                    <input v-model="authForm.password"
-                           class="auth-input"
-                           type="password"
-                           :autocomplete="authMode === 'signup' ? 'new-password' : 'current-password'"
-                           :placeholder="t('password')">
-                    <button type="submit"
-                            class="auth-primary-btn"
-                            :disabled="isAuthenticating">
-                        {{ authMode === 'signup' ? t('signup') : t('login') }}
-                    </button>
-                </form>
+                </div>
+                <div v-else class="auth-form">
+                    <div v-if="socialAuthEnabled" class="social-auth">
+                        <p class="social-auth-intro">{{ t('socialSignInIntro') }}</p>
+                        <button type="button"
+                                class="social-auth-btn social-auth-google"
+                                :disabled="isAuthenticating"
+                                @click="signInWithProvider('google')">
+                            <i class="fab fa-google" aria-hidden="true"></i>
+                            <span>{{ t('continueGoogle') }}</span>
+                        </button>
+                        <button type="button"
+                                class="social-auth-btn social-auth-apple"
+                                :disabled="isAuthenticating"
+                                @click="signInWithProvider('apple')">
+                            <i class="fab fa-apple" aria-hidden="true"></i>
+                            <span>{{ t('continueApple') }}</span>
+                        </button>
+                        <p class="social-auth-privacy">{{ t('socialSignInPrivacy') }}</p>
+                    </div>
+                    <form v-if="legacyPasswordAuthEnabled"
+                          class="legacy-auth-form"
+                          @submit.prevent="submitAuth">
+                        <div v-if="socialAuthEnabled" class="auth-divider">
+                            <span>{{ t('legacySignInDivider') }}</span>
+                        </div>
+                        <div class="auth-mode" role="tablist">
+                            <button type="button"
+                                    class="auth-mode-btn"
+                                    :class="{ active: authMode === 'login' }"
+                                    @click="setAuthMode('login')">
+                                {{ t('login') }}
+                            </button>
+                            <button type="button"
+                                    class="auth-mode-btn"
+                                    :class="{ active: authMode === 'signup' }"
+                                    @click="setAuthMode('signup')">
+                                {{ t('signup') }}
+                            </button>
+                        </div>
+                        <input v-model="authForm.username"
+                               class="auth-input"
+                               type="text"
+                               autocomplete="username"
+                               :placeholder="t('username')">
+                        <input v-model="authForm.password"
+                               class="auth-input"
+                               type="password"
+                               :autocomplete="authMode === 'signup' ? 'new-password' : 'current-password'"
+                               :placeholder="t('password')">
+                        <button type="submit"
+                                class="auth-primary-btn"
+                                :disabled="isAuthenticating">
+                            {{ authMode === 'signup' ? t('signup') : t('login') }}
+                        </button>
+                    </form>
+                    <p v-if="!socialAuthEnabled && !legacyPasswordAuthEnabled"
+                       class="social-auth-unavailable">
+                        {{ t('socialAuthUnavailable') }}
+                    </p>
+                </div>
             </section>
 
             <button v-if="isCreditStoreOpen"

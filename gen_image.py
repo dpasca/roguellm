@@ -1125,3 +1125,20 @@ def publish_staged_world_assets(
         finally:
             if os.path.exists(temporary_target):
                 os.unlink(temporary_target)
+
+
+def delete_world_assets(
+        world_ids: Sequence[str],
+        assets_dir: Optional[str] = None,
+) -> None:
+    """Remove generated art for Worlds already deleted from the database."""
+    base_dir = os.path.abspath(assets_dir or get_world_assets_dir())
+    for world_id in world_ids:
+        safe_world = safe_asset_name(world_id, "world")
+        target_dir = os.path.abspath(os.path.join(base_dir, safe_world))
+        if os.path.commonpath([base_dir, target_dir]) != base_dir:
+            raise ValueError(
+                f"Refusing to delete assets outside the World directory: {world_id!r}"
+            )
+        if os.path.isdir(target_dir):
+            shutil.rmtree(target_dir)

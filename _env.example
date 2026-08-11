@@ -159,9 +159,15 @@ SEARCH_PROVIDER=duckduckgo
 # Default: 5 minutes
 # UPLOAD_FREQUENCY_MINUTES=5
 
-# Firebase Configuration (Optional)
-# Set to 1 only after all Firebase values below are configured.
+# Firebase client features
+# Social auth defaults on in production and off in development. Password auth
+# defaults off in production and stays available only for local development.
+ENABLE_SOCIAL_AUTH=0
+ENABLE_LEGACY_PASSWORD_AUTH=1
+# Analytics remains independently optional.
 ANALYTICS_ENABLED=0
+# API key, auth domain, project ID, and app ID are required when social auth is
+# enabled. All seven values are required when Analytics is enabled.
 FIREBASE_API_KEY=
 FIREBASE_AUTH_DOMAIN=
 FIREBASE_PROJECT_ID=

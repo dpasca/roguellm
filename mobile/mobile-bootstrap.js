@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import {
     KeychainAccess,
     SecureStorage
@@ -20,6 +21,14 @@ const purchasePlatform = nativePlatform === 'ios'
     ? Platform.APPLE_APPSTORE
     : Platform.GOOGLE_PLAY;
 const purchaseProvider = nativePlatform === 'ios' ? 'apple' : 'google';
+
+window.ROGUELLM_AUTH_CONFIG = {
+    socialEnabled: true,
+    legacyPasswordEnabled: false,
+    providers: ['google', 'apple'],
+    accountDeletionUrl: '/delete-account',
+    analyticsEnabled: false
+};
 
 if (!apiBaseUrl || !apiBaseUrl.startsWith('https://')) {
     throw new Error('ROGUELLM_MOBILE_CONFIG.apiBaseUrl must be an HTTPS URL');
@@ -171,7 +180,10 @@ async function mobileFetch(input, init = {}) {
     const originalPath = new URL(backendPath, apiBaseUrl).pathname;
     const isLogin = originalPath === '/api/login';
     const isSignup = originalPath === '/api/signup';
+    const isSocialLogin = originalPath === '/api/auth/firebase';
     const isLogout = originalPath === '/api/logout' || originalPath === '/logout';
+    const isAccountDeletion = originalPath === '/api/account'
+        && String(options.method || 'GET').toUpperCase() === 'DELETE';
     const isRefresh = originalPath === '/api/mobile/auth/refresh';
     if (isLogin) {
         backendPath = '/api/mobile/auth/login';
@@ -181,7 +193,7 @@ async function mobileFetch(input, init = {}) {
         backendPath = '/api/mobile/auth/logout';
     }
 
-    if ((isLogin || isSignup) && typeof options.body === 'string') {
+    if ((isLogin || isSignup || isSocialLogin) && typeof options.body === 'string') {
         try {
             options.body = JSON.stringify({
                 ...JSON.parse(options.body),
@@ -192,11 +204,11 @@ async function mobileFetch(input, init = {}) {
         }
     }
 
-    if (!isLogin && !isSignup && !isRefresh && !accessToken) {
+    if (!isLogin && !isSignup && !isSocialLogin && !isRefresh && !accessToken) {
         await refreshAccessToken();
     }
     options.headers.set('X-RogueLLM-Mobile', '1');
-    if (accessToken && !isLogin && !isSignup && !isRefresh) {
+    if (accessToken && !isLogin && !isSignup && !isSocialLogin && !isRefresh) {
         options.headers.set('Authorization', `Bearer ${accessToken}`);
     } else {
         options.headers.delete('Authorization');
@@ -208,15 +220,18 @@ async function mobileFetch(input, init = {}) {
         response = await send();
         if (
             response.status === 401 &&
-            !isLogin && !isSignup && !isRefresh &&
+            !isLogin && !isSignup && !isSocialLogin && !isRefresh &&
             await refreshAccessToken()
         ) {
             options.headers.set('Authorization', `Bearer ${accessToken}`);
             response = await send();
         }
 
-        if ((isLogin || isSignup) && response.ok) {
+        if ((isLogin || isSignup || isSocialLogin) && response.ok) {
             await saveAuthPayload(await response.clone().json());
+        }
+        if (isAccountDeletion && response.ok) {
+            await clearAuth();
         }
         return await rewriteJsonResponse(response);
     } finally {
@@ -227,6 +242,72 @@ async function mobileFetch(input, init = {}) {
 }
 
 window.fetch = mobileFetch;
+
+async function getFreshFirebaseIdToken() {
+    const result = await FirebaseAuthentication.getIdToken({
+        forceRefresh: true
+    });
+    if (!result?.token) {
+        throw new Error('Firebase did not return an identity token.');
+    }
+    return result.token;
+}
+
+async function signInWithProvider(providerName) {
+    let result;
+    if (providerName === 'google') {
+        result = await FirebaseAuthentication.signInWithGoogle();
+    } else if (providerName === 'apple') {
+        result = await FirebaseAuthentication.signInWithApple();
+    } else {
+        throw new Error('Unsupported sign-in provider');
+    }
+    if (!result?.user) {
+        throw new Error('The sign-in did not complete.');
+    }
+    return result;
+}
+
+window.RogueLLMAuth = {
+    async signIn(providerName) {
+        await signInWithProvider(providerName);
+        return {
+            idToken: await getFreshFirebaseIdToken(),
+            provider: providerName
+        };
+    },
+
+    async restoreSession() {
+        const result = await FirebaseAuthentication.getCurrentUser();
+        if (!result?.user) {
+            return null;
+        }
+        return { idToken: await getFreshFirebaseIdToken() };
+    },
+
+    async prepareAccountDeletion(providerName) {
+        const result = await signInWithProvider(providerName);
+        if (providerName === 'apple') {
+            const revocationToken = result.credential?.authorizationCode
+                || result.credential?.accessToken;
+            if (!revocationToken) {
+                throw new Error('Apple did not return a revocation token.');
+            }
+            await FirebaseAuthentication.revokeAccessToken({
+                token: revocationToken
+            });
+        }
+        return {
+            idToken: await getFreshFirebaseIdToken(),
+            provider: providerName
+        };
+    },
+
+    async signOut() {
+        await FirebaseAuthentication.signOut();
+    }
+};
+window.ROGUELLM_AUTH_READY = Promise.resolve(window.RogueLLMAuth);
 
 function addLanguage(url, language) {
     if (language) {

@@ -264,10 +264,7 @@ authenticates a user's primary RogueLLM account, the iOS app must also offer an
 equivalent privacy-preserving login; in practice that is Sign in with Apple.
 No nonfunctional social buttons were added in this release.
 
-Before public store submission, account deletion also needs an explicit product
-and data-retention design. Apple requires in-app deletion for apps that support
-account creation, and
-[Google Play](https://support.google.com/googleplay/android-developer/answer/13327111)
-requires both an in-app path and an external web deletion resource. The
-unresolved decision is whether deletion removes private/unlisted Worlds and
-anonymizes public Worlds, or removes every World owned by the account.
+Social authentication and the account-deletion policy were implemented in the
+next work session. See
+[`handoff-2026-08-11-social-auth.md`](handoff-2026-08-11-social-auth.md) for the
+current code, console state, verification, and remaining Apple/Play setup.

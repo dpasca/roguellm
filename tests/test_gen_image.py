@@ -1072,3 +1072,21 @@ class SafeAssetNameTests(unittest.TestCase):
             published = os.path.join(target, "world1", "cover.webp")
             self.assertTrue(os.path.exists(published))
             self.assertEqual(Image.open(published).size, (4, 4))
+
+    def test_deleted_world_assets_do_not_touch_other_worlds(self):
+        from gen_image import delete_world_assets
+
+        with tempfile.TemporaryDirectory() as directory:
+            save_asset(
+                Image.new("RGBA", (4, 4), (255, 0, 0, 255)),
+                "delete-me", "cover", directory,
+            )
+            save_asset(
+                Image.new("RGBA", (4, 4), (0, 255, 0, 255)),
+                "keep-me", "cover", directory,
+            )
+
+            delete_world_assets(["delete-me"], directory)
+
+            self.assertFalse(os.path.exists(os.path.join(directory, "delete-me")))
+            self.assertTrue(os.path.exists(os.path.join(directory, "keep-me")))

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>693029179648-e0t3otppmjf7ulr24lmilv66oje4fsii.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.693029179648-e0t3otppmjf7ulr24lmilv66oje4fsii</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCaIIjyBp82PPOKWOkoK2nTqo_sZoMsdIA</string>
+	<key>GCM_SENDER_ID</key>
+	<string>693029179648</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.newtypekk.roguellm</string>
+	<key>PROJECT_ID</key>
+	<string>roguellm</string>
+	<key>STORAGE_BUCKET</key>
+	<string>roguellm.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:693029179648:ios:d7bf89062da9bdf9b223e5</string>
+</dict>
+</plist>

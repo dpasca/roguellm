@@ -304,6 +304,25 @@ class DatabaseManager:
             self._ensure_column(conn, "users", "password_reset_required", "INTEGER NOT NULL DEFAULT 0")
             self._ensure_column(conn, "users", "password_reset_marked_at", "TIMESTAMP NULL")
             conn.execute("""
+                CREATE TABLE IF NOT EXISTS auth_identities (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    issuer TEXT NOT NULL,
+                    subject TEXT NOT NULL,
+                    provider TEXT NOT NULL CHECK (provider IN ('apple', 'google')),
+                    email TEXT NULL,
+                    display_name TEXT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_login_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (issuer, subject),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_auth_identities_user
+                ON auth_identities(user_id)
+            """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS mobile_auth_sessions (
                     id TEXT PRIMARY KEY,
                     user_id TEXT NOT NULL,
@@ -2454,6 +2473,218 @@ class DatabaseManager:
                 return None
 
         return self._execute_with_retry(_create)
+
+    @staticmethod
+    def _social_username_base(
+            display_name: Optional[str],
+            email: Optional[str],
+            provider: str,
+    ) -> str:
+        candidate = " ".join((display_name or "").split())
+        if not candidate and email:
+            candidate = " ".join(email.partition("@")[0].replace(".", " ").split())
+        if not candidate:
+            candidate = "Apple Worldsmith" if provider == "apple" else "Google Worldsmith"
+        return candidate[:50]
+
+    def get_or_create_social_user(
+            self,
+            issuer: str,
+            subject: str,
+            provider: str,
+            email: Optional[str] = None,
+            display_name: Optional[str] = None,
+    ) -> Dict:
+        """Resolve one verified Firebase identity to a stable RogueLLM user."""
+        if provider not in {"apple", "google"}:
+            raise ValueError("Social provider must be 'apple' or 'google'")
+        if not issuer or not subject:
+            raise ValueError("Social identity issuer and subject are required")
+
+        normalized_email = (email or "").strip()[:320] or None
+        normalized_display_name = " ".join((display_name or "").split())[:120] or None
+
+        def _resolve(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("""
+                SELECT u.id, u.username
+                FROM auth_identities i
+                JOIN users u ON u.id = i.user_id
+                WHERE i.issuer = ? AND i.subject = ?
+            """, (issuer, subject)).fetchone()
+            if row:
+                conn.execute("""
+                    UPDATE auth_identities
+                    SET provider = ?, email = ?, display_name = ?,
+                        last_login_at = CURRENT_TIMESTAMP
+                    WHERE issuer = ? AND subject = ?
+                """, (
+                    provider,
+                    normalized_email,
+                    normalized_display_name,
+                    issuer,
+                    subject,
+                ))
+                conn.commit()
+                return {"id": row[0], "username": row[1]}
+
+            username_base = self._social_username_base(
+                normalized_display_name,
+                normalized_email,
+                provider,
+            )
+            username = username_base
+            collision_suffix = hashlib.sha256(
+                f"{issuer}:{subject}".encode("utf-8")
+            ).hexdigest()[:6]
+            suffix_index = 0
+            while conn.execute(
+                    "SELECT 1 FROM users WHERE LOWER(username) = LOWER(?)",
+                    (username,),
+            ).fetchone():
+                suffix = collision_suffix if suffix_index == 0 else f"{collision_suffix}{suffix_index}"
+                username = f"{username_base[:max(1, 49 - len(suffix))]}-{suffix}"
+                suffix_index += 1
+
+            user_id = str(uuid.uuid4())
+            # This sentinel is deliberately not a PBKDF2 hash, so the legacy
+            # password verifier can never authenticate a social-only account.
+            password_hash = f"firebase:{secrets.token_hex(32)}"
+            conn.execute(
+                "INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
+                (user_id, username, password_hash),
+            )
+            conn.execute("""
+                INSERT INTO auth_identities (
+                    id, user_id, issuer, subject, provider, email, display_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                str(uuid.uuid4()),
+                user_id,
+                issuer,
+                subject,
+                provider,
+                normalized_email,
+                normalized_display_name,
+            ))
+            conn.commit()
+            return {"id": user_id, "username": username}
+
+        return self._execute_with_retry(_resolve)
+
+    def get_user_auth_identities(self, user_id: str) -> List[Dict]:
+        def _get(conn):
+            rows = conn.execute("""
+                SELECT issuer, subject, provider
+                FROM auth_identities
+                WHERE user_id = ?
+                ORDER BY created_at ASC
+            """, (user_id,)).fetchall()
+            return [
+                {
+                    "issuer": row[0],
+                    "subject": row[1],
+                    "provider": row[2],
+                }
+                for row in rows
+            ]
+
+        return self._execute_with_retry(_get)
+
+    def delete_user_account(self, user_id: str) -> Optional[Dict]:
+        """Delete private account data and anonymize Worlds already public."""
+        def _delete(conn):
+            conn.execute("BEGIN IMMEDIATE")
+            user = conn.execute(
+                "SELECT id FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if not user:
+                conn.rollback()
+                return None
+
+            private_world_ids = [
+                row[0]
+                for row in conn.execute("""
+                    SELECT id
+                    FROM generators
+                    WHERE owner_id = ? AND visibility != 'public'
+                """, (user_id,)).fetchall()
+            ]
+            public_world_ids = [
+                row[0]
+                for row in conn.execute("""
+                    SELECT id
+                    FROM generators
+                    WHERE owner_id = ? AND visibility = 'public'
+                """, (user_id,)).fetchall()
+            ]
+
+            if private_world_ids:
+                placeholders = ", ".join("?" for _ in private_world_ids)
+                for table_name in (
+                        "generator_translations",
+                        "generator_worlds",
+                        "world_metrics",
+                        "world_play_sessions",
+                        "world_player_completions",
+                        "world_art_reroll_attempts",
+                        "world_moderation_reviews",
+                ):
+                    conn.execute(
+                        f"DELETE FROM {table_name} WHERE generator_id IN ({placeholders})",
+                        private_world_ids,
+                    )
+                conn.execute(
+                    f"DELETE FROM generators WHERE id IN ({placeholders})",
+                    private_world_ids,
+                )
+
+            conn.execute("""
+                UPDATE generators
+                SET owner_id = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE owner_id = ? AND visibility = 'public'
+            """, (user_id,))
+            conn.execute("""
+                UPDATE world_moderation_reviews
+                SET requested_by_owner_id = NULL
+                WHERE requested_by_owner_id = ?
+            """, (user_id,))
+            conn.execute(
+                "UPDATE world_play_sessions SET user_id = NULL WHERE user_id = ?",
+                (user_id,),
+            )
+            conn.execute(
+                "DELETE FROM world_player_completions WHERE user_id = ?",
+                (user_id,),
+            )
+            conn.execute(
+                "DELETE FROM world_art_reroll_attempts WHERE user_id = ?",
+                (user_id,),
+            )
+            conn.execute("DELETE FROM credit_ledger WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM mobile_auth_sessions WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM auth_identities WHERE user_id = ?", (user_id,))
+
+            # Retain the minimum purchase record needed to stop a consumed
+            # transaction from being claimed again, while severing its user
+            # link and dropping provider metadata.
+            deleted_user_key = "deleted:" + hashlib.sha256(
+                user_id.encode("utf-8")
+            ).hexdigest()
+            conn.execute("""
+                UPDATE store_purchases
+                SET user_id = ?, provider_metadata = NULL
+                WHERE user_id = ?
+            """, (deleted_user_key, user_id))
+            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            return {
+                "deleted_world_ids": private_world_ids,
+                "anonymized_world_ids": public_world_ids,
+            }
+
+        return self._execute_with_retry(_delete)
 
     def get_user_by_username(self, username: str) -> Optional[Dict]:
         def _get(conn):

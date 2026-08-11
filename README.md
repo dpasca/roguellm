@@ -243,10 +243,11 @@ Normal launches continue to use a fresh seed.
 python tools/generate_icons.py square_icon.png wide-promotional-image.png
 ```
 
-## Firebase Analytics Integration (Optional)
+## Firebase Authentication and Analytics
 
-The game includes optional Firebase Analytics integration for daily visits and a
-small number of product events. The game works without it.
+Production uses Firebase Authentication for Google and Apple sign-in. Password
+signup is deliberately disabled there because the app does not yet operate a
+verification/password-reset mail system. Firebase Analytics remains optional.
 
 ### Setup
 
@@ -257,6 +258,8 @@ small number of product events. The game works without it.
    production server):
 
 ```env
+ENABLE_SOCIAL_AUTH=1
+ENABLE_LEGACY_PASSWORD_AUTH=0
 ANALYTICS_ENABLED=1
 FIREBASE_API_KEY=
 FIREBASE_AUTH_DOMAIN=
@@ -267,9 +270,16 @@ FIREBASE_APP_ID=
 FIREBASE_MEASUREMENT_ID=
 ```
 
-All Firebase values are required when `ANALYTICS_ENABLED=1`. The application
-fails at startup if analytics is enabled with incomplete configuration, so a
-deployment cannot silently serve an untracked site.
+`FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, and
+`FIREBASE_APP_ID` are required for social auth. All Firebase values are required
+when `ANALYTICS_ENABLED=1`. The application fails at startup when an enabled
+Firebase client feature has incomplete configuration.
+
+The native app registrations are checked in as `android/app/google-services.json`
+and `ios/App/App/GoogleService-Info.plist`. Firebase OAuth authorized domains
+must include `roguellm.com` and `www.roguellm.com`. Apple sign-in on web and
+Android additionally requires the Firebase callback URL
+`https://roguellm.firebaseapp.com/__/auth/handler` in the Apple Services ID.
 
 ### What's Being Tracked
 
