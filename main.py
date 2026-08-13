@@ -155,6 +155,7 @@ class GameCreationRequest(BaseModel):
     do_web_search: bool = True
     generator_id: Optional[str] = None
     debug_seed: Optional[int] = None
+    spectator_mode: bool = False
 
 class AdminPasswordResetRequest(BaseModel):
     password_reset_required: bool
@@ -1205,6 +1206,11 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
             "error": "debug_seed is only available in local development"
         }, status_code=403)
 
+    if creation_request.spectator_mode and not creation_request.generator_id:
+        return JSONResponse({
+            "error": "Auto Review is only available for an existing World"
+        }, status_code=400)
+
     if creation_request.generator_id:
         generator_data = db.get_visible_generator(
             creation_request.generator_id,
@@ -1267,6 +1273,7 @@ async def create_game_session(creation_request: GameCreationRequest, req: Reques
         'generator_id': creation_request.generator_id,
         'language': creation_request.language,
         'debug_seed': creation_request.debug_seed,
+        'spectator_mode': creation_request.spectator_mode,
         'requester_user_id': requester_user_id,
     }
 
@@ -2122,6 +2129,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
         session = game_session_manager.sessions[session_id]
         user_id = session.get("requester_user_id") or websocket.session.get("user_id")
+        spectator_mode = bool(session.get("spectator_mode"))
         forge_charge_operation = None
 
         # If game is not created yet, create it now
@@ -2134,7 +2142,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             try:
                 request = session['creation_request']
-                seed = request.debug_seed if request.debug_seed is not None else int(time.time())
+                if request.debug_seed is not None:
+                    seed = request.debug_seed
+                elif request.spectator_mode and request.generator_id:
+                    # An Auto Review should make the same combat rolls every
+                    # time so visual comparisons between builds are meaningful.
+                    seed = zlib.crc32(
+                        f"{request.generator_id}:{request.language}:auto-review-v1".encode("utf-8")
+                    )
+                else:
+                    seed = int(time.time())
 
                 if request.generator_id:
                     # Check if generator exists
@@ -2278,7 +2295,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             game_instance.state_manager.generator_id
             if game_instance.state_manager else None
         )
-        if world_id:
+        if world_id and not spectator_mode:
             try:
                 db.record_world_play_start(session_id, world_id, user_id)
             except Exception:
@@ -2298,7 +2315,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             initial_response = {
                 'type': 'connection_established',
-                'generator_id': game_instance.state_manager.generator_id if game_instance.state_manager else None
+                'generator_id': game_instance.state_manager.generator_id if game_instance.state_manager else None,
+                'spectator_mode': spectator_mode,
             }
             await websocket.send_json(initial_response)
 
@@ -2331,7 +2349,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
                 state = getattr(game_instance.state_manager, "state", None)
                 is_won = bool(getattr(state, "game_won", False))
-                if not was_won and is_won and world_id:
+                if not spectator_mode and not was_won and is_won and world_id:
                     try:
                         completion = db.record_world_completion(
                             session_id=session_id,

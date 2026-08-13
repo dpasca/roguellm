@@ -607,6 +607,14 @@ body.landing-page .save-hint-btn:hover {
     background: #285e73;
 }
 
+body.landing-page .world-review-btn {
+    background: linear-gradient(135deg, #287f7a, #315e8c);
+}
+
+body.landing-page .world-review-btn:hover {
+    background: linear-gradient(135deg, #31958e, #396fa3);
+}
+
 body.landing-page .world-preview {
     border-color: #343d3c;
 }

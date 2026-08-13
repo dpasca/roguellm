@@ -1300,12 +1300,21 @@ const app = Vue.createApp({
             this.generatorId = '';
             await this.launchGame();
         },
+        async watchWorld(world) {
+            if (!world || !world.id) return;
+            this.selectedTheme = 'world';
+            this.selectedWorldId = world.id;
+            this.generatorId = '';
+            this.closeWorldMenu();
+            await this.launchGame({ spectatorMode: true });
+        },
         async forgeWorld() {
             if (!this.customDescription.trim()) return;
             this.selectedTheme = 'custom';
             await this.launchGame();
         },
-        async launchGame() {
+        async launchGame(options = {}) {
+            const spectatorMode = options?.spectatorMode === true;
             this.clearError();
 
             if (this.selectedTheme === 'world' && !this.selectedGeneratorId) {
@@ -1323,17 +1332,24 @@ const app = Vue.createApp({
             const loadingOverlay = document.querySelector('.loading-overlay');
             const loadingMessage = document.querySelector('#loading-message');
             if (loadingOverlay && loadingMessage) {
-                loadingMessage.textContent = 'Creating game session...';
+                loadingMessage.textContent = spectatorMode
+                    ? this.t('spectator.preparing')
+                    : 'Creating game session...';
                 loadingOverlay.style.display = 'flex';
             }
 
             // Track game launch
             if (window.trackAnalyticsEvent) {
-                window.trackAnalyticsEvent('game_started', {
+                const analyticsDetails = {
                     theme: this.selectedTheme,
                     language: this.selectedLanguage,
                     do_web_search: true
-                });
+                };
+                if (spectatorMode) {
+                    window.trackAnalyticsEvent('spectator_review_started', analyticsDetails);
+                } else {
+                    window.trackAnalyticsEvent('game_started', analyticsDetails);
+                }
             }
 
             try {
@@ -1344,6 +1360,9 @@ const app = Vue.createApp({
                     language: this.selectedLanguage,
                     do_web_search: true
                 };
+                if (spectatorMode) {
+                    requestBody.spectator_mode = true;
+                }
                 const debugSeed = this.getDebugSeedFromUrl();
                 if (debugSeed !== null) {
                     requestBody.debug_seed = debugSeed;
@@ -1364,11 +1383,14 @@ const app = Vue.createApp({
                 const data = await response.json();
 
                 // Redirect to the session-specific game URL
-                const gameUrl = window.RogueLLMRuntime.gameUrl(
+                const gameUrl = new URL(window.RogueLLMRuntime.gameUrl(
                     data.session_id,
                     this.selectedLanguage
-                );
-                window.location.href = gameUrl;
+                ));
+                if (spectatorMode) {
+                    gameUrl.searchParams.set('spectate', '1');
+                }
+                window.location.href = gameUrl.toString();
 
             } catch (error) {
                 console.error('Error creating game session:', error);

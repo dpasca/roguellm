@@ -96,6 +96,11 @@ function hideLoading() {
 
 const app = Vue.createApp({
     data() {
+        const spectatorParams = new URLSearchParams(window.location.search);
+        const spectatorRequested = spectatorParams.get('spectate') === '1';
+        const requestedSpeed = Number(spectatorParams.get('speed'));
+        const spectatorSpeed = [1, 1.5, 2].includes(requestedSpeed) ? requestedSpeed : 1;
+
         return {
             isGameInitialized: false,
             isLoading: true,
@@ -163,6 +168,31 @@ const app = Vue.createApp({
             completionReward: null,
             selectedTile: null,
             hasRequestedInitialState: false,
+            spectator: {
+                requested: spectatorRequested,
+                enabled: false,
+                serverConfirmed: false,
+                started: false,
+                running: false,
+                paused: false,
+                completed: false,
+                speed: spectatorSpeed,
+                phase: 'explore',
+                status: '',
+                error: '',
+                timer: null,
+                pendingActionId: null,
+                actionSequence: 0,
+                steps: 0,
+                moments: {
+                    explore: false,
+                    item: false,
+                    story: false,
+                    combat: false,
+                    finish: false
+                },
+                regionsSeen: []
+            },
             // The location is the primary surface on phones, with the map as a
             // minimap beneath it. ?layout=grid returns to the old arrangement,
             // which is also what desktop still uses.
@@ -274,6 +304,19 @@ const app = Vue.createApp({
             const [x, y] = this.gameState.player_pos;
             const cell = this.gameState.cell_types[y] && this.gameState.cell_types[y][x];
             return cell && cell.name ? cell.name : '—';
+        },
+        spectatorChapters() {
+            const chapters = [
+                { key: 'explore', icon: 'fa-solid fa-map', label: this.$t('spectator.explore') },
+                { key: 'item', icon: 'fa-solid fa-box-open', label: this.$t('spectator.item') },
+                { key: 'story', icon: 'fa-solid fa-diamond', label: this.$t('spectator.story') },
+                { key: 'combat', icon: 'fa-solid fa-burst', label: this.$t('spectator.combat') },
+                { key: 'finish', icon: 'fa-solid fa-flag-checkered', label: this.$t('spectator.finish') }
+            ];
+            return chapters.map(chapter => ({
+                ...chapter,
+                done: Boolean(this.spectator.moments[chapter.key])
+            }));
         }
     },
     methods: {
@@ -607,6 +650,7 @@ const app = Vue.createApp({
                     if (response.type === 'error') {
                         console.error("WebSocket error:", response.message);
                         this.errorMessage = response.message;
+                        this.handleSpectatorResponse(response);
                         hideLoading();
                         return;
                     }
@@ -615,6 +659,13 @@ const app = Vue.createApp({
                         console.log("Connection established");
                         if (response.generator_id) {
                             this.generatorId = response.generator_id;
+                        }
+                        if (this.spectator.requested) {
+                            this.spectator.serverConfirmed = response.spectator_mode === true;
+                            this.spectator.enabled = this.spectator.serverConfirmed;
+                            if (!this.spectator.serverConfirmed) {
+                                this.spectator.error = this.$t('spectator.notConfirmed');
+                            }
                         }
                         // Request initial state
                         this.requestInitialState();
@@ -714,6 +765,7 @@ const app = Vue.createApp({
         },
         async restartGame() {
             this.completionReward = null;
+            this.resetSpectatorReview();
             // Show loading overlay
             const loadingOverlay = document.querySelector('.loading-overlay');
             const loadingMessage = document.querySelector('#loading-message');
@@ -821,6 +873,274 @@ const app = Vue.createApp({
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             });
+        },
+        clearSpectatorTimer() {
+            if (this.spectator.timer) {
+                clearTimeout(this.spectator.timer);
+                this.spectator.timer = null;
+            }
+        },
+        resetSpectatorReview() {
+            if (!this.spectator.requested) return;
+            this.clearSpectatorTimer();
+            this.spectator.enabled = this.spectator.serverConfirmed;
+            this.spectator.started = false;
+            this.spectator.running = false;
+            this.spectator.paused = false;
+            this.spectator.completed = false;
+            this.spectator.phase = 'explore';
+            this.spectator.status = this.$t('spectator.preparing');
+            this.spectator.error = '';
+            this.spectator.pendingActionId = null;
+            this.spectator.actionSequence = 0;
+            this.spectator.steps = 0;
+            this.spectator.moments = {
+                explore: false,
+                item: false,
+                story: false,
+                combat: false,
+                finish: false
+            };
+            this.spectator.regionsSeen = [];
+        },
+        updateSpectatorMoments() {
+            if (!this.spectator.requested || !this.gameState) return;
+
+            const currentRegion = this.currentRegion;
+            if (currentRegion && !this.spectator.regionsSeen.includes(currentRegion.id)) {
+                this.spectator.regionsSeen.push(currentRegion.id);
+            }
+
+            if (this.countExploredTiles > 1 || this.spectator.regionsSeen.length > 1) {
+                this.spectator.moments.explore = true;
+            }
+            if (
+                (this.gameState.inventory || []).length > 0 ||
+                (this.gameState.item_placements || []).some(item => item.is_collected)
+            ) {
+                this.spectator.moments.item = true;
+            }
+            if ((this.gameState.resolved_story_ids || []).length > 0) {
+                this.spectator.moments.story = true;
+            }
+            if (
+                this.gameState.in_combat ||
+                (this.gameState.defeated_enemies || []).length > 0
+            ) {
+                this.spectator.moments.combat = true;
+            }
+            if (this.gameState.game_won || this.gameState.game_over) {
+                this.spectator.moments.finish = true;
+            }
+        },
+        describeSpectatorAction(plan) {
+            switch (plan.action) {
+                case 'move':
+                    if (plan.phase === 'item') {
+                        return this.$t('spectator.findingItem', { name: plan.targetName });
+                    }
+                    if (plan.phase === 'story') {
+                        return this.$t('spectator.followingStory', { name: plan.targetName });
+                    }
+                    if (plan.phase === 'combat') {
+                        return this.$t('spectator.trackingEnemy', { name: plan.targetName });
+                    }
+                    return plan.targetName
+                        ? this.$t('spectator.crossingArea', { name: plan.targetName })
+                        : this.$t('spectator.exploring');
+                case 'attack':
+                    return this.$t('spectator.fighting', { name: plan.targetName });
+                case 'use_item':
+                    return this.$t('spectator.healing', { name: plan.targetName });
+                case 'equip_item':
+                    return this.$t('spectator.equipping', { name: plan.targetName });
+                case 'choose_story':
+                    return this.$t('spectator.consideringChoice', { name: plan.targetName });
+                case 'dismiss_story_outcome':
+                    return this.$t('spectator.reviewingOutcome');
+                default:
+                    return this.$t('spectator.exploring');
+            }
+        },
+        spectatorActionDelay(plan) {
+            const delays = {
+                move: 1350,
+                attack: 1900,
+                use_item: 1800,
+                equip_item: 1900,
+                choose_story: 4300,
+                dismiss_story_outcome: 5000
+            };
+            return (delays[plan.action] || 1400) / this.spectator.speed;
+        },
+        scheduleSpectatorStep(delayOverride = null) {
+            this.clearSpectatorTimer();
+            if (
+                !this.spectator.enabled ||
+                !this.spectator.started ||
+                this.spectator.paused ||
+                this.spectator.completed ||
+                this.spectator.pendingActionId
+            ) {
+                return;
+            }
+
+            if (this.spectator.steps >= 260) {
+                this.spectator.paused = true;
+                this.spectator.running = false;
+                this.spectator.error = this.$t('spectator.stepLimit');
+                return;
+            }
+
+            const planner = window.RogueLLMSpectatorPlanner;
+            const plan = planner && planner.nextAction(this.gameState, {
+                storyOutcome: this.storyOutcome,
+                moments: this.spectator.moments,
+                regionsSeen: this.spectator.regionsSeen
+            });
+
+            if (!plan || plan.action === 'stalled') {
+                this.spectator.paused = true;
+                this.spectator.running = false;
+                this.spectator.error = this.$t('spectator.stalled');
+                return;
+            }
+            if (plan.action === 'done') {
+                this.completeSpectatorReview();
+                return;
+            }
+
+            this.spectator.phase = plan.phase || 'explore';
+            this.spectator.status = this.describeSpectatorAction(plan);
+            const delay = delayOverride === null
+                ? this.spectatorActionDelay(plan)
+                : delayOverride;
+            this.spectator.timer = setTimeout(() => {
+                this.spectator.timer = null;
+                this.executeSpectatorAction(plan);
+            }, delay);
+        },
+        executeSpectatorAction(plan) {
+            if (this.spectator.paused || this.spectator.completed) return;
+
+            this.spectator.steps += 1;
+            if (plan.action === 'dismiss_story_outcome') {
+                this.dismissStoryOutcome();
+                this.scheduleSpectatorStep(650 / this.spectator.speed);
+                return;
+            }
+
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                this.spectator.status = this.$t('spectator.reconnecting');
+                this.scheduleSpectatorStep(1000);
+                return;
+            }
+
+            this.spectator.actionSequence += 1;
+            const actionId = this.spectator.actionSequence;
+            const payload = {
+                action: plan.action,
+                client_action_id: actionId
+            };
+            ['direction', 'item_id', 'choice_id'].forEach(field => {
+                if (plan[field] !== undefined) payload[field] = plan[field];
+            });
+
+            if (plan.action === 'choose_story') {
+                this.isStoryChoicePending = true;
+            }
+            this.spectator.pendingActionId = actionId;
+            this.ws.send(JSON.stringify(payload));
+        },
+        startSpectatorReview() {
+            if (
+                !this.spectator.requested ||
+                !this.spectator.serverConfirmed ||
+                this.spectator.started ||
+                !this.isGameInitialized
+            ) {
+                return;
+            }
+
+            this.spectator.enabled = true;
+            this.spectator.started = true;
+            this.spectator.running = true;
+            this.spectator.paused = false;
+            this.spectator.error = '';
+            this.spectator.status = this.$t('spectator.preparing');
+            this.updateSpectatorMoments();
+            this.scheduleSpectatorStep(2600 / this.spectator.speed);
+        },
+        completeSpectatorReview() {
+            this.clearSpectatorTimer();
+            this.updateSpectatorMoments();
+            this.spectator.running = false;
+            this.spectator.completed = true;
+            this.spectator.paused = false;
+            this.spectator.pendingActionId = null;
+            this.spectator.phase = 'finish';
+            this.spectator.moments.finish = true;
+            this.spectator.status = this.$t(
+                this.gameState.game_won
+                    ? 'spectator.victory'
+                    : 'spectator.defeat'
+            );
+        },
+        handleSpectatorResponse(response) {
+            if (!this.spectator.requested) return;
+
+            if (response.type === 'error' && this.spectator.pendingActionId) {
+                this.spectator.pendingActionId = null;
+                this.spectator.running = false;
+                this.spectator.paused = true;
+                this.spectator.error = response.message || this.$t('spectator.stalled');
+                return;
+            }
+            if (response.type !== 'update' || !response.state) return;
+
+            this.updateSpectatorMoments();
+            if (
+                this.spectator.pendingActionId &&
+                response.client_action_id === this.spectator.pendingActionId
+            ) {
+                this.spectator.pendingActionId = null;
+            }
+
+            if (this.gameState.game_won || this.gameState.game_over) {
+                this.completeSpectatorReview();
+                return;
+            }
+            if (!this.spectator.started) {
+                this.startSpectatorReview();
+                return;
+            }
+            if (!this.spectator.pendingActionId) {
+                this.scheduleSpectatorStep();
+            }
+        },
+        toggleSpectatorPause() {
+            if (!this.spectator.serverConfirmed || this.spectator.completed) return;
+
+            if (this.spectator.paused) {
+                this.spectator.paused = false;
+                this.spectator.running = true;
+                this.spectator.error = '';
+                this.scheduleSpectatorStep(350);
+                return;
+            }
+
+            this.clearSpectatorTimer();
+            this.spectator.paused = true;
+            this.spectator.running = false;
+            this.spectator.status = this.$t('spectator.paused');
+        },
+        cycleSpectatorSpeed() {
+            const speeds = [1, 1.5, 2];
+            const currentIndex = speeds.indexOf(this.spectator.speed);
+            this.spectator.speed = speeds[(currentIndex + 1) % speeds.length];
+            if (this.spectator.timer && !this.spectator.paused) {
+                this.scheduleSpectatorStep(350);
+            }
         },
         toggleMobilePanel(panel) {
             if (this.hasActiveInteraction || this.gameState.in_combat) return;
@@ -1098,6 +1418,7 @@ const app = Vue.createApp({
                     this.errorMessage = null;
                 }, 5000);
             }
+            this.handleSpectatorResponse(response);
         }
     },
     mounted() {
@@ -1111,6 +1432,11 @@ const app = Vue.createApp({
         document.addEventListener('click', this.closeMenuIfClickedOutside);
         document.addEventListener('keydown', this.handleGlobalKeydown);
         window.addEventListener('resize', this.handleWindowResize);
+
+        if (this.spectator.requested) {
+            document.body.classList.add('spectator-mode');
+            this.spectator.status = this.$t('spectator.preparing');
+        }
 
         // Get initial title from SSR if available
         const h1 = document.querySelector('h1');
@@ -1132,6 +1458,9 @@ const app = Vue.createApp({
         if (this.areaRevealTimer) {
             clearTimeout(this.areaRevealTimer);
         }
+
+        this.clearSpectatorTimer();
+        document.body.classList.remove('spectator-mode');
     },
     watch: {
         // Watch for changes in player position

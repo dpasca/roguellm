@@ -1,0 +1,209 @@
+.game-page .spectator-console {
+    background:
+        linear-gradient(135deg, rgba(72, 221, 210, 0.1), transparent 42%),
+        rgba(11, 20, 28, 0.96);
+    border: 1px solid rgba(72, 221, 210, 0.38);
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35), inset 0 1px rgba(255, 255, 255, 0.04);
+    display: grid;
+    gap: 11px;
+    margin: 14px auto 0;
+    max-width: 980px;
+    padding: 13px 15px;
+    position: sticky;
+    top: 82px;
+    width: calc(100% - 28px);
+    z-index: 30;
+}
+
+.game-page .spectator-console.is-paused {
+    border-color: rgba(255, 181, 82, 0.52);
+}
+
+.game-page .spectator-console.is-error {
+    border-color: rgba(255, 94, 91, 0.6);
+}
+
+.game-page .spectator-console-main {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.game-page .spectator-badge {
+    align-items: center;
+    background: rgba(72, 221, 210, 0.1);
+    border: 1px solid rgba(72, 221, 210, 0.3);
+    border-radius: 10px;
+    color: var(--game-cyan);
+    display: flex;
+    font-size: 0.72rem;
+    font-weight: 800;
+    gap: 8px;
+    letter-spacing: 0.08em;
+    min-height: 42px;
+    padding: 0 12px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.game-page .spectator-badge i {
+    color: #ff5e86;
+    filter: drop-shadow(0 0 7px rgba(255, 94, 134, 0.62));
+}
+
+.game-page .spectator-copy {
+    min-width: 0;
+}
+
+.game-page .spectator-copy span {
+    color: #7f98a4;
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+.game-page .spectator-copy strong {
+    color: #edf7f8;
+    display: block;
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.game-page .spectator-controls {
+    display: flex;
+    gap: 7px;
+}
+
+.game-page .spectator-controls button {
+    align-items: center;
+    background: #172832;
+    border: 1px solid #35505e;
+    border-radius: 9px;
+    color: #d5e5e8;
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 800;
+    gap: 7px;
+    justify-content: center;
+    margin: 0;
+    min-height: 42px;
+    min-width: 70px;
+    padding: 0 11px;
+}
+
+.game-page .spectator-controls button:hover {
+    background: #203946;
+    border-color: var(--game-cyan);
+    color: #fff;
+}
+
+.game-page .spectator-chapters {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.game-page .spectator-chapter {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(117, 145, 158, 0.18);
+    border-radius: 8px;
+    color: #718a95;
+    display: flex;
+    font-size: 0.68rem;
+    font-weight: 800;
+    gap: 6px;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 7px;
+    text-transform: uppercase;
+}
+
+.game-page .spectator-chapter.is-active {
+    border-color: rgba(255, 181, 82, 0.55);
+    color: #ffcf89;
+}
+
+.game-page .spectator-chapter.is-done {
+    background: rgba(72, 221, 210, 0.07);
+    border-color: rgba(72, 221, 210, 0.34);
+    color: #8de7df;
+}
+
+@media screen and (max-width: 900px) {
+    body.game-page.spectator-mode .container {
+        grid-template-rows: auto auto minmax(0, 1fr);
+    }
+
+    .game-page .spectator-console {
+        border-radius: 10px;
+        gap: 7px;
+        margin: 5px 6px 0;
+        max-width: none;
+        padding: 7px 8px;
+        position: relative;
+        top: auto;
+        width: auto;
+        /* Keep playback controls usable while a story sheet is held open. */
+        z-index: 320;
+    }
+
+    .game-page .spectator-console-main {
+        gap: 7px;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .game-page .spectator-badge {
+        display: none;
+    }
+
+    .game-page .spectator-copy span {
+        font-size: 0.58rem;
+    }
+
+    .game-page .spectator-copy strong {
+        font-size: 0.76rem;
+    }
+
+    .game-page .spectator-controls {
+        gap: 4px;
+    }
+
+    .game-page .spectator-controls button {
+        font-size: 0.7rem;
+        min-height: 36px;
+        min-width: 44px;
+        padding: 0 8px;
+    }
+
+    .game-page .spectator-controls button span {
+        display: none;
+    }
+
+    .game-page .spectator-chapters {
+        gap: 4px;
+    }
+
+    .game-page .spectator-chapter {
+        font-size: 0;
+        min-height: 20px;
+        padding: 0;
+    }
+
+    .game-page .spectator-chapter i {
+        font-size: 0.62rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-page .spectator-badge i {
+        filter: none;
+    }
+}

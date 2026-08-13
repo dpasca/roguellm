@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="/static/css/game.css">
     <link rel="stylesheet" href="/static/css/game_overlay.css">
     <link rel="stylesheet" href="/static/css/game_controls.css">
+    <link rel="stylesheet" href="/static/css/game_spectator.css">
     <link rel="stylesheet" href="/static/css/notifications.css">
     <link rel="stylesheet" href="/static/css/generator.css">
     <link rel="stylesheet" href="/static/css/game_dialog.css">
@@ -164,6 +165,52 @@
             <div class="share-notification" :class="{ active: showShareNotification }">
                 {{ $t('notifications.gameCopied') }}
             </div>
+
+            <section v-if="spectator.requested"
+                class="spectator-console"
+                :class="{
+                    'is-paused': spectator.paused,
+                    'is-error': spectator.error
+                }"
+                aria-live="polite">
+                <div class="spectator-console-main">
+                    <div class="spectator-badge">
+                        <i class="fa-solid fa-circle" aria-hidden="true"></i>
+                        <span>{{ $t('spectator.badge') }}</span>
+                    </div>
+                    <div class="spectator-copy">
+                        <span>{{ $t('spectator.eyebrow') }}</span>
+                        <strong>{{ spectator.error || spectator.status || $t('spectator.preparing') }}</strong>
+                    </div>
+                    <div class="spectator-controls">
+                        <button type="button"
+                            :disabled="!spectator.serverConfirmed || spectator.completed"
+                            @click="toggleSpectatorPause">
+                            <i :class="spectator.paused ? 'fa-solid fa-play' : 'fa-solid fa-pause'"
+                                aria-hidden="true"></i>
+                            <span>{{ $t(spectator.paused ? 'spectator.resume' : 'spectator.pause') }}</span>
+                        </button>
+                        <button type="button"
+                            :aria-label="$t('spectator.speedLabel', { speed: spectator.speed })"
+                            @click="cycleSpectatorSpeed">
+                            <i class="fa-solid fa-gauge-high" aria-hidden="true"></i>
+                            {{ spectator.speed }}×
+                        </button>
+                    </div>
+                </div>
+                <div class="spectator-chapters" :aria-label="$t('spectator.chapters')">
+                    <div v-for="chapter in spectatorChapters"
+                        :key="chapter.key"
+                        class="spectator-chapter"
+                        :class="{
+                            'is-active': spectator.phase === chapter.key && !chapter.done,
+                            'is-done': chapter.done
+                        }">
+                        <i :class="chapter.done ? 'fa-solid fa-check' : chapter.icon" aria-hidden="true"></i>
+                        <span>{{ chapter.label }}</span>
+                    </div>
+                </div>
+            </section>
 
             <!-- End-of-run report -->
             <div v-if="isGameInitialized && gameState && (gameState.game_over || gameState.game_won)"
@@ -999,7 +1046,8 @@
         </div>
     </div>
     </div>
-    <!-- Load Vue first, then our app -->
+    <!-- Load Vue first, then the deterministic review planner and our app. -->
+    <script src="/static/js/spectatorDirector.js"></script>
     <script src="/static/js/createApp.js"></script>
 
     <!-- Loading Overlay -->

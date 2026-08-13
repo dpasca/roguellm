@@ -172,6 +172,8 @@ class LandingSmokeTests(unittest.TestCase):
                     self.assertIn("credits_300", credit_store_js)
                     self.assertNotIn("fetch(", credit_store_js)
                     self.assertIn("copyWorldLink", landing_js)
+                    self.assertIn("watchWorld", landing_js)
+                    self.assertIn("spectator_mode", landing_js)
                     self.assertIn("openWorldCodePanel", landing_js)
                     self.assertIn("openWorldMenu", landing_js)
                     self.assertIn("worldVisibilityLabel", landing_js)
@@ -292,6 +294,8 @@ class LandingSmokeTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn('class="game-header-actions"', game_html)
+        self.assertIn('class="spectator-console"', game_html)
+        self.assertIn('/static/js/spectatorDirector.js', game_html)
         self.assertIn('@click="goHome"', game_html)
         self.assertIn('@click="restartGame"', game_html)
         self.assertIn('@click="quitGame"', game_html)
@@ -302,6 +306,8 @@ class LandingSmokeTests(unittest.TestCase):
 
         self.assertIn("goHome()", game_js)
         self.assertIn("quitGame()", game_js)
+        self.assertIn("startSpectatorReview()", game_js)
+        self.assertIn("client_action_id", game_js)
         self.assertIn("window.open(url, '_blank', 'noopener')", game_js)
         self.assertIn("action: 'quit'", game_js)
         self.assertIn("reward.creator_reward?.reward_granted", game_js)

@@ -626,6 +626,12 @@
                     <p class="world-preview-theme">{{ activeWorldMenu.theme }}</p>
                     <div class="world-actions">
                         <button type="button"
+                                class="world-secondary-btn world-review-btn"
+                                @click="watchWorld(activeWorldMenu)">
+                            <i class="fas fa-clapperboard"></i>
+                            <span>{{ t('spectator.watch') }}</span>
+                        </button>
+                        <button type="button"
                                 class="world-secondary-btn"
                                 @click="copyWorldLink(activeWorldMenu)">
                             <i class="fas fa-link"></i>

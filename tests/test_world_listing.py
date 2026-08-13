@@ -2,6 +2,7 @@ import os
 import asyncio
 import tempfile
 import unittest
+import zlib
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -1030,6 +1031,101 @@ class WorldApiTests(unittest.TestCase):
                     "completion_count": 1,
                     "unique_completer_count": 1,
                 })
+
+    def test_spectator_run_is_repeatable_and_does_not_change_metrics_or_rewards(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            world_id = manager.save_generator(
+                theme_desc="Review World",
+                theme_desc_better="Review World",
+                language="en",
+                player_defs=[],
+                item_defs=[],
+                enemy_defs=[],
+                celltype_defs={},
+                owner_id=None,
+                visibility="public",
+            )
+            created_with = {}
+
+            class WinningGame:
+                def __init__(self):
+                    self.state_manager = SimpleNamespace(
+                        generator_id=world_id,
+                        error_message=None,
+                        state=SimpleNamespace(game_won=False),
+                    )
+
+                def add_client(self, websocket):
+                    pass
+
+                def remove_client(self, websocket):
+                    pass
+
+                async def handle_message(self, message):
+                    self.state_manager.state.game_won = True
+                    return {"type": "update", "state": {"game_won": True}}
+
+            async def create_game(**kwargs):
+                created_with.update(kwargs)
+                return WinningGame()
+
+            with patch.object(main, "db", manager), \
+                    patch("main.Game.create", side_effect=create_game), \
+                    patch.dict(os.environ, {
+                        "ENABLE_WORLD_CREDITS": "1",
+                        "WELCOME_CREDITS": "30",
+                        "COMPLETION_REWARD_CREDITS": "1",
+                        "COMPLETION_REWARD_DAILY_CAP": "5",
+                    }):
+                main.game_session_manager.sessions.clear()
+                client = TestClient(main.app)
+                client.post("/api/signup", json={
+                    "username": "spectator",
+                    "password": VALID_TEST_PASSWORD,
+                })
+                response = client.post("/api/create_game_session", json={
+                    "generator_id": world_id,
+                    "language": "en",
+                    "spectator_mode": True,
+                })
+                session_id = response.json()["session_id"]
+
+                with client.websocket_connect(f"/ws/game/{session_id}") as websocket:
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "creating")
+                    self.assertEqual(websocket.receive_json()["status"], "ready")
+                    connection = websocket.receive_json()
+                    self.assertTrue(connection["spectator_mode"])
+                    websocket.send_json({"action": "get_initial_state"})
+                    win = websocket.receive_json()
+
+                user_id = manager.get_user_by_username("spectator")["id"]
+                self.assertNotIn("completion_reward", win)
+                self.assertEqual(manager.get_credit_balance(user_id)["total"], 30)
+                self.assertEqual(manager.get_world_metrics(world_id), {
+                    "play_count": 0,
+                    "completion_count": 0,
+                    "unique_completer_count": 0,
+                })
+                self.assertEqual(
+                    created_with["seed"],
+                    zlib.crc32(f"{world_id}:en:auto-review-v1".encode("utf-8")),
+                )
+
+    def test_spectator_mode_requires_an_existing_world(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manager = self.make_db(tmpdir)
+            with patch.object(main, "db", manager):
+                main.game_session_manager.sessions.clear()
+                response = TestClient(main.app).post("/api/create_game_session", json={
+                    "theme": "A new World",
+                    "language": "en",
+                    "spectator_mode": True,
+                })
+
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(main.game_session_manager.sessions, {})
 
     def test_owner_gets_one_free_staged_core_art_reroll(self):
         with tempfile.TemporaryDirectory() as tmpdir:
