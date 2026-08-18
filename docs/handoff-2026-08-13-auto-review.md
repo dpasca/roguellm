@@ -103,4 +103,3 @@ enabled is therefore the next prerequisite for an honest visual judgment.
    checks.
 5. When the game looks strong, define a structured external playtest brief and
    telemetry questions before hiring testers.
-
